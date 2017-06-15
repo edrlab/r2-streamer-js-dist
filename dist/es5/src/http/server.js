@@ -55,13 +55,13 @@ var Server = (function () {
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
     }
-    Server.prototype.start = function () {
-        var port = process.env.PORT || 3000;
-        debug("PORT: " + process.env.PORT + " => " + port);
-        this.httpServer = this.expressApp.listen(port, function () {
-            debug("http://localhost:" + port);
+    Server.prototype.start = function (port) {
+        var p = port || process.env.PORT || 3000;
+        debug("PORT: " + p + " => " + process.env.PORT + " => " + p);
+        this.httpServer = this.expressApp.listen(p, function () {
+            debug("http://localhost:" + p);
         });
-        return "http://127.0.0.1:" + port;
+        return "http://127.0.0.1:" + p;
     };
     Server.prototype.stop = function () {
         this.httpServer.close();

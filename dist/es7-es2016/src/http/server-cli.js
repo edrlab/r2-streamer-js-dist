@@ -55,12 +55,12 @@ if (stats.isDirectory()) {
             .find();
         const server = new server_1.Server();
         server.addPublications(files);
-        server.start();
+        server.start(0);
     }))();
 }
 else {
     const server = new server_1.Server();
     server.addPublications([filePath]);
-    server.start();
+    server.start(0);
 }
 //# sourceMappingURL=server-cli.js.map

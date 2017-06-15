@@ -40,6 +40,7 @@ var path = require("path");
 var debug_ = require("debug");
 var electron_1 = require("electron");
 var filehound = require("filehound");
+var portfinder = require("portfinder");
 var Server_1 = require("../http/Server");
 var debug = debug_("r2:electron:main");
 var electronBrowserWindow;
@@ -47,7 +48,7 @@ function createElectronBrowserWindow() {
     var _this = this;
     debug("Server start, Electron main window ...");
     (function () { return __awaiter(_this, void 0, void 0, function () {
-        var dirPath, files, server, pubPaths, url, pubManifestUrls;
+        var dirPath, files, server, pubPaths, port, url, pubManifestUrls;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -60,7 +61,10 @@ function createElectronBrowserWindow() {
                     files = _a.sent();
                     server = new Server_1.Server();
                     pubPaths = server.addPublications(files);
-                    url = server.start();
+                    return [4, portfinder.getPortPromise()];
+                case 2:
+                    port = _a.sent();
+                    url = server.start(port);
                     pubManifestUrls = pubPaths.map(function (pubPath) {
                         return "" + url + pubPath;
                     });

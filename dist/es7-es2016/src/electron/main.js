@@ -13,6 +13,7 @@ const path = require("path");
 const debug_ = require("debug");
 const electron_1 = require("electron");
 const filehound = require("filehound");
+const portfinder = require("portfinder");
 const Server_1 = require("../http/Server");
 const debug = debug_("r2:electron:main");
 let electronBrowserWindow;
@@ -26,7 +27,8 @@ function createElectronBrowserWindow() {
             .find();
         const server = new Server_1.Server();
         const pubPaths = server.addPublications(files);
-        const url = server.start();
+        const port = yield portfinder.getPortPromise();
+        const url = server.start(port);
         const pubManifestUrls = pubPaths.map((pubPath) => {
             return `${url}${pubPath}`;
         });

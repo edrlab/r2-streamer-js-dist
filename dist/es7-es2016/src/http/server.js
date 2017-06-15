@@ -54,13 +54,13 @@ class Server {
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
     }
-    start() {
-        const port = process.env.PORT || 3000;
-        debug(`PORT: ${process.env.PORT} => ${port}`);
-        this.httpServer = this.expressApp.listen(port, () => {
-            debug(`http://localhost:${port}`);
+    start(port) {
+        const p = port || process.env.PORT || 3000;
+        debug(`PORT: ${p} => ${process.env.PORT} => ${p}`);
+        this.httpServer = this.expressApp.listen(p, () => {
+            debug(`http://localhost:${p}`);
         });
-        return `http://127.0.0.1:${port}`;
+        return `http://127.0.0.1:${p}`;
     }
     stop() {
         this.httpServer.close();

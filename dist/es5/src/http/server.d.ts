@@ -13,7 +13,7 @@ export declare class Server {
     private readonly expressApp;
     private httpServer;
     constructor();
-    start(): string;
+    start(port: number): string;
     stop(): void;
     setResponseCORS(res: express.Response): void;
     addPublications(pubs: string[]): string[];
