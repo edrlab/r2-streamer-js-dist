@@ -16,7 +16,7 @@ export declare class Server {
     start(): string;
     stop(): void;
     setResponseCORS(res: express.Response): void;
-    addPublications(pubs: string[]): void;
+    addPublications(pubs: string[]): string[];
     getPublications(): string[];
     isPublicationCached(filePath: string): boolean;
     cachedPublication(filePath: string): Publication | undefined;

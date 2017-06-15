@@ -76,6 +76,10 @@ class Server {
                 this.publications.push(pub);
             }
         });
+        return pubs.map((pub) => {
+            const pubid = new Buffer(pub).toString("base64");
+            return `/pub/${pubid}/manifest.json`;
+        });
     }
     getPublications() {
         return this.publications;
