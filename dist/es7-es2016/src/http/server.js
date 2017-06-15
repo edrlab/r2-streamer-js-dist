@@ -26,13 +26,13 @@ class Server {
         this.publicationsOPDSfeed = undefined;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
-        const server = express();
+        this.expressApp = express();
         const staticOptions = {
             etag: false,
         };
-        server.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
-        server.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
-        server.get("/", (_req, res) => {
+        this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
+        this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
+        this.expressApp.get("/", (_req, res) => {
             let html = "<html><body><h1>Publications</h1>";
             this.publications.forEach((pub) => {
                 const filePathBase64 = new Buffer(pub).toString("base64");
@@ -46,18 +46,24 @@ class Server {
             html += "</body></html>";
             res.status(200).send(html);
         });
-        server_url_1.serverUrl(this, server);
-        server_opds_1.serverOPDS(this, server);
-        server_opds2_1.serverOPDS2(this, server);
-        const routerPathBase64 = server_pub_1.serverPub(this, server);
+        server_url_1.serverUrl(this, this.expressApp);
+        server_opds_1.serverOPDS(this, this.expressApp);
+        server_opds2_1.serverOPDS2(this, this.expressApp);
+        const routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
+    }
+    start() {
         const port = process.env.PORT || 3000;
         debug(`PORT: ${process.env.PORT} => ${port}`);
-        server.listen(port, () => {
+        this.httpServer = this.expressApp.listen(port, () => {
             debug(`http://localhost:${port}`);
         });
+        return `http://127.0.0.1:${port}`;
+    }
+    stop() {
+        this.httpServer.close();
     }
     setResponseCORS(res) {
         res.setHeader("Access-Control-Allow-Origin", "*");
@@ -69,6 +75,10 @@ class Server {
             if (this.publications.indexOf(pub) < 0) {
                 this.publications.push(pub);
             }
+        });
+        return pubs.map((pub) => {
+            const pubid = new Buffer(pub).toString("base64");
+            return `/pub/${pubid}/manifest.json`;
         });
     }
     getPublications() {

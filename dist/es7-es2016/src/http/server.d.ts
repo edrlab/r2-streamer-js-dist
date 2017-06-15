@@ -10,9 +10,13 @@ export declare class Server {
     private readonly pathPublicationMap;
     private creatingPublicationsOPDS;
     private readonly opdsJsonFilePath;
+    private readonly expressApp;
+    private httpServer;
     constructor();
+    start(): string;
+    stop(): void;
     setResponseCORS(res: express.Response): void;
-    addPublications(pubs: string[]): void;
+    addPublications(pubs: string[]): string[];
     getPublications(): string[];
     isPublicationCached(filePath: string): boolean;
     cachedPublication(filePath: string): Publication | undefined;

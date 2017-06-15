@@ -88,6 +88,7 @@ if (stats.isDirectory()) {
                     files = _a.sent();
                     server = new server_1.Server();
                     server.addPublications(files);
+                    server.start();
                     return [2];
             }
         });
@@ -96,5 +97,6 @@ if (stats.isDirectory()) {
 else {
     var server = new server_1.Server();
     server.addPublications([filePath]);
+    server.start();
 }
 //# sourceMappingURL=server-cli.js.map

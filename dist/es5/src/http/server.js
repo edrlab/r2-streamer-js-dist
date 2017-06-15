@@ -27,13 +27,13 @@ var Server = (function () {
         this.publicationsOPDSfeed = undefined;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
-        var server = express();
+        this.expressApp = express();
         var staticOptions = {
             etag: false,
         };
-        server.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
-        server.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
-        server.get("/", function (_req, res) {
+        this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
+        this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
+        this.expressApp.get("/", function (_req, res) {
             var html = "<html><body><h1>Publications</h1>";
             _this.publications.forEach(function (pub) {
                 var filePathBase64 = new Buffer(pub).toString("base64");
@@ -47,19 +47,25 @@ var Server = (function () {
             html += "</body></html>";
             res.status(200).send(html);
         });
-        server_url_1.serverUrl(this, server);
-        server_opds_1.serverOPDS(this, server);
-        server_opds2_1.serverOPDS2(this, server);
-        var routerPathBase64 = server_pub_1.serverPub(this, server);
+        server_url_1.serverUrl(this, this.expressApp);
+        server_opds_1.serverOPDS(this, this.expressApp);
+        server_opds2_1.serverOPDS2(this, this.expressApp);
+        var routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
+    }
+    Server.prototype.start = function () {
         var port = process.env.PORT || 3000;
         debug("PORT: " + process.env.PORT + " => " + port);
-        server.listen(port, function () {
+        this.httpServer = this.expressApp.listen(port, function () {
             debug("http://localhost:" + port);
         });
-    }
+        return "http://127.0.0.1:" + port;
+    };
+    Server.prototype.stop = function () {
+        this.httpServer.close();
+    };
     Server.prototype.setResponseCORS = function (res) {
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
@@ -71,6 +77,10 @@ var Server = (function () {
             if (_this.publications.indexOf(pub) < 0) {
                 _this.publications.push(pub);
             }
+        });
+        return pubs.map(function (pub) {
+            var pubid = new Buffer(pub).toString("base64");
+            return "/pub/" + pubid + "/manifest.json";
         });
     };
     Server.prototype.getPublications = function () {
