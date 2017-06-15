@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const child_process = require("child_process");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const opds2_1 = require("../models/opds2/opds2");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
+const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
+const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const tmp_1 = require("tmp");
 const server_assets_1 = require("./server-assets");
@@ -17,6 +20,29 @@ const server_opds2_1 = require("./server-opds2");
 const server_pub_1 = require("./server-pub");
 const server_url_1 = require("./server-url");
 const debug = debug_("r2:server:main");
+const jsonStyle = `
+.json-markup {
+    line-height: 17px;
+    font-size: 13px;
+    font-family: monospace;
+    white-space: pre;
+}
+.json-markup-key {
+    font-weight: bold;
+}
+.json-markup-bool {
+    color: firebrick;
+}
+.json-markup-string {
+    color: green;
+}
+.json-markup-null {
+    color: gray;
+}
+.json-markup-number {
+    color: blue;
+}
+`;
 class Server {
     constructor() {
         this.lcpBeginToken = "*-";
@@ -43,8 +69,40 @@ class Server {
             });
             html += "<h1>Custom publication URL</h1><p><a href='./url'>CLICK HERE</a></p>";
             html += "<h1>OPDS feed</h1><p><a href='./opds'>CLICK HERE</a></p>";
+            html += "<h1>Server version</h1><p><a href='./version/show'>CLICK HERE</a></p>";
             html += "</body></html>";
             res.status(200).send(html);
+        });
+        this.expressApp.get(["/version", "/version/show/:jsonPath?"], (req, res) => {
+            const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
+            if (!req.params.jsonPath && req.query.show) {
+                req.params.jsonPath = req.query.show;
+            }
+            const jsonObj = require("../../../gitrev.json");
+            if (isShow) {
+                const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
+                res.status(200).send("<html><body>" +
+                    "<h1>R2-STREAMER-JS VERSION INFO</h1>" +
+                    "<hr><p><pre>" + jsonPretty + "</pre></p>" +
+                    "</body></html>");
+            }
+            else {
+                this.setResponseCORS(res);
+                res.set("Content-Type", "application/json; charset=utf-8");
+                const jsonStr = JSON.stringify(jsonObj, null, "  ");
+                const checkSum = crypto.createHash("sha256");
+                checkSum.update(jsonStr);
+                const hash = checkSum.digest("hex");
+                const match = req.header("If-None-Match");
+                if (match === hash) {
+                    debug("publications.json cache");
+                    res.status(304);
+                    res.end();
+                    return;
+                }
+                res.setHeader("ETag", hash);
+                res.status(200).send(jsonStr);
+            }
         });
         server_url_1.serverUrl(this, this.expressApp);
         server_opds_1.serverOPDS(this, this.expressApp);
