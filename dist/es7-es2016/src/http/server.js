@@ -78,7 +78,15 @@ class Server {
             if (!req.params.jsonPath && req.query.show) {
                 req.params.jsonPath = req.query.show;
             }
-            const jsonObj = require("../../../gitrev.json");
+            const gitRevJson = "../../../gitrev.json";
+            if (!fs.existsSync(path.resolve(path.join(__dirname, gitRevJson)))) {
+                const err = "Missing Git rev JSON! ";
+                debug(err + gitRevJson);
+                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                    + err + "</p></body></html>");
+                return;
+            }
+            const jsonObj = require(gitRevJson);
             if (isShow) {
                 const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
                 res.status(200).send("<html><body>" +
