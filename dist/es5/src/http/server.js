@@ -57,7 +57,7 @@ var Server = (function () {
     }
     Server.prototype.start = function (port) {
         var p = port || process.env.PORT || 3000;
-        debug("PORT: " + p + " => " + process.env.PORT + " => " + p);
+        debug("PORT: " + p + " || " + process.env.PORT + " || 3000 => " + p);
         this.httpServer = this.expressApp.listen(p, function () {
             debug("http://localhost:" + p);
         });

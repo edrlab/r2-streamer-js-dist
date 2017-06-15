@@ -6,7 +6,7 @@ const debug_ = require("debug");
 const electron_1 = require("electron");
 const filehound = require("filehound");
 const portfinder = require("portfinder");
-const Server_1 = require("../http/Server");
+const server_1 = require("../http/server");
 const debug = debug_("r2:electron:main");
 let electronBrowserWindow;
 function createElectronBrowserWindow() {
@@ -17,7 +17,7 @@ function createElectronBrowserWindow() {
             .paths(dirPath)
             .ext([".epub", ".cbz"])
             .find();
-        const server = new Server_1.Server();
+        const server = new server_1.Server();
         const pubPaths = server.addPublications(files);
         const port = await portfinder.getPortPromise();
         const url = server.start(port);

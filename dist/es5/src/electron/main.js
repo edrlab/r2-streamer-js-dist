@@ -41,7 +41,7 @@ var debug_ = require("debug");
 var electron_1 = require("electron");
 var filehound = require("filehound");
 var portfinder = require("portfinder");
-var Server_1 = require("../http/Server");
+var server_1 = require("../http/server");
 var debug = debug_("r2:electron:main");
 var electronBrowserWindow;
 function createElectronBrowserWindow() {
@@ -59,7 +59,7 @@ function createElectronBrowserWindow() {
                             .find()];
                 case 1:
                     files = _a.sent();
-                    server = new Server_1.Server();
+                    server = new server_1.Server();
                     pubPaths = server.addPublications(files);
                     return [4, portfinder.getPortPromise()];
                 case 2:
