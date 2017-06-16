@@ -31,6 +31,7 @@ var Server = (function () {
         this.publicationsOPDSfeed = undefined;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
+        this.started = false;
         this.expressApp = express();
         var staticOptions = {
             etag: false,
@@ -100,15 +101,27 @@ var Server = (function () {
         server_assets_1.serverAssets(this, routerPathBase64);
     }
     Server.prototype.start = function (port) {
+        if (this.started) {
+            return this.url();
+        }
         var p = port || process.env.PORT || 3000;
         debug("PORT: " + p + " || " + process.env.PORT + " || 3000 => " + p);
         this.httpServer = this.expressApp.listen(p, function () {
             debug("http://localhost:" + p);
         });
+        this.started = true;
         return "http://127.0.0.1:" + p;
     };
     Server.prototype.stop = function () {
-        this.httpServer.close();
+        if (this.started) {
+            this.httpServer.close();
+            this.started = false;
+        }
+    };
+    Server.prototype.url = function () {
+        return this.started ?
+            "http://127.0.0.1:" + this.httpServer.address().port :
+            undefined;
     };
     Server.prototype.setResponseCORS = function (res) {
         res.setHeader("Access-Control-Allow-Origin", "*");

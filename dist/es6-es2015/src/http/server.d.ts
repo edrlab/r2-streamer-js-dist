@@ -12,9 +12,11 @@ export declare class Server {
     private readonly opdsJsonFilePath;
     private readonly expressApp;
     private httpServer;
+    private started;
     constructor();
     start(port: number): string;
     stop(): void;
+    url(): string | undefined;
     setResponseCORS(res: express.Response): void;
     addPublications(pubs: string[]): string[];
     getPublications(): string[];
