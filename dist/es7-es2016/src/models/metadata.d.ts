@@ -3,11 +3,6 @@ import { Contributor } from "./metadata-contributor";
 import { IStringMap } from "./metadata-multilang";
 import { Properties } from "./metadata-properties";
 import { Subject } from "./metadata-subject";
-export interface IMeta {
-    property: string;
-    value: string;
-    children: IMeta[];
-}
 export declare class Metadata {
     RDFType: string;
     Title: string | IStringMap;
@@ -36,6 +31,5 @@ export declare class Metadata {
     Rights: string;
     Subject: Subject[];
     BelongsTo: BelongsTo;
-    OtherMetadata: IMeta[];
     private _OnDeserialized();
 }

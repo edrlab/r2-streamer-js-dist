@@ -36,8 +36,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var path = require("path");
-var opds_1 = require("../parser/opds/opds");
-var opds_entry_1 = require("../parser/opds/opds-entry");
+var opds_1 = require("../opds/opds1/opds");
+var opds_entry_1 = require("../opds/opds1/opds-entry");
 var UrlUtils_1 = require("../_utils/http/UrlUtils");
 var BufferUtils_1 = require("../_utils/stream/BufferUtils");
 var xml_js_mapper_1 = require("../_utils/xml-js-mapper");

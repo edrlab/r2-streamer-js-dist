@@ -13,7 +13,7 @@ const ta_json_1 = require("ta-json");
 let Subject = class Subject {
     _OnDeserialized() {
         if (!this.Name) {
-            console.log("Collection.Name is not set!");
+            console.log("Subject.Name is not set!");
         }
     }
 };

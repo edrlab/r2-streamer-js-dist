@@ -15,7 +15,7 @@ var Subject = (function () {
     }
     Subject.prototype._OnDeserialized = function () {
         if (!this.Name) {
-            console.log("Collection.Name is not set!");
+            console.log("Subject.Name is not set!");
         }
     };
     return Subject;

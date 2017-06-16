@@ -10,16 +10,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
+const opds2_1 = require("../opds/opds2/opds2");
+const opds2_contributor_1 = require("../opds/opds2/opds2-contributor");
+const opds2_link_1 = require("../opds/opds2/opds2-link");
+const opds2_metadata_1 = require("../opds/opds2/opds2-metadata");
+const opds2_publication_1 = require("../opds/opds2/opds2-publication");
+const opds2_publicationMetadata_1 = require("../opds/opds2/opds2-publicationMetadata");
 const cbz_1 = require("../parser/cbz");
 const epub_1 = require("../parser/epub");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
 const debug_ = require("debug");
 const moment = require("moment");
 const ta_json_1 = require("ta-json");
-const opds2_1 = require("../models/opds2/opds2");
-const opds2_metadata_1 = require("../models/opds2/opds2-metadata");
-const publication_1 = require("../models/publication");
-const publication_link_1 = require("../models/publication-link");
 const debug = debug_("r2:opds2create");
 debug(`process.cwd(): ${process.cwd()}`);
 debug(`__dirname: ${__dirname}`);
@@ -35,13 +37,13 @@ if (fs.existsSync(opdsJsonFilePath)) {
     process.exit(1);
 }
 (() => __awaiter(this, void 0, void 0, function* () {
-    const publications = new opds2_1.OPDSFeed();
-    publications.Context = ["http://opds-spec.org/opds.jsonld"];
-    publications.Metadata = new opds2_metadata_1.OPDSMetadata();
-    publications.Metadata.RDFType = "http://schema.org/DataFeed";
-    publications.Metadata.Title = "Readium 2 OPDS 2.0 Feed";
-    publications.Metadata.Modified = moment(Date.now()).toDate();
-    publications.Publications = new Array();
+    const feed = new opds2_1.OPDSFeed();
+    feed.Context = ["http://opds-spec.org/opds.jsonld"];
+    feed.Metadata = new opds2_metadata_1.OPDSMetadata();
+    feed.Metadata.RDFType = "http://schema.org/DataFeed";
+    feed.Metadata.Title = "Readium 2 OPDS 2.0 Feed";
+    feed.Metadata.Modified = moment(Date.now()).toDate();
+    feed.Publications = new Array();
     let nPubs = 0;
     for (const pathBase64 of args) {
         const pathBase64Str = new Buffer(pathBase64, "base64").toString("utf8");
@@ -63,9 +65,9 @@ if (fs.existsSync(opdsJsonFilePath)) {
         }
         nPubs++;
         const filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
-        const publi = new publication_1.Publication();
+        const publi = new opds2_publication_1.OPDSPublication();
         publi.Links = new Array();
-        const linkSelf = new publication_link_1.Link();
+        const linkSelf = new opds2_link_1.OPDSLink();
         linkSelf.Href = filePathBase64Encoded + "/manifest.json";
         linkSelf.TypeLink = "application/webpub+json";
         linkSelf.Rel = new Array();
@@ -74,7 +76,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
         publi.Images = new Array();
         const coverLink = publication.GetCover();
         if (coverLink) {
-            const linkCover = new publication_link_1.Link();
+            const linkCover = new opds2_link_1.OPDSLink();
             linkCover.Href = filePathBase64Encoded + "/" + coverLink.Href;
             linkCover.TypeLink = coverLink.TypeLink;
             if (coverLink.Width && coverLink.Height) {
@@ -83,13 +85,32 @@ if (fs.existsSync(opdsJsonFilePath)) {
             }
             publi.Images.push(linkCover);
         }
-        if (publications.Metadata) {
-            publi.Metadata = publication.Metadata;
+        if (feed.Metadata) {
+            publi.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+            if (publication.Metadata.Artist) {
+                publi.Metadata.Artist = new Array();
+                publication.Metadata.Artist.forEach((contributor) => {
+                    const c = new opds2_contributor_1.OPDSContributor();
+                    if (contributor.Identifier) {
+                        c.Identifier = contributor.Identifier;
+                    }
+                    if (contributor.Name) {
+                        c.Name = contributor.Name;
+                    }
+                    if (contributor.Role) {
+                        c.Role = contributor.Role;
+                    }
+                    if (contributor.SortAs) {
+                        c.SortAs = contributor.SortAs;
+                    }
+                    publi.Metadata.Artist.push(c);
+                });
+            }
         }
-        publications.Publications.push(publi);
+        feed.Publications.push(publi);
     }
-    publications.Metadata.NumberOfItems = nPubs;
-    const jsonObj = ta_json_1.JSON.serialize(publications);
+    feed.Metadata.NumberOfItems = nPubs;
+    const jsonObj = ta_json_1.JSON.serialize(feed);
     const jsonStr = global.JSON.stringify(jsonObj, null, "");
     fs.writeFileSync(opdsJsonFilePath, jsonStr, "utf8");
     debug("DONE! :)");

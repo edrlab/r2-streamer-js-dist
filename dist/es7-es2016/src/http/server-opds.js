@@ -9,8 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
-const opds_1 = require("../parser/opds/opds");
-const opds_entry_1 = require("../parser/opds/opds-entry");
+const opds_1 = require("../opds/opds1/opds");
+const opds_entry_1 = require("../opds/opds1/opds-entry");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
 const BufferUtils_1 = require("../_utils/stream/BufferUtils");
 const xml_js_mapper_1 = require("../_utils/xml-js-mapper");

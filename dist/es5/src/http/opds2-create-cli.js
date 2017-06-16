@@ -38,16 +38,18 @@ var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
 var path = require("path");
+var opds2_1 = require("../opds/opds2/opds2");
+var opds2_contributor_1 = require("../opds/opds2/opds2-contributor");
+var opds2_link_1 = require("../opds/opds2/opds2-link");
+var opds2_metadata_1 = require("../opds/opds2/opds2-metadata");
+var opds2_publication_1 = require("../opds/opds2/opds2-publication");
+var opds2_publicationMetadata_1 = require("../opds/opds2/opds2-publicationMetadata");
 var cbz_1 = require("../parser/cbz");
 var epub_1 = require("../parser/epub");
 var UrlUtils_1 = require("../_utils/http/UrlUtils");
 var debug_ = require("debug");
 var moment = require("moment");
 var ta_json_1 = require("ta-json");
-var opds2_1 = require("../models/opds2/opds2");
-var opds2_metadata_1 = require("../models/opds2/opds2-metadata");
-var publication_1 = require("../models/publication");
-var publication_link_1 = require("../models/publication-link");
 var debug = debug_("r2:opds2create");
 debug("process.cwd(): " + process.cwd());
 debug("__dirname: " + __dirname);
@@ -63,84 +65,115 @@ if (fs.existsSync(opdsJsonFilePath)) {
     process.exit(1);
 }
 (function () { return __awaiter(_this, void 0, void 0, function () {
-    var publications, nPubs, _i, args_1, pathBase64, pathBase64Str, fileName, ext, publication, _a, err_1, filePathBase64Encoded, publi, linkSelf, coverLink, linkCover, jsonObj, jsonStr;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+    var feed, nPubs, _loop_1, _i, args_1, pathBase64, jsonObj, jsonStr;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                publications = new opds2_1.OPDSFeed();
-                publications.Context = ["http://opds-spec.org/opds.jsonld"];
-                publications.Metadata = new opds2_metadata_1.OPDSMetadata();
-                publications.Metadata.RDFType = "http://schema.org/DataFeed";
-                publications.Metadata.Title = "Readium 2 OPDS 2.0 Feed";
-                publications.Metadata.Modified = moment(Date.now()).toDate();
-                publications.Publications = new Array();
+                feed = new opds2_1.OPDSFeed();
+                feed.Context = ["http://opds-spec.org/opds.jsonld"];
+                feed.Metadata = new opds2_metadata_1.OPDSMetadata();
+                feed.Metadata.RDFType = "http://schema.org/DataFeed";
+                feed.Metadata.Title = "Readium 2 OPDS 2.0 Feed";
+                feed.Metadata.Modified = moment(Date.now()).toDate();
+                feed.Publications = new Array();
                 nPubs = 0;
+                _loop_1 = function (pathBase64) {
+                    var pathBase64Str, fileName, ext, publication, _a, err_1, filePathBase64Encoded, publi, linkSelf, coverLink, linkCover;
+                    return __generator(this, function (_b) {
+                        switch (_b.label) {
+                            case 0:
+                                pathBase64Str = new Buffer(pathBase64, "base64").toString("utf8");
+                                if (UrlUtils_1.isHTTP(pathBase64Str)) {
+                                    return [2, "continue"];
+                                }
+                                fileName = path.basename(pathBase64Str);
+                                ext = path.extname(fileName).toLowerCase();
+                                debug("OPDS parsing: " + pathBase64Str);
+                                publication = void 0;
+                                _b.label = 1;
+                            case 1:
+                                _b.trys.push([1, 6, , 7]);
+                                if (!(ext === ".epub")) return [3, 3];
+                                return [4, epub_1.EpubParsePromise(pathBase64Str)];
+                            case 2:
+                                _a = _b.sent();
+                                return [3, 5];
+                            case 3: return [4, cbz_1.CbzParsePromise(pathBase64Str)];
+                            case 4:
+                                _a = _b.sent();
+                                _b.label = 5;
+                            case 5:
+                                publication = _a;
+                                return [3, 7];
+                            case 6:
+                                err_1 = _b.sent();
+                                debug(err_1);
+                                return [2, "continue"];
+                            case 7:
+                                nPubs++;
+                                filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
+                                publi = new opds2_publication_1.OPDSPublication();
+                                publi.Links = new Array();
+                                linkSelf = new opds2_link_1.OPDSLink();
+                                linkSelf.Href = filePathBase64Encoded + "/manifest.json";
+                                linkSelf.TypeLink = "application/webpub+json";
+                                linkSelf.Rel = new Array();
+                                linkSelf.Rel.push("self");
+                                publi.Links.push(linkSelf);
+                                publi.Images = new Array();
+                                coverLink = publication.GetCover();
+                                if (coverLink) {
+                                    linkCover = new opds2_link_1.OPDSLink();
+                                    linkCover.Href = filePathBase64Encoded + "/" + coverLink.Href;
+                                    linkCover.TypeLink = coverLink.TypeLink;
+                                    if (coverLink.Width && coverLink.Height) {
+                                        linkCover.Width = coverLink.Width;
+                                        linkCover.Height = coverLink.Height;
+                                    }
+                                    publi.Images.push(linkCover);
+                                }
+                                if (feed.Metadata) {
+                                    publi.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+                                    if (publication.Metadata.Artist) {
+                                        publi.Metadata.Artist = new Array();
+                                        publication.Metadata.Artist.forEach(function (contributor) {
+                                            var c = new opds2_contributor_1.OPDSContributor();
+                                            if (contributor.Identifier) {
+                                                c.Identifier = contributor.Identifier;
+                                            }
+                                            if (contributor.Name) {
+                                                c.Name = contributor.Name;
+                                            }
+                                            if (contributor.Role) {
+                                                c.Role = contributor.Role;
+                                            }
+                                            if (contributor.SortAs) {
+                                                c.SortAs = contributor.SortAs;
+                                            }
+                                            publi.Metadata.Artist.push(c);
+                                        });
+                                    }
+                                }
+                                feed.Publications.push(publi);
+                                return [2];
+                        }
+                    });
+                };
                 _i = 0, args_1 = args;
-                _b.label = 1;
+                _a.label = 1;
             case 1:
-                if (!(_i < args_1.length)) return [3, 10];
+                if (!(_i < args_1.length)) return [3, 4];
                 pathBase64 = args_1[_i];
-                pathBase64Str = new Buffer(pathBase64, "base64").toString("utf8");
-                if (UrlUtils_1.isHTTP(pathBase64Str)) {
-                    return [3, 9];
-                }
-                fileName = path.basename(pathBase64Str);
-                ext = path.extname(fileName).toLowerCase();
-                debug("OPDS parsing: " + pathBase64Str);
-                publication = void 0;
-                _b.label = 2;
+                return [5, _loop_1(pathBase64)];
             case 2:
-                _b.trys.push([2, 7, , 8]);
-                if (!(ext === ".epub")) return [3, 4];
-                return [4, epub_1.EpubParsePromise(pathBase64Str)];
+                _a.sent();
+                _a.label = 3;
             case 3:
-                _a = _b.sent();
-                return [3, 6];
-            case 4: return [4, cbz_1.CbzParsePromise(pathBase64Str)];
-            case 5:
-                _a = _b.sent();
-                _b.label = 6;
-            case 6:
-                publication = _a;
-                return [3, 8];
-            case 7:
-                err_1 = _b.sent();
-                debug(err_1);
-                return [3, 9];
-            case 8:
-                nPubs++;
-                filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
-                publi = new publication_1.Publication();
-                publi.Links = new Array();
-                linkSelf = new publication_link_1.Link();
-                linkSelf.Href = filePathBase64Encoded + "/manifest.json";
-                linkSelf.TypeLink = "application/webpub+json";
-                linkSelf.Rel = new Array();
-                linkSelf.Rel.push("self");
-                publi.Links.push(linkSelf);
-                publi.Images = new Array();
-                coverLink = publication.GetCover();
-                if (coverLink) {
-                    linkCover = new publication_link_1.Link();
-                    linkCover.Href = filePathBase64Encoded + "/" + coverLink.Href;
-                    linkCover.TypeLink = coverLink.TypeLink;
-                    if (coverLink.Width && coverLink.Height) {
-                        linkCover.Width = coverLink.Width;
-                        linkCover.Height = coverLink.Height;
-                    }
-                    publi.Images.push(linkCover);
-                }
-                if (publications.Metadata) {
-                    publi.Metadata = publication.Metadata;
-                }
-                publications.Publications.push(publi);
-                _b.label = 9;
-            case 9:
                 _i++;
                 return [3, 1];
-            case 10:
-                publications.Metadata.NumberOfItems = nPubs;
-                jsonObj = ta_json_1.JSON.serialize(publications);
+            case 4:
+                feed.Metadata.NumberOfItems = nPubs;
+                jsonObj = ta_json_1.JSON.serialize(feed);
                 jsonStr = global.JSON.stringify(jsonObj, null, "");
                 fs.writeFileSync(opdsJsonFilePath, jsonStr, "utf8");
                 debug("DONE! :)");

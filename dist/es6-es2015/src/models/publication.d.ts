@@ -2,7 +2,6 @@ import { LCP } from "../parser/epub/lcp";
 import { IInternal } from "./internal";
 import { MediaOverlayNode } from "./media-overlay";
 import { Metadata } from "./metadata";
-import { IPublicationCollection } from "./publication-collection";
 import { Link } from "./publication-link";
 export declare class Publication {
     Context: string[];
@@ -18,8 +17,6 @@ export declare class Publication {
     LOV: Link[];
     LOT: Link[];
     Images: Link[];
-    OtherLinks: Link[];
-    OtherCollections: IPublicationCollection[];
     LCP: LCP;
     Internal: IInternal[];
     freeDestroy(): void;
