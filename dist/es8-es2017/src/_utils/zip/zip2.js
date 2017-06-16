@@ -211,6 +211,12 @@ class Zip2 extends zip_1.Zip {
             }
         });
     }
+    freeDestroy() {
+        console.log("freeDestroy: Zip2");
+        if (this.zip) {
+            this.zip.close();
+        }
+    }
     entriesCount() {
         return this.zip.entryCount;
     }

@@ -33,6 +33,12 @@ class Zip1 extends zip_1.Zip {
             });
         });
     }
+    freeDestroy() {
+        console.log("freeDestroy: Zip1");
+        if (this.zip) {
+            this.zip.close();
+        }
+    }
     entriesCount() {
         return this.zip.entriesCount;
     }

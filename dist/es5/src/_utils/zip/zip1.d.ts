@@ -4,6 +4,7 @@ export declare class Zip1 extends Zip {
     readonly zip: any;
     static loadPromise(filePath: string): Promise<IZip>;
     private constructor(filePath, zip);
+    freeDestroy(): void;
     entriesCount(): number;
     hasEntries(): boolean;
     hasEntry(entryPath: string): boolean;

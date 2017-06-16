@@ -22,13 +22,15 @@ var server_url_1 = require("./server-url");
 var debug = debug_("r2:server:main");
 var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
 var Server = (function () {
-    function Server() {
+    function Server(options) {
         var _this = this;
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
+        this.disableReaders = options ? options.disableReaders : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
+        this.publicationsOPDSfeedNeedsUpdate = true;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.started = false;
@@ -36,8 +38,10 @@ var Server = (function () {
         var staticOptions = {
             etag: false,
         };
-        this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
-        this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
+        if (!this.disableReaders) {
+            this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
+            this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
+        }
         this.expressApp.get("/", function (_req, res) {
             var html = "<html><body><h1>Publications</h1>";
             _this.publications.forEach(function (pub) {
@@ -116,6 +120,7 @@ var Server = (function () {
         if (this.started) {
             this.httpServer.close();
             this.started = false;
+            this.uncachePublications();
         }
     };
     Server.prototype.url = function () {
@@ -132,7 +137,23 @@ var Server = (function () {
         var _this = this;
         pubs.forEach(function (pub) {
             if (_this.publications.indexOf(pub) < 0) {
+                _this.publicationsOPDSfeedNeedsUpdate = true;
                 _this.publications.push(pub);
+            }
+        });
+        return pubs.map(function (pub) {
+            var pubid = new Buffer(pub).toString("base64");
+            return "/pub/" + pubid + "/manifest.json";
+        });
+    };
+    Server.prototype.removePublications = function (pubs) {
+        var _this = this;
+        pubs.forEach(function (pub) {
+            _this.uncachePublication(pub);
+            var i = _this.publications.indexOf(pub);
+            if (i >= 0) {
+                _this.publicationsOPDSfeedNeedsUpdate = true;
+                _this.publications.splice(i, 1);
             }
         });
         return pubs.map(function (pub) {
@@ -154,7 +175,29 @@ var Server = (function () {
             this.pathPublicationMap[filePath] = pub;
         }
     };
+    Server.prototype.uncachePublication = function (filePath) {
+        if (this.isPublicationCached(filePath)) {
+            var pub = this.cachedPublication(filePath);
+            if (pub) {
+                pub.freeDestroy();
+            }
+            this.pathPublicationMap[filePath] = undefined;
+            delete this.pathPublicationMap[filePath];
+        }
+    };
+    Server.prototype.uncachePublications = function () {
+        var _this = this;
+        Object.keys(this.pathPublicationMap).forEach(function (filePath) {
+            _this.uncachePublication(filePath);
+        });
+    };
     Server.prototype.publicationsOPDS = function () {
+        if (this.publicationsOPDSfeedNeedsUpdate) {
+            this.publicationsOPDSfeed = undefined;
+            if (fs.existsSync(this.opdsJsonFilePath)) {
+                fs.unlinkSync(this.opdsJsonFilePath);
+            }
+        }
         if (this.publicationsOPDSfeed) {
             return this.publicationsOPDSfeed;
         }
@@ -162,6 +205,7 @@ var Server = (function () {
         if (!fs.existsSync(this.opdsJsonFilePath)) {
             if (!this.creatingPublicationsOPDS) {
                 this.creatingPublicationsOPDS = true;
+                this.publicationsOPDSfeedNeedsUpdate = false;
                 var jsFile = path.join(__dirname, "opds2-create-cli.js");
                 var args_1 = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach(function (pub) {
@@ -182,6 +226,7 @@ var Server = (function () {
             }
             return undefined;
         }
+        this.creatingPublicationsOPDS = false;
         var jsonStr = fs.readFileSync(this.opdsJsonFilePath, "utf8");
         if (!jsonStr) {
             return undefined;

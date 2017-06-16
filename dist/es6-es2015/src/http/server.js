@@ -44,12 +44,14 @@ const jsonStyle = `
 }
 `;
 class Server {
-    constructor() {
+    constructor(options) {
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
+        this.disableReaders = options ? options.disableReaders : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
+        this.publicationsOPDSfeedNeedsUpdate = true;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.started = false;
@@ -57,8 +59,10 @@ class Server {
         const staticOptions = {
             etag: false,
         };
-        this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
-        this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
+        if (!this.disableReaders) {
+            this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
+            this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
+        }
         this.expressApp.get("/", (_req, res) => {
             let html = "<html><body><h1>Publications</h1>";
             this.publications.forEach((pub) => {
@@ -137,6 +141,7 @@ class Server {
         if (this.started) {
             this.httpServer.close();
             this.started = false;
+            this.uncachePublications();
         }
     }
     url() {
@@ -152,7 +157,22 @@ class Server {
     addPublications(pubs) {
         pubs.forEach((pub) => {
             if (this.publications.indexOf(pub) < 0) {
+                this.publicationsOPDSfeedNeedsUpdate = true;
                 this.publications.push(pub);
+            }
+        });
+        return pubs.map((pub) => {
+            const pubid = new Buffer(pub).toString("base64");
+            return `/pub/${pubid}/manifest.json`;
+        });
+    }
+    removePublications(pubs) {
+        pubs.forEach((pub) => {
+            this.uncachePublication(pub);
+            const i = this.publications.indexOf(pub);
+            if (i >= 0) {
+                this.publicationsOPDSfeedNeedsUpdate = true;
+                this.publications.splice(i, 1);
             }
         });
         return pubs.map((pub) => {
@@ -174,7 +194,28 @@ class Server {
             this.pathPublicationMap[filePath] = pub;
         }
     }
+    uncachePublication(filePath) {
+        if (this.isPublicationCached(filePath)) {
+            const pub = this.cachedPublication(filePath);
+            if (pub) {
+                pub.freeDestroy();
+            }
+            this.pathPublicationMap[filePath] = undefined;
+            delete this.pathPublicationMap[filePath];
+        }
+    }
+    uncachePublications() {
+        Object.keys(this.pathPublicationMap).forEach((filePath) => {
+            this.uncachePublication(filePath);
+        });
+    }
     publicationsOPDS() {
+        if (this.publicationsOPDSfeedNeedsUpdate) {
+            this.publicationsOPDSfeed = undefined;
+            if (fs.existsSync(this.opdsJsonFilePath)) {
+                fs.unlinkSync(this.opdsJsonFilePath);
+            }
+        }
         if (this.publicationsOPDSfeed) {
             return this.publicationsOPDSfeed;
         }
@@ -182,6 +223,7 @@ class Server {
         if (!fs.existsSync(this.opdsJsonFilePath)) {
             if (!this.creatingPublicationsOPDS) {
                 this.creatingPublicationsOPDS = true;
+                this.publicationsOPDSfeedNeedsUpdate = false;
                 const jsFile = path.join(__dirname, "opds2-create-cli.js");
                 const args = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach((pub) => {
@@ -202,6 +244,7 @@ class Server {
             }
             return undefined;
         }
+        this.creatingPublicationsOPDS = false;
         const jsonStr = fs.readFileSync(this.opdsJsonFilePath, "utf8");
         if (!jsonStr) {
             return undefined;

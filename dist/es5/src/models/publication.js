@@ -16,6 +16,21 @@ var publication_link_1 = require("./publication-link");
 var Publication = (function () {
     function Publication() {
     }
+    Publication.prototype.freeDestroy = function () {
+        console.log("freeDestroy: Publication");
+        if (this.Internal) {
+            var zipInternal = this.Internal.find(function (i) {
+                if (i.Name === "zip") {
+                    return true;
+                }
+                return false;
+            });
+            if (zipInternal) {
+                var zip = zipInternal.Value;
+                zip.freeDestroy();
+            }
+        }
+    };
     Publication.prototype.UpdateLCP = function (lcpPassHash) {
         if (!this.LCP) {
             return undefined;

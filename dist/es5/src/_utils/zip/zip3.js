@@ -129,6 +129,11 @@ var Zip3 = (function (_super) {
             });
         });
     };
+    Zip3.prototype.freeDestroy = function () {
+        console.log("freeDestroy: Zip3");
+        if (this.zip) {
+        }
+    };
     Zip3.prototype.entriesCount = function () {
         return this.zip.files.length;
     };

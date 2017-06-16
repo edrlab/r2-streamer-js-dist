@@ -6,6 +6,7 @@ export declare class Zip3 extends Zip {
     private static loadPromiseHTTP(filePath);
     private entries;
     private constructor(filePath, zip);
+    freeDestroy(): void;
     entriesCount(): number;
     hasEntries(): boolean;
     hasEntry(entryPath: string): boolean;

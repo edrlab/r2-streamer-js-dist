@@ -14,6 +14,21 @@ const ta_json_1 = require("ta-json");
 const metadata_1 = require("./metadata");
 const publication_link_1 = require("./publication-link");
 let Publication = class Publication {
+    freeDestroy() {
+        console.log("freeDestroy: Publication");
+        if (this.Internal) {
+            const zipInternal = this.Internal.find((i) => {
+                if (i.Name === "zip") {
+                    return true;
+                }
+                return false;
+            });
+            if (zipInternal) {
+                const zip = zipInternal.Value;
+                zip.freeDestroy();
+            }
+        }
+    }
     UpdateLCP(lcpPassHash) {
         if (!this.LCP) {
             return undefined;

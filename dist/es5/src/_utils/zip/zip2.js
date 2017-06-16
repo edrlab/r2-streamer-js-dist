@@ -306,6 +306,12 @@ var Zip2 = (function (_super) {
             });
         });
     };
+    Zip2.prototype.freeDestroy = function () {
+        console.log("freeDestroy: Zip2");
+        if (this.zip) {
+            this.zip.close();
+        }
+    };
     Zip2.prototype.entriesCount = function () {
         return this.zip.entryCount;
     };

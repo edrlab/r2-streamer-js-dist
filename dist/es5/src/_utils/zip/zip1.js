@@ -84,6 +84,12 @@ var Zip1 = (function (_super) {
             });
         });
     };
+    Zip1.prototype.freeDestroy = function () {
+        console.log("freeDestroy: Zip1");
+        if (this.zip) {
+            this.zip.close();
+        }
+    };
     Zip1.prototype.entriesCount = function () {
         return this.zip.entriesCount;
     };
