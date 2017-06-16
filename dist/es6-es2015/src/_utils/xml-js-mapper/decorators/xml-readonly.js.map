@@ -1,1 +1,0 @@
-{"version":3,"file":"xml-readonly.js","sourceRoot":"","sources":["../../../../../../src/_utils/xml-js-mapper/decorators/xml-readonly.ts"],"names":[],"mappings":";;AAAA,oEAA6D;AAE7D;IACI,MAAM,CAAC,CAAC,MAAW,EAAE,GAAW;QAC5B,MAAM,QAAQ,GAAG,iCAAa,CAAC,MAAM,CAAC,WAAW,CAAC,CAAC,WAAW,CAAC,GAAG,CAAC,CAAC;QAEpE,QAAQ,CAAC,QAAQ,GAAG,IAAI,CAAC;IAC7B,CAAC,CAAC;AACN,CAAC;AAND,kCAMC"}
