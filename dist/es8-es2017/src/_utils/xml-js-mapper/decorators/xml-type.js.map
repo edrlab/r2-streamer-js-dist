@@ -1,0 +1,1 @@
+{"version":3,"file":"xml-type.js","sourceRoot":"","sources":["../../../../../../src/_utils/xml-js-mapper/decorators/xml-type.ts"],"names":[],"mappings":";;AAAA,oEAA6D;AAG7D,iBAAwB,UAAwB;IAC5C,MAAM,CAAC,CAAC,MAAW,EAAE,GAAW;QAC5B,MAAM,QAAQ,GAAG,iCAAa,CAAC,MAAM,CAAC,WAAW,CAAC,CAAC,WAAW,CAAC,GAAG,CAAC,CAAC;QAEpE,QAAQ,CAAC,UAAU,GAAG,UAAU,CAAC;IACrC,CAAC,CAAC;AACN,CAAC;AAND,0BAMC"}
