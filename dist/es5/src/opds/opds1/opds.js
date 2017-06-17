@@ -20,11 +20,11 @@ var OPDS = (function () {
 }());
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opensearch:totalResults/text()"),
-    __metadata("design:type", String)
+    __metadata("design:type", Number)
 ], OPDS.prototype, "OpensearchTotalResults", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opensearch:itemsPerPage/text()"),
-    __metadata("design:type", String)
+    __metadata("design:type", Number)
 ], OPDS.prototype, "OpensearchItemsPerPage", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),

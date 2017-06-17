@@ -85,7 +85,7 @@ function CbzParsePromise(filePath) {
                         }
                         if (link.TypeLink && link.TypeLink.startsWith("image/")) {
                             if (!publication.Spine) {
-                                publication.Spine = Array();
+                                publication.Spine = [];
                             }
                             publication.Spine.push(link);
                         }

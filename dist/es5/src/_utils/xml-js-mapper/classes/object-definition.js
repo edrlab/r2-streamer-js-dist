@@ -38,26 +38,26 @@ function getInheritanceChain(objectType) {
 }
 exports.getInheritanceChain = getInheritanceChain;
 function getChildObjectTypeDefinitions(parentObjectType) {
-    var childDefs = Array();
+    var childDefs = [];
     exports.objectDefinitions.forEach(function (def, objectType) {
         var superObjectType = Object.getPrototypeOf(objectType.prototype).constructor;
         if (superObjectType === parentObjectType) {
-            childDefs.push([objectType, def]);
+            childDefs.push({ functionType: objectType, objectDefinition: def });
         }
     });
     return childDefs;
 }
 function getTypedInheritanceChain(objectType, objectInstance) {
     var parentDef = exports.objectDefinitions.get(objectType);
-    var childDefs = Array();
+    var childDefs = [];
     if (objectInstance && parentDef && parentDef.discriminatorProperty) {
         childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType));
     }
     var actualObjectType;
     while (childDefs.length !== 0 && !actualObjectType) {
-        var arr = childDefs.shift();
-        var objectType2 = arr ? arr[0] : undefined;
-        var def = arr ? arr[1] : undefined;
+        var ifo = childDefs.shift();
+        var objectType2 = ifo ? ifo.functionType : undefined;
+        var def = ifo ? ifo.objectDefinition : undefined;
         if (def && def.hasOwnProperty("discriminatorValue")) {
             if (objectInstance
                 && parentDef

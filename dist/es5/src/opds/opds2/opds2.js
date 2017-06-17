@@ -18,6 +18,112 @@ var opds2_publication_1 = require("./opds2-publication");
 var OPDSFeed = (function () {
     function OPDSFeed() {
     }
+    OPDSFeed.prototype.AddFacet = function (link, group) {
+        if (this.Facets) {
+            var found = this.Facets.find(function (f) {
+                if (f.Metadata && f.Metadata.Title === group) {
+                    if (!f.Links) {
+                        f.Links = [];
+                    }
+                    f.Links.push(link);
+                    return true;
+                }
+                return false;
+            });
+            if (found) {
+                return;
+            }
+        }
+        var facet = new opds2_facet_1.OPDSFacet();
+        facet.Metadata = new opds2_metadata_1.OPDSMetadata();
+        facet.Metadata.Title = group;
+        facet.Links = [];
+        facet.Links.push(link);
+        if (!this.Facets) {
+            this.Facets = [];
+        }
+        this.Facets.push(facet);
+    };
+    OPDSFeed.prototype.AddPublicationInGroup = function (publication, collLink) {
+        if (this.Groups) {
+            var found1 = this.Groups.find(function (g) {
+                if (g.Links) {
+                    var found2 = g.Links.find(function (l) {
+                        if (l.Href === collLink.Href) {
+                            if (!g.Publications) {
+                                g.Publications = [];
+                            }
+                            g.Publications.push(publication);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (found2) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (found1) {
+                return;
+            }
+        }
+        var group = new opds2_group_1.OPDSGroup();
+        group.Metadata = new opds2_metadata_1.OPDSMetadata();
+        group.Metadata.Title = collLink.Title;
+        group.Publications = [];
+        group.Publications.push(publication);
+        var linkSelf = new opds2_link_1.OPDSLink();
+        linkSelf.Rel = ["self"];
+        linkSelf.Title = collLink.Title;
+        linkSelf.Href = collLink.Href;
+        group.Links = [];
+        group.Links.push(linkSelf);
+        if (!this.Groups) {
+            this.Groups = [];
+        }
+        this.Groups.push(group);
+    };
+    OPDSFeed.prototype.AddNavigationInGroup = function (link, collLink) {
+        if (this.Groups) {
+            var found1 = this.Groups.find(function (g) {
+                if (g.Links) {
+                    var found2 = g.Links.find(function (l) {
+                        if (l.Href === collLink.Href) {
+                            if (!g.Navigation) {
+                                g.Navigation = [];
+                            }
+                            g.Navigation.push(link);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (found2) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (found1) {
+                return;
+            }
+        }
+        var group = new opds2_group_1.OPDSGroup();
+        group.Metadata = new opds2_metadata_1.OPDSMetadata();
+        group.Metadata.Title = collLink.Title;
+        group.Navigation = [];
+        group.Navigation.push(link);
+        var linkSelf = new opds2_link_1.OPDSLink();
+        linkSelf.Rel = ["self"];
+        linkSelf.Title = collLink.Title;
+        linkSelf.Href = collLink.Href;
+        group.Links = [];
+        group.Links.push(link);
+        if (!this.Groups) {
+            this.Groups = [];
+        }
+        this.Groups.push(group);
+    };
     OPDSFeed.prototype._OnDeserialized = function () {
         if (!this.Metadata) {
             console.log("OPDS2Feed.Metadata is not set!");

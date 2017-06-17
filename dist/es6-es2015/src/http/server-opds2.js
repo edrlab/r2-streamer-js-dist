@@ -59,7 +59,7 @@ function serverOPDS2(server, topRouter) {
         if (!feed.Links || !feed.Links.find((link) => {
             return link.Rel && link.Rel.indexOf("self") >= 0;
         })) {
-            feed.Links = Array();
+            feed.Links = [];
             const selfLink = new opds2_link_1.OPDSLink();
             selfLink.Href = selfURL;
             selfLink.TypeLink = "application/opds+json";
@@ -70,7 +70,7 @@ function serverOPDS2(server, topRouter) {
             return rootUrl + "/pub/" + href;
         }
         function absolutizeURLs(jsonObj) {
-            traverseJsonObjects(jsonObj, (obj) => {
+            JsonUtils_1.traverseJsonObjects(jsonObj, (obj) => {
                 if (obj.href && typeof obj.href === "string"
                     && !UrlUtils_1.isHTTP(obj.href)) {
                     obj.href = absoluteURL(obj.href);
@@ -159,21 +159,4 @@ function serverOPDS2(server, topRouter) {
     topRouter.use("/opds2", routerOPDS2_);
 }
 exports.serverOPDS2 = serverOPDS2;
-function traverseJsonObjects(obj, func) {
-    func(obj);
-    if (obj instanceof Array) {
-        obj.forEach((item) => {
-            if (item) {
-                traverseJsonObjects(item, func);
-            }
-        });
-    }
-    else if (typeof obj === "object") {
-        Object.keys(obj).forEach((key) => {
-            if (obj.hasOwnProperty(key) && obj[key]) {
-                traverseJsonObjects(obj[key], func);
-            }
-        });
-    }
-}
 //# sourceMappingURL=server-opds2.js.map

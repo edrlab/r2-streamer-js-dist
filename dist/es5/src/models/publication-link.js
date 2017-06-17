@@ -17,7 +17,7 @@ var Link = Link_1 = (function () {
     Link.prototype.AddRel = function (rel) {
         if (!this.Rel || this.Rel.indexOf(rel) < 0) {
             if (!this.Rel) {
-                this.Rel = Array();
+                this.Rel = [];
             }
             this.Rel.push(rel);
         }

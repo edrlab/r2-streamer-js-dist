@@ -10,11 +10,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
 let Link = class Link {
 };
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
-    __metadata("design:type", String)
+    __metadata("design:type", Number)
 ], Link.prototype, "OpdsPrice", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opds:price/@currencycode"),
@@ -22,6 +23,7 @@ __decorate([
 ], Link.prototype, "OpdsPriceCurrencyCode", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
+    xml_js_mapper_1.XmlItemType(opds_indirectAcquisition_1.IndirectAcquisition),
     __metadata("design:type", Array)
 ], Link.prototype, "OpdsIndirectAcquisitions", void 0);
 __decorate([
@@ -30,7 +32,7 @@ __decorate([
 ], Link.prototype, "Type", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("@thr:count"),
-    __metadata("design:type", String)
+    __metadata("design:type", Number)
 ], Link.prototype, "ThrCount", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("@opds:facetGroup"),

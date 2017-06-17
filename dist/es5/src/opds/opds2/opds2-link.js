@@ -17,7 +17,7 @@ var OPDSLink = OPDSLink_1 = (function () {
     OPDSLink.prototype.AddRel = function (rel) {
         if (!this.Rel || this.Rel.indexOf(rel) < 0) {
             if (!this.Rel) {
-                this.Rel = Array();
+                this.Rel = [];
             }
             this.Rel.push(rel);
         }

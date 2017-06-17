@@ -32,7 +32,7 @@ function deserializeRootObject(objectInstance, objectType, options) {
                 return;
             }
             if (p.xpathSelectorParsed) {
-                var xpathMatched_1 = Array();
+                var xpathMatched_1 = [];
                 var currentNodes_1 = [objectInstance];
                 p.xpathSelectorParsed.forEach(function (item, index) {
                     var nextCurrentNodes = [];
@@ -89,7 +89,7 @@ function deserializeRootObject(objectInstance, objectType, options) {
                 });
                 if (xpathMatched_1 && xpathMatched_1.length) {
                     if (p.array || p.set) {
-                        output[key] = Array();
+                        output[key] = [];
                         xpathMatched_1.forEach(function (item) {
                             output[key].push(deserializeObject(item, p, options));
                         });
@@ -105,7 +105,7 @@ function deserializeRootObject(objectInstance, objectType, options) {
                 var select = xpath.useNamespaces(p.namespaces || {});
                 var xPathSelected = select(p.xpathSelector, objectInstance);
                 if (xPathSelected && xPathSelected.length) {
-                    var xpathMatched_2 = Array();
+                    var xpathMatched_2 = [];
                     if (!(xPathSelected instanceof Array)) {
                         xpathMatched_2.push(xPathSelected);
                     }
@@ -115,7 +115,7 @@ function deserializeRootObject(objectInstance, objectType, options) {
                         });
                     }
                     if (p.array || p.set) {
-                        output[key] = Array();
+                        output[key] = [];
                         xpathMatched_2.forEach(function (item) {
                             output[key].push(deserializeObject(item, p, options));
                         });

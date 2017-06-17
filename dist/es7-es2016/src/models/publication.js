@@ -80,7 +80,7 @@ let Publication = class Publication {
     }
     AddToInternal(key, value) {
         if (!this.Internal) {
-            this.Internal = Array();
+            this.Internal = [];
         }
         const internal = { Name: key, Value: value };
         this.Internal.push(internal);
@@ -158,12 +158,12 @@ let Publication = class Publication {
         link.TypeLink = typeLink;
         link.Templated = templated;
         if (!this.Links) {
-            this.Links = Array();
+            this.Links = [];
         }
         this.Links.push(link);
     }
     FindAllMediaOverlay() {
-        const mos = Array();
+        const mos = [];
         if (this.Spine) {
             this.Spine.forEach((link) => {
                 if (link.MediaOverlays) {
@@ -176,7 +176,7 @@ let Publication = class Publication {
         return mos;
     }
     FindMediaOverlayByHref(href) {
-        const mos = Array();
+        const mos = [];
         if (this.Spine) {
             this.Spine.forEach((link) => {
                 if (link.MediaOverlays && link.Href.indexOf(href) >= 0) {
@@ -189,7 +189,7 @@ let Publication = class Publication {
         return mos;
     }
     GetPreFetchResources() {
-        const links = Array();
+        const links = [];
         if (this.Resources) {
             const mediaTypes = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
             this.Resources.forEach((link) => {

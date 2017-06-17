@@ -56,7 +56,7 @@ function serverMediaOverlays(server, routerPathBase64) {
             return rootUrl + "/" + href;
         }
         function absolutizeURLs(jsonObj) {
-            traverseJsonObjects(jsonObj, function (obj) {
+            JsonUtils_1.traverseJsonObjects(jsonObj, function (obj) {
                 if (obj.text && typeof obj.text === "string"
                     && !UrlUtils_1.isHTTP(obj.text)) {
                     obj.text = absoluteURL(obj.text);
@@ -177,21 +177,4 @@ function serverMediaOverlays(server, routerPathBase64) {
     routerPathBase64.use("/:pathBase64/" + epub_1.mediaOverlayURLPath, routerMediaOverlays);
 }
 exports.serverMediaOverlays = serverMediaOverlays;
-function traverseJsonObjects(obj, func) {
-    func(obj);
-    if (obj instanceof Array) {
-        obj.forEach(function (item) {
-            if (item) {
-                traverseJsonObjects(item, func);
-            }
-        });
-    }
-    else if (typeof obj === "object") {
-        Object.keys(obj).forEach(function (key) {
-            if (obj.hasOwnProperty(key) && obj[key]) {
-                traverseJsonObjects(obj[key], func);
-            }
-        });
-    }
-}
 //# sourceMappingURL=server-mediaoverlays.js.map

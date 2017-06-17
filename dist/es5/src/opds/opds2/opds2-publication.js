@@ -15,6 +15,13 @@ var opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
 var OPDSPublication = (function () {
     function OPDSPublication() {
     }
+    OPDSPublication.prototype.findFirstLinkByRel = function (rel) {
+        return this.Links ? this.Links.find(function (l) {
+            return l.Rel && typeof l.Rel.find(function (r) {
+                return r === rel;
+            }) !== "undefined";
+        }) : undefined;
+    };
     OPDSPublication.prototype._OnDeserialized = function () {
         if (!this.Metadata) {
             console.log("OPDSPublication.Metadata is not set!");

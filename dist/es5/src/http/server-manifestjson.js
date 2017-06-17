@@ -56,7 +56,7 @@ function serverManifestJson(server, routerPathBase64) {
             return rootUrl + "/" + href;
         }
         function absolutizeURLs(jsonObj) {
-            traverseJsonObjects(jsonObj, function (obj) {
+            JsonUtils_1.traverseJsonObjects(jsonObj, function (obj) {
                 if (obj.href && typeof obj.href === "string"
                     && !UrlUtils_1.isHTTP(obj.href)) {
                     obj.href = absoluteURL(obj.href);
@@ -272,21 +272,4 @@ function serverManifestJson(server, routerPathBase64) {
     routerPathBase64.use("/:pathBase64/manifest.json", routerManifestJson);
 }
 exports.serverManifestJson = serverManifestJson;
-function traverseJsonObjects(obj, func) {
-    func(obj);
-    if (obj instanceof Array) {
-        obj.forEach(function (item) {
-            if (item) {
-                traverseJsonObjects(item, func);
-            }
-        });
-    }
-    else if (typeof obj === "object") {
-        Object.keys(obj).forEach(function (key) {
-            if (obj.hasOwnProperty(key) && obj[key]) {
-                traverseJsonObjects(obj[key], func);
-            }
-        });
-    }
-}
 //# sourceMappingURL=server-manifestjson.js.map

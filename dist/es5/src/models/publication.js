@@ -82,7 +82,7 @@ var Publication = (function () {
     };
     Publication.prototype.AddToInternal = function (key, value) {
         if (!this.Internal) {
-            this.Internal = Array();
+            this.Internal = [];
         }
         var internal = { Name: key, Value: value };
         this.Internal.push(internal);
@@ -160,12 +160,12 @@ var Publication = (function () {
         link.TypeLink = typeLink;
         link.Templated = templated;
         if (!this.Links) {
-            this.Links = Array();
+            this.Links = [];
         }
         this.Links.push(link);
     };
     Publication.prototype.FindAllMediaOverlay = function () {
-        var mos = Array();
+        var mos = [];
         if (this.Spine) {
             this.Spine.forEach(function (link) {
                 if (link.MediaOverlays) {
@@ -178,7 +178,7 @@ var Publication = (function () {
         return mos;
     };
     Publication.prototype.FindMediaOverlayByHref = function (href) {
-        var mos = Array();
+        var mos = [];
         if (this.Spine) {
             this.Spine.forEach(function (link) {
                 if (link.MediaOverlays && link.Href.indexOf(href) >= 0) {
@@ -191,7 +191,7 @@ var Publication = (function () {
         return mos;
     };
     Publication.prototype.GetPreFetchResources = function () {
-        var links = Array();
+        var links = [];
         if (this.Resources) {
             var mediaTypes_1 = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
             this.Resources.forEach(function (link) {

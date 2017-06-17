@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const ta_json_date_converter_1 = require("../../_utils/ta-json-date-converter");
 const ta_json_1 = require("ta-json");
+const opds2_contributor_1 = require("./opds2-contributor");
 let OPDSMetadata = class OPDSMetadata {
     _OnDeserialized() {
         if (!this.Title) {
@@ -18,6 +19,11 @@ let OPDSMetadata = class OPDSMetadata {
         }
     }
 };
+__decorate([
+    ta_json_1.JsonProperty("author"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    __metadata("design:type", Array)
+], OPDSMetadata.prototype, "Author", void 0);
 __decorate([
     ta_json_1.JsonProperty("@type"),
     __metadata("design:type", String)

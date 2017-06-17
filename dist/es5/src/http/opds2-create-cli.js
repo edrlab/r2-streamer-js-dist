@@ -75,7 +75,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 feed.Metadata.RDFType = "http://schema.org/DataFeed";
                 feed.Metadata.Title = "Readium 2 OPDS 2.0 Feed";
                 feed.Metadata.Modified = moment(Date.now()).toDate();
-                feed.Publications = new Array();
+                feed.Publications = [];
                 nPubs = 0;
                 _loop_1 = function (pathBase64) {
                     var pathBase64Str, fileName, ext, publication, _a, err_1, filePathBase64Encoded, publi, linkSelf, coverLink, linkCover;
@@ -113,14 +113,14 @@ if (fs.existsSync(opdsJsonFilePath)) {
                                 nPubs++;
                                 filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
                                 publi = new opds2_publication_1.OPDSPublication();
-                                publi.Links = new Array();
+                                publi.Links = [];
                                 linkSelf = new opds2_link_1.OPDSLink();
                                 linkSelf.Href = filePathBase64Encoded + "/manifest.json";
                                 linkSelf.TypeLink = "application/webpub+json";
-                                linkSelf.Rel = new Array();
+                                linkSelf.Rel = [];
                                 linkSelf.Rel.push("self");
                                 publi.Links.push(linkSelf);
-                                publi.Images = new Array();
+                                publi.Images = [];
                                 coverLink = publication.GetCover();
                                 if (coverLink) {
                                     linkCover = new opds2_link_1.OPDSLink();
@@ -135,7 +135,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                                 if (feed.Metadata) {
                                     publi.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
                                     if (publication.Metadata.Artist) {
-                                        publi.Metadata.Artist = new Array();
+                                        publi.Metadata.Artist = [];
                                         publication.Metadata.Artist.forEach(function (contributor) {
                                             var c = new opds2_contributor_1.OPDSContributor();
                                             if (contributor.Identifier) {

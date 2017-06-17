@@ -13,6 +13,13 @@ const ta_json_1 = require("ta-json");
 const opds2_link_1 = require("./opds2-link");
 const opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
 let OPDSPublication = class OPDSPublication {
+    findFirstLinkByRel(rel) {
+        return this.Links ? this.Links.find((l) => {
+            return l.Rel && typeof l.Rel.find((r) => {
+                return r === rel;
+            }) !== "undefined";
+        }) : undefined;
+    }
     _OnDeserialized() {
         if (!this.Metadata) {
             console.log("OPDSPublication.Metadata is not set!");

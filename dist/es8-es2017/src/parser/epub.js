@@ -222,7 +222,7 @@ const fillMediaOverlay = async (publication, rootfile, opf, zip) => {
         }
         const mo = new media_overlay_1.MediaOverlayNode();
         mo.SmilPathInZip = smilFilePath;
-        const manItemsHtmlWithSmil = Array();
+        const manItemsHtmlWithSmil = [];
         opf.Manifest.forEach((manItemHtmlWithSmil) => {
             if (manItemHtmlWithSmil.MediaOverlay) {
                 const manItemSmil = opf.Manifest.find((mi) => {

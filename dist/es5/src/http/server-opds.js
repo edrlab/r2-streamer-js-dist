@@ -35,7 +35,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var path = require("path");
 var opds_1 = require("../opds/opds1/opds");
 var opds_entry_1 = require("../opds/opds1/opds-entry");
 var UrlUtils_1 = require("../_utils/http/UrlUtils");
@@ -49,40 +48,6 @@ var requestPromise = require("request-promise-native");
 var xmldom = require("xmldom");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:server:opds");
-function ensureAbsolute(rootUrl, linkHref) {
-    var url = linkHref;
-    if (!UrlUtils_1.isHTTP(url) && url.indexOf("data:") !== 0) {
-        if (url.indexOf("//") === 0) {
-            if (rootUrl.indexOf("https://") === 0) {
-                url = "https:" + url;
-            }
-            else {
-                url = "http:" + url;
-            }
-            return url;
-        }
-        if (url[0] === "/") {
-            var j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
-            var rootUrlOrigin = rootUrl.substr(0, j);
-            url = path.join(rootUrlOrigin, url);
-        }
-        else {
-            var i = rootUrl.indexOf("?");
-            var rootUrlWithoutQuery = rootUrl;
-            if (i >= 0) {
-                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
-            }
-            if (rootUrlWithoutQuery.substr(-1) === "/") {
-                url = path.join(rootUrlWithoutQuery, url);
-            }
-            else {
-                url = path.join(path.dirname(rootUrlWithoutQuery), url);
-            }
-        }
-        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
-    }
-    return url;
-}
 function serverOPDS(_server, topRouter) {
     var _this = this;
     var routerOPDS = express.Router({ strict: false });
@@ -100,7 +65,7 @@ function serverOPDS(_server, topRouter) {
             " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
             "location.href = url;}</script>";
         html += "</head>";
-        html += "<body><h1>Publication OPDS</h1>";
+        html += "<body><h1>OPDS feed browser</h1>";
         html += "<form onsubmit=\"go();return false;\">" +
             "<input type=\"text\" name=\"url\" id=\"url\" size=\"80\">" +
             "<input type=\"submit\" value=\"Go!\"></form>";
@@ -171,7 +136,7 @@ function serverOPDS(_server, topRouter) {
                                     }
                                     if (opds && link.Type &&
                                         (link.Type.indexOf("opds-catalog") >= 0 || link.Type === "application/atom+xml")) {
-                                        var linkUrl = ensureAbsolute(urlDecoded, link.Href);
+                                        var linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
                                         var opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf("/opds/"))
                                             + "/opds/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
                                         html += "<a href='" + opdsUrl
@@ -180,9 +145,9 @@ function serverOPDS(_server, topRouter) {
                                     }
                                 });
                                 if (imageThumbnail_1) {
-                                    var imageThumbnailUrl = ensureAbsolute(urlDecoded, imageThumbnail_1);
+                                    var imageThumbnailUrl = UrlUtils_1.ensureAbsolute(urlDecoded, imageThumbnail_1);
                                     if (image_1) {
-                                        var imageUrl = ensureAbsolute(urlDecoded, image_1);
+                                        var imageUrl = UrlUtils_1.ensureAbsolute(urlDecoded, image_1);
                                         html += "<a href='" + imageUrl + "'><img src='"
                                             + imageThumbnailUrl + "' alt='' /></a><br/>";
                                     }
@@ -191,11 +156,11 @@ function serverOPDS(_server, topRouter) {
                                     }
                                 }
                                 else if (image_1) {
-                                    var imageUrl = ensureAbsolute(urlDecoded, image_1);
+                                    var imageUrl = UrlUtils_1.ensureAbsolute(urlDecoded, image_1);
                                     html += "<img src='" + imageUrl + "' alt='' /><br/>";
                                 }
                                 if (epub_1) {
-                                    var epub_ = ensureAbsolute(urlDecoded, epub_1);
+                                    var epub_ = UrlUtils_1.ensureAbsolute(urlDecoded, epub_1);
                                     var epubUrl = req.originalUrl.substr(0, req.originalUrl.indexOf("/opds/"))
                                         + "/url/" + UrlUtils_1.encodeURIComponent_RFC3986(epub_);
                                     html += "<strong><a href='" + epubUrl + "'>" + epub_1 + "</a></strong>";
@@ -238,7 +203,7 @@ function serverOPDS(_server, topRouter) {
                                         html += "<h2>" + opdsEntry.Title + "</h2>";
                                     }
                                     if (opds && opds.Icon) {
-                                        iconUrl = ensureAbsolute(urlDecoded, opds.Icon);
+                                        iconUrl = UrlUtils_1.ensureAbsolute(urlDecoded, opds.Icon);
                                         html += "<img src='" + iconUrl + "' alt='' />";
                                     }
                                     links = opds ? opds.Links : (opdsEntry ? opdsEntry.Links : undefined);
@@ -247,7 +212,7 @@ function serverOPDS(_server, topRouter) {
                                         links.forEach(function (link) {
                                             if (link.Type &&
                                                 (link.Type.indexOf("opds-catalog") >= 0 || link.Type === "application/atom+xml")) {
-                                                var linkUrl = ensureAbsolute(urlDecoded, link.Href);
+                                                var linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
                                                 var opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf("/opds/"))
                                                     + "/opds/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
                                                 html += "<a href='" + opdsUrl

@@ -1,4 +1,6 @@
+import { OPDSContributor } from "./opds2-contributor";
 export declare class OPDSMetadata {
+    Author: OPDSContributor[];
     RDFType: string;
     Title: string;
     NumberOfItems: number;

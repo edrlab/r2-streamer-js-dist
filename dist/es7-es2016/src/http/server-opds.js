@@ -8,7 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const path = require("path");
 const opds_1 = require("../opds/opds1/opds");
 const opds_entry_1 = require("../opds/opds1/opds-entry");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
@@ -22,40 +21,6 @@ const requestPromise = require("request-promise-native");
 const xmldom = require("xmldom");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:server:opds");
-function ensureAbsolute(rootUrl, linkHref) {
-    let url = linkHref;
-    if (!UrlUtils_1.isHTTP(url) && url.indexOf("data:") !== 0) {
-        if (url.indexOf("//") === 0) {
-            if (rootUrl.indexOf("https://") === 0) {
-                url = "https:" + url;
-            }
-            else {
-                url = "http:" + url;
-            }
-            return url;
-        }
-        if (url[0] === "/") {
-            const j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
-            const rootUrlOrigin = rootUrl.substr(0, j);
-            url = path.join(rootUrlOrigin, url);
-        }
-        else {
-            const i = rootUrl.indexOf("?");
-            let rootUrlWithoutQuery = rootUrl;
-            if (i >= 0) {
-                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
-            }
-            if (rootUrlWithoutQuery.substr(-1) === "/") {
-                url = path.join(rootUrlWithoutQuery, url);
-            }
-            else {
-                url = path.join(path.dirname(rootUrlWithoutQuery), url);
-            }
-        }
-        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
-    }
-    return url;
-}
 function serverOPDS(_server, topRouter) {
     const routerOPDS = express.Router({ strict: false });
     routerOPDS.use(morgan("combined"));
@@ -72,7 +37,7 @@ function serverOPDS(_server, topRouter) {
             ` encodeURIComponent_RFC3986(document.getElementById("url").value);` +
             `location.href = url;}</script>`;
         html += "</head>";
-        html += "<body><h1>Publication OPDS</h1>";
+        html += "<body><h1>OPDS feed browser</h1>";
         html += `<form onsubmit="go();return false;">` +
             `<input type="text" name="url" id="url" size="80">` +
             `<input type="submit" value="Go!"></form>`;
@@ -126,7 +91,7 @@ function serverOPDS(_server, topRouter) {
                 html += "<h2>" + opdsEntry.Title + "</h2>";
             }
             if (opds && opds.Icon) {
-                const iconUrl = ensureAbsolute(urlDecoded, opds.Icon);
+                const iconUrl = UrlUtils_1.ensureAbsolute(urlDecoded, opds.Icon);
                 html += "<img src='" + iconUrl + "' alt='' />";
             }
             const links = opds ? opds.Links : (opdsEntry ? opdsEntry.Links : undefined);
@@ -135,7 +100,7 @@ function serverOPDS(_server, topRouter) {
                 links.forEach((link) => {
                     if (link.Type &&
                         (link.Type.indexOf("opds-catalog") >= 0 || link.Type === "application/atom+xml")) {
-                        const linkUrl = ensureAbsolute(urlDecoded, link.Href);
+                        const linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
                         const opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf("/opds/"))
                             + "/opds/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
                         html += "<a href='" + opdsUrl
@@ -188,7 +153,7 @@ function serverOPDS(_server, topRouter) {
                         }
                         if (opds && link.Type &&
                             (link.Type.indexOf("opds-catalog") >= 0 || link.Type === "application/atom+xml")) {
-                            const linkUrl = ensureAbsolute(urlDecoded, link.Href);
+                            const linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
                             const opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf("/opds/"))
                                 + "/opds/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
                             html += "<a href='" + opdsUrl
@@ -197,9 +162,9 @@ function serverOPDS(_server, topRouter) {
                         }
                     });
                     if (imageThumbnail) {
-                        const imageThumbnailUrl = ensureAbsolute(urlDecoded, imageThumbnail);
+                        const imageThumbnailUrl = UrlUtils_1.ensureAbsolute(urlDecoded, imageThumbnail);
                         if (image) {
-                            const imageUrl = ensureAbsolute(urlDecoded, image);
+                            const imageUrl = UrlUtils_1.ensureAbsolute(urlDecoded, image);
                             html += "<a href='" + imageUrl + "'><img src='"
                                 + imageThumbnailUrl + "' alt='' /></a><br/>";
                         }
@@ -208,11 +173,11 @@ function serverOPDS(_server, topRouter) {
                         }
                     }
                     else if (image) {
-                        const imageUrl = ensureAbsolute(urlDecoded, image);
+                        const imageUrl = UrlUtils_1.ensureAbsolute(urlDecoded, image);
                         html += "<img src='" + imageUrl + "' alt='' /><br/>";
                     }
                     if (epub) {
-                        const epub_ = ensureAbsolute(urlDecoded, epub);
+                        const epub_ = UrlUtils_1.ensureAbsolute(urlDecoded, epub);
                         const epubUrl = req.originalUrl.substr(0, req.originalUrl.indexOf("/opds/"))
                             + "/url/" + UrlUtils_1.encodeURIComponent_RFC3986(epub_);
                         html += "<strong><a href='" + epubUrl + "'>" + epub + "</a></strong>";

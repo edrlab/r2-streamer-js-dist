@@ -30,7 +30,7 @@ function deserializeRootObject(objectInstance, objectType = Object, options) {
                 return;
             }
             if (p.xpathSelectorParsed) {
-                const xpathMatched = Array();
+                const xpathMatched = [];
                 let currentNodes = [objectInstance];
                 p.xpathSelectorParsed.forEach((item, index) => {
                     const nextCurrentNodes = [];
@@ -87,7 +87,7 @@ function deserializeRootObject(objectInstance, objectType = Object, options) {
                 });
                 if (xpathMatched && xpathMatched.length) {
                     if (p.array || p.set) {
-                        output[key] = Array();
+                        output[key] = [];
                         xpathMatched.forEach((item) => {
                             output[key].push(deserializeObject(item, p, options));
                         });
@@ -103,7 +103,7 @@ function deserializeRootObject(objectInstance, objectType = Object, options) {
                 const select = xpath.useNamespaces(p.namespaces || {});
                 const xPathSelected = select(p.xpathSelector, objectInstance);
                 if (xPathSelected && xPathSelected.length) {
-                    const xpathMatched = Array();
+                    const xpathMatched = [];
                     if (!(xPathSelected instanceof Array)) {
                         xpathMatched.push(xPathSelected);
                     }
@@ -113,7 +113,7 @@ function deserializeRootObject(objectInstance, objectType = Object, options) {
                         });
                     }
                     if (p.array || p.set) {
-                        output[key] = Array();
+                        output[key] = [];
                         xpathMatched.forEach((item) => {
                             output[key].push(deserializeObject(item, p, options));
                         });

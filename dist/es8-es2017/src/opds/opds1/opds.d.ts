@@ -2,8 +2,8 @@ import { Author } from "./opds-author";
 import { Entry } from "./opds-entry";
 import { Link } from "./opds-link";
 export declare class OPDS {
-    OpensearchTotalResults: string;
-    OpensearchItemsPerPage: string;
+    OpensearchTotalResults: number;
+    OpensearchItemsPerPage: number;
     Id: string;
     Title: string;
     SubTitle: string;

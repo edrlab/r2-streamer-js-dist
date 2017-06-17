@@ -16,6 +16,7 @@ var server_assets_1 = require("./server-assets");
 var server_manifestjson_1 = require("./server-manifestjson");
 var server_mediaoverlays_1 = require("./server-mediaoverlays");
 var server_opds_1 = require("./server-opds");
+var server_opds1_2_1 = require("./server-opds1-2");
 var server_opds2_1 = require("./server-opds2");
 var server_pub_1 = require("./server-pub");
 var server_url_1 = require("./server-url");
@@ -99,6 +100,7 @@ var Server = (function () {
         server_url_1.serverUrl(this, this.expressApp);
         server_opds_1.serverOPDS(this, this.expressApp);
         server_opds2_1.serverOPDS2(this, this.expressApp);
+        server_opds1_2_1.serverOPDS12(this, this.expressApp);
         var routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);

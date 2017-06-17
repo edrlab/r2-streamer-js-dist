@@ -316,7 +316,7 @@ var fillMediaOverlay = function (publication, rootfile, opf, zip) { return __awa
                                 }
                                 mo = new media_overlay_1.MediaOverlayNode();
                                 mo.SmilPathInZip = smilFilePath;
-                                manItemsHtmlWithSmil = Array();
+                                manItemsHtmlWithSmil = [];
                                 opf.Manifest.forEach(function (manItemHtmlWithSmil) {
                                     if (manItemHtmlWithSmil.MediaOverlay) {
                                         var manItemSmil = opf.Manifest.find(function (mi) {

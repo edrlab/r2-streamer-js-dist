@@ -15,7 +15,7 @@ let OPDSLink = OPDSLink_1 = class OPDSLink {
     AddRel(rel) {
         if (!this.Rel || this.Rel.indexOf(rel) < 0) {
             if (!this.Rel) {
-                this.Rel = Array();
+                this.Rel = [];
             }
             this.Rel.push(rel);
         }

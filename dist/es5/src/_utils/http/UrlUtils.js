@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var path = require("path");
 var querystring = require("querystring");
 function isHTTP(urlOrPath) {
     return urlOrPath.indexOf("http") === 0;
@@ -19,4 +20,39 @@ function encodeURIComponent_RFC5987(str) {
         replace(/%(?:7C|60|5E)/g, querystring.unescape);
 }
 exports.encodeURIComponent_RFC5987 = encodeURIComponent_RFC5987;
+function ensureAbsolute(rootUrl, linkHref) {
+    var url = linkHref;
+    if (!isHTTP(url) && url.indexOf("data:") !== 0) {
+        if (url.indexOf("//") === 0) {
+            if (rootUrl.indexOf("https://") === 0) {
+                url = "https:" + url;
+            }
+            else {
+                url = "http:" + url;
+            }
+            return url;
+        }
+        if (url[0] === "/") {
+            var j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
+            var rootUrlOrigin = rootUrl.substr(0, j);
+            url = path.join(rootUrlOrigin, url);
+        }
+        else {
+            var i = rootUrl.indexOf("?");
+            var rootUrlWithoutQuery = rootUrl;
+            if (i >= 0) {
+                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
+            }
+            if (rootUrlWithoutQuery.substr(-1) === "/") {
+                url = path.join(rootUrlWithoutQuery, url);
+            }
+            else {
+                url = path.join(path.dirname(rootUrlWithoutQuery), url);
+            }
+        }
+        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
+    }
+    return url;
+}
+exports.ensureAbsolute = ensureAbsolute;
 //# sourceMappingURL=UrlUtils.js.map

@@ -4,5 +4,6 @@ export declare class OPDSPublication {
     Metadata: OPDSPublicationMetadata;
     Links: OPDSLink[];
     Images: OPDSLink[];
+    findFirstLinkByRel(rel: string): OPDSLink | undefined;
     private _OnDeserialized();
 }

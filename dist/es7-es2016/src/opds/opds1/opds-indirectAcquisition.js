@@ -10,7 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let IndirectAcquisition = class IndirectAcquisition {
+let IndirectAcquisition = IndirectAcquisition_1 = class IndirectAcquisition {
 };
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("@type"),
@@ -18,9 +18,10 @@ __decorate([
 ], IndirectAcquisition.prototype, "OpdsIndirectAcquisitionType", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
+    xml_js_mapper_1.XmlItemType(IndirectAcquisition_1),
     __metadata("design:type", Array)
 ], IndirectAcquisition.prototype, "OpdsIndirectAcquisitions", void 0);
-IndirectAcquisition = __decorate([
+IndirectAcquisition = IndirectAcquisition_1 = __decorate([
     xml_js_mapper_1.XmlObject({
         app: "http://www.w3.org/2007/app",
         atom: "http://www.w3.org/2005/Atom",
@@ -36,4 +37,5 @@ IndirectAcquisition = __decorate([
     })
 ], IndirectAcquisition);
 exports.IndirectAcquisition = IndirectAcquisition;
+var IndirectAcquisition_1;
 //# sourceMappingURL=opds-indirectAcquisition.js.map
