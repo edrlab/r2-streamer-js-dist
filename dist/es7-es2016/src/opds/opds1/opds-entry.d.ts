@@ -1,6 +1,7 @@
 import { Author } from "./opds-author";
 import { Category } from "./opds-category";
 import { Link } from "./opds-link";
+import { Serie } from "./opds-serie";
 export declare class Entry {
     SchemaRatingValue: string;
     SchemaRatingAdditionalType: string;
@@ -24,4 +25,5 @@ export declare class Entry {
     Updated: Date;
     Published: Date;
     Links: Link[];
+    Series: Serie[];
 }

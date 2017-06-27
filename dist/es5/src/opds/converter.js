@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var opds2_1 = require("./opds2/opds2");
+var opds2_belongsTo_1 = require("./opds2/opds2-belongsTo");
+var opds2_collection_1 = require("./opds2/opds2-collection");
 var opds2_contributor_1 = require("./opds2/opds2-contributor");
 var opds2_indirectAcquisition_1 = require("./opds2/opds2-indirectAcquisition");
 var opds2_link_1 = require("./opds2/opds2-link");
@@ -62,6 +64,24 @@ function convertOpds1ToOpds2(feed) {
                 p_1.Metadata.Modified = entry.Updated;
                 p_1.Metadata.PublicationDate = entry.Published;
                 p_1.Metadata.Rights = entry.DcRights;
+                if (entry.Series) {
+                    entry.Series.forEach(function (s) {
+                        var coll = new opds2_collection_1.OPDSCollection();
+                        coll.Name = s.Name;
+                        coll.Position = s.Position;
+                        var link = new opds2_link_1.OPDSLink();
+                        link.Href = s.Url;
+                        coll.Links = [];
+                        coll.Links.push(link);
+                        if (!p_1.Metadata.BelongsTo) {
+                            p_1.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+                        }
+                        if (!p_1.Metadata.BelongsTo.Series) {
+                            p_1.Metadata.BelongsTo.Series = [];
+                        }
+                        p_1.Metadata.BelongsTo.Series.push(coll);
+                    });
+                }
                 if (entry.DcPublisher) {
                     var c = new opds2_contributor_1.OPDSContributor();
                     c.Name = entry.DcPublisher;

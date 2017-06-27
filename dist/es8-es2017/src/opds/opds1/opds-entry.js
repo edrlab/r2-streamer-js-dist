@@ -13,6 +13,7 @@ const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 const opds_author_1 = require("./opds-author");
 const opds_category_1 = require("./opds-category");
 const opds_link_1 = require("./opds-link");
+const opds_serie_1 = require("./opds-serie");
 let Entry = class Entry {
 };
 __decorate([
@@ -108,6 +109,11 @@ __decorate([
     xml_js_mapper_1.XmlItemType(opds_link_1.Link),
     __metadata("design:type", Array)
 ], Entry.prototype, "Links", void 0);
+__decorate([
+    xml_js_mapper_1.XmlXPathSelector("schema:Series"),
+    xml_js_mapper_1.XmlItemType(opds_serie_1.Serie),
+    __metadata("design:type", Array)
+], Entry.prototype, "Series", void 0);
 Entry = __decorate([
     xml_js_mapper_1.XmlObject({
         app: "http://www.w3.org/2007/app",
