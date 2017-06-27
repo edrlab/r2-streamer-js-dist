@@ -33,7 +33,7 @@ if (!fs.existsSync(filePath)) {
 }
 const fileName = path.basename(filePath);
 const ext = path.extname(fileName).toLowerCase();
-if (ext === ".epub" || ext === ".cbz" || ext === ".zip") {
+if (/\.epub[3?]$/.test(ext) || ext === ".cbz" || ext === ".zip") {
     (async () => {
         const time3 = process.hrtime();
         const zip3 = await zip3_1.Zip3.loadPromise(filePath);

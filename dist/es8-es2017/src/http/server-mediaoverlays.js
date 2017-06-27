@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const path = require("path");
-const cbz_1 = require("../parser/cbz");
 const epub_1 = require("../parser/epub");
+const publication_parser_1 = require("../parser/publication-parser");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
 const JsonUtils_1 = require("../_utils/JsonUtils");
 const css2json = require("css2json");
@@ -56,12 +56,8 @@ function serverMediaOverlays(server, routerPathBase64) {
         const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
         let publication = server.cachedPublication(pathBase64Str);
         if (!publication) {
-            const fileName = path.basename(pathBase64Str);
-            const ext = path.extname(fileName).toLowerCase();
             try {
-                publication = ext === ".epub" ?
-                    await epub_1.EpubParsePromise(pathBase64Str) :
-                    await cbz_1.CbzParsePromise(pathBase64Str);
+                publication = await publication_parser_1.PublicationParsePromise(pathBase64Str);
             }
             catch (err) {
                 debug(err);

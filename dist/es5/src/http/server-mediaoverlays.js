@@ -37,8 +37,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var crypto = require("crypto");
 var path = require("path");
-var cbz_1 = require("../parser/cbz");
 var epub_1 = require("../parser/epub");
+var publication_parser_1 = require("../parser/publication-parser");
 var UrlUtils_1 = require("../_utils/http/UrlUtils");
 var JsonUtils_1 = require("../_utils/JsonUtils");
 var css2json = require("css2json");
@@ -67,9 +67,9 @@ function serverMediaOverlays(server, routerPathBase64) {
                 }
             });
         }
-        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, fileName, ext, _a, err_1, rootUrl, objToSerialize, resource, jsonObj, jsonPretty, jsonStr, checkSum, hash, match;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, rootUrl, objToSerialize, resource, jsonObj, jsonPretty, jsonStr, checkSum, hash, match;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
                 case 0:
                     if (!req.params.pathBase64) {
                         req.params.pathBase64 = req.pathBase64;
@@ -88,34 +88,24 @@ function serverMediaOverlays(server, routerPathBase64) {
                         req.get("X-Forwarded-Proto") === "https";
                     pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
                     publication = server.cachedPublication(pathBase64Str);
-                    if (!!publication) return [3, 8];
-                    fileName = path.basename(pathBase64Str);
-                    ext = path.extname(fileName).toLowerCase();
-                    _b.label = 1;
+                    if (!!publication) return [3, 5];
+                    _a.label = 1;
                 case 1:
-                    _b.trys.push([1, 6, , 7]);
-                    if (!(ext === ".epub")) return [3, 3];
-                    return [4, epub_1.EpubParsePromise(pathBase64Str)];
+                    _a.trys.push([1, 3, , 4]);
+                    return [4, publication_parser_1.PublicationParsePromise(pathBase64Str)];
                 case 2:
-                    _a = _b.sent();
-                    return [3, 5];
-                case 3: return [4, cbz_1.CbzParsePromise(pathBase64Str)];
-                case 4:
-                    _a = _b.sent();
-                    _b.label = 5;
-                case 5:
-                    publication = _a;
-                    return [3, 7];
-                case 6:
-                    err_1 = _b.sent();
+                    publication = _a.sent();
+                    return [3, 4];
+                case 3:
+                    err_1 = _a.sent();
                     debug(err_1);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_1 + "</p></body></html>");
                     return [2];
-                case 7:
+                case 4:
                     server.cachePublication(pathBase64Str, publication);
-                    _b.label = 8;
-                case 8:
+                    _a.label = 5;
+                case 5:
                     rootUrl = (isSecureHttp ? "https://" : "http://")
                         + req.headers.host + "/pub/"
                         + (req.params.lcpPass64 ?

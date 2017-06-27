@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
-const cbz_1 = require("../parser/cbz");
-const epub_1 = require("../parser/epub");
+const publication_parser_1 = require("../parser/publication-parser");
 const transformer_1 = require("../transform/transformer");
 const RangeUtils_1 = require("../_utils/http/RangeUtils");
 const BufferUtils_1 = require("../_utils/stream/BufferUtils");
@@ -30,12 +29,8 @@ function serverAssets(server, routerPathBase64) {
         const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
         let publication = server.cachedPublication(pathBase64Str);
         if (!publication) {
-            const fileName = path.basename(pathBase64Str);
-            const ext = path.extname(fileName).toLowerCase();
             try {
-                publication = ext === ".epub" ?
-                    await epub_1.EpubParsePromise(pathBase64Str) :
-                    await cbz_1.CbzParsePromise(pathBase64Str);
+                publication = await publication_parser_1.PublicationParsePromise(pathBase64Str);
             }
             catch (err) {
                 debug(err);

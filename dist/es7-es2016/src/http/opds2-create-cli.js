@@ -9,15 +9,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
-const path = require("path");
 const opds2_1 = require("../opds/opds2/opds2");
 const opds2_contributor_1 = require("../opds/opds2/opds2-contributor");
 const opds2_link_1 = require("../opds/opds2/opds2-link");
 const opds2_metadata_1 = require("../opds/opds2/opds2-metadata");
 const opds2_publication_1 = require("../opds/opds2/opds2-publication");
 const opds2_publicationMetadata_1 = require("../opds/opds2/opds2-publicationMetadata");
-const cbz_1 = require("../parser/cbz");
-const epub_1 = require("../parser/epub");
+const publication_parser_1 = require("../parser/publication-parser");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
 const debug_ = require("debug");
 const moment = require("moment");
@@ -50,14 +48,10 @@ if (fs.existsSync(opdsJsonFilePath)) {
         if (UrlUtils_1.isHTTP(pathBase64Str)) {
             continue;
         }
-        const fileName = path.basename(pathBase64Str);
-        const ext = path.extname(fileName).toLowerCase();
         debug(`OPDS parsing: ${pathBase64Str}`);
         let publication;
         try {
-            publication = ext === ".epub" ?
-                yield epub_1.EpubParsePromise(pathBase64Str) :
-                yield cbz_1.CbzParsePromise(pathBase64Str);
+            publication = yield publication_parser_1.PublicationParsePromise(pathBase64Str);
         }
         catch (err) {
             debug(err);

@@ -11,8 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
 const util = require("util");
-const cbz_1 = require("../parser/cbz");
-const epub_1 = require("../parser/epub");
+const publication_parser_1 = require("../parser/publication-parser");
 console.log("process.cwd():");
 console.log(process.cwd());
 console.log("__dirname: ");
@@ -42,29 +41,19 @@ if (!fs.existsSync(filePath)) {
 const fileName = path.basename(filePath);
 const ext = path.extname(fileName).toLowerCase();
 (() => __awaiter(this, void 0, void 0, function* () {
-    if (ext === ".epub") {
-        let publication;
-        try {
-            publication = yield epub_1.EpubParsePromise(filePath);
-        }
-        catch (err) {
-            console.log("== EpubParser: reject");
-            console.log(err);
-            return;
-        }
-        console.log("== EpubParser: resolve: " + publication.Links);
+    let publication;
+    try {
+        publication = yield publication_parser_1.PublicationParsePromise(filePath);
+    }
+    catch (err) {
+        console.log("== Publication Parser: reject");
+        console.log(err);
+        return;
+    }
+    console.log("== Publication Parser: resolve: " + publication.Links);
+    if (/\.epub[3?]$/.test(ext)) {
     }
     else if (ext === ".cbz") {
-        let publication;
-        try {
-            publication = yield cbz_1.CbzParsePromise(filePath);
-        }
-        catch (err) {
-            console.log("== CbzParser: reject");
-            console.log(err);
-            return;
-        }
-        console.log("== CbzParser: resolve");
         dumpPublication(publication);
     }
 }))();

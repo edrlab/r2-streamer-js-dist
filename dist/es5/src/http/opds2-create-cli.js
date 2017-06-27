@@ -37,15 +37,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
-var path = require("path");
 var opds2_1 = require("../opds/opds2/opds2");
 var opds2_contributor_1 = require("../opds/opds2/opds2-contributor");
 var opds2_link_1 = require("../opds/opds2/opds2-link");
 var opds2_metadata_1 = require("../opds/opds2/opds2-metadata");
 var opds2_publication_1 = require("../opds/opds2/opds2-publication");
 var opds2_publicationMetadata_1 = require("../opds/opds2/opds2-publicationMetadata");
-var cbz_1 = require("../parser/cbz");
-var epub_1 = require("../parser/epub");
+var publication_parser_1 = require("../parser/publication-parser");
 var UrlUtils_1 = require("../_utils/http/UrlUtils");
 var debug_ = require("debug");
 var moment = require("moment");
@@ -78,38 +76,28 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 feed.Publications = [];
                 nPubs = 0;
                 _loop_1 = function (pathBase64) {
-                    var pathBase64Str, fileName, ext, publication, _a, err_1, filePathBase64Encoded, publi, linkSelf, coverLink, linkCover;
-                    return __generator(this, function (_b) {
-                        switch (_b.label) {
+                    var pathBase64Str, publication, err_1, filePathBase64Encoded, publi, linkSelf, coverLink, linkCover;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
                             case 0:
                                 pathBase64Str = new Buffer(pathBase64, "base64").toString("utf8");
                                 if (UrlUtils_1.isHTTP(pathBase64Str)) {
                                     return [2, "continue"];
                                 }
-                                fileName = path.basename(pathBase64Str);
-                                ext = path.extname(fileName).toLowerCase();
                                 debug("OPDS parsing: " + pathBase64Str);
                                 publication = void 0;
-                                _b.label = 1;
+                                _a.label = 1;
                             case 1:
-                                _b.trys.push([1, 6, , 7]);
-                                if (!(ext === ".epub")) return [3, 3];
-                                return [4, epub_1.EpubParsePromise(pathBase64Str)];
+                                _a.trys.push([1, 3, , 4]);
+                                return [4, publication_parser_1.PublicationParsePromise(pathBase64Str)];
                             case 2:
-                                _a = _b.sent();
-                                return [3, 5];
-                            case 3: return [4, cbz_1.CbzParsePromise(pathBase64Str)];
-                            case 4:
-                                _a = _b.sent();
-                                _b.label = 5;
-                            case 5:
-                                publication = _a;
-                                return [3, 7];
-                            case 6:
-                                err_1 = _b.sent();
+                                publication = _a.sent();
+                                return [3, 4];
+                            case 3:
+                                err_1 = _a.sent();
                                 debug(err_1);
                                 return [2, "continue"];
-                            case 7:
+                            case 4:
                                 nPubs++;
                                 filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
                                 publi = new opds2_publication_1.OPDSPublication();
