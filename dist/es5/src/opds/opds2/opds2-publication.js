@@ -10,6 +10,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var ta_json_1 = require("ta-json");
+var opds2_belongsTo_1 = require("./opds2-belongsTo");
+var opds2_collection_1 = require("./opds2-collection");
 var opds2_contributor_1 = require("./opds2-contributor");
 var opds2_link_1 = require("./opds2-link");
 var opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
@@ -81,6 +83,54 @@ var OPDSPublication = (function () {
             this.Metadata.Author = [];
         }
         this.Metadata.Author.push(c);
+    };
+    OPDSPublication.prototype.AddSerie = function (name, position, href, typeLink) {
+        var c = new opds2_collection_1.OPDSCollection();
+        c.Name = name;
+        c.Position = position;
+        var l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.BelongsTo) {
+            this.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+        }
+        if (!this.Metadata.BelongsTo.Series) {
+            this.Metadata.BelongsTo.Series = [];
+        }
+        this.Metadata.BelongsTo.Series.push(c);
+    };
+    OPDSPublication.prototype.AddPublisher = function (name, href, typeLink) {
+        var c = new opds2_contributor_1.OPDSContributor();
+        c.Name = name;
+        var l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.Publisher) {
+            this.Metadata.Publisher = [];
+        }
+        this.Metadata.Publisher.push(c);
     };
     OPDSPublication.prototype._OnDeserialized = function () {
         if (!this.Metadata) {

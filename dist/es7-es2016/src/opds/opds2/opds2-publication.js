@@ -10,6 +10,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const ta_json_1 = require("ta-json");
+const opds2_belongsTo_1 = require("./opds2-belongsTo");
+const opds2_collection_1 = require("./opds2-collection");
 const opds2_contributor_1 = require("./opds2-contributor");
 const opds2_link_1 = require("./opds2-link");
 const opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
@@ -79,6 +81,54 @@ let OPDSPublication = class OPDSPublication {
             this.Metadata.Author = [];
         }
         this.Metadata.Author.push(c);
+    }
+    AddSerie(name, position, href, typeLink) {
+        const c = new opds2_collection_1.OPDSCollection();
+        c.Name = name;
+        c.Position = position;
+        const l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.BelongsTo) {
+            this.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+        }
+        if (!this.Metadata.BelongsTo.Series) {
+            this.Metadata.BelongsTo.Series = [];
+        }
+        this.Metadata.BelongsTo.Series.push(c);
+    }
+    AddPublisher(name, href, typeLink) {
+        const c = new opds2_contributor_1.OPDSContributor();
+        c.Name = name;
+        const l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.Publisher) {
+            this.Metadata.Publisher = [];
+        }
+        this.Metadata.Publisher.push(c);
     }
     _OnDeserialized() {
         if (!this.Metadata) {
