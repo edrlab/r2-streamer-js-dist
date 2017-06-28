@@ -98,7 +98,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
     feed.Metadata.NumberOfItems = nPubs;
     const jsonObj = ta_json_1.JSON.serialize(feed);
     const jsonStr = global.JSON.stringify(jsonObj, null, "");
-    fs.writeFileSync(opdsJsonFilePath, jsonStr, "utf8");
+    fs.writeFileSync(opdsJsonFilePath, jsonStr, { encoding: "utf8" });
     debug("DONE! :)");
     debug(opdsJsonFilePath);
 })();

@@ -18,32 +18,32 @@ var Subject = (function () {
             console.log("Subject.Name is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", String)
+    ], Subject.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        __metadata("design:type", String)
+    ], Subject.prototype, "SortAs", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("scheme"),
+        __metadata("design:type", String)
+    ], Subject.prototype, "Scheme", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("code"),
+        __metadata("design:type", String)
+    ], Subject.prototype, "Code", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], Subject.prototype, "_OnDeserialized", null);
+    Subject = __decorate([
+        ta_json_1.JsonObject()
+    ], Subject);
     return Subject;
 }());
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", String)
-], Subject.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    __metadata("design:type", String)
-], Subject.prototype, "SortAs", void 0);
-__decorate([
-    ta_json_1.JsonProperty("scheme"),
-    __metadata("design:type", String)
-], Subject.prototype, "Scheme", void 0);
-__decorate([
-    ta_json_1.JsonProperty("code"),
-    __metadata("design:type", String)
-], Subject.prototype, "Code", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], Subject.prototype, "_OnDeserialized", null);
-Subject = __decorate([
-    ta_json_1.JsonObject()
-], Subject);
 exports.Subject = Subject;
 //# sourceMappingURL=metadata-subject.js.map

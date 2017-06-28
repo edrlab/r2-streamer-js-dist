@@ -20,46 +20,46 @@ var OPDSMetadata = (function () {
             console.log("OPDSMetadata.Title is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("author"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        __metadata("design:type", Array)
+    ], OPDSMetadata.prototype, "Author", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("@type"),
+        __metadata("design:type", String)
+    ], OPDSMetadata.prototype, "RDFType", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("title"),
+        __metadata("design:type", String)
+    ], OPDSMetadata.prototype, "Title", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("numberOfItems"),
+        __metadata("design:type", Number)
+    ], OPDSMetadata.prototype, "NumberOfItems", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("itemsPerPage"),
+        __metadata("design:type", Number)
+    ], OPDSMetadata.prototype, "ItemsPerPage", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("currentPage"),
+        __metadata("design:type", Number)
+    ], OPDSMetadata.prototype, "CurrentPage", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("modified"),
+        ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
+        __metadata("design:type", Date)
+    ], OPDSMetadata.prototype, "Modified", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSMetadata.prototype, "_OnDeserialized", null);
+    OPDSMetadata = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSMetadata);
     return OPDSMetadata;
 }());
-__decorate([
-    ta_json_1.JsonProperty("author"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    __metadata("design:type", Array)
-], OPDSMetadata.prototype, "Author", void 0);
-__decorate([
-    ta_json_1.JsonProperty("@type"),
-    __metadata("design:type", String)
-], OPDSMetadata.prototype, "RDFType", void 0);
-__decorate([
-    ta_json_1.JsonProperty("title"),
-    __metadata("design:type", String)
-], OPDSMetadata.prototype, "Title", void 0);
-__decorate([
-    ta_json_1.JsonProperty("numberOfItems"),
-    __metadata("design:type", Number)
-], OPDSMetadata.prototype, "NumberOfItems", void 0);
-__decorate([
-    ta_json_1.JsonProperty("itemsPerPage"),
-    __metadata("design:type", Number)
-], OPDSMetadata.prototype, "ItemsPerPage", void 0);
-__decorate([
-    ta_json_1.JsonProperty("currentPage"),
-    __metadata("design:type", Number)
-], OPDSMetadata.prototype, "CurrentPage", void 0);
-__decorate([
-    ta_json_1.JsonProperty("modified"),
-    ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
-    __metadata("design:type", Date)
-], OPDSMetadata.prototype, "Modified", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSMetadata.prototype, "_OnDeserialized", null);
-OPDSMetadata = __decorate([
-    ta_json_1.JsonObject()
-], OPDSMetadata);
 exports.OPDSMetadata = OPDSMetadata;
 //# sourceMappingURL=opds2-metadata.js.map

@@ -17,43 +17,43 @@ var opf_spine_1 = require("./opf-spine");
 var OPF = (function () {
     function OPF() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:metadata"),
+        __metadata("design:type", opf_metadata_1.Metadata)
+    ], OPF.prototype, "Metadata", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:manifest/opf:item"),
+        xml_js_mapper_1.XmlItemType(opf_manifest_1.Manifest),
+        __metadata("design:type", Array)
+    ], OPF.prototype, "Manifest", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:spine"),
+        __metadata("design:type", opf_spine_1.Spine)
+    ], OPF.prototype, "Spine", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:guide/opf:reference"),
+        xml_js_mapper_1.XmlItemType(opf_reference_1.Reference),
+        __metadata("design:type", Array)
+    ], OPF.prototype, "Guide", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@unique-identifier"),
+        __metadata("design:type", String)
+    ], OPF.prototype, "UniqueIdentifier", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@dir"),
+        __metadata("design:type", String)
+    ], OPF.prototype, "Dir", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@version"),
+        __metadata("design:type", String)
+    ], OPF.prototype, "Version", void 0);
+    OPF = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], OPF);
     return OPF;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:metadata"),
-    __metadata("design:type", opf_metadata_1.Metadata)
-], OPF.prototype, "Metadata", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:manifest/opf:item"),
-    xml_js_mapper_1.XmlItemType(opf_manifest_1.Manifest),
-    __metadata("design:type", Array)
-], OPF.prototype, "Manifest", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:spine"),
-    __metadata("design:type", opf_spine_1.Spine)
-], OPF.prototype, "Spine", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:guide/opf:reference"),
-    xml_js_mapper_1.XmlItemType(opf_reference_1.Reference),
-    __metadata("design:type", Array)
-], OPF.prototype, "Guide", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@unique-identifier"),
-    __metadata("design:type", String)
-], OPF.prototype, "UniqueIdentifier", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@dir"),
-    __metadata("design:type", String)
-], OPF.prototype, "Dir", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@version"),
-    __metadata("design:type", String)
-], OPF.prototype, "Version", void 0);
-OPF = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], OPF);
 exports.OPF = OPF;
 //# sourceMappingURL=opf.js.map

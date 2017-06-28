@@ -13,25 +13,25 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Audio = (function () {
     function Audio() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@src"),
+        __metadata("design:type", String)
+    ], Audio.prototype, "Src", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@clipBegin"),
+        __metadata("design:type", String)
+    ], Audio.prototype, "ClipBegin", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
+        __metadata("design:type", String)
+    ], Audio.prototype, "ClipEnd", void 0);
+    Audio = __decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], Audio);
     return Audio;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@src"),
-    __metadata("design:type", String)
-], Audio.prototype, "Src", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@clipBegin"),
-    __metadata("design:type", String)
-], Audio.prototype, "ClipBegin", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
-    __metadata("design:type", String)
-], Audio.prototype, "ClipEnd", void 0);
-Audio = __decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], Audio);
 exports.Audio = Audio;
 //# sourceMappingURL=smil-audio.js.map

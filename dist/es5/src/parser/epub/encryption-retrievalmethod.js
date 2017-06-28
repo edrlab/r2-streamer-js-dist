@@ -13,23 +13,23 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var RetrievalMethod = (function () {
     function RetrievalMethod() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@URI"),
+        __metadata("design:type", String)
+    ], RetrievalMethod.prototype, "URI", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Type"),
+        __metadata("design:type", String)
+    ], RetrievalMethod.prototype, "Type", void 0);
+    RetrievalMethod = __decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], RetrievalMethod);
     return RetrievalMethod;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@URI"),
-    __metadata("design:type", String)
-], RetrievalMethod.prototype, "URI", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Type"),
-    __metadata("design:type", String)
-], RetrievalMethod.prototype, "Type", void 0);
-RetrievalMethod = __decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], RetrievalMethod);
 exports.RetrievalMethod = RetrievalMethod;
 //# sourceMappingURL=encryption-retrievalmethod.js.map

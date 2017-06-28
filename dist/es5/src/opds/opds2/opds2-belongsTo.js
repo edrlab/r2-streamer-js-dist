@@ -14,20 +14,20 @@ var opds2_collection_1 = require("./opds2-collection");
 var OPDSBelongsTo = (function () {
     function OPDSBelongsTo() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("series"),
+        ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
+        __metadata("design:type", Array)
+    ], OPDSBelongsTo.prototype, "Series", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("collection"),
+        ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
+        __metadata("design:type", Array)
+    ], OPDSBelongsTo.prototype, "Collection", void 0);
+    OPDSBelongsTo = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSBelongsTo);
     return OPDSBelongsTo;
 }());
-__decorate([
-    ta_json_1.JsonProperty("series"),
-    ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
-    __metadata("design:type", Array)
-], OPDSBelongsTo.prototype, "Series", void 0);
-__decorate([
-    ta_json_1.JsonProperty("collection"),
-    ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
-    __metadata("design:type", Array)
-], OPDSBelongsTo.prototype, "Collection", void 0);
-OPDSBelongsTo = __decorate([
-    ta_json_1.JsonObject()
-], OPDSBelongsTo);
 exports.OPDSBelongsTo = OPDSBelongsTo;
 //# sourceMappingURL=opds2-belongsTo.js.map

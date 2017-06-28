@@ -13,19 +13,19 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var CipherReference = (function () {
     function CipherReference() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@URI"),
+        __metadata("design:type", String)
+    ], CipherReference.prototype, "URI", void 0);
+    CipherReference = __decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], CipherReference);
     return CipherReference;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@URI"),
-    __metadata("design:type", String)
-], CipherReference.prototype, "URI", void 0);
-CipherReference = __decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], CipherReference);
 exports.CipherReference = CipherReference;
 //# sourceMappingURL=encryption-cypherreference.js.map

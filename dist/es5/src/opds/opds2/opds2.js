@@ -18,6 +18,54 @@ var opds2_publication_1 = require("./opds2-publication");
 var OPDSFeed = (function () {
     function OPDSFeed() {
     }
+    OPDSFeed.prototype.AddLink = function (href, rel, typeLink, templated) {
+        var l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.Rel = [];
+        l.Rel.push(rel);
+        l.TypeLink = typeLink;
+        if (templated) {
+            l.Templated = true;
+        }
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(l);
+    };
+    OPDSFeed.prototype.AddNavigation = function (title, href, rel, typeLink) {
+        var l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.TypeLink = typeLink;
+        l.Rel = [];
+        l.Rel.push(rel);
+        if (title) {
+            l.Title = title;
+        }
+        if (!this.Navigation) {
+            this.Navigation = [];
+        }
+        this.Navigation.push(l);
+    };
+    OPDSFeed.prototype.AddPagination = function (numberItems, itemsPerPage, currentPage, nextLink, prevLink, firstLink, lastLink) {
+        if (!this.Metadata) {
+            this.Metadata = new opds2_metadata_1.OPDSMetadata();
+        }
+        this.Metadata.CurrentPage = currentPage;
+        this.Metadata.ItemsPerPage = itemsPerPage;
+        this.Metadata.NumberOfItems = numberItems;
+        if (nextLink) {
+            this.AddLink(nextLink, "next", "application/opds+json", false);
+        }
+        if (prevLink) {
+            this.AddLink(prevLink, "previous", "application/opds+json", false);
+        }
+        if (firstLink) {
+            this.AddLink(firstLink, "first", "application/opds+json", false);
+        }
+        if (lastLink) {
+            this.AddLink(lastLink, "last", "application/opds+json", false);
+        }
+    };
     OPDSFeed.prototype.AddFacet = function (link, group) {
         if (this.Facets) {
             var found = this.Facets.find(function (f) {
@@ -132,50 +180,50 @@ var OPDSFeed = (function () {
             console.log("OPDS2Feed.Links is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("@context"),
+        ta_json_1.JsonElementType(String),
+        __metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Context", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("metadata"),
+        __metadata("design:type", opds2_metadata_1.OPDSMetadata)
+    ], OPDSFeed.prototype, "Metadata", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        __metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Links", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("publications"),
+        ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
+        __metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Publications", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("navigation"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        __metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Navigation", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("facets"),
+        ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
+        __metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Facets", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("groups"),
+        ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
+        __metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Groups", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSFeed.prototype, "_OnDeserialized", null);
+    OPDSFeed = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSFeed);
     return OPDSFeed;
 }());
-__decorate([
-    ta_json_1.JsonProperty("@context"),
-    ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
-], OPDSFeed.prototype, "Context", void 0);
-__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    __metadata("design:type", opds2_metadata_1.OPDSMetadata)
-], OPDSFeed.prototype, "Metadata", void 0);
-__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
-], OPDSFeed.prototype, "Links", void 0);
-__decorate([
-    ta_json_1.JsonProperty("publications"),
-    ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-    __metadata("design:type", Array)
-], OPDSFeed.prototype, "Publications", void 0);
-__decorate([
-    ta_json_1.JsonProperty("navigation"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
-], OPDSFeed.prototype, "Navigation", void 0);
-__decorate([
-    ta_json_1.JsonProperty("facets"),
-    ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
-    __metadata("design:type", Array)
-], OPDSFeed.prototype, "Facets", void 0);
-__decorate([
-    ta_json_1.JsonProperty("groups"),
-    ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
-    __metadata("design:type", Array)
-], OPDSFeed.prototype, "Groups", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSFeed.prototype, "_OnDeserialized", null);
-OPDSFeed = __decorate([
-    ta_json_1.JsonObject()
-], OPDSFeed);
 exports.OPDSFeed = OPDSFeed;
 //# sourceMappingURL=opds2.js.map

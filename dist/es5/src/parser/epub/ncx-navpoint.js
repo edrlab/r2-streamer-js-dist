@@ -11,37 +11,38 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var ncx_content_1 = require("./ncx-content");
-var NavPoint = NavPoint_1 = (function () {
+var NavPoint = (function () {
     function NavPoint() {
     }
+    NavPoint_1 = NavPoint;
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navPoint"),
+        xml_js_mapper_1.XmlItemType(NavPoint_1),
+        __metadata("design:type", Array)
+    ], NavPoint.prototype, "Points", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
+        __metadata("design:type", String)
+    ], NavPoint.prototype, "Text", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:content"),
+        __metadata("design:type", ncx_content_1.Content)
+    ], NavPoint.prototype, "Content", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@playOrder"),
+        __metadata("design:type", Number)
+    ], NavPoint.prototype, "PlayerOrder", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id"),
+        __metadata("design:type", String)
+    ], NavPoint.prototype, "ID", void 0);
+    NavPoint = NavPoint_1 = __decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        })
+    ], NavPoint);
     return NavPoint;
+    var NavPoint_1;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navPoint"),
-    xml_js_mapper_1.XmlItemType(NavPoint_1),
-    __metadata("design:type", Array)
-], NavPoint.prototype, "Points", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
-    __metadata("design:type", String)
-], NavPoint.prototype, "Text", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:content"),
-    __metadata("design:type", ncx_content_1.Content)
-], NavPoint.prototype, "Content", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@playOrder"),
-    __metadata("design:type", Number)
-], NavPoint.prototype, "PlayerOrder", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id"),
-    __metadata("design:type", String)
-], NavPoint.prototype, "ID", void 0);
-NavPoint = NavPoint_1 = __decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-    })
-], NavPoint);
 exports.NavPoint = NavPoint;
-var NavPoint_1;
 //# sourceMappingURL=ncx-navpoint.js.map

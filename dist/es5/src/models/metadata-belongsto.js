@@ -14,20 +14,20 @@ var metadata_collection_1 = require("./metadata-collection");
 var BelongsTo = (function () {
     function BelongsTo() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("series"),
+        ta_json_1.JsonElementType(metadata_collection_1.Collection),
+        __metadata("design:type", Array)
+    ], BelongsTo.prototype, "Series", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("collection"),
+        ta_json_1.JsonElementType(metadata_collection_1.Collection),
+        __metadata("design:type", Array)
+    ], BelongsTo.prototype, "Collection", void 0);
+    BelongsTo = __decorate([
+        ta_json_1.JsonObject()
+    ], BelongsTo);
     return BelongsTo;
 }());
-__decorate([
-    ta_json_1.JsonProperty("series"),
-    ta_json_1.JsonElementType(metadata_collection_1.Collection),
-    __metadata("design:type", Array)
-], BelongsTo.prototype, "Series", void 0);
-__decorate([
-    ta_json_1.JsonProperty("collection"),
-    ta_json_1.JsonElementType(metadata_collection_1.Collection),
-    __metadata("design:type", Array)
-], BelongsTo.prototype, "Collection", void 0);
-BelongsTo = __decorate([
-    ta_json_1.JsonObject()
-], BelongsTo);
 exports.BelongsTo = BelongsTo;
 //# sourceMappingURL=metadata-belongsto.js.map

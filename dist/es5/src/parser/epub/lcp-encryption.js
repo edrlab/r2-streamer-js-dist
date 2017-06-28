@@ -15,22 +15,22 @@ var lcp_userkey_1 = require("./lcp-userkey");
 var Encryption = (function () {
     function Encryption() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("profile"),
+        __metadata("design:type", String)
+    ], Encryption.prototype, "Profile", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("content_key"),
+        __metadata("design:type", lcp_contentkey_1.ContentKey)
+    ], Encryption.prototype, "ContentKey", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("user_key"),
+        __metadata("design:type", lcp_userkey_1.UserKey)
+    ], Encryption.prototype, "UserKey", void 0);
+    Encryption = __decorate([
+        ta_json_1.JsonObject()
+    ], Encryption);
     return Encryption;
 }());
-__decorate([
-    ta_json_1.JsonProperty("profile"),
-    __metadata("design:type", String)
-], Encryption.prototype, "Profile", void 0);
-__decorate([
-    ta_json_1.JsonProperty("content_key"),
-    __metadata("design:type", lcp_contentkey_1.ContentKey)
-], Encryption.prototype, "ContentKey", void 0);
-__decorate([
-    ta_json_1.JsonProperty("user_key"),
-    __metadata("design:type", lcp_userkey_1.UserKey)
-], Encryption.prototype, "UserKey", void 0);
-Encryption = __decorate([
-    ta_json_1.JsonObject()
-], Encryption);
 exports.Encryption = Encryption;
 //# sourceMappingURL=lcp-encryption.js.map

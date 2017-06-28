@@ -231,7 +231,7 @@ var Server = (function () {
             return undefined;
         }
         this.creatingPublicationsOPDS = false;
-        var jsonStr = fs.readFileSync(this.opdsJsonFilePath, "utf8");
+        var jsonStr = fs.readFileSync(this.opdsJsonFilePath, { encoding: "utf8" });
         if (!jsonStr) {
             return undefined;
         }

@@ -13,21 +13,21 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var MetaDate = (function () {
     function MetaDate() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        __metadata("design:type", String)
+    ], MetaDate.prototype, "Data", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@event"),
+        __metadata("design:type", String)
+    ], MetaDate.prototype, "Event", void 0);
+    MetaDate = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], MetaDate);
     return MetaDate;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    __metadata("design:type", String)
-], MetaDate.prototype, "Data", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@event"),
-    __metadata("design:type", String)
-], MetaDate.prototype, "Event", void 0);
-MetaDate = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], MetaDate);
 exports.MetaDate = MetaDate;
 //# sourceMappingURL=opf-date.js.map

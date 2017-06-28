@@ -13,42 +13,42 @@ var ta_json_1 = require("ta-json");
 var Link = (function () {
     function Link() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("length"),
+        __metadata("design:type", Number)
+    ], Link.prototype, "Length", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("rel"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Rel", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("href"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Href", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("title"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Title", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("type"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Type", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("templated"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Templated", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("profile"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Profile", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("hash"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Hash", void 0);
+    Link = __decorate([
+        ta_json_1.JsonObject()
+    ], Link);
     return Link;
 }());
-__decorate([
-    ta_json_1.JsonProperty("length"),
-    __metadata("design:type", Number)
-], Link.prototype, "Length", void 0);
-__decorate([
-    ta_json_1.JsonProperty("rel"),
-    __metadata("design:type", String)
-], Link.prototype, "Rel", void 0);
-__decorate([
-    ta_json_1.JsonProperty("href"),
-    __metadata("design:type", String)
-], Link.prototype, "Href", void 0);
-__decorate([
-    ta_json_1.JsonProperty("title"),
-    __metadata("design:type", String)
-], Link.prototype, "Title", void 0);
-__decorate([
-    ta_json_1.JsonProperty("type"),
-    __metadata("design:type", String)
-], Link.prototype, "Type", void 0);
-__decorate([
-    ta_json_1.JsonProperty("templated"),
-    __metadata("design:type", String)
-], Link.prototype, "Templated", void 0);
-__decorate([
-    ta_json_1.JsonProperty("profile"),
-    __metadata("design:type", String)
-], Link.prototype, "Profile", void 0);
-__decorate([
-    ta_json_1.JsonProperty("hash"),
-    __metadata("design:type", String)
-], Link.prototype, "Hash", void 0);
-Link = __decorate([
-    ta_json_1.JsonObject()
-], Link);
 exports.Link = Link;
 //# sourceMappingURL=lcp-link.js.map

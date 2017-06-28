@@ -10,34 +10,35 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var ta_json_1 = require("ta-json");
-var OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = (function () {
+var OPDSIndirectAcquisition = (function () {
     function OPDSIndirectAcquisition() {
     }
+    OPDSIndirectAcquisition_1 = OPDSIndirectAcquisition;
     OPDSIndirectAcquisition.prototype._OnDeserialized = function () {
         if (!this.TypeAcquisition) {
             console.log("OPDSIndirectAcquisition.TypeAcquisition is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("type"),
+        __metadata("design:type", String)
+    ], OPDSIndirectAcquisition.prototype, "TypeAcquisition", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("child"),
+        ta_json_1.JsonElementType(OPDSIndirectAcquisition_1),
+        __metadata("design:type", Array)
+    ], OPDSIndirectAcquisition.prototype, "Children", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSIndirectAcquisition.prototype, "_OnDeserialized", null);
+    OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSIndirectAcquisition);
     return OPDSIndirectAcquisition;
+    var OPDSIndirectAcquisition_1;
 }());
-__decorate([
-    ta_json_1.JsonProperty("type"),
-    __metadata("design:type", String)
-], OPDSIndirectAcquisition.prototype, "TypeAcquisition", void 0);
-__decorate([
-    ta_json_1.JsonProperty("child"),
-    ta_json_1.JsonElementType(OPDSIndirectAcquisition_1),
-    __metadata("design:type", Array)
-], OPDSIndirectAcquisition.prototype, "Children", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSIndirectAcquisition.prototype, "_OnDeserialized", null);
-OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = __decorate([
-    ta_json_1.JsonObject()
-], OPDSIndirectAcquisition);
 exports.OPDSIndirectAcquisition = OPDSIndirectAcquisition;
-var OPDSIndirectAcquisition_1;
 //# sourceMappingURL=opds2-indirectAcquisition.js.map

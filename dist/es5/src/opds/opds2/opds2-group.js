@@ -21,35 +21,35 @@ var OPDSGroup = (function () {
             console.log("OPDSGroup.Metadata is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("metadata"),
+        __metadata("design:type", opds2_metadata_1.OPDSMetadata)
+    ], OPDSGroup.prototype, "Metadata", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("publications"),
+        ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
+        __metadata("design:type", Array)
+    ], OPDSGroup.prototype, "Publications", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        __metadata("design:type", Array)
+    ], OPDSGroup.prototype, "Links", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("navigation"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        __metadata("design:type", Array)
+    ], OPDSGroup.prototype, "Navigation", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSGroup.prototype, "_OnDeserialized", null);
+    OPDSGroup = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSGroup);
     return OPDSGroup;
 }());
-__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    __metadata("design:type", opds2_metadata_1.OPDSMetadata)
-], OPDSGroup.prototype, "Metadata", void 0);
-__decorate([
-    ta_json_1.JsonProperty("publications"),
-    ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-    __metadata("design:type", Array)
-], OPDSGroup.prototype, "Publications", void 0);
-__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
-], OPDSGroup.prototype, "Links", void 0);
-__decorate([
-    ta_json_1.JsonProperty("navigation"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
-], OPDSGroup.prototype, "Navigation", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSGroup.prototype, "_OnDeserialized", null);
-OPDSGroup = __decorate([
-    ta_json_1.JsonObject()
-], OPDSGroup);
 exports.OPDSGroup = OPDSGroup;
 //# sourceMappingURL=opds2-group.js.map

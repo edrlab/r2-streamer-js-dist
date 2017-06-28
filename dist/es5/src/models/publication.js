@@ -215,80 +215,80 @@ var Publication = (function () {
             console.log("Publication.Spine is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("@context"),
+        ta_json_1.JsonElementType(String),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "Context", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("metadata"),
+        __metadata("design:type", metadata_1.Metadata)
+    ], Publication.prototype, "Metadata", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "Links", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("spine"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "Spine", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("resources"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "Resources", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("toc"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "TOC", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("page-list"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "PageList", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("landmarks"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "Landmarks", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("loi"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "LOI", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("loa"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "LOA", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("lov"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "LOV", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("lot"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "LOT", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("images"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        __metadata("design:type", Array)
+    ], Publication.prototype, "Images", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], Publication.prototype, "_OnDeserialized", null);
+    Publication = __decorate([
+        ta_json_1.JsonObject()
+    ], Publication);
     return Publication;
 }());
-__decorate([
-    ta_json_1.JsonProperty("@context"),
-    ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
-], Publication.prototype, "Context", void 0);
-__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    __metadata("design:type", metadata_1.Metadata)
-], Publication.prototype, "Metadata", void 0);
-__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "Links", void 0);
-__decorate([
-    ta_json_1.JsonProperty("spine"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "Spine", void 0);
-__decorate([
-    ta_json_1.JsonProperty("resources"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "Resources", void 0);
-__decorate([
-    ta_json_1.JsonProperty("toc"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "TOC", void 0);
-__decorate([
-    ta_json_1.JsonProperty("page-list"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "PageList", void 0);
-__decorate([
-    ta_json_1.JsonProperty("landmarks"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "Landmarks", void 0);
-__decorate([
-    ta_json_1.JsonProperty("loi"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "LOI", void 0);
-__decorate([
-    ta_json_1.JsonProperty("loa"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "LOA", void 0);
-__decorate([
-    ta_json_1.JsonProperty("lov"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "LOV", void 0);
-__decorate([
-    ta_json_1.JsonProperty("lot"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "LOT", void 0);
-__decorate([
-    ta_json_1.JsonProperty("images"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
-], Publication.prototype, "Images", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], Publication.prototype, "_OnDeserialized", null);
-Publication = __decorate([
-    ta_json_1.JsonObject()
-], Publication);
 exports.Publication = Publication;
 //# sourceMappingURL=publication.js.map

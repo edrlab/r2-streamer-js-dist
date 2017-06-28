@@ -13,34 +13,34 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Category = (function () {
     function Category() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@term"),
+        __metadata("design:type", String)
+    ], Category.prototype, "Term", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@scheme"),
+        __metadata("design:type", String)
+    ], Category.prototype, "Scheme", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@label"),
+        __metadata("design:type", String)
+    ], Category.prototype, "Label", void 0);
+    Category = __decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Category);
     return Category;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@term"),
-    __metadata("design:type", String)
-], Category.prototype, "Term", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@scheme"),
-    __metadata("design:type", String)
-], Category.prototype, "Scheme", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@label"),
-    __metadata("design:type", String)
-], Category.prototype, "Label", void 0);
-Category = __decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Category);
 exports.Category = Category;
 //# sourceMappingURL=opds-category.js.map

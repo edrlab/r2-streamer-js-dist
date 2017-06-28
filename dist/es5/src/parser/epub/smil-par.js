@@ -28,22 +28,22 @@ var Par = (function (_super) {
     function Par() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:text"),
+        __metadata("design:type", smil_text_1.Text)
+    ], Par.prototype, "Text", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:audio"),
+        __metadata("design:type", smil_audio_1.Audio)
+    ], Par.prototype, "Audio", void 0);
+    Par = __decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        }),
+        xml_js_mapper_1.XmlDiscriminatorValue("par")
+    ], Par);
     return Par;
 }(smil_seq_or_par_1.SeqOrPar));
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:text"),
-    __metadata("design:type", smil_text_1.Text)
-], Par.prototype, "Text", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:audio"),
-    __metadata("design:type", smil_audio_1.Audio)
-], Par.prototype, "Audio", void 0);
-Par = __decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    }),
-    xml_js_mapper_1.XmlDiscriminatorValue("par")
-], Par);
 exports.Par = Par;
 //# sourceMappingURL=smil-par.js.map

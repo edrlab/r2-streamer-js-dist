@@ -13,26 +13,26 @@ var ta_json_1 = require("ta-json");
 var Contributor = (function () {
     function Contributor() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", Object)
+    ], Contributor.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        __metadata("design:type", String)
+    ], Contributor.prototype, "SortAs", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("identifier"),
+        __metadata("design:type", String)
+    ], Contributor.prototype, "Identifier", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("role"),
+        __metadata("design:type", String)
+    ], Contributor.prototype, "Role", void 0);
+    Contributor = __decorate([
+        ta_json_1.JsonObject()
+    ], Contributor);
     return Contributor;
 }());
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", Object)
-], Contributor.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    __metadata("design:type", String)
-], Contributor.prototype, "SortAs", void 0);
-__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    __metadata("design:type", String)
-], Contributor.prototype, "Identifier", void 0);
-__decorate([
-    ta_json_1.JsonProperty("role"),
-    __metadata("design:type", String)
-], Contributor.prototype, "Role", void 0);
-Contributor = __decorate([
-    ta_json_1.JsonObject()
-], Contributor);
 exports.Contributor = Contributor;
 //# sourceMappingURL=metadata-contributor.js.map

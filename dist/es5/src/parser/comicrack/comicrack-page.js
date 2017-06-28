@@ -13,37 +13,37 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Page = (function () {
     function Page() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Image"),
+        __metadata("design:type", Number)
+    ], Page.prototype, "Image", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Bookmark"),
+        __metadata("design:type", String)
+    ], Page.prototype, "Bookmark", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Type"),
+        __metadata("design:type", String)
+    ], Page.prototype, "Type", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@ImageSize"),
+        __metadata("design:type", Number)
+    ], Page.prototype, "ImageSize", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@ImageWidth"),
+        __metadata("design:type", Number)
+    ], Page.prototype, "ImageWidth", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@ImageHeight"),
+        __metadata("design:type", Number)
+    ], Page.prototype, "ImageHeight", void 0);
+    Page = __decorate([
+        xml_js_mapper_1.XmlObject({
+            xsd: "http://www.w3.org/2001/XMLSchema",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Page);
     return Page;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Image"),
-    __metadata("design:type", Number)
-], Page.prototype, "Image", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Bookmark"),
-    __metadata("design:type", String)
-], Page.prototype, "Bookmark", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Type"),
-    __metadata("design:type", String)
-], Page.prototype, "Type", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@ImageSize"),
-    __metadata("design:type", Number)
-], Page.prototype, "ImageSize", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@ImageWidth"),
-    __metadata("design:type", Number)
-], Page.prototype, "ImageWidth", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@ImageHeight"),
-    __metadata("design:type", Number)
-], Page.prototype, "ImageHeight", void 0);
-Page = __decorate([
-    xml_js_mapper_1.XmlObject({
-        xsd: "http://www.w3.org/2001/XMLSchema",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Page);
 exports.Page = Page;
 //# sourceMappingURL=comicrack-page.js.map

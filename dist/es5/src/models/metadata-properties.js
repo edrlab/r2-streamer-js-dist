@@ -14,43 +14,43 @@ var metadata_encrypted_1 = require("./metadata-encrypted");
 var Properties = (function () {
     function Properties() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("contains"),
+        ta_json_1.JsonElementType(String),
+        __metadata("design:type", Array)
+    ], Properties.prototype, "Contains", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("layout"),
+        __metadata("design:type", String)
+    ], Properties.prototype, "Layout", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("media-overlay"),
+        __metadata("design:type", String)
+    ], Properties.prototype, "MediaOverlay", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("orientation"),
+        __metadata("design:type", String)
+    ], Properties.prototype, "Orientation", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("overflow"),
+        __metadata("design:type", String)
+    ], Properties.prototype, "Overflow", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("page"),
+        __metadata("design:type", String)
+    ], Properties.prototype, "Page", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("spread"),
+        __metadata("design:type", String)
+    ], Properties.prototype, "Spread", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("encrypted"),
+        __metadata("design:type", metadata_encrypted_1.Encrypted)
+    ], Properties.prototype, "Encrypted", void 0);
+    Properties = __decorate([
+        ta_json_1.JsonObject()
+    ], Properties);
     return Properties;
 }());
-__decorate([
-    ta_json_1.JsonProperty("contains"),
-    ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
-], Properties.prototype, "Contains", void 0);
-__decorate([
-    ta_json_1.JsonProperty("layout"),
-    __metadata("design:type", String)
-], Properties.prototype, "Layout", void 0);
-__decorate([
-    ta_json_1.JsonProperty("media-overlay"),
-    __metadata("design:type", String)
-], Properties.prototype, "MediaOverlay", void 0);
-__decorate([
-    ta_json_1.JsonProperty("orientation"),
-    __metadata("design:type", String)
-], Properties.prototype, "Orientation", void 0);
-__decorate([
-    ta_json_1.JsonProperty("overflow"),
-    __metadata("design:type", String)
-], Properties.prototype, "Overflow", void 0);
-__decorate([
-    ta_json_1.JsonProperty("page"),
-    __metadata("design:type", String)
-], Properties.prototype, "Page", void 0);
-__decorate([
-    ta_json_1.JsonProperty("spread"),
-    __metadata("design:type", String)
-], Properties.prototype, "Spread", void 0);
-__decorate([
-    ta_json_1.JsonProperty("encrypted"),
-    __metadata("design:type", metadata_encrypted_1.Encrypted)
-], Properties.prototype, "Encrypted", void 0);
-Properties = __decorate([
-    ta_json_1.JsonObject()
-], Properties);
 exports.Properties = Properties;
 //# sourceMappingURL=metadata-properties.js.map

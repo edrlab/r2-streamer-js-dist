@@ -13,22 +13,22 @@ var ta_json_1 = require("ta-json");
 var Signature = (function () {
     function Signature() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        __metadata("design:type", String)
+    ], Signature.prototype, "Algorithm", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("certificate"),
+        __metadata("design:type", String)
+    ], Signature.prototype, "Certificate", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("value"),
+        __metadata("design:type", String)
+    ], Signature.prototype, "Value", void 0);
+    Signature = __decorate([
+        ta_json_1.JsonObject()
+    ], Signature);
     return Signature;
 }());
-__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    __metadata("design:type", String)
-], Signature.prototype, "Algorithm", void 0);
-__decorate([
-    ta_json_1.JsonProperty("certificate"),
-    __metadata("design:type", String)
-], Signature.prototype, "Certificate", void 0);
-__decorate([
-    ta_json_1.JsonProperty("value"),
-    __metadata("design:type", String)
-], Signature.prototype, "Value", void 0);
-Signature = __decorate([
-    ta_json_1.JsonObject()
-], Signature);
 exports.Signature = Signature;
 //# sourceMappingURL=lcp-signature.js.map

@@ -14,31 +14,31 @@ var opds2_link_1 = require("./opds2-link");
 var OPDSContributor = (function () {
     function OPDSContributor() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", Object)
+    ], OPDSContributor.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        __metadata("design:type", String)
+    ], OPDSContributor.prototype, "SortAs", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("identifier"),
+        __metadata("design:type", String)
+    ], OPDSContributor.prototype, "Identifier", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("role"),
+        __metadata("design:type", String)
+    ], OPDSContributor.prototype, "Role", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        __metadata("design:type", Array)
+    ], OPDSContributor.prototype, "Links", void 0);
+    OPDSContributor = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSContributor);
     return OPDSContributor;
 }());
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", Object)
-], OPDSContributor.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    __metadata("design:type", String)
-], OPDSContributor.prototype, "SortAs", void 0);
-__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    __metadata("design:type", String)
-], OPDSContributor.prototype, "Identifier", void 0);
-__decorate([
-    ta_json_1.JsonProperty("role"),
-    __metadata("design:type", String)
-], OPDSContributor.prototype, "Role", void 0);
-__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
-], OPDSContributor.prototype, "Links", void 0);
-OPDSContributor = __decorate([
-    ta_json_1.JsonObject()
-], OPDSContributor);
 exports.OPDSContributor = OPDSContributor;
 //# sourceMappingURL=opds2-contributor.js.map

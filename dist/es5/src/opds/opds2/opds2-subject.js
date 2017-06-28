@@ -18,32 +18,32 @@ var OPDSSubject = (function () {
             console.log("OPDSSubject.Name is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", String)
+    ], OPDSSubject.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        __metadata("design:type", String)
+    ], OPDSSubject.prototype, "SortAs", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("scheme"),
+        __metadata("design:type", String)
+    ], OPDSSubject.prototype, "Scheme", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("code"),
+        __metadata("design:type", String)
+    ], OPDSSubject.prototype, "Code", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSSubject.prototype, "_OnDeserialized", null);
+    OPDSSubject = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSSubject);
     return OPDSSubject;
 }());
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", String)
-], OPDSSubject.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    __metadata("design:type", String)
-], OPDSSubject.prototype, "SortAs", void 0);
-__decorate([
-    ta_json_1.JsonProperty("scheme"),
-    __metadata("design:type", String)
-], OPDSSubject.prototype, "Scheme", void 0);
-__decorate([
-    ta_json_1.JsonProperty("code"),
-    __metadata("design:type", String)
-], OPDSSubject.prototype, "Code", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSSubject.prototype, "_OnDeserialized", null);
-OPDSSubject = __decorate([
-    ta_json_1.JsonObject()
-], OPDSSubject);
 exports.OPDSSubject = OPDSSubject;
 //# sourceMappingURL=opds2-subject.js.map

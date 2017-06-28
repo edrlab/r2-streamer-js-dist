@@ -21,24 +21,24 @@ var OPDSPrice = (function () {
             console.log("OPDSPrice.Value is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("currency"),
+        __metadata("design:type", String)
+    ], OPDSPrice.prototype, "Currency", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("value"),
+        __metadata("design:type", Number)
+    ], OPDSPrice.prototype, "Value", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSPrice.prototype, "_OnDeserialized", null);
+    OPDSPrice = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSPrice);
     return OPDSPrice;
 }());
-__decorate([
-    ta_json_1.JsonProperty("currency"),
-    __metadata("design:type", String)
-], OPDSPrice.prototype, "Currency", void 0);
-__decorate([
-    ta_json_1.JsonProperty("value"),
-    __metadata("design:type", Number)
-], OPDSPrice.prototype, "Value", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSPrice.prototype, "_OnDeserialized", null);
-OPDSPrice = __decorate([
-    ta_json_1.JsonObject()
-], OPDSPrice);
 exports.OPDSPrice = OPDSPrice;
 //# sourceMappingURL=opds2-price.js.map

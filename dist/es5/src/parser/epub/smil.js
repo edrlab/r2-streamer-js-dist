@@ -15,21 +15,21 @@ var smil_par_1 = require("./smil-par");
 var SMIL = (function () {
     function SMIL() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:body"),
+        __metadata("design:type", smil_body_1.Body)
+    ], SMIL.prototype, "Body", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("dummy"),
+        __metadata("design:type", smil_par_1.Par)
+    ], SMIL.prototype, "Par", void 0);
+    SMIL = __decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], SMIL);
     return SMIL;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:body"),
-    __metadata("design:type", smil_body_1.Body)
-], SMIL.prototype, "Body", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dummy"),
-    __metadata("design:type", smil_par_1.Par)
-], SMIL.prototype, "Par", void 0);
-SMIL = __decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], SMIL);
 exports.SMIL = SMIL;
 //# sourceMappingURL=smil.js.map

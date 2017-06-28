@@ -74,32 +74,33 @@ function timeStrToSeconds(timeStr) {
     return (hours * 3600) + (minutes * 60) + seconds;
 }
 exports.timeStrToSeconds = timeStrToSeconds;
-var MediaOverlayNode = MediaOverlayNode_1 = (function () {
+var MediaOverlayNode = (function () {
     function MediaOverlayNode() {
     }
+    MediaOverlayNode_1 = MediaOverlayNode;
+    __decorate([
+        ta_json_1.JsonProperty("text"),
+        __metadata("design:type", String)
+    ], MediaOverlayNode.prototype, "Text", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("audio"),
+        __metadata("design:type", String)
+    ], MediaOverlayNode.prototype, "Audio", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("role"),
+        ta_json_1.JsonElementType(String),
+        __metadata("design:type", Array)
+    ], MediaOverlayNode.prototype, "Role", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("children"),
+        ta_json_1.JsonElementType(MediaOverlayNode_1),
+        __metadata("design:type", Array)
+    ], MediaOverlayNode.prototype, "Children", void 0);
+    MediaOverlayNode = MediaOverlayNode_1 = __decorate([
+        ta_json_1.JsonObject()
+    ], MediaOverlayNode);
     return MediaOverlayNode;
+    var MediaOverlayNode_1;
 }());
-__decorate([
-    ta_json_1.JsonProperty("text"),
-    __metadata("design:type", String)
-], MediaOverlayNode.prototype, "Text", void 0);
-__decorate([
-    ta_json_1.JsonProperty("audio"),
-    __metadata("design:type", String)
-], MediaOverlayNode.prototype, "Audio", void 0);
-__decorate([
-    ta_json_1.JsonProperty("role"),
-    ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
-], MediaOverlayNode.prototype, "Role", void 0);
-__decorate([
-    ta_json_1.JsonProperty("children"),
-    ta_json_1.JsonElementType(MediaOverlayNode_1),
-    __metadata("design:type", Array)
-], MediaOverlayNode.prototype, "Children", void 0);
-MediaOverlayNode = MediaOverlayNode_1 = __decorate([
-    ta_json_1.JsonObject()
-], MediaOverlayNode);
 exports.MediaOverlayNode = MediaOverlayNode;
-var MediaOverlayNode_1;
 //# sourceMappingURL=media-overlay.js.map

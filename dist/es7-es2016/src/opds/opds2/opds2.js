@@ -16,6 +16,54 @@ const opds2_link_1 = require("./opds2-link");
 const opds2_metadata_1 = require("./opds2-metadata");
 const opds2_publication_1 = require("./opds2-publication");
 let OPDSFeed = class OPDSFeed {
+    AddLink(href, rel, typeLink, templated) {
+        const l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.Rel = [];
+        l.Rel.push(rel);
+        l.TypeLink = typeLink;
+        if (templated) {
+            l.Templated = true;
+        }
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(l);
+    }
+    AddNavigation(title, href, rel, typeLink) {
+        const l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.TypeLink = typeLink;
+        l.Rel = [];
+        l.Rel.push(rel);
+        if (title) {
+            l.Title = title;
+        }
+        if (!this.Navigation) {
+            this.Navigation = [];
+        }
+        this.Navigation.push(l);
+    }
+    AddPagination(numberItems, itemsPerPage, currentPage, nextLink, prevLink, firstLink, lastLink) {
+        if (!this.Metadata) {
+            this.Metadata = new opds2_metadata_1.OPDSMetadata();
+        }
+        this.Metadata.CurrentPage = currentPage;
+        this.Metadata.ItemsPerPage = itemsPerPage;
+        this.Metadata.NumberOfItems = numberItems;
+        if (nextLink) {
+            this.AddLink(nextLink, "next", "application/opds+json", false);
+        }
+        if (prevLink) {
+            this.AddLink(prevLink, "previous", "application/opds+json", false);
+        }
+        if (firstLink) {
+            this.AddLink(firstLink, "first", "application/opds+json", false);
+        }
+        if (lastLink) {
+            this.AddLink(lastLink, "last", "application/opds+json", false);
+        }
+    }
     AddFacet(link, group) {
         if (this.Facets) {
             const found = this.Facets.find((f) => {

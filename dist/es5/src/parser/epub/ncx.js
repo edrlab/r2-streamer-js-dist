@@ -15,21 +15,21 @@ var ncx_pagelist_1 = require("./ncx-pagelist");
 var NCX = (function () {
     function NCX() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navMap/ncx:navPoint"),
+        xml_js_mapper_1.XmlItemType(ncx_navpoint_1.NavPoint),
+        __metadata("design:type", Array)
+    ], NCX.prototype, "Points", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:pageList"),
+        __metadata("design:type", ncx_pagelist_1.PageList)
+    ], NCX.prototype, "PageList", void 0);
+    NCX = __decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        })
+    ], NCX);
     return NCX;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navMap/ncx:navPoint"),
-    xml_js_mapper_1.XmlItemType(ncx_navpoint_1.NavPoint),
-    __metadata("design:type", Array)
-], NCX.prototype, "Points", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:pageList"),
-    __metadata("design:type", ncx_pagelist_1.PageList)
-], NCX.prototype, "PageList", void 0);
-NCX = __decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-    })
-], NCX);
 exports.NCX = NCX;
 //# sourceMappingURL=ncx.js.map

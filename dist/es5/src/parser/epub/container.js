@@ -14,22 +14,22 @@ var container_rootfile_1 = require("./container-rootfile");
 var Container = (function () {
     function Container() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("epub:rootfiles/epub:rootfile", {
+            epub: "urn:oasis:names:tc:opendocument:xmlns:container",
+            rendition: "http://www.idpf.org/2013/rendition",
+        }),
+        xml_js_mapper_1.XmlItemType(container_rootfile_1.Rootfile),
+        __metadata("design:type", Array)
+    ], Container.prototype, "Rootfile", void 0);
+    Container = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dummyNS: "dummyURI",
+            epub: "wrong2",
+            rendition: "wrong1",
+        })
+    ], Container);
     return Container;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("epub:rootfiles/epub:rootfile", {
-        epub: "urn:oasis:names:tc:opendocument:xmlns:container",
-        rendition: "http://www.idpf.org/2013/rendition",
-    }),
-    xml_js_mapper_1.XmlItemType(container_rootfile_1.Rootfile),
-    __metadata("design:type", Array)
-], Container.prototype, "Rootfile", void 0);
-Container = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dummyNS: "dummyURI",
-        epub: "wrong2",
-        rendition: "wrong1",
-    })
-], Container);
 exports.Container = Container;
 //# sourceMappingURL=container.js.map

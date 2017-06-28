@@ -13,18 +13,18 @@ var ta_json_1 = require("ta-json");
 var ContentKey = (function () {
     function ContentKey() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("encrypted_value"),
+        __metadata("design:type", String)
+    ], ContentKey.prototype, "EncryptedValue", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        __metadata("design:type", String)
+    ], ContentKey.prototype, "Algorithm", void 0);
+    ContentKey = __decorate([
+        ta_json_1.JsonObject()
+    ], ContentKey);
     return ContentKey;
 }());
-__decorate([
-    ta_json_1.JsonProperty("encrypted_value"),
-    __metadata("design:type", String)
-], ContentKey.prototype, "EncryptedValue", void 0);
-__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    __metadata("design:type", String)
-], ContentKey.prototype, "Algorithm", void 0);
-ContentKey = __decorate([
-    ta_json_1.JsonObject()
-], ContentKey);
 exports.ContentKey = ContentKey;
 //# sourceMappingURL=lcp-contentkey.js.map

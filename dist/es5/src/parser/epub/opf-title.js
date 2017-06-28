@@ -13,29 +13,29 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Title = (function () {
     function Title() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        __metadata("design:type", String)
+    ], Title.prototype, "Data", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id"),
+        __metadata("design:type", String)
+    ], Title.prototype, "ID", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@lang"),
+        __metadata("design:type", String)
+    ], Title.prototype, "Lang", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@dir"),
+        __metadata("design:type", String)
+    ], Title.prototype, "Dir", void 0);
+    Title = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Title);
     return Title;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    __metadata("design:type", String)
-], Title.prototype, "Data", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id"),
-    __metadata("design:type", String)
-], Title.prototype, "ID", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@lang"),
-    __metadata("design:type", String)
-], Title.prototype, "Lang", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@dir"),
-    __metadata("design:type", String)
-], Title.prototype, "Dir", void 0);
-Title = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Title);
 exports.Title = Title;
 //# sourceMappingURL=opf-title.js.map

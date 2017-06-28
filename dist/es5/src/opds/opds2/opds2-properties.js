@@ -15,23 +15,23 @@ var opds2_price_1 = require("./opds2-price");
 var OPDSProperties = (function () {
     function OPDSProperties() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("numberOfItems"),
+        __metadata("design:type", Number)
+    ], OPDSProperties.prototype, "NumberOfItems", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("price"),
+        __metadata("design:type", opds2_price_1.OPDSPrice)
+    ], OPDSProperties.prototype, "Price", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("indirectAcquisition"),
+        ta_json_1.JsonElementType(opds2_indirectAcquisition_1.OPDSIndirectAcquisition),
+        __metadata("design:type", Array)
+    ], OPDSProperties.prototype, "IndirectAcquisitions", void 0);
+    OPDSProperties = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSProperties);
     return OPDSProperties;
 }());
-__decorate([
-    ta_json_1.JsonProperty("numberOfItems"),
-    __metadata("design:type", Number)
-], OPDSProperties.prototype, "NumberOfItems", void 0);
-__decorate([
-    ta_json_1.JsonProperty("price"),
-    __metadata("design:type", opds2_price_1.OPDSPrice)
-], OPDSProperties.prototype, "Price", void 0);
-__decorate([
-    ta_json_1.JsonProperty("indirectAcquisition"),
-    ta_json_1.JsonElementType(opds2_indirectAcquisition_1.OPDSIndirectAcquisition),
-    __metadata("design:type", Array)
-], OPDSProperties.prototype, "IndirectAcquisitions", void 0);
-OPDSProperties = __decorate([
-    ta_json_1.JsonObject()
-], OPDSProperties);
 exports.OPDSProperties = OPDSProperties;
 //# sourceMappingURL=opds2-properties.js.map

@@ -13,30 +13,30 @@ var ta_json_1 = require("ta-json");
 var Encrypted = (function () {
     function Encrypted() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("scheme"),
+        __metadata("design:type", String)
+    ], Encrypted.prototype, "Scheme", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("profile"),
+        __metadata("design:type", String)
+    ], Encrypted.prototype, "Profile", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        __metadata("design:type", String)
+    ], Encrypted.prototype, "Algorithm", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("compression"),
+        __metadata("design:type", String)
+    ], Encrypted.prototype, "Compression", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("original-length"),
+        __metadata("design:type", Number)
+    ], Encrypted.prototype, "OriginalLength", void 0);
+    Encrypted = __decorate([
+        ta_json_1.JsonObject()
+    ], Encrypted);
     return Encrypted;
 }());
-__decorate([
-    ta_json_1.JsonProperty("scheme"),
-    __metadata("design:type", String)
-], Encrypted.prototype, "Scheme", void 0);
-__decorate([
-    ta_json_1.JsonProperty("profile"),
-    __metadata("design:type", String)
-], Encrypted.prototype, "Profile", void 0);
-__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    __metadata("design:type", String)
-], Encrypted.prototype, "Algorithm", void 0);
-__decorate([
-    ta_json_1.JsonProperty("compression"),
-    __metadata("design:type", String)
-], Encrypted.prototype, "Compression", void 0);
-__decorate([
-    ta_json_1.JsonProperty("original-length"),
-    __metadata("design:type", Number)
-], Encrypted.prototype, "OriginalLength", void 0);
-Encrypted = __decorate([
-    ta_json_1.JsonObject()
-], Encrypted);
 exports.Encrypted = Encrypted;
 //# sourceMappingURL=metadata-encrypted.js.map

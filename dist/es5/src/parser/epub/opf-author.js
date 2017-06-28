@@ -13,29 +13,29 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Author = (function () {
     function Author() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        __metadata("design:type", String)
+    ], Author.prototype, "Data", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@file-as"),
+        __metadata("design:type", String)
+    ], Author.prototype, "FileAs", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@role"),
+        __metadata("design:type", String)
+    ], Author.prototype, "Role", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id"),
+        __metadata("design:type", String)
+    ], Author.prototype, "ID", void 0);
+    Author = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Author);
     return Author;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    __metadata("design:type", String)
-], Author.prototype, "Data", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@file-as"),
-    __metadata("design:type", String)
-], Author.prototype, "FileAs", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@role"),
-    __metadata("design:type", String)
-], Author.prototype, "Role", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id"),
-    __metadata("design:type", String)
-], Author.prototype, "ID", void 0);
-Author = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Author);
 exports.Author = Author;
 //# sourceMappingURL=opf-author.js.map

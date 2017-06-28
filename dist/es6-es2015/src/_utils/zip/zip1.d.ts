@@ -3,7 +3,7 @@ export declare class Zip1 extends Zip {
     readonly filePath: string;
     readonly zip: any;
     static loadPromise(filePath: string): Promise<IZip>;
-    private constructor(filePath, zip);
+    private constructor();
     freeDestroy(): void;
     entriesCount(): number;
     hasEntries(): boolean;

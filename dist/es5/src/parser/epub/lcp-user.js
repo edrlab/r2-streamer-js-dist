@@ -13,27 +13,27 @@ var ta_json_1 = require("ta-json");
 var User = (function () {
     function User() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("id"),
+        __metadata("design:type", String)
+    ], User.prototype, "ID", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("email"),
+        __metadata("design:type", String)
+    ], User.prototype, "Email", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", String)
+    ], User.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("encrypted"),
+        ta_json_1.JsonElementType(String),
+        __metadata("design:type", Array)
+    ], User.prototype, "Encrypted", void 0);
+    User = __decorate([
+        ta_json_1.JsonObject()
+    ], User);
     return User;
 }());
-__decorate([
-    ta_json_1.JsonProperty("id"),
-    __metadata("design:type", String)
-], User.prototype, "ID", void 0);
-__decorate([
-    ta_json_1.JsonProperty("email"),
-    __metadata("design:type", String)
-], User.prototype, "Email", void 0);
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", String)
-], User.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("encrypted"),
-    ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
-], User.prototype, "Encrypted", void 0);
-User = __decorate([
-    ta_json_1.JsonObject()
-], User);
 exports.User = User;
 //# sourceMappingURL=lcp-user.js.map

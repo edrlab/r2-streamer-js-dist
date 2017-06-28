@@ -13,16 +13,16 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Content = (function () {
     function Content() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@src"),
+        __metadata("design:type", String)
+    ], Content.prototype, "Src", void 0);
+    Content = __decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        })
+    ], Content);
     return Content;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@src"),
-    __metadata("design:type", String)
-], Content.prototype, "Src", void 0);
-Content = __decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-    })
-], Content);
 exports.Content = Content;
 //# sourceMappingURL=ncx-content.js.map

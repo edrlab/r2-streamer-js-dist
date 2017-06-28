@@ -17,32 +17,32 @@ var encryption_property_1 = require("./encryption-property");
 var EncryptedData = (function () {
     function EncryptedData() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:EncryptionMethod"),
+        __metadata("design:type", encryption_method_1.EncryptionMethod)
+    ], EncryptedData.prototype, "EncryptionMethod", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("ds:KeyInfo"),
+        __metadata("design:type", encryption_keyinfo_1.KeyInfo)
+    ], EncryptedData.prototype, "KeyInfo", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:CipherData"),
+        __metadata("design:type", encryption_cypherdata_1.CipherData)
+    ], EncryptedData.prototype, "CipherData", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:EncryptionProperties/enc:EncryptionProperty"),
+        xml_js_mapper_1.XmlItemType(encryption_property_1.EncryptionProperty),
+        __metadata("design:type", Array)
+    ], EncryptedData.prototype, "EncryptionProperties", void 0);
+    EncryptedData = __decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], EncryptedData);
     return EncryptedData;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:EncryptionMethod"),
-    __metadata("design:type", encryption_method_1.EncryptionMethod)
-], EncryptedData.prototype, "EncryptionMethod", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ds:KeyInfo"),
-    __metadata("design:type", encryption_keyinfo_1.KeyInfo)
-], EncryptedData.prototype, "KeyInfo", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:CipherData"),
-    __metadata("design:type", encryption_cypherdata_1.CipherData)
-], EncryptedData.prototype, "CipherData", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:EncryptionProperties/enc:EncryptionProperty"),
-    xml_js_mapper_1.XmlItemType(encryption_property_1.EncryptionProperty),
-    __metadata("design:type", Array)
-], EncryptedData.prototype, "EncryptionProperties", void 0);
-EncryptedData = __decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], EncryptedData);
 exports.EncryptedData = EncryptedData;
 //# sourceMappingURL=encryption-data.js.map

@@ -13,22 +13,22 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Rootfile = (function () {
     function Rootfile() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@full-path"),
+        __metadata("design:type", String)
+    ], Rootfile.prototype, "Path", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-type"),
+        __metadata("design:type", String)
+    ], Rootfile.prototype, "Type", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@version"),
+        __metadata("design:type", String)
+    ], Rootfile.prototype, "Version", void 0);
+    Rootfile = __decorate([
+        xml_js_mapper_1.XmlObject()
+    ], Rootfile);
     return Rootfile;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@full-path"),
-    __metadata("design:type", String)
-], Rootfile.prototype, "Path", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-type"),
-    __metadata("design:type", String)
-], Rootfile.prototype, "Type", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@version"),
-    __metadata("design:type", String)
-], Rootfile.prototype, "Version", void 0);
-Rootfile = __decorate([
-    xml_js_mapper_1.XmlObject()
-], Rootfile);
 exports.Rootfile = Rootfile;
 //# sourceMappingURL=container-rootfile.js.map

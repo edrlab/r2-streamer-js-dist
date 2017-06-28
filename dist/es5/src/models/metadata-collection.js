@@ -18,32 +18,32 @@ var Collection = (function () {
             console.log("Collection.Name is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", String)
+    ], Collection.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        __metadata("design:type", String)
+    ], Collection.prototype, "SortAs", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("identifier"),
+        __metadata("design:type", String)
+    ], Collection.prototype, "Identifier", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("position"),
+        __metadata("design:type", Number)
+    ], Collection.prototype, "Position", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], Collection.prototype, "_OnDeserialized", null);
+    Collection = __decorate([
+        ta_json_1.JsonObject()
+    ], Collection);
     return Collection;
 }());
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", String)
-], Collection.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    __metadata("design:type", String)
-], Collection.prototype, "SortAs", void 0);
-__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    __metadata("design:type", String)
-], Collection.prototype, "Identifier", void 0);
-__decorate([
-    ta_json_1.JsonProperty("position"),
-    __metadata("design:type", Number)
-], Collection.prototype, "Position", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], Collection.prototype, "_OnDeserialized", null);
-Collection = __decorate([
-    ta_json_1.JsonObject()
-], Collection);
 exports.Collection = Collection;
 //# sourceMappingURL=metadata-collection.js.map

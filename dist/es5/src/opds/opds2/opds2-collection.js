@@ -19,37 +19,37 @@ var OPDSCollection = (function () {
             console.log("OPDSCollection.Name is not set!");
         }
     };
+    __decorate([
+        ta_json_1.JsonProperty("name"),
+        __metadata("design:type", String)
+    ], OPDSCollection.prototype, "Name", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        __metadata("design:type", String)
+    ], OPDSCollection.prototype, "SortAs", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("identifier"),
+        __metadata("design:type", String)
+    ], OPDSCollection.prototype, "Identifier", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("position"),
+        __metadata("design:type", Number)
+    ], OPDSCollection.prototype, "Position", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        __metadata("design:type", Array)
+    ], OPDSCollection.prototype, "Links", void 0);
+    __decorate([
+        ta_json_1.OnDeserialized(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", void 0)
+    ], OPDSCollection.prototype, "_OnDeserialized", null);
+    OPDSCollection = __decorate([
+        ta_json_1.JsonObject()
+    ], OPDSCollection);
     return OPDSCollection;
 }());
-__decorate([
-    ta_json_1.JsonProperty("name"),
-    __metadata("design:type", String)
-], OPDSCollection.prototype, "Name", void 0);
-__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    __metadata("design:type", String)
-], OPDSCollection.prototype, "SortAs", void 0);
-__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    __metadata("design:type", String)
-], OPDSCollection.prototype, "Identifier", void 0);
-__decorate([
-    ta_json_1.JsonProperty("position"),
-    __metadata("design:type", Number)
-], OPDSCollection.prototype, "Position", void 0);
-__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
-], OPDSCollection.prototype, "Links", void 0);
-__decorate([
-    ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], OPDSCollection.prototype, "_OnDeserialized", null);
-OPDSCollection = __decorate([
-    ta_json_1.JsonObject()
-], OPDSCollection);
 exports.OPDSCollection = OPDSCollection;
 //# sourceMappingURL=opds2-collection.js.map

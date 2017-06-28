@@ -13,25 +13,25 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Identifier = (function () {
     function Identifier() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        __metadata("design:type", String)
+    ], Identifier.prototype, "Data", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id"),
+        __metadata("design:type", String)
+    ], Identifier.prototype, "ID", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@scheme"),
+        __metadata("design:type", String)
+    ], Identifier.prototype, "Scheme", void 0);
+    Identifier = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Identifier);
     return Identifier;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    __metadata("design:type", String)
-], Identifier.prototype, "Data", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id"),
-    __metadata("design:type", String)
-], Identifier.prototype, "ID", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@scheme"),
-    __metadata("design:type", String)
-], Identifier.prototype, "Scheme", void 0);
-Identifier = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Identifier);
 exports.Identifier = Identifier;
 //# sourceMappingURL=opf-identifier.js.map

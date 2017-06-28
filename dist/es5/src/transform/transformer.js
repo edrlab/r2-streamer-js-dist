@@ -35,9 +35,9 @@ var Transformers = (function () {
         }
         return undefined;
     };
+    Transformers._instance = new Transformers();
     return Transformers;
 }());
-Transformers._instance = new Transformers();
 exports.Transformers = Transformers;
 Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
 Transformers.instance().add(new transformer_obf_adobe_1.TransformerObfAdobe());

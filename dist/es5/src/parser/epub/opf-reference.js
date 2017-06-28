@@ -13,25 +13,25 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Reference = (function () {
     function Reference() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@href"),
+        __metadata("design:type", String)
+    ], Reference.prototype, "Href", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@title"),
+        __metadata("design:type", String)
+    ], Reference.prototype, "Title", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@type"),
+        __metadata("design:type", String)
+    ], Reference.prototype, "Type", void 0);
+    Reference = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Reference);
     return Reference;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@href"),
-    __metadata("design:type", String)
-], Reference.prototype, "Href", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@title"),
-    __metadata("design:type", String)
-], Reference.prototype, "Title", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@type"),
-    __metadata("design:type", String)
-], Reference.prototype, "Type", void 0);
-Reference = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Reference);
 exports.Reference = Reference;
 //# sourceMappingURL=opf-reference.js.map

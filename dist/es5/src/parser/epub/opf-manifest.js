@@ -13,37 +13,37 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Manifest = (function () {
     function Manifest() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id"),
+        __metadata("design:type", String)
+    ], Manifest.prototype, "ID", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@href"),
+        __metadata("design:type", String)
+    ], Manifest.prototype, "Href", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-type"),
+        __metadata("design:type", String)
+    ], Manifest.prototype, "MediaType", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-fallback"),
+        __metadata("design:type", String)
+    ], Manifest.prototype, "Fallback", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@properties"),
+        __metadata("design:type", String)
+    ], Manifest.prototype, "Properties", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-overlay"),
+        __metadata("design:type", String)
+    ], Manifest.prototype, "MediaOverlay", void 0);
+    Manifest = __decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Manifest);
     return Manifest;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id"),
-    __metadata("design:type", String)
-], Manifest.prototype, "ID", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@href"),
-    __metadata("design:type", String)
-], Manifest.prototype, "Href", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-type"),
-    __metadata("design:type", String)
-], Manifest.prototype, "MediaType", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-fallback"),
-    __metadata("design:type", String)
-], Manifest.prototype, "Fallback", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@properties"),
-    __metadata("design:type", String)
-], Manifest.prototype, "Properties", void 0);
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-overlay"),
-    __metadata("design:type", String)
-], Manifest.prototype, "MediaOverlay", void 0);
-Manifest = __decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Manifest);
 exports.Manifest = Manifest;
 //# sourceMappingURL=opf-manifest.js.map

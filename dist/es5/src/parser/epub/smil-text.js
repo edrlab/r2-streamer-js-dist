@@ -13,17 +13,17 @@ var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var Text = (function () {
     function Text() {
     }
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@src"),
+        __metadata("design:type", String)
+    ], Text.prototype, "Src", void 0);
+    Text = __decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], Text);
     return Text;
 }());
-__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@src"),
-    __metadata("design:type", String)
-], Text.prototype, "Src", void 0);
-Text = __decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], Text);
 exports.Text = Text;
 //# sourceMappingURL=smil-text.js.map

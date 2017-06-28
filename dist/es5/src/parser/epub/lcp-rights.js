@@ -14,28 +14,28 @@ var ta_json_1 = require("ta-json");
 var Rights = (function () {
     function Rights() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("print"),
+        __metadata("design:type", Number)
+    ], Rights.prototype, "Print", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("copy"),
+        __metadata("design:type", Number)
+    ], Rights.prototype, "Copy", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("start"),
+        ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
+        __metadata("design:type", Date)
+    ], Rights.prototype, "Start", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("end"),
+        ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
+        __metadata("design:type", Date)
+    ], Rights.prototype, "End", void 0);
+    Rights = __decorate([
+        ta_json_1.JsonObject()
+    ], Rights);
     return Rights;
 }());
-__decorate([
-    ta_json_1.JsonProperty("print"),
-    __metadata("design:type", Number)
-], Rights.prototype, "Print", void 0);
-__decorate([
-    ta_json_1.JsonProperty("copy"),
-    __metadata("design:type", Number)
-], Rights.prototype, "Copy", void 0);
-__decorate([
-    ta_json_1.JsonProperty("start"),
-    ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
-    __metadata("design:type", Date)
-], Rights.prototype, "Start", void 0);
-__decorate([
-    ta_json_1.JsonProperty("end"),
-    ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
-    __metadata("design:type", Date)
-], Rights.prototype, "End", void 0);
-Rights = __decorate([
-    ta_json_1.JsonObject()
-], Rights);
 exports.Rights = Rights;
 //# sourceMappingURL=lcp-rights.js.map

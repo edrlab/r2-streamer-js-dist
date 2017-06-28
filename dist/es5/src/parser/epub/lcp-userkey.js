@@ -13,22 +13,22 @@ var ta_json_1 = require("ta-json");
 var UserKey = (function () {
     function UserKey() {
     }
+    __decorate([
+        ta_json_1.JsonProperty("text_hint"),
+        __metadata("design:type", String)
+    ], UserKey.prototype, "TextHint", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        __metadata("design:type", String)
+    ], UserKey.prototype, "Algorithm", void 0);
+    __decorate([
+        ta_json_1.JsonProperty("key_check"),
+        __metadata("design:type", String)
+    ], UserKey.prototype, "KeyCheck", void 0);
+    UserKey = __decorate([
+        ta_json_1.JsonObject()
+    ], UserKey);
     return UserKey;
 }());
-__decorate([
-    ta_json_1.JsonProperty("text_hint"),
-    __metadata("design:type", String)
-], UserKey.prototype, "TextHint", void 0);
-__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    __metadata("design:type", String)
-], UserKey.prototype, "Algorithm", void 0);
-__decorate([
-    ta_json_1.JsonProperty("key_check"),
-    __metadata("design:type", String)
-], UserKey.prototype, "KeyCheck", void 0);
-UserKey = __decorate([
-    ta_json_1.JsonObject()
-], UserKey);
 exports.UserKey = UserKey;
 //# sourceMappingURL=lcp-userkey.js.map
