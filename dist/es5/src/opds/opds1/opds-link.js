@@ -14,6 +14,12 @@ var opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
 var Link = (function () {
     function Link() {
     }
+    Link.prototype.HasRel = function (rel) {
+        return this.Rel === rel;
+    };
+    Link.prototype.SetRel = function (rel) {
+        this.Rel = rel;
+    };
     __decorate([
         xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
         __metadata("design:type", Number)
@@ -44,13 +50,13 @@ var Link = (function () {
         __metadata("design:type", String)
     ], Link.prototype, "Href", void 0);
     __decorate([
-        xml_js_mapper_1.XmlXPathSelector("@rel"),
-        __metadata("design:type", String)
-    ], Link.prototype, "Rel", void 0);
-    __decorate([
         xml_js_mapper_1.XmlXPathSelector("@title"),
         __metadata("design:type", String)
     ], Link.prototype, "Title", void 0);
+    __decorate([
+        xml_js_mapper_1.XmlXPathSelector("@rel"),
+        __metadata("design:type", String)
+    ], Link.prototype, "Rel", void 0);
     Link = __decorate([
         xml_js_mapper_1.XmlObject({
             app: "http://www.w3.org/2007/app",

@@ -7,6 +7,8 @@ export declare class Link {
     ThrCount: number;
     FacetGroup: string;
     Href: string;
-    Rel: string;
     Title: string;
+    Rel: string;
+    HasRel(rel: string): boolean;
+    SetRel(rel: string): void;
 }

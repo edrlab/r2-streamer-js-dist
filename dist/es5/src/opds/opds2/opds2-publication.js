@@ -20,9 +20,7 @@ var OPDSPublication = (function () {
     }
     OPDSPublication.prototype.findFirstLinkByRel = function (rel) {
         return this.Links ? this.Links.find(function (l) {
-            return l.Rel && typeof l.Rel.find(function (r) {
-                return r === rel;
-            }) !== "undefined";
+            return l.HasRel(rel);
         }) : undefined;
     };
     OPDSPublication.prototype.AddImage = function (href, typeImage, height, width) {
@@ -45,8 +43,7 @@ var OPDSPublication = (function () {
         l.Href = href;
         l.TypeLink = typeLink;
         if (rel) {
-            l.Rel = [];
-            l.Rel.push(rel);
+            l.AddRel(rel);
         }
         if (title) {
             l.Title = title;

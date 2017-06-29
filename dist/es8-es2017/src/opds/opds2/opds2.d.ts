@@ -4,13 +4,14 @@ import { OPDSLink } from "./opds2-link";
 import { OPDSMetadata } from "./opds2-metadata";
 import { OPDSPublication } from "./opds2-publication";
 export declare class OPDSFeed {
-    Context: string[];
+    Context: string | string[];
     Metadata: OPDSMetadata;
     Links: OPDSLink[];
     Publications: OPDSPublication[];
     Navigation: OPDSLink[];
     Facets: OPDSFacet[];
     Groups: OPDSGroup[];
+    findFirstLinkByRel(rel: string): OPDSLink | undefined;
     AddLink(href: string, rel: string, typeLink: string, templated: boolean): void;
     AddNavigation(title: string, href: string, rel: string, typeLink: string): void;
     AddPagination(numberItems: number, itemsPerPage: number, currentPage: number, nextLink: string, prevLink: string, firstLink: string, lastLink: string): void;

@@ -43,7 +43,7 @@ const ext = path.extname(fileName).toLowerCase();
         return;
     }
     console.log("== Publication Parser: resolve: " + publication.Links);
-    if (/\.epub[3?]$/.test(ext)) {
+    if (/\.epub[3]?$/.test(ext)) {
     }
     else if (ext === ".cbz") {
         dumpPublication(publication);

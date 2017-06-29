@@ -19,7 +19,7 @@ export declare class Metadata {
     Narrator: Contributor[];
     Contributor: Contributor[];
     Publisher: Contributor[];
-    Imprint: Contributor[];
+    Imprint: Contributor | Contributor[];
     Language: string[];
     Modified: Date;
     PublicationDate: Date;

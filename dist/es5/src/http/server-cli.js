@@ -82,7 +82,7 @@ if (stats.isDirectory()) {
                         .discard("node_modules")
                         .depth(5)
                         .paths(filePath)
-                        .ext([".epub", ".cbz"])
+                        .ext([".epub", ".epub3", ".cbz"])
                         .find()];
                 case 1:
                     files = _a.sent();

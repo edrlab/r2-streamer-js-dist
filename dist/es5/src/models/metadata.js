@@ -25,6 +25,9 @@ var Metadata = (function () {
         if (!this.Identifier) {
             console.log("Metadata.Identifier is not set!");
         }
+        if (this.Imprint && this.Imprint instanceof Array && this.Imprint.length === 1) {
+            this.Imprint = this.Imprint[0];
+        }
     };
     __decorate([
         ta_json_1.JsonProperty("@type"),
@@ -101,7 +104,7 @@ var Metadata = (function () {
     __decorate([
         ta_json_1.JsonProperty("imprint"),
         ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        __metadata("design:type", Array)
+        __metadata("design:type", Object)
     ], Metadata.prototype, "Imprint", void 0);
     __decorate([
         ta_json_1.JsonProperty("language"),

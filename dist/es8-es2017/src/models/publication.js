@@ -94,18 +94,7 @@ let Publication = class Publication {
     searchLinkByRel(rel) {
         if (this.Resources) {
             const ll = this.Resources.find((link) => {
-                if (link.Rel) {
-                    const rr = link.Rel.find((r) => {
-                        if (r === rel) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (rr) {
-                        return true;
-                    }
-                }
-                return false;
+                return link.HasRel(rel);
             });
             if (ll) {
                 return ll;
@@ -113,18 +102,7 @@ let Publication = class Publication {
         }
         if (this.Spine) {
             const ll = this.Spine.find((link) => {
-                if (link.Rel) {
-                    const rr = link.Rel.find((r) => {
-                        if (r === rel) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (rr) {
-                        return true;
-                    }
-                }
-                return false;
+                return link.HasRel(rel);
             });
             if (ll) {
                 return ll;
@@ -132,18 +110,7 @@ let Publication = class Publication {
         }
         if (this.Links) {
             const ll = this.Links.find((link) => {
-                if (link.Rel) {
-                    const rr = link.Rel.find((r) => {
-                        if (r === rel) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (rr) {
-                        return true;
-                    }
-                }
-                return false;
+                return link.HasRel(rel);
             });
             if (ll) {
                 return ll;
@@ -153,7 +120,7 @@ let Publication = class Publication {
     }
     AddLink(typeLink, rel, url, templated) {
         const link = new publication_link_1.Link();
-        link.Rel = rel;
+        link.AddRels(rel);
         link.Href = url;
         link.TypeLink = typeLink;
         link.Templated = templated;
@@ -212,12 +179,15 @@ let Publication = class Publication {
         if (!this.Spine) {
             console.log("Publication.Spine is not set!");
         }
+        if (this.Context && this.Context instanceof Array && this.Context.length === 1) {
+            this.Context = this.Context[0];
+        }
     }
 };
 __decorate([
     ta_json_1.JsonProperty("@context"),
     ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
+    __metadata("design:type", Object)
 ], Publication.prototype, "Context", void 0);
 __decorate([
     ta_json_1.JsonProperty("metadata"),

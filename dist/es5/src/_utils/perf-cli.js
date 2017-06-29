@@ -69,7 +69,7 @@ if (!fs.existsSync(filePath)) {
 }
 var fileName = path.basename(filePath);
 var ext = path.extname(fileName).toLowerCase();
-if (/\.epub[3?]$/.test(ext) || ext === ".cbz" || ext === ".zip") {
+if (/\.epub[3]?$/.test(ext) || ext === ".cbz" || ext === ".zip") {
     (function () { return __awaiter(_this, void 0, void 0, function () {
         var time3, zip3, diff3, time2, zip2, diff2, time1, zip1, diff1;
         return __generator(this, function (_a) {

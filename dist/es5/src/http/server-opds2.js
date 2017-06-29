@@ -34,9 +34,7 @@ function serverOPDS2(server, topRouter) {
                 + err + "</p></body></html>");
             return;
         }
-        if (!feed.Links || !feed.Links.find(function (link) {
-            return link.Rel && link.Rel.indexOf("self") >= 0;
-        })) {
+        if (!feed.findFirstLinkByRel("self")) {
             feed.Links = [];
             var selfLink = new opds2_link_1.OPDSLink();
             selfLink.Href = selfURL;

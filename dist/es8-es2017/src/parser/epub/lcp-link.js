@@ -11,15 +11,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const ta_json_1 = require("ta-json");
 let Link = class Link {
+    HasRel(rel) {
+        return this.Rel === rel;
+    }
+    SetRel(rel) {
+        this.Rel = rel;
+    }
 };
 __decorate([
     ta_json_1.JsonProperty("length"),
     __metadata("design:type", Number)
 ], Link.prototype, "Length", void 0);
-__decorate([
-    ta_json_1.JsonProperty("rel"),
-    __metadata("design:type", String)
-], Link.prototype, "Rel", void 0);
 __decorate([
     ta_json_1.JsonProperty("href"),
     __metadata("design:type", String)
@@ -44,6 +46,10 @@ __decorate([
     ta_json_1.JsonProperty("hash"),
     __metadata("design:type", String)
 ], Link.prototype, "Hash", void 0);
+__decorate([
+    ta_json_1.JsonProperty("rel"),
+    __metadata("design:type", String)
+], Link.prototype, "Rel", void 0);
 Link = __decorate([
     ta_json_1.JsonObject()
 ], Link);

@@ -64,8 +64,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
         const linkSelf = new opds2_link_1.OPDSLink();
         linkSelf.Href = filePathBase64Encoded + "/manifest.json";
         linkSelf.TypeLink = "application/webpub+json";
-        linkSelf.Rel = [];
-        linkSelf.Rel.push("self");
+        linkSelf.AddRel("self");
         publi.Links.push(linkSelf);
         publi.Images = [];
         const coverLink = publication.GetCover();

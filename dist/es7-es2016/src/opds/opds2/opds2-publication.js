@@ -18,9 +18,7 @@ const opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
 let OPDSPublication = class OPDSPublication {
     findFirstLinkByRel(rel) {
         return this.Links ? this.Links.find((l) => {
-            return l.Rel && typeof l.Rel.find((r) => {
-                return r === rel;
-            }) !== "undefined";
+            return l.HasRel(rel);
         }) : undefined;
     }
     AddImage(href, typeImage, height, width) {
@@ -43,8 +41,7 @@ let OPDSPublication = class OPDSPublication {
         l.Href = href;
         l.TypeLink = typeLink;
         if (rel) {
-            l.Rel = [];
-            l.Rel.push(rel);
+            l.AddRel(rel);
         }
         if (title) {
             l.Title = title;

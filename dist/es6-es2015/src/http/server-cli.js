@@ -51,7 +51,7 @@ if (stats.isDirectory()) {
             .discard("node_modules")
             .depth(5)
             .paths(filePath)
-            .ext([".epub", ".cbz"])
+            .ext([".epub", ".epub3", ".cbz"])
             .find();
         const server = new server_1.Server();
         server.addPublications(files);

@@ -96,18 +96,7 @@ var Publication = (function () {
     Publication.prototype.searchLinkByRel = function (rel) {
         if (this.Resources) {
             var ll = this.Resources.find(function (link) {
-                if (link.Rel) {
-                    var rr = link.Rel.find(function (r) {
-                        if (r === rel) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (rr) {
-                        return true;
-                    }
-                }
-                return false;
+                return link.HasRel(rel);
             });
             if (ll) {
                 return ll;
@@ -115,18 +104,7 @@ var Publication = (function () {
         }
         if (this.Spine) {
             var ll = this.Spine.find(function (link) {
-                if (link.Rel) {
-                    var rr = link.Rel.find(function (r) {
-                        if (r === rel) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (rr) {
-                        return true;
-                    }
-                }
-                return false;
+                return link.HasRel(rel);
             });
             if (ll) {
                 return ll;
@@ -134,18 +112,7 @@ var Publication = (function () {
         }
         if (this.Links) {
             var ll = this.Links.find(function (link) {
-                if (link.Rel) {
-                    var rr = link.Rel.find(function (r) {
-                        if (r === rel) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (rr) {
-                        return true;
-                    }
-                }
-                return false;
+                return link.HasRel(rel);
             });
             if (ll) {
                 return ll;
@@ -155,7 +122,7 @@ var Publication = (function () {
     };
     Publication.prototype.AddLink = function (typeLink, rel, url, templated) {
         var link = new publication_link_1.Link();
-        link.Rel = rel;
+        link.AddRels(rel);
         link.Href = url;
         link.TypeLink = typeLink;
         link.Templated = templated;
@@ -214,11 +181,14 @@ var Publication = (function () {
         if (!this.Spine) {
             console.log("Publication.Spine is not set!");
         }
+        if (this.Context && this.Context instanceof Array && this.Context.length === 1) {
+            this.Context = this.Context[0];
+        }
     };
     __decorate([
         ta_json_1.JsonProperty("@context"),
         ta_json_1.JsonElementType(String),
-        __metadata("design:type", Array)
+        __metadata("design:type", Object)
     ], Publication.prototype, "Context", void 0);
     __decorate([
         ta_json_1.JsonProperty("metadata"),

@@ -16,11 +16,15 @@ const opds2_link_1 = require("./opds2-link");
 const opds2_metadata_1 = require("./opds2-metadata");
 const opds2_publication_1 = require("./opds2-publication");
 let OPDSFeed = class OPDSFeed {
+    findFirstLinkByRel(rel) {
+        return this.Links ? this.Links.find((l) => {
+            return l.HasRel(rel);
+        }) : undefined;
+    }
     AddLink(href, rel, typeLink, templated) {
         const l = new opds2_link_1.OPDSLink();
         l.Href = href;
-        l.Rel = [];
-        l.Rel.push(rel);
+        l.AddRel(rel);
         l.TypeLink = typeLink;
         if (templated) {
             l.Templated = true;
@@ -34,8 +38,7 @@ let OPDSFeed = class OPDSFeed {
         const l = new opds2_link_1.OPDSLink();
         l.Href = href;
         l.TypeLink = typeLink;
-        l.Rel = [];
-        l.Rel.push(rel);
+        l.AddRel(rel);
         if (title) {
             l.Title = title;
         }
@@ -120,7 +123,7 @@ let OPDSFeed = class OPDSFeed {
         group.Publications = [];
         group.Publications.push(publication);
         const linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.Rel = ["self"];
+        linkSelf.AddRel("self");
         linkSelf.Title = collLink.Title;
         linkSelf.Href = collLink.Href;
         group.Links = [];
@@ -160,7 +163,7 @@ let OPDSFeed = class OPDSFeed {
         group.Navigation = [];
         group.Navigation.push(link);
         const linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.Rel = ["self"];
+        linkSelf.AddRel("self");
         linkSelf.Title = collLink.Title;
         linkSelf.Href = collLink.Href;
         group.Links = [];
@@ -177,12 +180,15 @@ let OPDSFeed = class OPDSFeed {
         if (!this.Links) {
             console.log("OPDS2Feed.Links is not set!");
         }
+        if (this.Context && this.Context instanceof Array && this.Context.length === 1) {
+            this.Context = this.Context[0];
+        }
     }
 };
 __decorate([
     ta_json_1.JsonProperty("@context"),
     ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
+    __metadata("design:type", Object)
 ], OPDSFeed.prototype, "Context", void 0);
 __decorate([
     ta_json_1.JsonProperty("metadata"),

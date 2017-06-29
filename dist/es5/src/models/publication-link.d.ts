@@ -3,7 +3,6 @@ import { Properties } from "./metadata-properties";
 export declare class Link {
     Href: string;
     TypeLink: string;
-    Rel: string[];
     Height: number;
     Width: number;
     Title: string;
@@ -12,6 +11,9 @@ export declare class Link {
     Templated: boolean;
     Children: Link[];
     MediaOverlays: MediaOverlayNode[];
+    Rel: string | string[];
+    AddRels(rels: string[]): void;
     AddRel(rel: string): void;
+    HasRel(rel: string): boolean;
     private _OnDeserialized();
 }

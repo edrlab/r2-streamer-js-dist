@@ -55,7 +55,7 @@ function createElectronBrowserWindow() {
                     dirPath = fs.realpathSync(path.resolve("./misc/epubs/"));
                     return [4, filehound.create()
                             .paths(dirPath)
-                            .ext([".epub", ".cbz"])
+                            .ext([".epub", ".epub3", ".cbz"])
                             .find()];
                 case 1:
                     files = _a.sent();

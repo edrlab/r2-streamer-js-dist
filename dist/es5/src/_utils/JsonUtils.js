@@ -17,22 +17,29 @@ function sortObject(obj) {
     return newObj;
 }
 exports.sortObject = sortObject;
-function traverseJsonObjects(obj, func) {
-    func(obj);
+function traverseJsonObjects_(parent, keyInParent, obj, func) {
+    func(obj, parent, keyInParent);
     if (obj instanceof Array) {
-        obj.forEach(function (item) {
-            if (item) {
-                traverseJsonObjects(item, func);
+        for (var index = 0; index < obj.length; index++) {
+            var item = obj[index];
+            if (typeof item !== "undefined") {
+                traverseJsonObjects_(obj, index, item, func);
             }
-        });
+        }
     }
     else if (typeof obj === "object") {
         Object.keys(obj).forEach(function (key) {
-            if (obj.hasOwnProperty(key) && obj[key]) {
-                traverseJsonObjects(obj[key], func);
+            if (obj.hasOwnProperty(key)) {
+                var item = obj[key];
+                if (typeof item !== "undefined") {
+                    traverseJsonObjects_(obj, key, item, func);
+                }
             }
         });
     }
+}
+function traverseJsonObjects(obj, func) {
+    traverseJsonObjects_(undefined, undefined, obj, func);
 }
 exports.traverseJsonObjects = traverseJsonObjects;
 //# sourceMappingURL=JsonUtils.js.map

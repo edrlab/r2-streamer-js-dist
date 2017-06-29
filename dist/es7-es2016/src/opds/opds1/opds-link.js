@@ -12,6 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 const opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
 let Link = class Link {
+    HasRel(rel) {
+        return this.Rel === rel;
+    }
+    SetRel(rel) {
+        this.Rel = rel;
+    }
 };
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
@@ -43,13 +49,13 @@ __decorate([
     __metadata("design:type", String)
 ], Link.prototype, "Href", void 0);
 __decorate([
-    xml_js_mapper_1.XmlXPathSelector("@rel"),
-    __metadata("design:type", String)
-], Link.prototype, "Rel", void 0);
-__decorate([
     xml_js_mapper_1.XmlXPathSelector("@title"),
     __metadata("design:type", String)
 ], Link.prototype, "Title", void 0);
+__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@rel"),
+    __metadata("design:type", String)
+], Link.prototype, "Rel", void 0);
 Link = __decorate([
     xml_js_mapper_1.XmlObject({
         app: "http://www.w3.org/2007/app",

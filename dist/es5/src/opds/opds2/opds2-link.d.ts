@@ -2,7 +2,6 @@ import { OPDSProperties } from "./opds2-properties";
 export declare class OPDSLink {
     Href: string;
     TypeLink: string;
-    Rel: string[];
     Height: number;
     Width: number;
     Title: string;
@@ -11,6 +10,9 @@ export declare class OPDSLink {
     Templated: boolean;
     Children: OPDSLink[];
     Bitrate: number;
+    Rel: string | string[];
+    AddRels(rels: string[]): void;
     AddRel(rel: string): void;
+    HasRel(rel: string): boolean;
     private _OnDeserialized();
 }

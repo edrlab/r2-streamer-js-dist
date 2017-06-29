@@ -23,7 +23,7 @@ function createElectronBrowserWindow() {
         const dirPath = fs.realpathSync(path.resolve("./misc/epubs/"));
         const files = yield filehound.create()
             .paths(dirPath)
-            .ext([".epub", ".cbz"])
+            .ext([".epub", ".epub3", ".cbz"])
             .find();
         const server = new server_1.Server();
         const pubPaths = server.addPublications(files);
