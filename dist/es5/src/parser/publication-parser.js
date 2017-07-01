@@ -40,16 +40,11 @@ var cbz_1 = require("./cbz");
 var epub_1 = require("./epub");
 function PublicationParsePromise(filePath) {
     return __awaiter(this, void 0, void 0, function () {
-        var fileName, ext, check;
+        var fileName, ext;
         return __generator(this, function (_a) {
             fileName = path.basename(filePath);
             ext = path.extname(fileName).toLowerCase();
-            check = /\.epub[3]?$/.test(ext);
-            console.log(check);
-            console.log(ext);
-            console.log(fileName);
-            console.log(filePath);
-            return [2, check ?
+            return [2, /\.epub[3]?$/.test(ext) ?
                     epub_1.EpubParsePromise(filePath) :
                     cbz_1.CbzParsePromise(filePath)];
         });

@@ -9,7 +9,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var ta_json_date_converter_1 = require("../_utils/ta-json-date-converter");
 var ta_json_1 = require("ta-json");
 var metadata_belongsto_1 = require("./metadata-belongsto");
 var metadata_contributor_1 = require("./metadata-contributor");
@@ -24,9 +23,6 @@ var Metadata = (function () {
         }
         if (!this.Identifier) {
             console.log("Metadata.Identifier is not set!");
-        }
-        if (this.Imprint && this.Imprint instanceof Array && this.Imprint.length === 1) {
-            this.Imprint = this.Imprint[0];
         }
     };
     __decorate([
@@ -104,7 +100,7 @@ var Metadata = (function () {
     __decorate([
         ta_json_1.JsonProperty("imprint"),
         ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        __metadata("design:type", Object)
+        __metadata("design:type", Array)
     ], Metadata.prototype, "Imprint", void 0);
     __decorate([
         ta_json_1.JsonProperty("language"),
@@ -113,12 +109,10 @@ var Metadata = (function () {
     ], Metadata.prototype, "Language", void 0);
     __decorate([
         ta_json_1.JsonProperty("modified"),
-        ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
         __metadata("design:type", Date)
     ], Metadata.prototype, "Modified", void 0);
     __decorate([
         ta_json_1.JsonProperty("published"),
-        ta_json_1.JsonConverter(ta_json_date_converter_1.JsonDateConverter),
         __metadata("design:type", Date)
     ], Metadata.prototype, "PublicationDate", void 0);
     __decorate([

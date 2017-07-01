@@ -10,7 +10,7 @@ export declare class OPDSLink {
     Templated: boolean;
     Children: OPDSLink[];
     Bitrate: number;
-    Rel: string | string[];
+    Rel: string[];
     AddRels(rels: string[]): void;
     AddRel(rel: string): void;
     HasRel(rel: string): boolean;

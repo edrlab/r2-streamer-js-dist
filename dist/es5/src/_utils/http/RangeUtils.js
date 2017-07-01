@@ -2,6 +2,25 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 function parseRangeHeader(rangeHeader) {
     var ranges = [];
+    if (!rangeHeader) {
+        return ranges;
+    }
+    var rHeader;
+    if (rangeHeader instanceof Array) {
+        rHeader = rangeHeader;
+    }
+    else {
+        rHeader = [rangeHeader];
+    }
+    rHeader.forEach(function (rh) {
+        var arr = parseRangeHeader_(rh);
+        ranges.concat(arr);
+    });
+    return ranges;
+}
+exports.parseRangeHeader = parseRangeHeader;
+function parseRangeHeader_(rangeHeader) {
+    var ranges = [];
     var iEqual = rangeHeader.indexOf("=");
     if (iEqual <= 0) {
         return ranges;
@@ -25,7 +44,6 @@ function parseRangeHeader(rangeHeader) {
     });
     return ranges;
 }
-exports.parseRangeHeader = parseRangeHeader;
 function combineRanges(ranges) {
     var orderedRanges = ranges
         .map(function (range, index) {

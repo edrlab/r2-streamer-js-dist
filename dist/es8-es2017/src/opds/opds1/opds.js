@@ -37,7 +37,6 @@ __decorate([
 ], OPDS.prototype, "SubTitle", void 0);
 __decorate([
     xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
-    xml_js_mapper_1.XmlConverter(xml_js_mapper_1.DateConverter),
     __metadata("design:type", Date)
 ], OPDS.prototype, "Updated", void 0);
 __decorate([

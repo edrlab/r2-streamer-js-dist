@@ -9,6 +9,9 @@ var DateConverter = (function () {
     DateConverter.prototype.deserialize = function (value) {
         return new Date(value);
     };
+    DateConverter.prototype.collapseArrayWithSingleItem = function () {
+        return false;
+    };
     return DateConverter;
 }());
 exports.DateConverter = DateConverter;

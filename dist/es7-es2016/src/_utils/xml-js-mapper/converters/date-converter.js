@@ -7,6 +7,9 @@ class DateConverter {
     deserialize(value) {
         return new Date(value);
     }
+    collapseArrayWithSingleItem() {
+        return false;
+    }
 }
 exports.DateConverter = DateConverter;
 //# sourceMappingURL=date-converter.js.map

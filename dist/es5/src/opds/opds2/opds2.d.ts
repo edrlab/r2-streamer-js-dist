@@ -4,7 +4,7 @@ import { OPDSLink } from "./opds2-link";
 import { OPDSMetadata } from "./opds2-metadata";
 import { OPDSPublication } from "./opds2-publication";
 export declare class OPDSFeed {
-    Context: string | string[];
+    Context: string[];
     Metadata: OPDSMetadata;
     Links: OPDSLink[];
     Publications: OPDSPublication[];

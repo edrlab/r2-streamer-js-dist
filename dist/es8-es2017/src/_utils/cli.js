@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const util = require("util");
 const publication_parser_1 = require("../parser/publication-parser");
+const init_globals_1 = require("../init-globals");
+init_globals_1.initGlobals();
 console.log("process.cwd():");
 console.log(process.cwd());
 console.log("__dirname: ");

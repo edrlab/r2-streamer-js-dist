@@ -5,6 +5,8 @@ const path = require("path");
 const zip1_1 = require("./zip/zip1");
 const zip2_1 = require("./zip/zip2");
 const zip3_1 = require("./zip/zip3");
+const init_globals_1 = require("../init-globals");
+init_globals_1.initGlobals();
 console.log("process.cwd():");
 console.log(process.cwd());
 console.log("__dirname:");

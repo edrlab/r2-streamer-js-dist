@@ -9,6 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
 const ta_json_1 = require("ta-json");
 const metadata_properties_1 = require("./metadata-properties");
 let Link = Link_1 = class Link {
@@ -22,41 +23,18 @@ let Link = Link_1 = class Link {
             return;
         }
         if (!this.Rel) {
-            this.Rel = rel;
+            this.Rel = [rel];
         }
         else {
-            if (this.Rel instanceof Array) {
-                this.Rel.push(rel);
-            }
-            else {
-                const otherRel = this.Rel;
-                this.Rel = [];
-                this.Rel.push(otherRel);
-                this.Rel.push(rel);
-            }
+            this.Rel.push(rel);
         }
     }
     HasRel(rel) {
-        if (this.Rel) {
-            if (this.Rel instanceof Array) {
-                if (this.Rel.indexOf(rel) >= 0) {
-                    return true;
-                }
-            }
-            else {
-                if (this.Rel === rel) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return this.Rel && this.Rel.indexOf(rel) >= 0;
     }
     _OnDeserialized() {
         if (!this.Href) {
             console.log("Link.Href is not set!");
-        }
-        if (this.Rel && this.Rel instanceof Array && this.Rel.length === 1) {
-            this.Rel = this.Rel[0];
         }
     }
 };
@@ -99,8 +77,9 @@ __decorate([
 ], Link.prototype, "Children", void 0);
 __decorate([
     ta_json_1.JsonProperty("rel"),
+    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
     ta_json_1.JsonElementType(String),
-    __metadata("design:type", Object)
+    __metadata("design:type", Array)
 ], Link.prototype, "Rel", void 0);
 __decorate([
     ta_json_1.OnDeserialized(),

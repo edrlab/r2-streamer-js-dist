@@ -41,6 +41,8 @@ var path = require("path");
 var zip1_1 = require("./zip/zip1");
 var zip2_1 = require("./zip/zip2");
 var zip3_1 = require("./zip/zip3");
+var init_globals_1 = require("../init-globals");
+init_globals_1.initGlobals();
 console.log("process.cwd():");
 console.log(process.cwd());
 console.log("__dirname:");

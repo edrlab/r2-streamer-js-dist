@@ -4,7 +4,7 @@ import { MediaOverlayNode } from "./media-overlay";
 import { Metadata } from "./metadata";
 import { Link } from "./publication-link";
 export declare class Publication {
-    Context: string | string[];
+    Context: string[];
     Metadata: Metadata;
     Links: Link[];
     Spine: Link[];

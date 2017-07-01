@@ -10,6 +10,9 @@ class BufferConverter {
     deserialize(value) {
         return Buffer.from(value, this.encoding);
     }
+    collapseArrayWithSingleItem() {
+        return false;
+    }
 }
 exports.BufferConverter = BufferConverter;
 //# sourceMappingURL=buffer-converter.js.map

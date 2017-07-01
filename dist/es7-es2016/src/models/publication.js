@@ -9,6 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
 const forge = require("node-forge");
 const ta_json_1 = require("ta-json");
 const metadata_1 = require("./metadata");
@@ -179,15 +180,13 @@ let Publication = class Publication {
         if (!this.Spine) {
             console.log("Publication.Spine is not set!");
         }
-        if (this.Context && this.Context instanceof Array && this.Context.length === 1) {
-            this.Context = this.Context[0];
-        }
     }
 };
 __decorate([
     ta_json_1.JsonProperty("@context"),
+    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
     ta_json_1.JsonElementType(String),
-    __metadata("design:type", Object)
+    __metadata("design:type", Array)
 ], Publication.prototype, "Context", void 0);
 __decorate([
     ta_json_1.JsonProperty("metadata"),

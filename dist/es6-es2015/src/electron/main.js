@@ -15,6 +15,8 @@ const electron_1 = require("electron");
 const filehound = require("filehound");
 const portfinder = require("portfinder");
 const server_1 = require("../http/server");
+const init_globals_1 = require("../init-globals");
+init_globals_1.initGlobals();
 const debug = debug_("r2:electron:main");
 let electronBrowserWindow;
 function createElectronBrowserWindow() {

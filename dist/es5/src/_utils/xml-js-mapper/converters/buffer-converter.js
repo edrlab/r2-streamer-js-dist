@@ -10,6 +10,9 @@ var BufferConverter = (function () {
     BufferConverter.prototype.deserialize = function (value) {
         return Buffer.from(value, this.encoding);
     };
+    BufferConverter.prototype.collapseArrayWithSingleItem = function () {
+        return false;
+    };
     return BufferConverter;
 }());
 exports.BufferConverter = BufferConverter;

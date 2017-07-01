@@ -11,7 +11,7 @@ export declare class Link {
     Templated: boolean;
     Children: Link[];
     MediaOverlays: MediaOverlayNode[];
-    Rel: string | string[];
+    Rel: string[];
     AddRels(rels: string[]): void;
     AddRel(rel: string): void;
     HasRel(rel: string): boolean;

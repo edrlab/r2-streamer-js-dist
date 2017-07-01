@@ -4,4 +4,5 @@ export declare class BufferConverter implements IPropertyConverter {
     private encoding;
     serialize(property: Buffer): string;
     deserialize(value: string): Buffer;
+    collapseArrayWithSingleItem(): boolean;
 }

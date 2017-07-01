@@ -40,6 +40,8 @@ var fs = require("fs");
 var path = require("path");
 var util = require("util");
 var publication_parser_1 = require("../parser/publication-parser");
+var init_globals_1 = require("../init-globals");
+init_globals_1.initGlobals();
 console.log("process.cwd():");
 console.log(process.cwd());
 console.log("__dirname: ");
