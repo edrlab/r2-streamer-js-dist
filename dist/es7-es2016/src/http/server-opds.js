@@ -1,13 +1,6 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const opds_1 = require("../opds/opds1/opds");
 const opds_entry_1 = require("../opds/opds1/opds-entry");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
@@ -48,7 +41,7 @@ function serverOPDS(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS.get("/:urlEncoded(*)", (req, res) => __awaiter(this, void 0, void 0, function* () {
+    routerOPDS.get("/:urlEncoded(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         if (!req.params.urlEncoded) {
             req.params.urlEncoded = req.urlEncoded;
         }
@@ -59,7 +52,7 @@ function serverOPDS(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => __awaiter(this, void 0, void 0, function* () {
+        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
             let responseData;
             try {
                 responseData = yield BufferUtils_1.streamToBufferPromise(response);

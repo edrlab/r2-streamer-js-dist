@@ -1,41 +1,7 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [0, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
 var path = require("path");
 var querystring = require("querystring");
 var media_overlay_1 = require("../models/media-overlay");
@@ -72,9 +38,9 @@ var noneMeta = "none";
 var reflowableMeta = "reflowable";
 exports.mediaOverlayURLPath = "media-overlay.json";
 exports.mediaOverlayURLParam = "resource";
-exports.addCoverDimensions = function (publication, coverLink) { return __awaiter(_this, void 0, void 0, function () {
+exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var zipInternal, zip, zipStream, zipData, imageInfo, err_1, err_2;
-    return __generator(this, function (_a) {
+    return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 if (!publication.Internal) return [3, 8];
@@ -126,9 +92,9 @@ exports.addCoverDimensions = function (publication, coverLink) { return __awaite
     });
 }); };
 function EpubParsePromise(filePath) {
-    return __awaiter(this, void 0, void 0, function () {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
         var zip, publication, lcpl, lcplZipPath, lcplZipStream_, lcplZipStream, lcplZipData, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, encryptionXmlZipStream, encryptionXmlZipData, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, containerXmlZipStream, containerXmlZipData, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, opfZipStream, opfZipData, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, ncxZipStream, ncxZipData, ncxStr, ncxDoc;
-        return __generator(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4, zipFactory_1.zipLoadPromise(filePath)];
                 case 1:
@@ -294,9 +260,9 @@ function EpubParsePromise(filePath) {
     });
 }
 exports.EpubParsePromise = EpubParsePromise;
-var fillMediaOverlay = function (publication, rootfile, opf, zip) { return __awaiter(_this, void 0, void 0, function () {
+var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var _loop_1, _a, _b, item;
-    return __generator(this, function (_c) {
+    return tslib_1.__generator(this, function (_c) {
         switch (_c.label) {
             case 0:
                 if (!publication.Resources) {
@@ -304,7 +270,7 @@ var fillMediaOverlay = function (publication, rootfile, opf, zip) { return __awa
                 }
                 _loop_1 = function (item) {
                     var smilFilePath, mo, manItemsHtmlWithSmil, smilZipStream_, smilZipStream, smilZipData, smilStr, smilXmlDoc, smil, zipPath;
-                    return __generator(this, function (_a) {
+                    return tslib_1.__generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
                                 if (item.TypeLink !== "application/smil+xml") {
@@ -665,9 +631,9 @@ var addTitle = function (publication, rootfile, opf) {
         }
     }
 };
-var addRelAndPropertiesToLink = function (publication, link, linkEpub, rootfile, opf) { return __awaiter(_this, void 0, void 0, function () {
+var addRelAndPropertiesToLink = function (publication, link, linkEpub, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var spineProperties;
-    return __generator(this, function (_a) {
+    return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 if (!linkEpub.Properties) return [3, 2];
@@ -686,9 +652,9 @@ var addRelAndPropertiesToLink = function (publication, link, linkEpub, rootfile,
         }
     });
 }); };
-var addToLinkFromProperties = function (publication, link, propertiesString) { return __awaiter(_this, void 0, void 0, function () {
+var addToLinkFromProperties = function (publication, link, propertiesString) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var properties, propertiesStruct, _a, properties_1, p, _b;
-    return __generator(this, function (_c) {
+    return tslib_1.__generator(this, function (_c) {
         switch (_c.label) {
             case 0:
                 properties = propertiesString.split(" ");
@@ -925,9 +891,9 @@ var addMediaOverlay = function (link, linkEpub, rootfile, opf) {
         }
     }
 };
-var findInManifestByID = function (publication, rootfile, opf, ID) { return __awaiter(_this, void 0, void 0, function () {
+var findInManifestByID = function (publication, rootfile, opf, ID) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var item, linkItem, zipPath;
-    return __generator(this, function (_a) {
+    return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 if (!(opf.Manifest && opf.Manifest.length)) return [3, 2];
@@ -988,9 +954,9 @@ var addRendition = function (publication, _rootfile, opf) {
         }
     }
 };
-var fillSpineAndResource = function (publication, rootfile, opf) { return __awaiter(_this, void 0, void 0, function () {
+var fillSpineAndResource = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var _a, _b, item, linkItem, err_3, _c, _d, item, zipPath, linkSpine, linkItem;
-    return __generator(this, function (_e) {
+    return tslib_1.__generator(this, function (_e) {
         switch (_e.label) {
             case 0:
                 if (!(opf.Spine && opf.Spine.Items && opf.Spine.Items.length)) return [3, 7];
@@ -1196,9 +1162,9 @@ var fillCalibreSerieInfo = function (publication, _rootfile, opf) {
         publication.Metadata.BelongsTo.Series.push(collection);
     }
 };
-var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return __awaiter(_this, void 0, void 0, function () {
+var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var navLink, navDocFilePath, navDocZipStream_, navDocZipStream, navDocZipData, navDocStr, navXmlDoc, select, navs;
-    return __generator(this, function (_a) {
+    return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 navLink = publication.GetNavDoc();
@@ -1311,9 +1277,9 @@ var fillTOCFromNavDocWithOL = function (select, olElems, node, navDocPath) {
         }
     });
 };
-var addCoverRel = function (publication, rootfile, opf) { return __awaiter(_this, void 0, void 0, function () {
+var addCoverRel = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
     var coverID, manifestInfo, err_4, href_1, linky;
-    return __generator(this, function (_a) {
+    return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {

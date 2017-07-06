@@ -1,13 +1,6 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const path = require("path");
 const publication_parser_1 = require("../parser/publication-parser");
 const transformer_1 = require("../transform/transformer");
@@ -19,7 +12,7 @@ const mime = require("mime-types");
 const debug = debug_("r2:server:assets");
 function serverAssets(server, routerPathBase64) {
     const routerAssets = express.Router({ strict: false });
-    routerAssets.get("/", (req, res) => __awaiter(this, void 0, void 0, function* () {
+    routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         if (!req.params.pathBase64) {
             req.params.pathBase64 = req.pathBase64;
         }

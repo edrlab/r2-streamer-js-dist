@@ -1,14 +1,6 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
 const ta_json_1 = require("ta-json");
 const opds2_facet_1 = require("./opds2-facet");
@@ -183,48 +175,48 @@ let OPDSFeed = class OPDSFeed {
         }
     }
 };
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("@context"),
     ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
     ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], OPDSFeed.prototype, "Context", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("metadata"),
-    __metadata("design:type", opds2_metadata_1.OPDSMetadata)
+    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
 ], OPDSFeed.prototype, "Metadata", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("links"),
     ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], OPDSFeed.prototype, "Links", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("publications"),
     ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], OPDSFeed.prototype, "Publications", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("navigation"),
     ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], OPDSFeed.prototype, "Navigation", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("facets"),
     ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], OPDSFeed.prototype, "Facets", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("groups"),
     ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], OPDSFeed.prototype, "Groups", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
 ], OPDSFeed.prototype, "_OnDeserialized", null);
-OPDSFeed = __decorate([
+OPDSFeed = tslib_1.__decorate([
     ta_json_1.JsonObject()
 ], OPDSFeed);
 exports.OPDSFeed = OPDSFeed;

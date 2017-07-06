@@ -1,30 +1,22 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 let Serie = class Serie {
 };
-__decorate([
+tslib_1.__decorate([
     xml_js_mapper_1.XmlXPathSelector("@schema:name"),
-    __metadata("design:type", String)
+    tslib_1.__metadata("design:type", String)
 ], Serie.prototype, "Name", void 0);
-__decorate([
+tslib_1.__decorate([
     xml_js_mapper_1.XmlXPathSelector("@schema:url"),
-    __metadata("design:type", String)
+    tslib_1.__metadata("design:type", String)
 ], Serie.prototype, "Url", void 0);
-__decorate([
+tslib_1.__decorate([
     xml_js_mapper_1.XmlXPathSelector("@schema:position"),
-    __metadata("design:type", Number)
+    tslib_1.__metadata("design:type", Number)
 ], Serie.prototype, "Position", void 0);
-Serie = __decorate([
+Serie = tslib_1.__decorate([
     xml_js_mapper_1.XmlObject({
         app: "http://www.w3.org/2007/app",
         atom: "http://www.w3.org/2005/Atom",

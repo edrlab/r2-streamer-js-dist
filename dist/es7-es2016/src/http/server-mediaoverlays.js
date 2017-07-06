@@ -1,13 +1,6 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const crypto = require("crypto");
 const path = require("path");
 const epub_1 = require("../parser/epub");
@@ -45,7 +38,7 @@ function serverMediaOverlays(server, routerPathBase64) {
 }
 `;
     const routerMediaOverlays = express.Router({ strict: false });
-    routerMediaOverlays.get(["/", "/show/:" + epub_1.mediaOverlayURLParam + "?"], (req, res) => __awaiter(this, void 0, void 0, function* () {
+    routerMediaOverlays.get(["/", "/show/:" + epub_1.mediaOverlayURLParam + "?"], (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         if (!req.params.pathBase64) {
             req.params.pathBase64 = req.pathBase64;
         }
@@ -84,8 +77,8 @@ function serverMediaOverlays(server, routerPathBase64) {
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
-        function absolutizeURLs(jsonObj) {
-            JsonUtils_1.traverseJsonObjects(jsonObj, (obj) => {
+        function absolutizeURLs(jsonObject) {
+            JsonUtils_1.traverseJsonObjects(jsonObject, (obj) => {
                 if (obj.text && typeof obj.text === "string"
                     && !UrlUtils_1.isHTTP(obj.text)) {
                     obj.text = absoluteURL(obj.text);

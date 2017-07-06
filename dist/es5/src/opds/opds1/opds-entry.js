@@ -1,14 +1,6 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
 var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var opds_author_1 = require("./opds-author");
 var opds_category_1 = require("./opds-category");
@@ -17,103 +9,103 @@ var opds_serie_1 = require("./opds-serie");
 var Entry = (function () {
     function Entry() {
     }
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:ratingValue"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "SchemaRatingValue", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:additionalType"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "SchemaRatingAdditionalType", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("@schema:additionalType"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "SchemaAdditionalType", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "Title", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:author"),
         xml_js_mapper_1.XmlItemType(opds_author_1.Author),
-        __metadata("design:type", Array)
+        tslib_1.__metadata("design:type", Array)
     ], Entry.prototype, "Authors", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "Id", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:summary/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "Summary", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:summary/@type"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "SummaryType", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:language/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcLanguage", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:extent/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcExtent", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:publisher/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcPublisher", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:rights/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcRights", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:issued/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcIssued", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcIdentifier", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/@xsi:type"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "DcIdentifierType", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("bibframe:distribution/@bibframe:ProviderName"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "BibFrameDistributionProviderName", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:category"),
         xml_js_mapper_1.XmlItemType(opds_category_1.Category),
-        __metadata("design:type", Array)
+        tslib_1.__metadata("design:type", Array)
     ], Entry.prototype, "Categories", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:content/text()"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "Content", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:content/@type"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], Entry.prototype, "ContentType", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
-        __metadata("design:type", Date)
+        tslib_1.__metadata("design:type", Date)
     ], Entry.prototype, "Updated", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:published/text()"),
-        __metadata("design:type", Date)
+        tslib_1.__metadata("design:type", Date)
     ], Entry.prototype, "Published", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("atom:link"),
         xml_js_mapper_1.XmlItemType(opds_link_1.Link),
-        __metadata("design:type", Array)
+        tslib_1.__metadata("design:type", Array)
     ], Entry.prototype, "Links", void 0);
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("schema:Series"),
         xml_js_mapper_1.XmlItemType(opds_serie_1.Serie),
-        __metadata("design:type", Array)
+        tslib_1.__metadata("design:type", Array)
     ], Entry.prototype, "Series", void 0);
-    Entry = __decorate([
+    Entry = tslib_1.__decorate([
         xml_js_mapper_1.XmlObject({
             app: "http://www.w3.org/2007/app",
             atom: "http://www.w3.org/2005/Atom",

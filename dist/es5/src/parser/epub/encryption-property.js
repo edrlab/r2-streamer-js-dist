@@ -1,24 +1,16 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
 var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var encryption_compression_1 = require("./encryption-compression");
 var EncryptionProperty = (function () {
     function EncryptionProperty() {
     }
-    __decorate([
+    tslib_1.__decorate([
         xml_js_mapper_1.XmlXPathSelector("ns:Compression"),
-        __metadata("design:type", encryption_compression_1.Compression)
+        tslib_1.__metadata("design:type", encryption_compression_1.Compression)
     ], EncryptionProperty.prototype, "Compression", void 0);
-    EncryptionProperty = __decorate([
+    EncryptionProperty = tslib_1.__decorate([
         xml_js_mapper_1.XmlObject({
             ds: "http://www.w3.org/2000/09/xmldsig#",
             enc: "http://www.w3.org/2001/04/xmlenc#",

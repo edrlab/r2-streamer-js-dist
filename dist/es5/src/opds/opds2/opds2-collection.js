@@ -1,14 +1,6 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
 var ta_json_1 = require("ta-json");
 var opds2_link_1 = require("./opds2-link");
 var OPDSCollection = (function () {
@@ -19,34 +11,34 @@ var OPDSCollection = (function () {
             console.log("OPDSCollection.Name is not set!");
         }
     };
-    __decorate([
+    tslib_1.__decorate([
         ta_json_1.JsonProperty("name"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], OPDSCollection.prototype, "Name", void 0);
-    __decorate([
+    tslib_1.__decorate([
         ta_json_1.JsonProperty("sort_as"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], OPDSCollection.prototype, "SortAs", void 0);
-    __decorate([
+    tslib_1.__decorate([
         ta_json_1.JsonProperty("identifier"),
-        __metadata("design:type", String)
+        tslib_1.__metadata("design:type", String)
     ], OPDSCollection.prototype, "Identifier", void 0);
-    __decorate([
+    tslib_1.__decorate([
         ta_json_1.JsonProperty("position"),
-        __metadata("design:type", Number)
+        tslib_1.__metadata("design:type", Number)
     ], OPDSCollection.prototype, "Position", void 0);
-    __decorate([
+    tslib_1.__decorate([
         ta_json_1.JsonProperty("links"),
         ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        __metadata("design:type", Array)
+        tslib_1.__metadata("design:type", Array)
     ], OPDSCollection.prototype, "Links", void 0);
-    __decorate([
+    tslib_1.__decorate([
         ta_json_1.OnDeserialized(),
-        __metadata("design:type", Function),
-        __metadata("design:paramtypes", []),
-        __metadata("design:returntype", void 0)
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
     ], OPDSCollection.prototype, "_OnDeserialized", null);
-    OPDSCollection = __decorate([
+    OPDSCollection = tslib_1.__decorate([
         ta_json_1.JsonObject()
     ], OPDSCollection);
     return OPDSCollection;

@@ -1,13 +1,6 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const debug_ = require("debug");
 const request = require("request");
 const requestPromise = require("request-promise-native");
@@ -25,7 +18,7 @@ class Zip2 extends zip_1.Zip {
         this.entries = {};
     }
     static loadPromise(filePath) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             if (UrlUtils_1.isHTTP(filePath)) {
                 return Zip2.loadPromiseHTTP(filePath);
             }
@@ -64,13 +57,14 @@ class Zip2 extends zip_1.Zip {
         });
     }
     static loadPromiseHTTP(filePath) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const needsStreamingResponse = true;
+            return new Promise((resolve, reject) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 const failure = (err) => {
                     debug(err);
                     reject(err);
                 };
-                const success = (res) => __awaiter(this, void 0, void 0, function* () {
+                const success = (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                     debug(filePath);
                     debug(res.headers);
                     if (!res.headers["content-length"]) {
@@ -90,7 +84,7 @@ class Zip2 extends zip_1.Zip {
                             debug(err);
                             reject(err);
                         };
-                        const success_ = (ress) => __awaiter(this, void 0, void 0, function* () {
+                        const success_ = (ress) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                             let buffer;
                             try {
                                 buffer = yield BufferUtils_1.streamToBufferPromise(ress);
@@ -131,7 +125,6 @@ class Zip2 extends zip_1.Zip {
                                 });
                             });
                         });
-                        const needsStreamingResponse = true;
                         if (needsStreamingResponse) {
                             request.get({
                                 headers: {},
@@ -193,7 +186,6 @@ class Zip2 extends zip_1.Zip {
                         });
                     });
                 });
-                const needsStreamingResponse = true;
                 if (needsStreamingResponse) {
                     request.get({
                         headers: {},
@@ -247,7 +239,7 @@ class Zip2 extends zip_1.Zip {
         });
     }
     entryStreamPromise(entryPath) {
-        return __awaiter(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             if (!this.hasEntries() || !this.hasEntry(entryPath)) {
                 return Promise.reject("no such path in zip: " + entryPath);
             }

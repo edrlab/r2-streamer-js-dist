@@ -1,13 +1,6 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const stream_1 = require("stream");
 const debug_ = require("debug");
 const request = require("request");
@@ -33,7 +26,7 @@ class HttpReadableStream extends stream_1.Readable {
             debug(err);
             this.push(null);
         };
-        const success = (res) => __awaiter(this, void 0, void 0, function* () {
+        const success = (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
             let buffer;
             try {
                 buffer = yield BufferUtils_1.streamToBufferPromise(res);
@@ -59,7 +52,7 @@ class HttpReadableStream extends stream_1.Readable {
                 .on("error", failure);
         }
         else {
-            (() => __awaiter(this, void 0, void 0, function* () {
+            (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 let res;
                 try {
                     res = yield requestPromise({

@@ -76,8 +76,8 @@ function serverMediaOverlays(server, routerPathBase64) {
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
-        function absolutizeURLs(jsonObj) {
-            JsonUtils_1.traverseJsonObjects(jsonObj, (obj) => {
+        function absolutizeURLs(jsonObject) {
+            JsonUtils_1.traverseJsonObjects(jsonObject, (obj) => {
                 if (obj.text && typeof obj.text === "string"
                     && !UrlUtils_1.isHTTP(obj.text)) {
                     obj.text = absoluteURL(obj.text);

@@ -54,6 +54,7 @@ class Zip2 extends zip_1.Zip {
         });
     }
     static async loadPromiseHTTP(filePath) {
+        const needsStreamingResponse = true;
         return new Promise(async (resolve, reject) => {
             const failure = (err) => {
                 debug(err);
@@ -120,7 +121,6 @@ class Zip2 extends zip_1.Zip {
                             });
                         });
                     };
-                    const needsStreamingResponse = true;
                     if (needsStreamingResponse) {
                         request.get({
                             headers: {},
@@ -182,7 +182,6 @@ class Zip2 extends zip_1.Zip {
                     });
                 });
             };
-            const needsStreamingResponse = true;
             if (needsStreamingResponse) {
                 request.get({
                     headers: {},

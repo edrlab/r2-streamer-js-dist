@@ -1,14 +1,6 @@
 "use strict";
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
 const forge = require("node-forge");
 const ta_json_1 = require("ta-json");
@@ -182,78 +174,78 @@ let Publication = class Publication {
         }
     }
 };
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("@context"),
     ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
     ta_json_1.JsonElementType(String),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "Context", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("metadata"),
-    __metadata("design:type", metadata_1.Metadata)
+    tslib_1.__metadata("design:type", metadata_1.Metadata)
 ], Publication.prototype, "Metadata", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("links"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "Links", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("spine"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "Spine", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("resources"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "Resources", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("toc"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "TOC", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("page-list"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "PageList", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("landmarks"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "Landmarks", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("loi"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "LOI", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("loa"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "LOA", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("lov"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "LOV", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("lot"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "LOT", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.JsonProperty("images"),
     ta_json_1.JsonElementType(publication_link_1.Link),
-    __metadata("design:type", Array)
+    tslib_1.__metadata("design:type", Array)
 ], Publication.prototype, "Images", void 0);
-__decorate([
+tslib_1.__decorate([
     ta_json_1.OnDeserialized(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
 ], Publication.prototype, "_OnDeserialized", null);
-Publication = __decorate([
+Publication = tslib_1.__decorate([
     ta_json_1.JsonObject()
 ], Publication);
 exports.Publication = Publication;
