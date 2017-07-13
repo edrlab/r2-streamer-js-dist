@@ -142,6 +142,10 @@ var Metadata = (function () {
         tslib_1.__metadata("design:type", metadata_belongsto_1.BelongsTo)
     ], Metadata.prototype, "BelongsTo", void 0);
     tslib_1.__decorate([
+        ta_json_1.JsonProperty("duration"),
+        tslib_1.__metadata("design:type", Number)
+    ], Metadata.prototype, "Duration", void 0);
+    tslib_1.__decorate([
         ta_json_1.OnDeserialized(),
         tslib_1.__metadata("design:type", Function),
         tslib_1.__metadata("design:paramtypes", []),

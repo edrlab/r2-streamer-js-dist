@@ -171,9 +171,6 @@ var Publication = (function () {
         if (!this.Links) {
             console.log("Publication.Links is not set!");
         }
-        if (!this.Spine) {
-            console.log("Publication.Spine is not set!");
-        }
     };
     tslib_1.__decorate([
         ta_json_1.JsonProperty("@context"),

@@ -85,6 +85,7 @@ function EpubParsePromise(filePath) {
         const publication = new publication_1.Publication();
         publication.Context = ["http://readium.org/webpub/default.jsonld"];
         publication.Metadata = new metadata_1.Metadata();
+        publication.Metadata.RDFType = "http://schema.org/Book";
         publication.Metadata.Modified = moment(Date.now()).toDate();
         publication.AddToInternal("filename", path.basename(filePath));
         publication.AddToInternal("type", "epub");
@@ -182,9 +183,6 @@ function EpubParsePromise(filePath) {
         }
         if (opf.Spine && opf.Spine.PageProgression) {
             publication.Metadata.Direction = opf.Spine.PageProgression;
-        }
-        else {
-            publication.Metadata.Direction = "default";
         }
         if (isEpub3OrMore(rootfile, opf)) {
             findContributorInMeta(publication, rootfile, opf);

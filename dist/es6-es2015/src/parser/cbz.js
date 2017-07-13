@@ -29,6 +29,7 @@ function CbzParsePromise(filePath) {
         const publication = new publication_1.Publication();
         publication.Context = ["http://readium.org/webpub/default.jsonld"];
         publication.Metadata = new metadata_1.Metadata();
+        publication.Metadata.RDFType = "http://schema.org/ComicIssue";
         publication.Metadata.Identifier = filePathToTitle(filePath);
         publication.AddToInternal("type", "cbz");
         publication.AddToInternal("zip", zip);

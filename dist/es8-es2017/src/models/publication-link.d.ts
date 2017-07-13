@@ -8,6 +8,7 @@ export declare class Link {
     Title: string;
     Properties: Properties;
     Duration: number;
+    Bitrate: number;
     Templated: boolean;
     Children: Link[];
     MediaOverlays: MediaOverlayNode[];

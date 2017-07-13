@@ -59,6 +59,10 @@ tslib_1.__decorate([
     tslib_1.__metadata("design:type", Number)
 ], Link.prototype, "Duration", void 0);
 tslib_1.__decorate([
+    ta_json_1.JsonProperty("bitrate"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "Bitrate", void 0);
+tslib_1.__decorate([
     ta_json_1.JsonProperty("templated"),
     tslib_1.__metadata("design:type", Boolean)
 ], Link.prototype, "Templated", void 0);

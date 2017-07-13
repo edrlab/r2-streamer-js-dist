@@ -31,5 +31,6 @@ export declare class Metadata {
     Rights: string;
     Subject: Subject[];
     BelongsTo: BelongsTo;
+    Duration: number;
     private _OnDeserialized();
 }
