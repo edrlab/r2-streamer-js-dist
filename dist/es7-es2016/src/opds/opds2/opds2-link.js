@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
+const ta_json_string_converter_1 = require("../../../../es8-es2017/src/_utils/ta-json-string-converter");
 const ta_json_1 = require("ta-json");
 const opds2_properties_1 = require("./opds2-properties");
 let OPDSLink = OPDSLink_1 = class OPDSLink {

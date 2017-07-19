@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var metadata_collection_1 = require("./models/metadata-collection");
-var metadata_collection_json_converter_1 = require("./models/metadata-collection-json-converter");
-var metadata_contributor_1 = require("./models/metadata-contributor");
-var metadata_contributor_json_converter_1 = require("./models/metadata-contributor-json-converter");
-var opds2_collection_1 = require("./opds/opds2/opds2-collection");
-var opds2_collection_json_converter_1 = require("./opds/opds2/opds2-collection-json-converter");
-var ta_json_date_converter_1 = require("./_utils/ta-json-date-converter");
-var xml_js_mapper_1 = require("./_utils/xml-js-mapper");
+var metadata_collection_1 = require("../../es8-es2017/src/models/metadata-collection");
+var metadata_collection_json_converter_1 = require("../../es8-es2017/src/models/metadata-collection-json-converter");
+var metadata_contributor_1 = require("../../es8-es2017/src/models/metadata-contributor");
+var metadata_contributor_json_converter_1 = require("../../es8-es2017/src/models/metadata-contributor-json-converter");
+var opds2_collection_1 = require("../../es8-es2017/src/opds/opds2/opds2-collection");
+var opds2_collection_json_converter_1 = require("../../es8-es2017/src/opds/opds2/opds2-collection-json-converter");
+var ta_json_date_converter_1 = require("../../es8-es2017/src/_utils/ta-json-date-converter");
+var xml_js_mapper_1 = require("../../es8-es2017/src/_utils/xml-js-mapper");
 var ta_json_1 = require("ta-json");
 function initGlobals() {
     ta_json_1.propertyConverters.set(Buffer, new ta_json_1.BufferConverter());

@@ -1,6 +1,6 @@
 /// <reference types="node" />
-import { Publication } from "../models/publication";
-import { Link } from "../models/publication-link";
+import { Publication } from "../../../es8-es2017/src/models/publication";
+import { Link } from "../../../es8-es2017/src/models/publication-link";
 export interface ITransformer {
     supports(publication: Publication, link: Link): boolean;
     transform(publication: Publication, link: Link, data: Buffer): Buffer;

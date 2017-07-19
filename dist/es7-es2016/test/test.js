@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const media_overlay_1 = require("../src/models/media-overlay");
+const media_overlay_1 = require("../../es8-es2017/src/models/media-overlay");
 const ava_1 = require("ava");
 const debug_ = require("debug");
 const debug = debug_("r2:test");

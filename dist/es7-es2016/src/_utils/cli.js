@@ -4,7 +4,7 @@ const tslib_1 = require("tslib");
 const fs = require("fs");
 const path = require("path");
 const util = require("util");
-const publication_parser_1 = require("../parser/publication-parser");
+const publication_parser_1 = require("../../../es8-es2017/src/parser/publication-parser");
 const init_globals_1 = require("../init-globals");
 init_globals_1.initGlobals();
 console.log("process.cwd():");

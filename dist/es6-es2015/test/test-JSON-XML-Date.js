@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const opds_entry_1 = require("../src/opds/opds1/opds-entry");
-const opds2_publicationMetadata_1 = require("../src/opds/opds2/opds2-publicationMetadata");
-const xml_js_mapper_1 = require("../src/_utils/xml-js-mapper");
+const opds_entry_1 = require("../../es8-es2017/src/opds/opds1/opds-entry");
+const opds2_publicationMetadata_1 = require("../../es8-es2017/src/opds/opds2/opds2-publicationMetadata");
+const xml_js_mapper_1 = require("../../es8-es2017/src/_utils/xml-js-mapper");
 const ava_1 = require("ava");
 const ta_json_1 = require("ta-json");
 const xmldom = require("xmldom");

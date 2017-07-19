@@ -1,6 +1,6 @@
 /// <reference types="node" />
-import { Publication } from "../models/publication";
-import { Link } from "../models/publication-link";
+import { Publication } from "../../../es8-es2017/src/models/publication";
+import { Link } from "../../../es8-es2017/src/models/publication-link";
 import { ITransformer } from "./transformer";
 export declare class TransformerObfIDPF implements ITransformer {
     supports(_publication: Publication, link: Link): boolean;

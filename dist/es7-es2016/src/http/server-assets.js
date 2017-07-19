@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const path = require("path");
-const publication_parser_1 = require("../parser/publication-parser");
-const transformer_1 = require("../transform/transformer");
-const RangeUtils_1 = require("../_utils/http/RangeUtils");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+const publication_parser_1 = require("../../../es8-es2017/src/parser/publication-parser");
+const transformer_1 = require("../../../es8-es2017/src/transform/transformer");
+const RangeUtils_1 = require("../../../es8-es2017/src/_utils/http/RangeUtils");
+const BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");

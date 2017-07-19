@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const path = require("path");
-const cbz_1 = require("./cbz");
-const epub_1 = require("./epub");
+const cbz_1 = require("../../../es8-es2017/src/parser/cbz");
+const epub_1 = require("../../../es8-es2017/src/parser/epub");
 function PublicationParsePromise(filePath) {
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
         const fileName = path.basename(filePath);

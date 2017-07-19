@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const xml_js_mapper_1 = require("../../../../es8-es2017/src/_utils/xml-js-mapper");
 const opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
 let Link = class Link {
     HasRel(rel) {

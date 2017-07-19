@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const metadata_1 = require("../src/models/metadata");
-const metadata_contributor_1 = require("../src/models/metadata-contributor");
+const metadata_1 = require("../../es8-es2017/src/models/metadata");
+const metadata_contributor_1 = require("../../es8-es2017/src/models/metadata-contributor");
 const ava_1 = require("ava");
 const ta_json_1 = require("ta-json");
 const init_globals_1 = require("../src/init-globals");

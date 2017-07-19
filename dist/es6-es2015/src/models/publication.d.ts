@@ -1,4 +1,4 @@
-import { LCP } from "../parser/epub/lcp";
+import { LCP } from "../../../es8-es2017/src/parser/epub/lcp";
 import { IInternal } from "./internal";
 import { MediaOverlayNode } from "./media-overlay";
 import { Metadata } from "./metadata";

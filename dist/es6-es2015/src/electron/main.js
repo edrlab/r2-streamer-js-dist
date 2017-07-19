@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const fs = require("fs");
 const path = require("path");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
+const UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
 const debug_ = require("debug");
 const electron_1 = require("electron");
 const filehound = require("filehound");

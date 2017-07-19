@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var converter_1 = require("../opds/converter");
-var opds_1 = require("../opds/opds1/opds");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
-var JsonUtils_1 = require("../_utils/JsonUtils");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+var converter_1 = require("../../../es8-es2017/src/opds/converter");
+var opds_1 = require("../../../es8-es2017/src/opds/opds1/opds");
+var UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
+var JsonUtils_1 = require("../../../es8-es2017/src/_utils/JsonUtils");
+var BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
+var xml_js_mapper_1 = require("../../../es8-es2017/src/_utils/xml-js-mapper");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
