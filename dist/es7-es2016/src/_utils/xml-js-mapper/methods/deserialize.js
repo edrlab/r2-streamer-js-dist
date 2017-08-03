@@ -13,7 +13,9 @@ function deserializeRootObject(objectInstance, objectType = Object, options) {
     }
     const [objectType2, ...superTypes] = object_definition_1.getTypedInheritanceChain(objectType, objectInstance);
     const output = Object.create(objectType2.prototype);
-    const definitions = [...superTypes.reverse(), objectType2].map((t) => object_definition_1.objectDefinitions.get(t));
+    const definitions = [...superTypes.reverse(), objectType2]
+        .map((t) => object_definition_1.objectDefinitions.get(t))
+        .filter((t) => !!t);
     definitions.forEach((d) => {
         if (!d) {
             return;

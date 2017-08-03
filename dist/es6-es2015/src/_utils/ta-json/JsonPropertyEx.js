@@ -4,7 +4,7 @@ require("reflect-metadata");
 const util = require("util");
 const debug_ = require("debug");
 const ta_json_1 = require("ta-json");
-const object_definition_1 = require("ta-json/lib/classes/object-definition");
+const object_definition_1 = require("ta-json/classes/object-definition");
 const debug = debug_("r2:JsonPropertyEx");
 function inspect(obj) {
     console.log(util.inspect(obj, { showHidden: false, depth: 1000, colors: true, customInspect: true }));
