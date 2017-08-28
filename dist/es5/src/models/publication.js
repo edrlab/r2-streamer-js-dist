@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var ta_json_string_converter_1 = require("../../../es8-es2017/src/_utils/ta-json-string-converter");
-var forge = require("node-forge");
 var ta_json_1 = require("ta-json");
 var metadata_1 = require("./metadata");
 var publication_link_1 = require("./publication-link");
@@ -24,44 +23,6 @@ var Publication = (function () {
             }
         }
     };
-    Publication.prototype.UpdateLCP = function (lcpPassHash) {
-        if (!this.LCP) {
-            return undefined;
-        }
-        var userKey = forge.util.hexToBytes(lcpPassHash);
-        if (userKey
-            && this.LCP.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
-            && this.LCP.Encryption.Profile === "http://readium.org/lcp/basic-profile"
-            && this.LCP.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc") {
-            try {
-                var keyCheck = new Buffer(this.LCP.Encryption.UserKey.KeyCheck, "base64").toString("binary");
-                var encryptedLicenseID = keyCheck;
-                var AES_BLOCK_SIZE = 16;
-                var iv = encryptedLicenseID.substring(0, AES_BLOCK_SIZE);
-                var toDecrypt = forge.util.createBuffer(encryptedLicenseID.substring(AES_BLOCK_SIZE), "binary");
-                var aesCbcDecipher = forge.cipher.createDecipher("AES-CBC", userKey);
-                aesCbcDecipher.start({ iv: iv, additionalData_: "binary-encoded string" });
-                aesCbcDecipher.update(toDecrypt);
-                aesCbcDecipher.finish();
-                if (this.LCP.ID === aesCbcDecipher.output.toString()) {
-                    var encryptedContentKey = new Buffer(this.LCP.Encryption.ContentKey.EncryptedValue, "base64").toString("binary");
-                    var iv2 = encryptedContentKey.substring(0, AES_BLOCK_SIZE);
-                    var toDecrypt2 = forge.util.createBuffer(encryptedContentKey.substring(AES_BLOCK_SIZE), "binary");
-                    var aesCbcDecipher2 = forge.cipher.createDecipher("AES-CBC", userKey);
-                    aesCbcDecipher2.start({ iv: iv2, additionalData_: "binary-encoded string" });
-                    aesCbcDecipher2.update(toDecrypt2);
-                    aesCbcDecipher2.finish();
-                    var contentKey = aesCbcDecipher2.output.bytes();
-                    this.AddToInternal("lcp_content_key", contentKey);
-                    return contentKey;
-                }
-            }
-            catch (err) {
-                console.log("LCP error! " + err);
-            }
-        }
-        return undefined;
-    };
     Publication.prototype.findFromInternal = function (key) {
         if (this.Internal) {
             var found = this.Internal.find(function (internal) {
@@ -74,11 +35,17 @@ var Publication = (function () {
         return undefined;
     };
     Publication.prototype.AddToInternal = function (key, value) {
-        if (!this.Internal) {
-            this.Internal = [];
+        var existing = this.findFromInternal(key);
+        if (existing) {
+            existing.Value = value;
         }
-        var internal = { Name: key, Value: value };
-        this.Internal.push(internal);
+        else {
+            if (!this.Internal) {
+                this.Internal = [];
+            }
+            var internal = { Name: key, Value: value };
+            this.Internal.push(internal);
+        }
     };
     Publication.prototype.GetCover = function () {
         return this.searchLinkByRel("cover");

@@ -37,7 +37,7 @@ function createElectronBrowserWindow() {
         });
     }
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var dirPath, files, server, pubPaths, port, url, pubManifestUrls, urlEncoded;
+        var dirPath, files, server, pubPaths, port, url, pubManifestUrls, menuTemplate, menu;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -57,6 +57,7 @@ function createElectronBrowserWindow() {
                     pubManifestUrls = pubPaths.map(function (pubPath) {
                         return "" + url + pubPath;
                     });
+                    debug(files);
                     debug(pubManifestUrls);
                     electronBrowserWindow = new electron_1.BrowserWindow({
                         height: 600,
@@ -65,20 +66,46 @@ function createElectronBrowserWindow() {
                             contextIsolation: false,
                             devTools: true,
                             nodeIntegration: true,
-                            nodeIntegrationInWorker: true,
+                            nodeIntegrationInWorker: false,
                             sandbox: false,
                             webSecurity: true,
                         },
                         width: 800,
                     });
-                    urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(url);
-                    electronBrowserWindow.loadURL("file://" + __dirname + "/index.html?pub=" + urlEncoded);
                     electronBrowserWindow.webContents.on("dom-ready", function () {
                         debug("electronBrowserWindow dom-ready");
                         if (electronBrowserWindow) {
                             electronBrowserWindow.webContents.openDevTools();
                         }
                     });
+                    menuTemplate = [
+                        {
+                            label: "Electron R2",
+                            submenu: [
+                                {
+                                    accelerator: "Command+Q",
+                                    click: function () { electron_1.app.quit(); },
+                                    label: "Quit",
+                                },
+                            ],
+                        },
+                    ];
+                    pubManifestUrls.forEach(function (pubManifestUrl, n) {
+                        console.log("MENU ITEM: " + files[n] + " : " + pubManifestUrl);
+                        menuTemplate[0].submenu.push({
+                            click: function () {
+                                if (electronBrowserWindow) {
+                                    var urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(pubManifestUrl);
+                                    var fullUrl = "file://" + process.cwd() + "/src/electron/renderer/index.html?pub=" + urlEncoded;
+                                    debug(fullUrl);
+                                    electronBrowserWindow.webContents.loadURL(fullUrl);
+                                }
+                            },
+                            label: files[n],
+                        });
+                    });
+                    menu = electron_1.Menu.buildFromTemplate(menuTemplate);
+                    electron_1.Menu.setApplicationMenu(menu);
                     electronBrowserWindow.on("closed", function () {
                         debug("electronBrowserWindow closed");
                         electronBrowserWindow = undefined;

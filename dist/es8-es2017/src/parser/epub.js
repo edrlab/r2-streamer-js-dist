@@ -218,6 +218,10 @@ const fillMediaOverlay = async (publication, rootfile, opf, zip) => {
         if (!zip.hasEntry(smilFilePath)) {
             continue;
         }
+        if (item.Properties && item.Properties.Encrypted) {
+            console.log("ENCRYPTED SMIL MEDIA OVERLAY: " + smilFilePath);
+            continue;
+        }
         const mo = new media_overlay_1.MediaOverlayNode();
         mo.SmilPathInZip = smilFilePath;
         const manItemsHtmlWithSmil = [];

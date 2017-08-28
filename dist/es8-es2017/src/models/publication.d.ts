@@ -20,7 +20,6 @@ export declare class Publication {
     LCP: LCP;
     Internal: IInternal[];
     freeDestroy(): void;
-    UpdateLCP(lcpPassHash: string): string | undefined;
     findFromInternal(key: string): IInternal | undefined;
     AddToInternal(key: string, value: any): void;
     GetCover(): Link | undefined;

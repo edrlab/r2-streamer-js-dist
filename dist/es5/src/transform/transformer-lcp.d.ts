@@ -6,4 +6,5 @@ export declare class TransformerLCP implements ITransformer {
     private contentKey;
     supports(publication: Publication, link: Link): boolean;
     transform(_publication: Publication, link: Link, data: Buffer): Buffer;
+    private UpdateLCP(publication, lcpPassHash);
 }

@@ -47,6 +47,7 @@ function createElectronBrowserWindow() {
         const pubManifestUrls = pubPaths.map((pubPath) => {
             return `${url}${pubPath}`;
         });
+        debug(files);
         debug(pubManifestUrls);
         electronBrowserWindow = new electron_1.BrowserWindow({
             height: 600,
@@ -55,20 +56,46 @@ function createElectronBrowserWindow() {
                 contextIsolation: false,
                 devTools: true,
                 nodeIntegration: true,
-                nodeIntegrationInWorker: true,
+                nodeIntegrationInWorker: false,
                 sandbox: false,
                 webSecurity: true,
             },
             width: 800,
         });
-        const urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(url);
-        electronBrowserWindow.loadURL(`file://${__dirname}/index.html?pub=${urlEncoded}`);
         electronBrowserWindow.webContents.on("dom-ready", () => {
             debug("electronBrowserWindow dom-ready");
             if (electronBrowserWindow) {
                 electronBrowserWindow.webContents.openDevTools();
             }
         });
+        const menuTemplate = [
+            {
+                label: "Electron R2",
+                submenu: [
+                    {
+                        accelerator: "Command+Q",
+                        click: () => { electron_1.app.quit(); },
+                        label: "Quit",
+                    },
+                ],
+            },
+        ];
+        pubManifestUrls.forEach((pubManifestUrl, n) => {
+            console.log("MENU ITEM: " + files[n] + " : " + pubManifestUrl);
+            menuTemplate[0].submenu.push({
+                click: () => {
+                    if (electronBrowserWindow) {
+                        const urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(pubManifestUrl);
+                        const fullUrl = `file://${process.cwd()}/src/electron/renderer/index.html?pub=${urlEncoded}`;
+                        debug(fullUrl);
+                        electronBrowserWindow.webContents.loadURL(fullUrl);
+                    }
+                },
+                label: files[n],
+            });
+        });
+        const menu = electron_1.Menu.buildFromTemplate(menuTemplate);
+        electron_1.Menu.setApplicationMenu(menu);
         electronBrowserWindow.on("closed", () => {
             debug("electronBrowserWindow closed");
             electronBrowserWindow = undefined;

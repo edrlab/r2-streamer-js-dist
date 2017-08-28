@@ -201,7 +201,10 @@ function serverAssets(server, routerPathBase64) {
                     if (zipData && isEncrypted && link) {
                         if (req.params.lcpPass64) {
                             lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
-                            publication.AddToInternal("lcp_content_key", lcpPass);
+                            publication.AddToInternal("lcp_user_pass", lcpPass);
+                        }
+                        else {
+                            publication.AddToInternal("lcp_user_pass", null);
                         }
                         transformedData = transformer_1.Transformers.try(publication, link, zipData);
                         if (transformedData) {

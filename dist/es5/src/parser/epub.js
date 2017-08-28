@@ -278,6 +278,10 @@ var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib
                                 if (!zip.hasEntry(smilFilePath)) {
                                     return [2, "continue"];
                                 }
+                                if (item.Properties && item.Properties.Encrypted) {
+                                    console.log("ENCRYPTED SMIL MEDIA OVERLAY: " + smilFilePath);
+                                    return [2, "continue"];
+                                }
                                 mo = new media_overlay_1.MediaOverlayNode();
                                 mo.SmilPathInZip = smilFilePath;
                                 manItemsHtmlWithSmil = [];
