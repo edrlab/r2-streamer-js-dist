@@ -14,7 +14,7 @@ function parseRangeHeader(rangeHeader) {
     }
     rHeader.forEach(function (rh) {
         var arr = parseRangeHeader_(rh);
-        ranges.concat(arr);
+        ranges = ranges.concat(arr);
     });
     return ranges;
 }

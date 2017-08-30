@@ -6,11 +6,13 @@ const publication_parser_1 = require("../../../es8-es2017/src/parser/publication
 const transformer_1 = require("../../../es8-es2017/src/transform/transformer");
 const RangeUtils_1 = require("../../../es8-es2017/src/_utils/http/RangeUtils");
 const BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
+const CounterPassThroughStream_1 = require("../../../es8-es2017/src/_utils/stream/CounterPassThroughStream");
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");
 const debug = debug_("r2:server:assets");
 function serverAssets(server, routerPathBase64) {
+    let streamCounter = 0;
     const routerAssets = express.Router({ strict: false });
     routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         if (!req.params.pathBase64) {
@@ -113,6 +115,9 @@ function serverAssets(server, routerPathBase64) {
             mediaType.indexOf("+xhtml") > 0 ||
             mediaType.indexOf("+xml") > 0);
         const isEncrypted = link && link.Properties && link.Properties.Encrypted;
+        const isObfuscatedFont = isEncrypted && link &&
+            (link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC"
+                || link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding");
         const isPartialByteRangeRequest = req.headers &&
             req.headers.range;
         if (isEncrypted && isPartialByteRangeRequest) {
@@ -125,7 +130,9 @@ function serverAssets(server, routerPathBase64) {
         let partialByteBegin = -1;
         let partialByteEnd = -1;
         if (isPartialByteRangeRequest) {
+            debug(req.headers.range);
             const ranges = RangeUtils_1.parseRangeHeader(req.headers.range);
+            debug(ranges);
             if (ranges && ranges.length) {
                 if (ranges.length > 1) {
                     const err = "Too many HTTP ranges: " + req.headers.range;
@@ -164,7 +171,9 @@ function serverAssets(server, routerPathBase64) {
             partialByteEnd - partialByteBegin + 1 :
             totalByteLength;
         let zipData;
-        if (!isHead && (isEncrypted || (isShow && isText))) {
+        if (!isHead
+            && ((isEncrypted && (isObfuscatedFont || !server.disableDecryption))
+                || (isShow && isText))) {
             try {
                 zipData = yield BufferUtils_1.streamToBufferPromise(zipStream);
             }
@@ -208,34 +217,85 @@ function serverAssets(server, routerPathBase64) {
                             .replace(/'/g, "&apos;") +
                         "</pre></p>")
                     : "<p>BINARY</p>") + "</body></html>");
+            return;
+        }
+        server.setResponseCORS(res);
+        res.setHeader("Cache-Control", "public,max-age=86400");
+        if (mediaType) {
+            res.set("Content-Type", mediaType);
+        }
+        res.setHeader("Accept-Ranges", "bytes");
+        if (isPartialByteRangeRequest) {
+            res.setHeader("Content-Length", `${partialByteLength}`);
+            const rangeHeader = `bytes ${partialByteBegin}-${partialByteEnd}/${totalByteLength}`;
+            debug("+++> " + rangeHeader + " (( " + partialByteLength);
+            res.setHeader("Content-Range", rangeHeader);
+            res.status(206);
         }
         else {
-            server.setResponseCORS(res);
-            res.setHeader("Cache-Control", "public,max-age=86400");
-            if (mediaType) {
-                res.set("Content-Type", mediaType);
-            }
-            res.setHeader("Accept-Ranges", "bytes");
-            if (isPartialByteRangeRequest) {
-                res.setHeader("Content-Length", `${partialByteLength}`);
-                const rangeHeader = `bytes ${partialByteBegin}-${partialByteEnd}/${totalByteLength}`;
-                res.setHeader("Content-Range", rangeHeader);
-                res.status(206);
-            }
-            else {
-                res.setHeader("Content-Length", `${totalByteLength}`);
-                res.status(200);
-            }
-            if (isHead) {
-                res.end();
+            res.setHeader("Content-Length", `${totalByteLength}`);
+            debug("---> " + totalByteLength);
+            res.status(200);
+        }
+        if (isHead) {
+            res.end();
+        }
+        else {
+            if (zipData) {
+                debug("~~~~~~~~~~~~> BUFFER SEND");
+                res.send(zipData);
             }
             else {
-                if (zipData) {
-                    res.send(zipData);
-                }
-                else {
-                    zipStream.pipe(res);
-                }
+                debug("===> STREAM PIPE");
+                const counterStream = new CounterPassThroughStream_1.CounterPassThroughStream(++streamCounter);
+                zipStream
+                    .on("finish", () => {
+                    debug("ZIP FINISH " + counterStream.id);
+                })
+                    .on("end", () => {
+                    debug("ZIP END " + counterStream.id);
+                })
+                    .on("close", () => {
+                    debug("ZIP CLOSE " + counterStream.id);
+                })
+                    .on("error", () => {
+                    debug("ZIP ERROR " + counterStream.id);
+                })
+                    .pipe(counterStream)
+                    .on("end", function () {
+                    debug("CounterPassThroughStream END: " +
+                        this.id);
+                })
+                    .on("close", function () {
+                    debug("CounterPassThroughStream CLOSE: " +
+                        this.id);
+                })
+                    .once("finish", function () {
+                    debug("CounterPassThroughStream FINISH: " +
+                        this.id +
+                        " -- " + this.bytesReceived);
+                })
+                    .on("error", function () {
+                    debug("CounterPassThroughStream ERROR: " +
+                        this.id);
+                })
+                    .pipe(res)
+                    .on("finish", () => {
+                    debug("RES FINISH " + counterStream.id);
+                })
+                    .on("end", () => {
+                    debug("RES END " + counterStream.id);
+                })
+                    .on("close", () => {
+                    debug("RES CLOSE " + counterStream.id);
+                    res.end();
+                    counterStream.unpipe(res);
+                    counterStream.end();
+                    zipStream.unpipe(counterStream);
+                })
+                    .on("error", () => {
+                    debug("RES ERROR " + counterStream.id);
+                });
             }
         }
     }));

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function parseRangeHeader(rangeHeader) {
-    const ranges = [];
+    let ranges = [];
     if (!rangeHeader) {
         return ranges;
     }
@@ -14,7 +14,7 @@ function parseRangeHeader(rangeHeader) {
     }
     rHeader.forEach((rh) => {
         const arr = parseRangeHeader_(rh);
-        ranges.concat(arr);
+        ranges = ranges.concat(arr);
     });
     return ranges;
 }

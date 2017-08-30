@@ -49,6 +49,7 @@ class Server {
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
         this.disableReaders = options ? options.disableReaders : false;
+        this.disableDecryption = options ? options.disableDecryption : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;

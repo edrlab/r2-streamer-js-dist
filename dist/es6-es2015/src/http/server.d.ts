@@ -4,9 +4,11 @@ import { OPDSFeed } from "../../../es8-es2017/src/opds/opds2/opds2";
 import * as express from "express";
 export interface IServerOptions {
     disableReaders: boolean;
+    disableDecryption: boolean;
 }
 export declare class Server {
     readonly disableReaders: boolean;
+    readonly disableDecryption: boolean;
     readonly lcpBeginToken: string;
     readonly lcpEndToken: string;
     private readonly publications;
