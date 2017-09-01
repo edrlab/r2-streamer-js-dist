@@ -16,7 +16,7 @@ function serverAssets(server, routerPathBase64) {
     var streamCounter = 0;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var isShow, isHead, pathBase64Str, publication, err_1, err, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, err, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _a, err_2, zipStream, totalByteLength, partialByteLength, zipData, err_3, lcpPass, transformedData, err, rangeHeader, counterStream_1;
+        var isShow, isHead, pathBase64Str, publication, err_1, err, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, lcpPass, decryptFail, transformedStream, err_3, err, zipData, err_4, rangeHeader, counterStream_1;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -128,17 +128,10 @@ function serverAssets(server, routerPathBase64) {
                     isObfuscatedFont = isEncrypted && link &&
                         (link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC"
                             || link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding");
-                    isPartialByteRangeRequest = req.headers &&
-                        req.headers.range;
-                    if (isEncrypted && isPartialByteRangeRequest) {
-                        err = "Encrypted video/audio not supported (HTTP 206 partial request byte range)";
-                        debug(err);
-                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                            + err + "</p></body></html>");
-                        return [2];
-                    }
-                    partialByteBegin = -1;
+                    isPartialByteRangeRequest = ((req.headers && req.headers.range) ? true : false);
+                    partialByteBegin = 0;
                     partialByteEnd = -1;
+                    partialByteLength = 0;
                     if (isPartialByteRangeRequest) {
                         debug(req.headers.range);
                         ranges = RangeUtils_1.parseRangeHeader(req.headers.range);
@@ -158,12 +151,10 @@ function serverAssets(server, routerPathBase64) {
                             }
                         }
                     }
-                    if (partialByteBegin === 0 && partialByteEnd < 0) {
-                    }
                     _b.label = 6;
                 case 6:
                     _b.trys.push([6, 11, , 12]);
-                    if (!isPartialByteRangeRequest) return [3, 8];
+                    if (!(isPartialByteRangeRequest && !isEncrypted)) return [3, 8];
                     return [4, zip.entryStreamRangePromise(pathInZip, partialByteBegin, partialByteEnd)];
                 case 7:
                     _a = _b.sent();
@@ -182,66 +173,83 @@ function serverAssets(server, routerPathBase64) {
                         + err_2 + "</p></body></html>");
                     return [2];
                 case 12:
-                    zipStream = zipStream_.stream;
-                    totalByteLength = zipStream_.length;
-                    if (partialByteEnd < 0) {
-                        partialByteEnd = totalByteLength - 1;
+                    if (!((isEncrypted && (isObfuscatedFont || !server.disableDecryption)) &&
+                        link)) return [3, 17];
+                    if (req.params.lcpPass64) {
+                        lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
+                        publication.AddToInternal("lcp_user_pass", lcpPass);
                     }
-                    partialByteLength = isPartialByteRangeRequest ?
-                        partialByteEnd - partialByteBegin + 1 :
-                        totalByteLength;
-                    if (!(!isHead
-                        && ((isEncrypted && (isObfuscatedFont || !server.disableDecryption))
-                            || (isShow && isText)))) return [3, 16];
+                    else {
+                        publication.AddToInternal("lcp_user_pass", null);
+                    }
+                    decryptFail = false;
+                    transformedStream = void 0;
                     _b.label = 13;
                 case 13:
                     _b.trys.push([13, 15, , 16]);
-                    return [4, BufferUtils_1.streamToBufferPromise(zipStream)];
+                    return [4, transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
                 case 14:
-                    zipData = _b.sent();
+                    transformedStream = _b.sent();
                     return [3, 16];
                 case 15:
                     err_3 = _b.sent();
                     debug(err_3);
-                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                        + err_3 + "</p></body></html>");
-                    return [2];
+                    return [3, 16];
                 case 16:
-                    if (zipData && isEncrypted && link) {
-                        if (req.params.lcpPass64) {
-                            lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
-                            publication.AddToInternal("lcp_user_pass", lcpPass);
-                        }
-                        else {
-                            publication.AddToInternal("lcp_user_pass", null);
-                        }
-                        transformedData = transformer_1.Transformers.try(publication, link, zipData);
-                        if (transformedData) {
-                            zipData = transformedData;
-                        }
-                        else {
-                            err = "Encryption scheme not supported.";
-                            debug(err);
-                            res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                                + err + "</p></body></html>");
-                            return [2];
-                        }
+                    if (transformedStream) {
+                        zipStream_ = transformedStream;
                     }
-                    if (isShow) {
-                        res.status(200).send("<html><body>" +
-                            "<h1>" + path.basename(pathBase64Str) + "</h1>" +
-                            "<h2>" + mediaType + "</h2>" +
-                            ((isText && zipData) ?
-                                ("<p><pre>" +
-                                    zipData.toString("utf8").replace(/&/g, "&amp;")
-                                        .replace(/</g, "&lt;")
-                                        .replace(/>/g, "&gt;")
-                                        .replace(/"/g, "&quot;")
-                                        .replace(/'/g, "&apos;") +
-                                    "</pre></p>")
-                                : "<p>BINARY</p>") + "</body></html>");
+                    else {
+                        decryptFail = true;
+                    }
+                    if (decryptFail) {
+                        err = "Encryption scheme not supported.";
+                        debug(err);
+                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                            + err + "</p></body></html>");
                         return [2];
                     }
+                    _b.label = 17;
+                case 17:
+                    if (partialByteEnd < 0) {
+                        partialByteEnd = zipStream_.length - 1;
+                    }
+                    partialByteLength = isPartialByteRangeRequest ?
+                        partialByteEnd - partialByteBegin + 1 :
+                        zipStream_.length;
+                    if (!isShow) return [3, 22];
+                    zipData = void 0;
+                    _b.label = 18;
+                case 18:
+                    _b.trys.push([18, 20, , 21]);
+                    return [4, BufferUtils_1.streamToBufferPromise(zipStream_.stream)];
+                case 19:
+                    zipData = _b.sent();
+                    return [3, 21];
+                case 20:
+                    err_4 = _b.sent();
+                    debug(err_4);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + err_4 + "</p></body></html>");
+                    return [2];
+                case 21:
+                    if (zipData) {
+                        debug("CHECK: " + zipStream_.length + " ==> " + zipData.length);
+                    }
+                    res.status(200).send("<html><body>" +
+                        "<h1>" + path.basename(pathBase64Str) + "</h1>" +
+                        "<h2>" + mediaType + "</h2>" +
+                        ((isText && zipData) ?
+                            ("<p><pre>" +
+                                zipData.toString("utf8").replace(/&/g, "&amp;")
+                                    .replace(/</g, "&lt;")
+                                    .replace(/>/g, "&gt;")
+                                    .replace(/"/g, "&quot;")
+                                    .replace(/'/g, "&apos;") +
+                                "</pre></p>")
+                            : "<p>BINARY</p>") + "</body></html>");
+                    return [2];
+                case 22:
                     server.setResponseCORS(res);
                     res.setHeader("Cache-Control", "public,max-age=86400");
                     if (mediaType) {
@@ -250,76 +258,77 @@ function serverAssets(server, routerPathBase64) {
                     res.setHeader("Accept-Ranges", "bytes");
                     if (isPartialByteRangeRequest) {
                         res.setHeader("Content-Length", "" + partialByteLength);
-                        rangeHeader = "bytes " + partialByteBegin + "-" + partialByteEnd + "/" + totalByteLength;
+                        rangeHeader = "bytes " + partialByteBegin + "-" + partialByteEnd + "/" + zipStream_.length;
                         debug("+++> " + rangeHeader + " (( " + partialByteLength);
                         res.setHeader("Content-Range", rangeHeader);
                         res.status(206);
                     }
                     else {
-                        res.setHeader("Content-Length", "" + totalByteLength);
-                        debug("---> " + totalByteLength);
+                        res.setHeader("Content-Length", "" + zipStream_.length);
+                        debug("---> " + zipStream_.length);
                         res.status(200);
                     }
                     if (isHead) {
                         res.end();
                     }
                     else {
-                        if (zipData) {
-                            debug("~~~~~~~~~~~~> BUFFER SEND");
-                            res.send(zipData);
-                        }
-                        else {
-                            debug("===> STREAM PIPE");
-                            counterStream_1 = new CounterPassThroughStream_1.CounterPassThroughStream(++streamCounter);
-                            zipStream
-                                .on("finish", function () {
-                                debug("ZIP FINISH " + counterStream_1.id);
-                            })
-                                .on("end", function () {
-                                debug("ZIP END " + counterStream_1.id);
-                            })
-                                .on("close", function () {
-                                debug("ZIP CLOSE " + counterStream_1.id);
-                            })
-                                .on("error", function () {
-                                debug("ZIP ERROR " + counterStream_1.id);
-                            })
-                                .pipe(counterStream_1)
-                                .on("end", function () {
-                                debug("CounterPassThroughStream END: " +
-                                    this.id);
-                            })
-                                .on("close", function () {
-                                debug("CounterPassThroughStream CLOSE: " +
-                                    this.id);
-                            })
-                                .once("finish", function () {
-                                debug("CounterPassThroughStream FINISH: " +
-                                    this.id +
-                                    " -- " + this.bytesReceived);
-                            })
-                                .on("error", function () {
-                                debug("CounterPassThroughStream ERROR: " +
-                                    this.id);
-                            })
-                                .pipe(res)
-                                .on("finish", function () {
-                                debug("RES FINISH " + counterStream_1.id);
-                            })
-                                .on("end", function () {
-                                debug("RES END " + counterStream_1.id);
-                            })
-                                .on("close", function () {
-                                debug("RES CLOSE " + counterStream_1.id);
-                                res.end();
-                                counterStream_1.unpipe(res);
-                                counterStream_1.end();
-                                zipStream.unpipe(counterStream_1);
-                            })
-                                .on("error", function () {
-                                debug("RES ERROR " + counterStream_1.id);
-                            });
-                        }
+                        debug("===> STREAM PIPE");
+                        counterStream_1 = new CounterPassThroughStream_1.CounterPassThroughStream(++streamCounter);
+                        zipStream_.stream
+                            .on("finish", function () {
+                            debug("ZIP FINISH " + counterStream_1.id);
+                        })
+                            .on("end", function () {
+                            debug("ZIP END " + counterStream_1.id);
+                        })
+                            .on("close", function () {
+                            debug("ZIP CLOSE " + counterStream_1.id);
+                        })
+                            .on("error", function () {
+                            debug("ZIP ERROR " + counterStream_1.id);
+                        })
+                            .pipe(counterStream_1)
+                            .on("progress", function f() {
+                            debug("CounterPassThroughStream PROGRESS: " +
+                                this.id +
+                                " -- " + this.bytesReceived);
+                        })
+                            .on("end", function f() {
+                            debug("CounterPassThroughStream END: " +
+                                this.id);
+                        })
+                            .on("close", function f() {
+                            debug("CounterPassThroughStream CLOSE: " +
+                                this.id);
+                        })
+                            .once("finish", function f() {
+                            debug("CounterPassThroughStream FINISH: " +
+                                this.id +
+                                " -- " + this.bytesReceived);
+                        })
+                            .on("error", function f() {
+                            debug("CounterPassThroughStream ERROR: " +
+                                this.id);
+                        })
+                            .pipe(res)
+                            .on("finish", function () {
+                            debug("RES FINISH " + counterStream_1.id);
+                        })
+                            .on("end", function () {
+                            debug("RES END " + counterStream_1.id);
+                        })
+                            .on("close", function () {
+                            debug("RES CLOSE " + counterStream_1.id);
+                            res.end();
+                            counterStream_1.unpipe(res);
+                            counterStream_1.end();
+                            if (zipStream_) {
+                                zipStream_.stream.unpipe(counterStream_1);
+                            }
+                        })
+                            .on("error", function () {
+                            debug("RES ERROR " + counterStream_1.id);
+                        });
                     }
                     return [2];
             }

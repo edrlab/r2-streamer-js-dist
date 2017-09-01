@@ -1,16 +1,22 @@
 /// <reference types="node" />
 import { Publication } from "../models/publication";
 import { Link } from "../models/publication-link";
+import { IStreamAndLength } from "../_utils/zip/zip";
 export interface ITransformer {
     supports(publication: Publication, link: Link): boolean;
-    transform(publication: Publication, link: Link, data: Buffer): Buffer;
+    transformBuffer(publication: Publication, link: Link, data: Buffer): Promise<Buffer>;
+    transformStream(publication: Publication, link: Link, stream: IStreamAndLength, isPartialByteRangeRequest: boolean, partialByteBegin: number, partialByteEnd: number): Promise<IStreamAndLength>;
+    getDecryptedSizeStream(publication: Publication, link: Link, stream: IStreamAndLength): Promise<number>;
+    getDecryptedSizeBuffer(publication: Publication, link: Link, data: Buffer): Promise<number>;
 }
 export declare class Transformers {
     static instance(): Transformers;
-    static try(publication: Publication, link: Link, data: Buffer): Buffer | undefined;
+    static tryBuffer(publication: Publication, link: Link, data: Buffer): Promise<Buffer>;
+    static tryStream(publication: Publication, link: Link, stream: IStreamAndLength, isPartialByteRangeRequest: boolean, partialByteBegin: number, partialByteEnd: number): Promise<IStreamAndLength>;
     private static _instance;
     private transformers;
     constructor();
     add(transformer: ITransformer): void;
-    private _try(publication, link, data);
+    private _tryBuffer(publication, link, data);
+    private _tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
 }

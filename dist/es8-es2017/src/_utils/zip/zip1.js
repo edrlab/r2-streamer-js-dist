@@ -70,6 +70,9 @@ class Zip1 extends zip_1.Zip {
                 const entry = this.zip.entries()[entryPath];
                 const streamAndLength = {
                     length: entry.size,
+                    reset: async () => {
+                        return this.entryStreamPromise(entryPath);
+                    },
                     stream,
                 };
                 resolve(streamAndLength);

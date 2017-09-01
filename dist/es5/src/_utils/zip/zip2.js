@@ -304,6 +304,11 @@ var Zip2 = (function (_super) {
                             }
                             var streamAndLength = {
                                 length: entry.uncompressedSize,
+                                reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                    return tslib_1.__generator(this, function (_a) {
+                                        return [2, this.entryStreamPromise(entryPath)];
+                                    });
+                                }); },
                                 stream: stream,
                             };
                             resolve(streamAndLength);

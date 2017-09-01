@@ -20,6 +20,9 @@ class Zip {
             streamAndLength.stream.pipe(stream);
             const sal = {
                 length: streamAndLength.length,
+                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    return this.entryStreamRangePromise(entryPath, begin, end);
+                }),
                 stream,
             };
             return sal;

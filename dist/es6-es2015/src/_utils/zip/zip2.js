@@ -254,6 +254,9 @@ class Zip2 extends zip_1.Zip {
                     }
                     const streamAndLength = {
                         length: entry.uncompressedSize,
+                        reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                            return this.entryStreamPromise(entryPath);
+                        }),
                         stream,
                     };
                     resolve(streamAndLength);

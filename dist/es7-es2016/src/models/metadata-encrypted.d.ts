@@ -4,4 +4,5 @@ export declare class Encrypted {
     Algorithm: string;
     Compression: string;
     OriginalLength: number;
+    DecryptedLengthBeforeInflate: number;
 }

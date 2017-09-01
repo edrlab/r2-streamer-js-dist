@@ -18,6 +18,9 @@ class Zip {
         streamAndLength.stream.pipe(stream);
         const sal = {
             length: streamAndLength.length,
+            reset: async () => {
+                return this.entryStreamRangePromise(entryPath, begin, end);
+            },
             stream,
         };
         return sal;

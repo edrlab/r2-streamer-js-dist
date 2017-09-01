@@ -74,6 +74,9 @@ class Zip1 extends zip_1.Zip {
                     const entry = this.zip.entries()[entryPath];
                     const streamAndLength = {
                         length: entry.size,
+                        reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                            return this.entryStreamPromise(entryPath);
+                        }),
                         stream,
                     };
                     resolve(streamAndLength);

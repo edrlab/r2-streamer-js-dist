@@ -80,6 +80,11 @@ var Zip1 = (function (_super) {
                             var entry = _this.zip.entries()[entryPath];
                             var streamAndLength = {
                                 length: entry.size,
+                                reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                    return tslib_1.__generator(this, function (_a) {
+                                        return [2, this.entryStreamPromise(entryPath)];
+                                    });
+                                }); },
                                 stream: stream,
                             };
                             resolve(streamAndLength);

@@ -10,21 +10,24 @@ class Transformers {
     static instance() {
         return Transformers._instance;
     }
-    static try(publication, link, data) {
-        return Transformers.instance()._try(publication, link, data);
+    static async tryBuffer(publication, link, data) {
+        return Transformers.instance()._tryBuffer(publication, link, data);
+    }
+    static async tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return Transformers.instance()._tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
     }
     add(transformer) {
         if (this.transformers.indexOf(transformer) < 0) {
             this.transformers.push(transformer);
         }
     }
-    _try(publication, link, data) {
+    async _tryBuffer(publication, link, data) {
         let transformedData;
         const transformer = this.transformers.find((t) => {
             if (!t.supports(publication, link)) {
                 return false;
             }
-            transformedData = t.transform(publication, link, data);
+            transformedData = t.transformBuffer(publication, link, data);
             if (transformedData) {
                 return true;
             }
@@ -33,7 +36,24 @@ class Transformers {
         if (transformer && transformedData) {
             return transformedData;
         }
-        return undefined;
+        return Promise.reject("transformers fail (buffer)");
+    }
+    async _tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        let transformedData;
+        const transformer = this.transformers.find((t) => {
+            if (!t.supports(publication, link)) {
+                return false;
+            }
+            transformedData = t.transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
+            if (transformedData) {
+                return true;
+            }
+            return false;
+        });
+        if (transformer && transformedData) {
+            return transformedData;
+        }
+        return Promise.reject("transformers fail (stream)");
     }
 }
 Transformers._instance = new Transformers();

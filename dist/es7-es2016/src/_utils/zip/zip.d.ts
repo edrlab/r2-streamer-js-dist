@@ -2,6 +2,7 @@
 export interface IStreamAndLength {
     stream: NodeJS.ReadableStream;
     length: number;
+    reset: () => Promise<IStreamAndLength>;
 }
 export interface IZip {
     hasEntries: () => boolean;

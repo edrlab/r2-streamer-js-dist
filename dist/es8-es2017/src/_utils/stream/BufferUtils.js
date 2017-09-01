@@ -3,8 +3,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const stream_1 = require("stream");
 function bufferToStream(buffer) {
     const stream = new stream_1.PassThrough();
-    stream.write(buffer);
-    stream.end();
+    setTimeout(() => {
+        const maxBuffLength = 100 * 1024;
+        let buff = buffer;
+        let remaining = buff.length;
+        let done = 0;
+        console.log("bufferToStream BEFORE: " + remaining);
+        while (remaining > 0) {
+            if (done > 0) {
+                buff = buffer.slice(done);
+            }
+            if (buff.length > maxBuffLength) {
+                buff = buff.slice(0, maxBuffLength);
+            }
+            stream.write(buff);
+            done += buff.length;
+            remaining -= buff.length;
+        }
+        console.log("bufferToStream AFTER: " + done);
+        stream.end();
+    }, 20);
     return stream;
 }
 exports.bufferToStream = bufferToStream;

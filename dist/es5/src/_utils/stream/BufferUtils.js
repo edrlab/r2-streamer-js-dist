@@ -4,8 +4,26 @@ var tslib_1 = require("tslib");
 var stream_1 = require("stream");
 function bufferToStream(buffer) {
     var stream = new stream_1.PassThrough();
-    stream.write(buffer);
-    stream.end();
+    setTimeout(function () {
+        var maxBuffLength = 100 * 1024;
+        var buff = buffer;
+        var remaining = buff.length;
+        var done = 0;
+        console.log("bufferToStream BEFORE: " + remaining);
+        while (remaining > 0) {
+            if (done > 0) {
+                buff = buffer.slice(done);
+            }
+            if (buff.length > maxBuffLength) {
+                buff = buff.slice(0, maxBuffLength);
+            }
+            stream.write(buff);
+            done += buff.length;
+            remaining -= buff.length;
+        }
+        console.log("bufferToStream AFTER: " + done);
+        stream.end();
+    }, 20);
     return stream;
 }
 exports.bufferToStream = bufferToStream;

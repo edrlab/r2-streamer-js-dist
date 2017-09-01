@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const ta_json_1 = require("ta-json");
 let Encrypted = class Encrypted {
+    constructor() {
+        this.DecryptedLengthBeforeInflate = -1;
+    }
 };
 tslib_1.__decorate([
     ta_json_1.JsonProperty("scheme"),
