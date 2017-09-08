@@ -254,6 +254,12 @@ function serverAssets(server, routerPathBase64) {
                 .on("error", () => {
                 debug("ZIP ERROR " + counterStream.id);
             })
+                .on("pipe", () => {
+                debug("ZIP PIPE " + counterStream.id);
+            })
+                .on("unpipe", () => {
+                debug("ZIP UNPIPE " + counterStream.id);
+            })
                 .pipe(counterStream)
                 .on("progress", function f() {
                 debug("CounterPassThroughStream PROGRESS: " +
@@ -277,6 +283,14 @@ function serverAssets(server, routerPathBase64) {
                 debug("CounterPassThroughStream ERROR: " +
                     this.id);
             })
+                .on("pipe", function f() {
+                debug("CounterPassThroughStream PIPE: " +
+                    this.id);
+            })
+                .on("unpipe", function f() {
+                debug("CounterPassThroughStream UNPIPE: " +
+                    this.id);
+            })
                 .pipe(res)
                 .on("finish", () => {
                 debug("RES FINISH " + counterStream.id);
@@ -295,6 +309,12 @@ function serverAssets(server, routerPathBase64) {
             })
                 .on("error", () => {
                 debug("RES ERROR " + counterStream.id);
+            })
+                .on("pipe", () => {
+                debug("RES PIPE " + counterStream.id);
+            })
+                .on("unpipe", () => {
+                debug("RES UNPIPE " + counterStream.id);
             });
         }
     });

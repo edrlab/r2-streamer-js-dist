@@ -11,13 +11,6 @@ var Transformers = (function () {
     Transformers.instance = function () {
         return Transformers._instance;
     };
-    Transformers.tryBuffer = function (publication, link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
-                return [2, Transformers.instance()._tryBuffer(publication, link, data)];
-            });
-        });
-    };
     Transformers.tryStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             return tslib_1.__generator(this, function (_a) {
@@ -29,27 +22,6 @@ var Transformers = (function () {
         if (this.transformers.indexOf(transformer) < 0) {
             this.transformers.push(transformer);
         }
-    };
-    Transformers.prototype._tryBuffer = function (publication, link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var transformedData, transformer;
-            return tslib_1.__generator(this, function (_a) {
-                transformer = this.transformers.find(function (t) {
-                    if (!t.supports(publication, link)) {
-                        return false;
-                    }
-                    transformedData = t.transformBuffer(publication, link, data);
-                    if (transformedData) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (transformer && transformedData) {
-                    return [2, transformedData];
-                }
-                return [2, Promise.reject("transformers fail (buffer)")];
-            });
-        });
     };
     Transformers.prototype._tryStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {

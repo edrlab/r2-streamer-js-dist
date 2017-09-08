@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const debug_ = require("debug");
 const stream_1 = require("stream");
+const debug = debug_("r2:RangeStream");
 class RangeStream extends stream_1.Transform {
     constructor(streamBegin, streamEnd, streamLength) {
         super();
@@ -15,14 +17,20 @@ class RangeStream extends stream_1.Transform {
         this.on("finish", () => {
         });
     }
+    _flush(callback) {
+        debug("FLUSH");
+        callback();
+    }
     _transform(chunk, _encoding, callback) {
         this.bytesReceived += chunk.length;
         if (this.finished) {
             if (!this.closed) {
+                debug("???? CLOSING...");
                 this.closed = true;
                 this.push(null);
             }
             else {
+                debug("???? STILL PIPE CALLING _transform ??!");
                 this.end();
             }
         }
@@ -39,6 +47,12 @@ class RangeStream extends stream_1.Transform {
                     chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
                 }
                 this.push(chunk.slice(chunkBegin, chunkEnd + 1));
+                if (this.finished) {
+                    debug("FINISHING...");
+                    this.closed = true;
+                    this.push(null);
+                    this.end();
+                }
             }
             else {
             }

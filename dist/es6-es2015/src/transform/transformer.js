@@ -11,11 +11,6 @@ class Transformers {
     static instance() {
         return Transformers._instance;
     }
-    static tryBuffer(publication, link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            return Transformers.instance()._tryBuffer(publication, link, data);
-        });
-    }
     static tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {
             return Transformers.instance()._tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
@@ -25,25 +20,6 @@ class Transformers {
         if (this.transformers.indexOf(transformer) < 0) {
             this.transformers.push(transformer);
         }
-    }
-    _tryBuffer(publication, link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let transformedData;
-            const transformer = this.transformers.find((t) => {
-                if (!t.supports(publication, link)) {
-                    return false;
-                }
-                transformedData = t.transformBuffer(publication, link, data);
-                if (transformedData) {
-                    return true;
-                }
-                return false;
-            });
-            if (transformer && transformedData) {
-                return transformedData;
-            }
-            return Promise.reject("transformers fail (buffer)");
-        });
     }
     _tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {

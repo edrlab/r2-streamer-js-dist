@@ -287,6 +287,12 @@ function serverAssets(server, routerPathBase64) {
                             .on("error", function () {
                             debug("ZIP ERROR " + counterStream_1.id);
                         })
+                            .on("pipe", function () {
+                            debug("ZIP PIPE " + counterStream_1.id);
+                        })
+                            .on("unpipe", function () {
+                            debug("ZIP UNPIPE " + counterStream_1.id);
+                        })
                             .pipe(counterStream_1)
                             .on("progress", function f() {
                             debug("CounterPassThroughStream PROGRESS: " +
@@ -310,6 +316,14 @@ function serverAssets(server, routerPathBase64) {
                             debug("CounterPassThroughStream ERROR: " +
                                 this.id);
                         })
+                            .on("pipe", function f() {
+                            debug("CounterPassThroughStream PIPE: " +
+                                this.id);
+                        })
+                            .on("unpipe", function f() {
+                            debug("CounterPassThroughStream UNPIPE: " +
+                                this.id);
+                        })
                             .pipe(res)
                             .on("finish", function () {
                             debug("RES FINISH " + counterStream_1.id);
@@ -328,6 +342,12 @@ function serverAssets(server, routerPathBase64) {
                         })
                             .on("error", function () {
                             debug("RES ERROR " + counterStream_1.id);
+                        })
+                            .on("pipe", function () {
+                            debug("RES PIPE " + counterStream_1.id);
+                        })
+                            .on("unpipe", function () {
+                            debug("RES UNPIPE " + counterStream_1.id);
                         });
                     }
                     return [2];

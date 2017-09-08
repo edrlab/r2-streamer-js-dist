@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var debug_ = require("debug");
 var stream_1 = require("stream");
+var debug = debug_("r2:RangeStream");
 var RangeStream = (function (_super) {
     tslib_1.__extends(RangeStream, _super);
     function RangeStream(streamBegin, streamEnd, streamLength) {
@@ -18,14 +20,20 @@ var RangeStream = (function (_super) {
         });
         return _this;
     }
+    RangeStream.prototype._flush = function (callback) {
+        debug("FLUSH");
+        callback();
+    };
     RangeStream.prototype._transform = function (chunk, _encoding, callback) {
         this.bytesReceived += chunk.length;
         if (this.finished) {
             if (!this.closed) {
+                debug("???? CLOSING...");
                 this.closed = true;
                 this.push(null);
             }
             else {
+                debug("???? STILL PIPE CALLING _transform ??!");
                 this.end();
             }
         }
@@ -42,6 +50,12 @@ var RangeStream = (function (_super) {
                     chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
                 }
                 this.push(chunk.slice(chunkBegin, chunkEnd + 1));
+                if (this.finished) {
+                    debug("FINISHING...");
+                    this.closed = true;
+                    this.push(null);
+                    this.end();
+                }
             }
             else {
             }

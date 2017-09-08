@@ -5,28 +5,6 @@ class TransformerObfAdobe {
     supports(_publication, link) {
         return link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC";
     }
-    async getDecryptedSizeStream(publication, link, stream) {
-        let sal;
-        try {
-            sal = await this.transformStream(publication, link, stream, false, 0, 0);
-        }
-        catch (err) {
-            console.log(err);
-            return Promise.reject("WTF?");
-        }
-        return Promise.resolve(sal.length);
-    }
-    async getDecryptedSizeBuffer(publication, link, data) {
-        let buff;
-        try {
-            buff = await this.transformBuffer(publication, link, data);
-        }
-        catch (err) {
-            console.log(err);
-            return Promise.reject("WTF?");
-        }
-        return Promise.resolve(buff.length);
-    }
     async transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
         const data = await BufferUtils_1.streamToBufferPromise(stream.stream);
         const buff = await this.transformBuffer(publication, link, data);

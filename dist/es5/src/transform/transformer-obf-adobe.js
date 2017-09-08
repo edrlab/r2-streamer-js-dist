@@ -8,46 +8,6 @@ var TransformerObfAdobe = (function () {
     TransformerObfAdobe.prototype.supports = function (_publication, link) {
         return link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC";
     };
-    TransformerObfAdobe.prototype.getDecryptedSizeStream = function (publication, link, stream) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var sal, err_1;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4, this.transformStream(publication, link, stream, false, 0, 0)];
-                    case 1:
-                        sal = _a.sent();
-                        return [3, 3];
-                    case 2:
-                        err_1 = _a.sent();
-                        console.log(err_1);
-                        return [2, Promise.reject("WTF?")];
-                    case 3: return [2, Promise.resolve(sal.length)];
-                }
-            });
-        });
-    };
-    TransformerObfAdobe.prototype.getDecryptedSizeBuffer = function (publication, link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var buff, err_2;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4, this.transformBuffer(publication, link, data)];
-                    case 1:
-                        buff = _a.sent();
-                        return [3, 3];
-                    case 2:
-                        err_2 = _a.sent();
-                        console.log(err_2);
-                        return [2, Promise.reject("WTF?")];
-                    case 3: return [2, Promise.resolve(buff.length)];
-                }
-            });
-        });
-    };
     TransformerObfAdobe.prototype.transformStream = function (publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
