@@ -18,7 +18,6 @@ class RangeStream extends stream_1.Transform {
         });
     }
     _flush(callback) {
-        debug("FLUSH");
         callback();
     }
     _transform(chunk, _encoding, callback) {
@@ -48,7 +47,6 @@ class RangeStream extends stream_1.Transform {
                 }
                 this.push(chunk.slice(chunkBegin, chunkEnd + 1));
                 if (this.finished) {
-                    debug("FINISHING...");
                     this.closed = true;
                     this.push(null);
                     this.end();

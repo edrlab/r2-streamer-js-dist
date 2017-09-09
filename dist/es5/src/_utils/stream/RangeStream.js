@@ -21,7 +21,6 @@ var RangeStream = (function (_super) {
         return _this;
     }
     RangeStream.prototype._flush = function (callback) {
-        debug("FLUSH");
         callback();
     };
     RangeStream.prototype._transform = function (chunk, _encoding, callback) {
@@ -51,7 +50,6 @@ var RangeStream = (function (_super) {
                 }
                 this.push(chunk.slice(chunkBegin, chunkEnd + 1));
                 if (this.finished) {
-                    debug("FINISHING...");
                     this.closed = true;
                     this.push(null);
                     this.end();

@@ -5,4 +5,6 @@ export declare class Encrypted {
     Compression: string;
     OriginalLength: number;
     DecryptedLengthBeforeInflate: number;
+    CypherBlockPadding: number;
+    CypherBlockIV: string;
 }

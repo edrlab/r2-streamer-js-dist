@@ -5,6 +5,7 @@ var ta_json_1 = require("ta-json");
 var Encrypted = (function () {
     function Encrypted() {
         this.DecryptedLengthBeforeInflate = -1;
+        this.CypherBlockPadding = -1;
     }
     tslib_1.__decorate([
         ta_json_1.JsonProperty("scheme"),

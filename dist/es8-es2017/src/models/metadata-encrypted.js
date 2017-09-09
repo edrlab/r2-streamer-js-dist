@@ -5,6 +5,7 @@ const ta_json_1 = require("ta-json");
 let Encrypted = class Encrypted {
     constructor() {
         this.DecryptedLengthBeforeInflate = -1;
+        this.CypherBlockPadding = -1;
     }
 };
 tslib_1.__decorate([

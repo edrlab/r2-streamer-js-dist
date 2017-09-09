@@ -6,13 +6,11 @@ const publication_parser_1 = require("../../../es8-es2017/src/parser/publication
 const transformer_1 = require("../../../es8-es2017/src/transform/transformer");
 const RangeUtils_1 = require("../../../es8-es2017/src/_utils/http/RangeUtils");
 const BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
-const CounterPassThroughStream_1 = require("../../../es8-es2017/src/_utils/stream/CounterPassThroughStream");
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");
 const debug = debug_("r2:server:assets");
 function serverAssets(server, routerPathBase64) {
-    let streamCounter = 0;
     const routerAssets = express.Router({ strict: false });
     routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         if (!req.params.pathBase64) {
@@ -125,7 +123,6 @@ function serverAssets(server, routerPathBase64) {
         if (isPartialByteRangeRequest) {
             debug(req.headers.range);
             const ranges = RangeUtils_1.parseRangeHeader(req.headers.range);
-            debug(ranges);
             if (ranges && ranges.length) {
                 if (ranges.length > 1) {
                     const err = "Too many HTTP ranges: " + req.headers.range;
@@ -227,95 +224,21 @@ function serverAssets(server, routerPathBase64) {
         if (isPartialByteRangeRequest) {
             res.setHeader("Content-Length", `${partialByteLength}`);
             const rangeHeader = `bytes ${partialByteBegin}-${partialByteEnd}/${zipStream_.length}`;
-            debug("+++> " + rangeHeader + " (( " + partialByteLength);
             res.setHeader("Content-Range", rangeHeader);
             res.status(206);
         }
         else {
             res.setHeader("Content-Length", `${zipStream_.length}`);
-            debug("---> " + zipStream_.length);
             res.status(200);
         }
         if (isHead) {
             res.end();
         }
         else {
-            debug("===> STREAM PIPE");
-            const counterStream = new CounterPassThroughStream_1.CounterPassThroughStream(++streamCounter);
             zipStream_.stream
-                .on("finish", () => {
-                debug("ZIP FINISH " + counterStream.id);
-            })
-                .on("end", () => {
-                debug("ZIP END " + counterStream.id);
-            })
-                .on("close", () => {
-                debug("ZIP CLOSE " + counterStream.id);
-            })
-                .on("error", () => {
-                debug("ZIP ERROR " + counterStream.id);
-            })
-                .on("pipe", () => {
-                debug("ZIP PIPE " + counterStream.id);
-            })
-                .on("unpipe", () => {
-                debug("ZIP UNPIPE " + counterStream.id);
-            })
-                .pipe(counterStream)
-                .on("progress", function f() {
-                debug("CounterPassThroughStream PROGRESS: " +
-                    this.id +
-                    " -- " + this.bytesReceived);
-            })
-                .on("end", function f() {
-                debug("CounterPassThroughStream END: " +
-                    this.id);
-            })
-                .on("close", function f() {
-                debug("CounterPassThroughStream CLOSE: " +
-                    this.id);
-            })
-                .once("finish", function f() {
-                debug("CounterPassThroughStream FINISH: " +
-                    this.id +
-                    " -- " + this.bytesReceived);
-            })
-                .on("error", function f() {
-                debug("CounterPassThroughStream ERROR: " +
-                    this.id);
-            })
-                .on("pipe", function f() {
-                debug("CounterPassThroughStream PIPE: " +
-                    this.id);
-            })
-                .on("unpipe", function f() {
-                debug("CounterPassThroughStream UNPIPE: " +
-                    this.id);
-            })
                 .pipe(res)
-                .on("finish", () => {
-                debug("RES FINISH " + counterStream.id);
-            })
-                .on("end", () => {
-                debug("RES END " + counterStream.id);
-            })
                 .on("close", () => {
-                debug("RES CLOSE " + counterStream.id);
                 res.end();
-                counterStream.unpipe(res);
-                counterStream.end();
-                if (zipStream_) {
-                    zipStream_.stream.unpipe(counterStream);
-                }
-            })
-                .on("error", () => {
-                debug("RES ERROR " + counterStream.id);
-            })
-                .on("pipe", () => {
-                debug("RES PIPE " + counterStream.id);
-            })
-                .on("unpipe", () => {
-                debug("RES UNPIPE " + counterStream.id);
             });
         }
     }));
