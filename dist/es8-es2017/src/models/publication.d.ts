@@ -18,7 +18,7 @@ export declare class Publication {
     LOT: Link[];
     Images: Link[];
     LCP: LCP;
-    Internal: IInternal[];
+    private Internal;
     freeDestroy(): void;
     findFromInternal(key: string): IInternal | undefined;
     AddToInternal(key: string, value: any): void;

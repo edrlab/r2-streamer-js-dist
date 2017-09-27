@@ -11,12 +11,7 @@ var Publication = (function () {
     Publication.prototype.freeDestroy = function () {
         console.log("freeDestroy: Publication");
         if (this.Internal) {
-            var zipInternal = this.Internal.find(function (i) {
-                if (i.Name === "zip") {
-                    return true;
-                }
-                return false;
-            });
+            var zipInternal = this.findFromInternal("zip");
             if (zipInternal) {
                 var zip = zipInternal.Value;
                 zip.freeDestroy();

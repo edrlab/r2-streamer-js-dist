@@ -38,40 +38,33 @@ const reflowableMeta = "reflowable";
 exports.mediaOverlayURLPath = "media-overlay.json";
 exports.mediaOverlayURLParam = "resource";
 exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    if (publication.Internal) {
-        const zipInternal = publication.Internal.find((i) => {
-            if (i.Name === "zip") {
-                return true;
-            }
-            return false;
-        });
-        if (zipInternal) {
-            const zip = zipInternal.Value;
-            if (zip.hasEntry(coverLink.Href)) {
-                let zipStream;
+    const zipInternal = publication.findFromInternal("zip");
+    if (zipInternal) {
+        const zip = zipInternal.Value;
+        if (zip.hasEntry(coverLink.Href)) {
+            let zipStream;
+            try {
+                zipStream = yield zip.entryStreamPromise(coverLink.Href);
+                let zipData;
                 try {
-                    zipStream = yield zip.entryStreamPromise(coverLink.Href);
-                    let zipData;
-                    try {
-                        zipData = yield BufferUtils_1.streamToBufferPromise(zipStream.stream);
-                        const imageInfo = sizeOf(zipData);
-                        if (imageInfo) {
-                            coverLink.Width = imageInfo.width;
-                            coverLink.Height = imageInfo.height;
-                            if (coverLink.TypeLink &&
-                                coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
-                                    !== ("image/" + imageInfo.type)) {
-                                console.log(`Wrong image type? ${coverLink.TypeLink} -- ${imageInfo.type}`);
-                            }
+                    zipData = yield BufferUtils_1.streamToBufferPromise(zipStream.stream);
+                    const imageInfo = sizeOf(zipData);
+                    if (imageInfo) {
+                        coverLink.Width = imageInfo.width;
+                        coverLink.Height = imageInfo.height;
+                        if (coverLink.TypeLink &&
+                            coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
+                                !== ("image/" + imageInfo.type)) {
+                            console.log(`Wrong image type? ${coverLink.TypeLink} -- ${imageInfo.type}`);
                         }
-                    }
-                    catch (err) {
-                        console.log(err);
                     }
                 }
                 catch (err) {
                     console.log(err);
                 }
+            }
+            catch (err) {
+                console.log(err);
             }
         }
     }

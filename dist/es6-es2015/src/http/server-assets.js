@@ -41,19 +41,7 @@ function serverAssets(server, routerPathBase64) {
             }
             server.cachePublication(pathBase64Str, publication);
         }
-        if (!publication.Internal) {
-            const err = "No publication internals!";
-            debug(err);
-            res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                + err + "</p></body></html>");
-            return;
-        }
-        const zipInternal = publication.Internal.find((i) => {
-            if (i.Name === "zip") {
-                return true;
-            }
-            return false;
-        });
+        const zipInternal = publication.findFromInternal("zip");
         if (!zipInternal) {
             const err = "No publication zip!";
             debug(err);
@@ -152,13 +140,6 @@ function serverAssets(server, routerPathBase64) {
         }
         if ((isEncrypted && (isObfuscatedFont || !server.disableDecryption)) &&
             link) {
-            if (req.params.lcpPass64) {
-                const lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
-                publication.AddToInternal("lcp_user_pass", lcpPass);
-            }
-            else {
-                publication.AddToInternal("lcp_user_pass", null);
-            }
             let decryptFail = false;
             let transformedStream;
             try {

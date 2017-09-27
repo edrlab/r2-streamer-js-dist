@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Encryption } from "./lcp-encryption";
 import { Link } from "./lcp-link";
 import { Rights } from "./lcp-rights";
@@ -14,4 +15,8 @@ export declare class LCP {
     Signature: Signature;
     Links: Link[];
     ZipPath: string;
+    ContentKey: Buffer | undefined;
+    private userPassphraseHex;
+    setUserPassphrase(pass: string): boolean;
+    checkCertificate(): void;
 }

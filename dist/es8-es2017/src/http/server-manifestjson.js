@@ -70,6 +70,19 @@ function serverManifestJson(server, routerPathBase64) {
             }
             server.cachePublication(pathBase64Str, publication);
         }
+        if (req.params.lcpPass64) {
+            const lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
+            if (publication.LCP) {
+                const okay = publication.LCP.setUserPassphrase(lcpPass);
+                if (!okay) {
+                    const errMsg = "FAIL publication.LCP.setUserPassphrase()";
+                    debug(errMsg);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + errMsg + "</p></body></html>");
+                    return;
+                }
+            }
+        }
         const rootUrl = (isSecureHttp ? "https://" : "http://")
             + req.headers.host + "/pub/"
             + (req.params.lcpPass64 ?

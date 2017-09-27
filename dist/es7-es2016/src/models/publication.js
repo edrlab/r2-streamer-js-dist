@@ -9,12 +9,7 @@ let Publication = class Publication {
     freeDestroy() {
         console.log("freeDestroy: Publication");
         if (this.Internal) {
-            const zipInternal = this.Internal.find((i) => {
-                if (i.Name === "zip") {
-                    return true;
-                }
-                return false;
-            });
+            const zipInternal = this.findFromInternal("zip");
             if (zipInternal) {
                 const zip = zipInternal.Value;
                 zip.freeDestroy();

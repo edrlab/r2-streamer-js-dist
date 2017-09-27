@@ -33,7 +33,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, jsonObj, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, okay, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, jsonObj, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -75,6 +75,19 @@ function serverManifestJson(server, routerPathBase64) {
                     server.cachePublication(pathBase64Str, publication);
                     _a.label = 5;
                 case 5:
+                    if (req.params.lcpPass64) {
+                        lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
+                        if (publication.LCP) {
+                            okay = publication.LCP.setUserPassphrase(lcpPass);
+                            if (!okay) {
+                                errMsg = "FAIL publication.LCP.setUserPassphrase()";
+                                debug(errMsg);
+                                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                                    + errMsg + "</p></body></html>");
+                                return [2];
+                            }
+                        }
+                    }
                     rootUrl = (isSecureHttp ? "https://" : "http://")
                         + req.headers.host + "/pub/"
                         + (req.params.lcpPass64 ?

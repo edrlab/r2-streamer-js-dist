@@ -43,13 +43,7 @@ exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.
     return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                if (!publication.Internal) return [3, 8];
-                zipInternal = publication.Internal.find(function (i) {
-                    if (i.Name === "zip") {
-                        return true;
-                    }
-                    return false;
-                });
+                zipInternal = publication.findFromInternal("zip");
                 if (!zipInternal) return [3, 8];
                 zip = zipInternal.Value;
                 if (!zip.hasEntry(coverLink.Href)) return [3, 8];

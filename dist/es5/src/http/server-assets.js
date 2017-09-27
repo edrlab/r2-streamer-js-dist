@@ -14,7 +14,7 @@ function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var isShow, isHead, pathBase64Str, publication, err_1, err, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, lcpPass, decryptFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
+        var isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, decryptFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -52,19 +52,7 @@ function serverAssets(server, routerPathBase64) {
                     server.cachePublication(pathBase64Str, publication);
                     _b.label = 5;
                 case 5:
-                    if (!publication.Internal) {
-                        err = "No publication internals!";
-                        debug(err);
-                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                            + err + "</p></body></html>");
-                        return [2];
-                    }
-                    zipInternal = publication.Internal.find(function (i) {
-                        if (i.Name === "zip") {
-                            return true;
-                        }
-                        return false;
-                    });
+                    zipInternal = publication.findFromInternal("zip");
                     if (!zipInternal) {
                         err = "No publication zip!";
                         debug(err);
@@ -172,13 +160,6 @@ function serverAssets(server, routerPathBase64) {
                 case 12:
                     if (!((isEncrypted && (isObfuscatedFont || !server.disableDecryption)) &&
                         link)) return [3, 17];
-                    if (req.params.lcpPass64) {
-                        lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
-                        publication.AddToInternal("lcp_user_pass", lcpPass);
-                    }
-                    else {
-                        publication.AddToInternal("lcp_user_pass", null);
-                    }
                     decryptFail = false;
                     transformedStream = void 0;
                     _b.label = 13;

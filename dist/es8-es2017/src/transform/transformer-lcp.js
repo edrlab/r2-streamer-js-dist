@@ -2,35 +2,42 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const zlib = require("zlib");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
 const RangeStream_1 = require("../_utils/stream/RangeStream");
 const debug_ = require("debug");
-const forge = require("node-forge");
 const debug = debug_("r2:transformer:lcp");
 const AES_BLOCK_SIZE = 16;
+const readStream = async (s, n) => {
+    return new Promise((resolve, reject) => {
+        const onReadable = () => {
+            const b = s.read(n);
+            s.removeListener("readable", onReadable);
+            s.removeListener("error", reject);
+            resolve(b);
+        };
+        s.on("readable", onReadable);
+        s.on("error", reject);
+    });
+};
 class TransformerLCP {
     supports(publication, link) {
+        if (!publication.LCP) {
+            return false;
+        }
+        if (!publication.LCP.ContentKey) {
+            debug("Missing LCP content key.");
+            return false;
+        }
         const check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
             && link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile"
             && link.Properties.Encrypted.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
         if (!check) {
+            debug("Incorrect resource LCP fields.");
             return false;
         }
-        const lcpPass = publication.Internal.find((i) => {
-            if (i.Name === "lcp_user_pass") {
-                return true;
-            }
-            return false;
-        });
-        const lcpPassHash = lcpPass ? lcpPass.Value : undefined;
-        if (!lcpPassHash) {
-            debug("LCP missing key.");
-            return false;
-        }
-        this.contentKey = this.UpdateLCP(publication, lcpPassHash);
         return true;
     }
     async transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        const contentKey = publication.LCP.ContentKey;
         let cryptoInfo;
         let plainTextSize = -1;
         let cypherBlockPadding = -1;
@@ -63,28 +70,23 @@ class TransformerLCP {
                 partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
             }
         }
+        let rawDecryptStream;
         let ivBuffer;
         if (link.Properties.Encrypted.CypherBlockIV) {
             ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
+            const cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
+            stream.stream.pipe(cypherRangeStream);
+            rawDecryptStream = cypherRangeStream;
         }
         else {
-            const ivRangeStream = new RangeStream_1.RangeStream(0, AES_BLOCK_SIZE - 1, stream.length);
-            stream.stream.pipe(ivRangeStream);
-            try {
-                ivBuffer = await BufferUtils_1.streamToBufferPromise(ivRangeStream);
-            }
-            catch (err) {
-                console.log(err);
-                return Promise.reject("OUCH!");
-            }
-            stream = await stream.reset();
+            ivBuffer = await readStream(stream.stream, AES_BLOCK_SIZE);
             link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
+            stream.stream.resume();
+            rawDecryptStream = stream.stream;
         }
-        const cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
-        stream.stream.pipe(cypherRangeStream);
-        const decryptStream = crypto.createDecipheriv("aes-256-cbc", new Buffer(this.contentKey, "binary"), ivBuffer);
+        const decryptStream = crypto.createDecipheriv("aes-256-cbc", contentKey, ivBuffer);
         decryptStream.setAutoPadding(false);
-        cypherRangeStream.pipe(decryptStream);
+        rawDecryptStream.pipe(decryptStream);
         let destStream = decryptStream;
         if (cypherBlockPadding) {
             const cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
@@ -113,84 +115,49 @@ class TransformerLCP {
         };
         return Promise.resolve(sal);
     }
-    async getDecryptedSizeStream(_publication, _link, stream) {
-        const TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
-        if (stream.length < TWO_AES_BLOCK_SIZE) {
-            return Promise.reject("crypto err");
-        }
-        const readPos = stream.length - TWO_AES_BLOCK_SIZE;
-        const rangeStream = new RangeStream_1.RangeStream(readPos, readPos + TWO_AES_BLOCK_SIZE - 1, stream.length);
-        stream.stream.pipe(rangeStream);
-        let buff;
-        try {
-            buff = await BufferUtils_1.streamToBufferPromise(rangeStream);
-        }
-        catch (err) {
-            console.log(err);
-            return Promise.reject("crypto err");
-        }
-        return this.getDecryptedSizeBuffer_(stream.length, buff);
-    }
-    innerDecrypt(data, padding) {
-        const buffIV = data.slice(0, AES_BLOCK_SIZE);
-        const iv = buffIV.toString("binary");
-        const buffToDecrypt = data.slice(AES_BLOCK_SIZE);
-        const strToDecrypt = buffToDecrypt.toString("binary");
-        const toDecrypt = forge.util.createBuffer(strToDecrypt, "binary");
-        const aesCbcDecipher = forge.cipher.createDecipher("AES-CBC", this.contentKey);
-        aesCbcDecipher.start({ iv, additionalData_: "binary-encoded string" });
-        aesCbcDecipher.update(toDecrypt);
-        function unpadFunc() { return false; }
-        aesCbcDecipher.finish(padding ? undefined : unpadFunc);
-        const decryptedZipData = aesCbcDecipher.output.bytes();
-        const buff = new Buffer(decryptedZipData, "binary");
-        return buff;
-    }
-    async getDecryptedSizeBuffer_(totalByteLength, buff) {
-        const newBuff = this.innerDecrypt(buff, true);
-        const nPaddingBytes = AES_BLOCK_SIZE - newBuff.length;
-        const size = totalByteLength - AES_BLOCK_SIZE - nPaddingBytes;
-        const res = {
-            length: size,
-            padding: nPaddingBytes,
-        };
-        return Promise.resolve(res);
-    }
-    UpdateLCP(publication, lcpPassHash) {
-        if (!publication.LCP) {
-            return undefined;
-        }
-        const userKey = forge.util.hexToBytes(lcpPassHash);
-        if (userKey
-            && publication.LCP.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
-            && publication.LCP.Encryption.Profile === "http://readium.org/lcp/basic-profile"
-            && publication.LCP.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc") {
-            try {
-                const keyCheck = new Buffer(publication.LCP.Encryption.UserKey.KeyCheck, "base64").toString("binary");
-                const encryptedLicenseID = keyCheck;
-                const iv = encryptedLicenseID.substring(0, AES_BLOCK_SIZE);
-                const toDecrypt = forge.util.createBuffer(encryptedLicenseID.substring(AES_BLOCK_SIZE), "binary");
-                const aesCbcDecipher = forge.cipher.createDecipher("AES-CBC", userKey);
-                aesCbcDecipher.start({ iv, additionalData_: "binary-encoded string" });
-                aesCbcDecipher.update(toDecrypt);
-                aesCbcDecipher.finish();
-                if (publication.LCP.ID === aesCbcDecipher.output.toString()) {
-                    const encryptedContentKey = new Buffer(publication.LCP.Encryption.ContentKey.EncryptedValue, "base64").toString("binary");
-                    const iv2 = encryptedContentKey.substring(0, AES_BLOCK_SIZE);
-                    const toDecrypt2 = forge.util.createBuffer(encryptedContentKey.substring(AES_BLOCK_SIZE), "binary");
-                    const aesCbcDecipher2 = forge.cipher.createDecipher("AES-CBC", userKey);
-                    aesCbcDecipher2.start({ iv: iv2, additionalData_: "binary-encoded string" });
-                    aesCbcDecipher2.update(toDecrypt2);
-                    aesCbcDecipher2.finish();
-                    const contentKey = aesCbcDecipher2.output.bytes();
-                    return contentKey;
+    async getDecryptedSizeStream(publication, _link, stream) {
+        const contentKey = publication.LCP.ContentKey;
+        return new Promise((resolve, reject) => {
+            const TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
+            if (stream.length < TWO_AES_BLOCK_SIZE) {
+                reject("crypto err");
+                return;
+            }
+            const readPos = stream.length - TWO_AES_BLOCK_SIZE;
+            const cypherRangeStream = new RangeStream_1.RangeStream(readPos, readPos + TWO_AES_BLOCK_SIZE - 1, stream.length);
+            stream.stream.pipe(cypherRangeStream);
+            const decrypteds = [];
+            cypherRangeStream.on("readable", () => {
+                const ivBuffer = cypherRangeStream.read(AES_BLOCK_SIZE);
+                if (!ivBuffer) {
+                    return;
                 }
-            }
-            catch (err) {
-                console.log("LCP error! " + err);
-            }
-        }
-        return undefined;
+                const encrypted = cypherRangeStream.read(AES_BLOCK_SIZE);
+                const decryptStream = crypto.createDecipheriv("aes-256-cbc", contentKey, ivBuffer);
+                decryptStream.setAutoPadding(false);
+                const buff1 = decryptStream.update(encrypted);
+                if (buff1) {
+                    decrypteds.push(buff1);
+                }
+                const buff2 = decryptStream.final();
+                if (buff2) {
+                    decrypteds.push(buff2);
+                }
+            });
+            cypherRangeStream.on("end", () => {
+                const decrypted = Buffer.concat(decrypteds);
+                const nPaddingBytes = decrypted[AES_BLOCK_SIZE - 1];
+                const size = stream.length - AES_BLOCK_SIZE - nPaddingBytes;
+                const res = {
+                    length: size,
+                    padding: nPaddingBytes,
+                };
+                resolve(res);
+            });
+            cypherRangeStream.on("error", () => {
+                reject("DECRYPT err");
+            });
+        });
     }
 }
 exports.TransformerLCP = TransformerLCP;
