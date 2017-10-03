@@ -1,0 +1,66 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var debug_ = require("debug");
+var stream_1 = require("stream");
+var debug = debug_("r2:RangeStream");
+var RangeStream = (function (_super) {
+    tslib_1.__extends(RangeStream, _super);
+    function RangeStream(streamBegin, streamEnd, streamLength) {
+        var _this = _super.call(this) || this;
+        _this.streamBegin = streamBegin;
+        _this.streamEnd = streamEnd;
+        _this.streamLength = streamLength;
+        _this.bytesReceived = 0;
+        _this.finished = false;
+        _this.closed = false;
+        _this.on("end", function () {
+        });
+        _this.on("finish", function () {
+        });
+        return _this;
+    }
+    RangeStream.prototype._flush = function (callback) {
+        callback();
+    };
+    RangeStream.prototype._transform = function (chunk, _encoding, callback) {
+        this.bytesReceived += chunk.length;
+        if (this.finished) {
+            if (!this.closed) {
+                debug("???? CLOSING...");
+                this.closed = true;
+                this.push(null);
+            }
+            else {
+                debug("???? STILL PIPE CALLING _transform ??!");
+                this.end();
+            }
+        }
+        else {
+            if (this.bytesReceived > this.streamBegin) {
+                var chunkBegin = 0;
+                var chunkEnd = chunk.length - 1;
+                chunkBegin = this.streamBegin - (this.bytesReceived - chunk.length);
+                if (chunkBegin < 0) {
+                    chunkBegin = 0;
+                }
+                if (this.bytesReceived > this.streamEnd) {
+                    this.finished = true;
+                    chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
+                }
+                this.push(chunk.slice(chunkBegin, chunkEnd + 1));
+                if (this.finished) {
+                    this.closed = true;
+                    this.push(null);
+                    this.end();
+                }
+            }
+            else {
+            }
+        }
+        callback();
+    };
+    return RangeStream;
+}(stream_1.Transform));
+exports.RangeStream = RangeStream;
+//# sourceMappingURL=RangeStream.js.map
