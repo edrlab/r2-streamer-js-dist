@@ -122,7 +122,7 @@ class Server {
             }
         });
         this.expressApp.get(["/sw.js"], (req, res) => {
-            const swPth = "../../../../src/electron/renderer/service-worker.js";
+            const swPth = "../electron/renderer/service-worker.js";
             const swFullPath = path.resolve(path.join(__dirname, swPth));
             if (!fs.existsSync(swFullPath)) {
                 const err = "Missing Service Worker JS! ";
