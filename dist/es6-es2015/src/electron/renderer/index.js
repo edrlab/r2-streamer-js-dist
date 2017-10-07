@@ -1,3 +1,7 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const querystring_1 = require("./querystring");
 console.log("INDEX");
 console.log(window.location);
 console.log(document.baseURI);
@@ -5,23 +9,8 @@ console.log(document.URL);
 window.onerror = (err) => {
     console.log("Error", err);
 };
-const getURLQueryParams = () => {
-    const params = {};
-    let query = window.location.search;
-    if (query && query.length) {
-        query = query.substring(1);
-        const keyParams = query.split("&");
-        keyParams.forEach((keyParam) => {
-            const keyVal = keyParam.split("=");
-            if (keyVal.length > 1) {
-                params[keyVal[0]] = decodeURIComponent(keyVal[1]);
-            }
-        });
-    }
-    return params;
-};
 window.addEventListener("DOMContentLoaded", () => {
-    const queryParams = getURLQueryParams();
+    const queryParams = querystring_1.getURLQueryParams();
     const publicationJsonUrl = queryParams["pub"];
     console.log(" (((( publicationJsonUrl )))) " + publicationJsonUrl);
     const webview1 = document.createElement("webview");
@@ -37,7 +26,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const webview2 = document.createElement("webview");
     webview2.addEventListener("dom-ready", () => {
         webview2.openDevTools();
-        setTimeout(() => __awaiter(this, void 0, void 0, function* () {
+        setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
             document.body.setAttribute("style", "background-color: silver; margin: 0; padding: 0;");
             const h1 = document.querySelector("html > body > h1");
             if (!h1) {
