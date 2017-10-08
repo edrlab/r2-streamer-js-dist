@@ -1,1 +1,1 @@
-{"version":3,"file":"internal.js","sourceRoot":"","sources":["../../../../src/models/internal.ts"],"names":[],"mappings":""}
+{"version":3,"file":"internal.js","sourceRoot":"","sources":["../../../../src/models/internal.ts"],"names":[],"mappings":"","sourcesContent":["export interface IInternal {\n    Name: string;\n    Value: any;\n}\n"]}
