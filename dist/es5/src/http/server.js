@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
 var child_process = require("child_process");
 var crypto = require("crypto");
 var fs = require("fs");
@@ -12,6 +13,7 @@ var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
 var tmp_1 = require("tmp");
+var publication_parser_1 = require("../../../es8-es2017/src/parser/publication-parser");
 var server_assets_1 = require("./server-assets");
 var server_manifestjson_1 = require("./server-manifestjson");
 var server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -27,8 +29,8 @@ var Server = (function () {
         var _this = this;
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
-        this.disableReaders = options ? options.disableReaders : false;
-        this.disableDecryption = options ? options.disableDecryption : false;
+        this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
+        this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
@@ -100,31 +102,6 @@ var Server = (function () {
                 res.status(200).send(jsonStr);
             }
         });
-        this.expressApp.get(["/sw.js"], function (req, res) {
-            var swPth = "../electron/renderer/service-worker.js";
-            var swFullPath = path.resolve(path.join(__dirname, swPth));
-            if (!fs.existsSync(swFullPath)) {
-                var err = "Missing Service Worker JS! ";
-                debug(err + swFullPath);
-                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                    + err + "</p></body></html>");
-                return;
-            }
-            var swJS = fs.readFileSync(swFullPath, { encoding: "utf8" });
-            res.set("Content-Type", "text/javascript; charset=utf-8");
-            var checkSum = crypto.createHash("sha256");
-            checkSum.update(swJS);
-            var hash = checkSum.digest("hex");
-            var match = req.header("If-None-Match");
-            if (match === hash) {
-                debug("service-worker.js cache");
-                res.status(304);
-                res.end();
-                return;
-            }
-            res.setHeader("ETag", hash);
-            res.status(200).send(swJS);
-        });
         server_url_1.serverUrl(this, this.expressApp);
         server_opds_1.serverOPDS(this, this.expressApp);
         server_opds2_1.serverOPDS2(this, this.expressApp);
@@ -134,6 +111,12 @@ var Server = (function () {
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
     }
+    Server.prototype.expressUse = function (pathf, func) {
+        this.expressApp.use(pathf, func);
+    };
+    Server.prototype.expressGet = function (paths, func) {
+        this.expressApp.get(paths, func);
+    };
     Server.prototype.start = function (port) {
         if (this.started) {
             return this.url();
@@ -193,6 +176,33 @@ var Server = (function () {
     };
     Server.prototype.getPublications = function () {
         return this.publications;
+    };
+    Server.prototype.loadOrGetCachedPublication = function (filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var publication, err_1;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        publication = this.cachedPublication(filePath);
+                        if (!!publication) return [3, 5];
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4, publication_parser_1.PublicationParsePromise(filePath)];
+                    case 2:
+                        publication = _a.sent();
+                        return [3, 4];
+                    case 3:
+                        err_1 = _a.sent();
+                        debug(err_1);
+                        throw new Error(err_1);
+                    case 4:
+                        this.cachePublication(filePath, publication);
+                        _a.label = 5;
+                    case 5: return [2, publication];
+                }
+            });
+        });
     };
     Server.prototype.isPublicationCached = function (filePath) {
         return typeof this.cachedPublication(filePath) !== "undefined";

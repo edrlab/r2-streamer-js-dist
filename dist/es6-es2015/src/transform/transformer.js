@@ -43,7 +43,7 @@ class Transformers {
 }
 Transformers._instance = new Transformers();
 exports.Transformers = Transformers;
-Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
 Transformers.instance().add(new transformer_obf_adobe_1.TransformerObfAdobe());
 Transformers.instance().add(new transformer_obf_idpf_1.TransformerObfIDPF());
+Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
 //# sourceMappingURL=transformer.js.map

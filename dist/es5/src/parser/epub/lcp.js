@@ -23,6 +23,9 @@ var LCP = (function () {
             && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
         if (!check) {
             debug("Incorrect LCP fields.");
+            debug(this.Encryption.Profile);
+            debug(this.Encryption.ContentKey.Algorithm);
+            debug(this.Encryption.UserKey.Algorithm);
             return false;
         }
         var userKey = new Buffer(this.userPassphraseHex, "hex");

@@ -41,7 +41,7 @@ var Zip1 = (function (_super) {
         });
     };
     Zip1.prototype.freeDestroy = function () {
-        console.log("freeDestroy: Zip1");
+        console.log("freeDestroy: Zip1 -- " + this.filePath);
         if (this.zip) {
             this.zip.close();
         }

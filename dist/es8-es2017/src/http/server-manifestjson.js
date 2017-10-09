@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const path = require("path");
 const epub_1 = require("../parser/epub");
-const publication_parser_1 = require("../parser/publication-parser");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
 const JsonUtils_1 = require("../_utils/JsonUtils");
 const css2json = require("css2json");
@@ -57,20 +56,17 @@ function serverManifestJson(server, routerPathBase64) {
             req.protocol === "https" ||
             req.get("X-Forwarded-Proto") === "https";
         const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
-        let publication = server.cachedPublication(pathBase64Str);
-        if (!publication) {
-            try {
-                publication = await publication_parser_1.PublicationParsePromise(pathBase64Str);
-            }
-            catch (err) {
-                debug(err);
-                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                    + err + "</p></body></html>");
-                return;
-            }
-            server.cachePublication(pathBase64Str, publication);
+        let publication;
+        try {
+            publication = await server.loadOrGetCachedPublication(pathBase64Str);
         }
-        if (req.params.lcpPass64) {
+        catch (err) {
+            debug(err);
+            res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                + err + "</p></body></html>");
+            return;
+        }
+        if (req.params.lcpPass64 && !server.disableDecryption) {
             const lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
             if (publication.LCP) {
                 const okay = publication.LCP.setUserPassphrase(lcpPass);

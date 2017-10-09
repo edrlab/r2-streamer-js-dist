@@ -3,8 +3,8 @@ import { Publication } from "../models/publication";
 import { OPDSFeed } from "../opds/opds2/opds2";
 import * as express from "express";
 export interface IServerOptions {
-    disableReaders: boolean;
-    disableDecryption: boolean;
+    disableReaders?: boolean;
+    disableDecryption?: boolean;
 }
 export declare class Server {
     readonly disableReaders: boolean;
@@ -21,6 +21,8 @@ export declare class Server {
     private httpServer;
     private started;
     constructor(options?: IServerOptions);
+    expressUse(pathf: string, func: express.Handler): void;
+    expressGet(paths: string[], func: express.Handler): void;
     start(port: number): string;
     stop(): void;
     url(): string | undefined;
@@ -28,6 +30,7 @@ export declare class Server {
     addPublications(pubs: string[]): string[];
     removePublications(pubs: string[]): string[];
     getPublications(): string[];
+    loadOrGetCachedPublication(filePath: string): Promise<Publication>;
     isPublicationCached(filePath: string): boolean;
     cachedPublication(filePath: string): Publication | undefined;
     cachePublication(filePath: string, pub: Publication): void;

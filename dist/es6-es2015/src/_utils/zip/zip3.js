@@ -60,7 +60,7 @@ class Zip3 extends zip_1.Zip {
         });
     }
     freeDestroy() {
-        console.log("freeDestroy: Zip3");
+        console.log("freeDestroy: Zip3 -- " + this.filePath);
         if (this.zip) {
         }
     }

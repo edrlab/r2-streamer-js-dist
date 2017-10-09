@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
-const publication_parser_1 = require("../parser/publication-parser");
 const transformer_1 = require("../transform/transformer");
 const RangeUtils_1 = require("../_utils/http/RangeUtils");
 const BufferUtils_1 = require("../_utils/stream/BufferUtils");
@@ -27,18 +26,15 @@ function serverAssets(server, routerPathBase64) {
             console.log("HEAD !!!!!!!!!!!!!!!!!!!");
         }
         const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
-        let publication = server.cachedPublication(pathBase64Str);
-        if (!publication) {
-            try {
-                publication = await publication_parser_1.PublicationParsePromise(pathBase64Str);
-            }
-            catch (err) {
-                debug(err);
-                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                    + err + "</p></body></html>");
-                return;
-            }
-            server.cachePublication(pathBase64Str, publication);
+        let publication;
+        try {
+            publication = await server.loadOrGetCachedPublication(pathBase64Str);
+        }
+        catch (err) {
+            debug(err);
+            res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                + err + "</p></body></html>");
+            return;
         }
         const zipInternal = publication.findFromInternal("zip");
         if (!zipInternal) {

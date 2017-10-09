@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const child_process = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -12,6 +13,7 @@ const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const tmp_1 = require("tmp");
+const publication_parser_1 = require("../../../es8-es2017/src/parser/publication-parser");
 const server_assets_1 = require("./server-assets");
 const server_manifestjson_1 = require("./server-manifestjson");
 const server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -48,8 +50,8 @@ class Server {
     constructor(options) {
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
-        this.disableReaders = options ? options.disableReaders : false;
-        this.disableDecryption = options ? options.disableDecryption : false;
+        this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
+        this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
@@ -121,31 +123,6 @@ class Server {
                 res.status(200).send(jsonStr);
             }
         });
-        this.expressApp.get(["/sw.js"], (req, res) => {
-            const swPth = "../electron/renderer/service-worker.js";
-            const swFullPath = path.resolve(path.join(__dirname, swPth));
-            if (!fs.existsSync(swFullPath)) {
-                const err = "Missing Service Worker JS! ";
-                debug(err + swFullPath);
-                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                    + err + "</p></body></html>");
-                return;
-            }
-            const swJS = fs.readFileSync(swFullPath, { encoding: "utf8" });
-            res.set("Content-Type", "text/javascript; charset=utf-8");
-            const checkSum = crypto.createHash("sha256");
-            checkSum.update(swJS);
-            const hash = checkSum.digest("hex");
-            const match = req.header("If-None-Match");
-            if (match === hash) {
-                debug("service-worker.js cache");
-                res.status(304);
-                res.end();
-                return;
-            }
-            res.setHeader("ETag", hash);
-            res.status(200).send(swJS);
-        });
         server_url_1.serverUrl(this, this.expressApp);
         server_opds_1.serverOPDS(this, this.expressApp);
         server_opds2_1.serverOPDS2(this, this.expressApp);
@@ -154,6 +131,12 @@ class Server {
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
+    }
+    expressUse(pathf, func) {
+        this.expressApp.use(pathf, func);
+    }
+    expressGet(paths, func) {
+        this.expressApp.get(paths, func);
     }
     start(port) {
         if (this.started) {
@@ -212,6 +195,22 @@ class Server {
     }
     getPublications() {
         return this.publications;
+    }
+    loadOrGetCachedPublication(filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let publication = this.cachedPublication(filePath);
+            if (!publication) {
+                try {
+                    publication = yield publication_parser_1.PublicationParsePromise(filePath);
+                }
+                catch (err) {
+                    debug(err);
+                    throw new Error(err);
+                }
+                this.cachePublication(filePath, publication);
+            }
+            return publication;
+        });
     }
     isPublicationCached(filePath) {
         return typeof this.cachedPublication(filePath) !== "undefined";

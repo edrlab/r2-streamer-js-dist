@@ -4,7 +4,6 @@ var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var path = require("path");
 var epub_1 = require("../../../es8-es2017/src/parser/epub");
-var publication_parser_1 = require("../../../es8-es2017/src/parser/publication-parser");
 var UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("../../../es8-es2017/src/_utils/JsonUtils");
 var css2json = require("css2json");
@@ -56,12 +55,10 @@ function serverManifestJson(server, routerPathBase64) {
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
                     pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
-                    publication = server.cachedPublication(pathBase64Str);
-                    if (!!publication) return [3, 5];
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4, publication_parser_1.PublicationParsePromise(pathBase64Str)];
+                    return [4, server.loadOrGetCachedPublication(pathBase64Str)];
                 case 2:
                     publication = _a.sent();
                     return [3, 4];
@@ -72,10 +69,7 @@ function serverManifestJson(server, routerPathBase64) {
                         + err_1 + "</p></body></html>");
                     return [2];
                 case 4:
-                    server.cachePublication(pathBase64Str, publication);
-                    _a.label = 5;
-                case 5:
-                    if (req.params.lcpPass64) {
+                    if (req.params.lcpPass64 && !server.disableDecryption) {
                         lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
                         if (publication.LCP) {
                             okay = publication.LCP.setUserPassphrase(lcpPass);

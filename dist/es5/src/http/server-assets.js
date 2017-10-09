@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var path = require("path");
-var publication_parser_1 = require("../../../es8-es2017/src/parser/publication-parser");
 var transformer_1 = require("../../../es8-es2017/src/transform/transformer");
 var RangeUtils_1 = require("../../../es8-es2017/src/_utils/http/RangeUtils");
 var BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
@@ -33,12 +32,10 @@ function serverAssets(server, routerPathBase64) {
                         console.log("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
                     pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
-                    publication = server.cachedPublication(pathBase64Str);
-                    if (!!publication) return [3, 5];
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4, publication_parser_1.PublicationParsePromise(pathBase64Str)];
+                    return [4, server.loadOrGetCachedPublication(pathBase64Str)];
                 case 2:
                     publication = _b.sent();
                     return [3, 4];
@@ -49,9 +46,6 @@ function serverAssets(server, routerPathBase64) {
                         + err_1 + "</p></body></html>");
                     return [2];
                 case 4:
-                    server.cachePublication(pathBase64Str, publication);
-                    _b.label = 5;
-                case 5:
                     zipInternal = publication.findFromInternal("zip");
                     if (!zipInternal) {
                         err = "No publication zip!";
@@ -136,44 +130,44 @@ function serverAssets(server, routerPathBase64) {
                             }
                         }
                     }
-                    _b.label = 6;
-                case 6:
-                    _b.trys.push([6, 11, , 12]);
-                    if (!(isPartialByteRangeRequest && !isEncrypted)) return [3, 8];
+                    _b.label = 5;
+                case 5:
+                    _b.trys.push([5, 10, , 11]);
+                    if (!(isPartialByteRangeRequest && !isEncrypted)) return [3, 7];
                     return [4, zip.entryStreamRangePromise(pathInZip, partialByteBegin, partialByteEnd)];
-                case 7:
+                case 6:
                     _a = _b.sent();
-                    return [3, 10];
-                case 8: return [4, zip.entryStreamPromise(pathInZip)];
+                    return [3, 9];
+                case 7: return [4, zip.entryStreamPromise(pathInZip)];
+                case 8:
+                    _a = _b.sent();
+                    _b.label = 9;
                 case 9:
-                    _a = _b.sent();
-                    _b.label = 10;
-                case 10:
                     zipStream_ = _a;
-                    return [3, 12];
-                case 11:
+                    return [3, 11];
+                case 10:
                     err_2 = _b.sent();
                     debug(err_2);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_2 + "</p></body></html>");
                     return [2];
-                case 12:
+                case 11:
                     if (!((isEncrypted && (isObfuscatedFont || !server.disableDecryption)) &&
-                        link)) return [3, 17];
+                        link)) return [3, 16];
                     decryptFail = false;
                     transformedStream = void 0;
-                    _b.label = 13;
-                case 13:
-                    _b.trys.push([13, 15, , 16]);
+                    _b.label = 12;
+                case 12:
+                    _b.trys.push([12, 14, , 15]);
                     return [4, transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
-                case 14:
+                case 13:
                     transformedStream = _b.sent();
-                    return [3, 16];
-                case 15:
+                    return [3, 15];
+                case 14:
                     err_3 = _b.sent();
                     debug(err_3);
-                    return [3, 16];
-                case 16:
+                    return [3, 15];
+                case 15:
                     if (transformedStream) {
                         zipStream_ = transformedStream;
                     }
@@ -187,30 +181,30 @@ function serverAssets(server, routerPathBase64) {
                             + err + "</p></body></html>");
                         return [2];
                     }
-                    _b.label = 17;
-                case 17:
+                    _b.label = 16;
+                case 16:
                     if (partialByteEnd < 0) {
                         partialByteEnd = zipStream_.length - 1;
                     }
                     partialByteLength = isPartialByteRangeRequest ?
                         partialByteEnd - partialByteBegin + 1 :
                         zipStream_.length;
-                    if (!isShow) return [3, 22];
+                    if (!isShow) return [3, 21];
                     zipData = void 0;
-                    _b.label = 18;
-                case 18:
-                    _b.trys.push([18, 20, , 21]);
+                    _b.label = 17;
+                case 17:
+                    _b.trys.push([17, 19, , 20]);
                     return [4, BufferUtils_1.streamToBufferPromise(zipStream_.stream)];
-                case 19:
+                case 18:
                     zipData = _b.sent();
-                    return [3, 21];
-                case 20:
+                    return [3, 20];
+                case 19:
                     err_4 = _b.sent();
                     debug(err_4);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_4 + "</p></body></html>");
                     return [2];
-                case 21:
+                case 20:
                     if (zipData) {
                         debug("CHECK: " + zipStream_.length + " ==> " + zipData.length);
                     }
@@ -227,7 +221,7 @@ function serverAssets(server, routerPathBase64) {
                                 "</pre></p>")
                             : "<p>BINARY</p>") + "</body></html>");
                     return [2];
-                case 22:
+                case 21:
                     server.setResponseCORS(res);
                     res.setHeader("Cache-Control", "public,max-age=86400");
                     if (mediaType) {

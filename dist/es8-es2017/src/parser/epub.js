@@ -800,7 +800,9 @@ const fillEncryptionInfo = (publication, _rootfile, _opf, encryption, lcp) => {
     encryption.EncryptedData.forEach((encInfo) => {
         const encrypted = new metadata_encrypted_1.Encrypted();
         encrypted.Algorithm = encInfo.EncryptionMethod.Algorithm;
-        if (lcp) {
+        if (lcp &&
+            encrypted.Algorithm !== "http://www.idpf.org/2008/embedding" &&
+            encrypted.Algorithm !== "http://ns.adobe.com/pdf/enc#RC") {
             encrypted.Profile = lcp.Encryption.Profile;
             encrypted.Scheme = "http://readium.org/2014/01/lcp";
         }
@@ -1016,12 +1018,13 @@ const fillTOCFromNavDocWithOL = (select, olElems, node, navDocPath) => {
                 node.push(link);
                 const aElems = select("xhtml:a", liElem);
                 if (aElems && aElems.length > 0) {
-                    let aHref = select("@href", aElems[0]);
+                    const aHref = select("@href", aElems[0]);
                     if (aHref && aHref.length) {
-                        if (aHref[0][0] === "#") {
-                            aHref = navDocPath + aHref[0];
+                        let val = aHref[0].value;
+                        if (val[0] === "#") {
+                            val = path.basename(navDocPath) + val;
                         }
-                        const zipPath = path.join(path.dirname(navDocPath), aHref[0].value)
+                        const zipPath = path.join(path.dirname(navDocPath), val)
                             .replace(/\\/g, "/");
                         link.Href = zipPath;
                     }
@@ -1030,6 +1033,12 @@ const fillTOCFromNavDocWithOL = (select, olElems, node, navDocPath) => {
                         aText = aText.trim();
                         aText = aText.replace(/\s\s+/g, " ");
                         link.Title = aText;
+                    }
+                }
+                else {
+                    const liFirstChild = select("xhtml:*[1]", liElem);
+                    if (liFirstChild && liFirstChild.length && liFirstChild[0].textContent) {
+                        link.Title = liFirstChild[0].textContent.trim();
                     }
                 }
                 const olElemsNext = select("xhtml:ol", liElem);

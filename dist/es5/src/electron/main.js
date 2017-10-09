@@ -2,6 +2,8 @@
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var crypto = require("crypto");
+var express = require("express");
 var fs = require("fs");
 var path = require("path");
 var UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
@@ -19,42 +21,109 @@ var _publicationsRootUrl;
 var _publicationsFilePaths;
 var _publicationsUrls;
 var _electronBrowserWindows;
-function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
-    debug("createElectronBrowserWindow() " + publicationFilePath + " : " + publicationUrl);
-    var electronBrowserWindow = new electron_1.BrowserWindow({
-        height: 600,
-        webPreferences: {
-            allowRunningInsecureContent: false,
-            contextIsolation: false,
-            devTools: true,
-            nodeIntegration: true,
-            nodeIntegrationInWorker: false,
-            sandbox: false,
-            webSecurity: true,
-        },
-        width: 800,
-    });
-    if (!_electronBrowserWindows) {
-        _electronBrowserWindows = [];
+var defaultBookPath = fs.realpathSync(path.resolve("./misc/epubs/"));
+var lastBookPath;
+electron_1.ipcMain.on("devtools", function (_event, _arg) {
+    for (var _i = 0, _a = electron_1.webContents.getAllWebContents(); _i < _a.length; _i++) {
+        var wc = _a[_i];
+        wc.openDevTools();
     }
-    _electronBrowserWindows.push(electronBrowserWindow);
-    electronBrowserWindow.webContents.on("dom-ready", function () {
-        debug("electronBrowserWindow dom-ready " + publicationFilePath + " : " + publicationUrl);
-        electronBrowserWindow.webContents.openDevTools();
+});
+electron_1.ipcMain.on("tryLcpPass", function (event, publicationFilePath, lcpPass) {
+    debug(publicationFilePath);
+    debug(lcpPass);
+    var okay = tryLcpPass(publicationFilePath, lcpPass);
+    if (!okay) {
+        event.sender.send("tryLcpPass", false, "LCP problem! (" + lcpPass + ")");
+    }
+    else {
+        event.sender.send("tryLcpPass", true, "LCP okay. (" + lcpPass + ")");
+    }
+});
+function tryLcpPass(publicationFilePath, lcpPass) {
+    var publication = _publicationsServer.cachedPublication(publicationFilePath);
+    if (!publication) {
+        return false;
+    }
+    var checkSum = crypto.createHash("sha256");
+    checkSum.update(lcpPass);
+    var lcpPassHex = checkSum.digest("hex");
+    var okay = publication.LCP.setUserPassphrase(lcpPassHex);
+    if (!okay) {
+        debug("FAIL publication.LCP.setUserPassphrase()");
+    }
+    return okay;
+}
+function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var publication, err_1, lcpHint, electronBrowserWindow, urlEncoded, fullUrl;
+        return tslib_1.__generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    debug("createElectronBrowserWindow() " + publicationFilePath + " : " + publicationUrl);
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4, _publicationsServer.loadOrGetCachedPublication(publicationFilePath)];
+                case 2:
+                    publication = _a.sent();
+                    return [3, 4];
+                case 3:
+                    err_1 = _a.sent();
+                    debug(err_1);
+                    return [3, 4];
+                case 4:
+                    if (publication && publication.LCP) {
+                        if (publication.LCP.Encryption &&
+                            publication.LCP.Encryption.UserKey &&
+                            publication.LCP.Encryption.UserKey.TextHint) {
+                            lcpHint = publication.LCP.Encryption.UserKey.TextHint;
+                        }
+                        if (!lcpHint) {
+                            lcpHint = "LCP passphrase";
+                        }
+                    }
+                    electronBrowserWindow = new electron_1.BrowserWindow({
+                        height: 600,
+                        webPreferences: {
+                            allowRunningInsecureContent: false,
+                            contextIsolation: false,
+                            devTools: true,
+                            nodeIntegration: true,
+                            nodeIntegrationInWorker: false,
+                            sandbox: false,
+                            webSecurity: true,
+                            webviewTag: true,
+                        },
+                        width: 800,
+                    });
+                    if (!_electronBrowserWindows) {
+                        _electronBrowserWindows = [];
+                    }
+                    _electronBrowserWindows.push(electronBrowserWindow);
+                    electronBrowserWindow.webContents.on("dom-ready", function () {
+                        debug("electronBrowserWindow dom-ready " + publicationFilePath + " : " + publicationUrl);
+                    });
+                    electronBrowserWindow.on("closed", function () {
+                        debug("electronBrowserWindow closed " + publicationFilePath + " : " + publicationUrl);
+                        var i = _electronBrowserWindows.indexOf(electronBrowserWindow);
+                        if (i < 0) {
+                            debug("electronBrowserWindow NOT FOUND?!");
+                            return;
+                        }
+                        _electronBrowserWindows.splice(i, 1);
+                    });
+                    urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(publicationUrl);
+                    fullUrl = "file://" + __dirname + "/renderer/index.html?pub=" + urlEncoded;
+                    if (lcpHint) {
+                        fullUrl = fullUrl + "&lcpHint=" + lcpHint;
+                    }
+                    debug(fullUrl);
+                    electronBrowserWindow.webContents.loadURL(fullUrl, { extraHeaders: "pragma: no-cache\n" });
+                    return [2];
+            }
+        });
     });
-    electronBrowserWindow.on("closed", function () {
-        debug("electronBrowserWindow closed " + publicationFilePath + " : " + publicationUrl);
-        var i = _electronBrowserWindows.indexOf(electronBrowserWindow);
-        if (i < 0) {
-            console.log("electronBrowserWindow NOT FOUND?!");
-            return;
-        }
-        _electronBrowserWindows.splice(i, 1);
-    });
-    var urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(publicationUrl);
-    var fullUrl = "file://" + __dirname + "/renderer/index.html?pub=" + urlEncoded;
-    debug(fullUrl);
-    electronBrowserWindow.webContents.loadURL(fullUrl);
 }
 electron_1.app.on("window-all-closed", function () {
     debug("app window-all-closed");
@@ -62,42 +131,65 @@ electron_1.app.on("window-all-closed", function () {
         electron_1.app.quit();
     }
 });
+function clearSession(sess, str) {
+    sess.clearCache(function () {
+        debug("ELECTRON CACHE CLEARED - " + str);
+    });
+    sess.clearStorageData({
+        origin: "*",
+        quotas: [
+            "temporary",
+            "persistent",
+            "syncable"
+        ],
+        storages: [
+            "appcache",
+            "cookies",
+            "filesystem",
+            "indexdb",
+            "localstorage",
+            "shadercache",
+            "websql",
+            "serviceworkers"
+        ],
+    }, function () {
+        debug("ELECTRON STORAGE CLEARED - " + str);
+    });
+}
 electron_1.app.on("ready", function () {
     debug("app ready");
     if (electron_1.session.defaultSession) {
-        electron_1.session.defaultSession.clearStorageData({
-            origin: "*",
-            quotas: [
-                "temporary",
-                "persistent",
-                "syncable"
-            ],
-            storages: [
-                "appcache",
-                "cookies",
-                "filesystem",
-                "indexdb",
-                "localstorage",
-                "shadercache",
-                "websql",
-                "serviceworkers"
-            ],
-        });
+        clearSession(electron_1.session.defaultSession, "DEFAULT SESSION");
     }
+    var sess = electron_1.session.fromPartition("persist:publicationwebview", { cache: false });
+    if (sess) {
+        clearSession(sess, "SESSION [persist:publicationwebview]");
+    }
+    sess.setPermissionRequestHandler(function (wc, permission, callback) {
+        console.log("setPermissionRequestHandler");
+        console.log(wc.getURL());
+        console.log(permission);
+        callback(true);
+    });
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var dirPath, pubPaths, menuTemplate, menu;
+        var staticOptions, pubPaths;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
-                case 0:
-                    dirPath = fs.realpathSync(path.resolve("./misc/epubs/"));
-                    return [4, filehound.create()
-                            .paths(dirPath)
-                            .ext([".epub", ".epub3", ".cbz"])
-                            .find()];
+                case 0: return [4, filehound.create()
+                        .paths(defaultBookPath)
+                        .ext([".epub", ".epub3", ".cbz"])
+                        .find()];
                 case 1:
                     _publicationsFilePaths = _a.sent();
                     debug(_publicationsFilePaths);
-                    _publicationsServer = new server_1.Server();
+                    _publicationsServer = new server_1.Server({
+                        disableDecryption: false,
+                        disableReaders: false,
+                    });
+                    staticOptions = {
+                        etag: false,
+                    };
+                    _publicationsServer.expressUse("/readium-css", express.static("misc/ReadiumCSS", staticOptions));
                     pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
                     return [4, portfinder.getPortPromise()];
                 case 2:
@@ -107,35 +199,109 @@ electron_1.app.on("ready", function () {
                         return "" + _publicationsRootUrl + pubPath;
                     });
                     debug(_publicationsUrls);
-                    menuTemplate = [
-                        {
-                            label: "Electron R2",
-                            submenu: [
-                                {
-                                    accelerator: "Command+Q",
-                                    click: function () { electron_1.app.quit(); },
-                                    label: "Quit",
-                                },
-                            ],
-                        },
-                    ];
-                    _publicationsUrls.forEach(function (pubManifestUrl, n) {
-                        var file = _publicationsFilePaths[n];
-                        console.log("MENU ITEM: " + file + " : " + pubManifestUrl);
-                        menuTemplate[0].submenu.push({
-                            click: function () {
-                                createElectronBrowserWindow(file, pubManifestUrl);
-                            },
-                            label: file,
+                    resetMenu();
+                    process.nextTick(function () {
+                        var choice = electron_1.dialog.showMessageBox({
+                            buttons: ["&OK"],
+                            cancelId: 0,
+                            defaultId: 0,
+                            detail: "Note that this is only a developer application (" +
+                                "test framework) for the Readium2 NodeJS 'streamer' and Electron-based 'navigator'.",
+                            message: "Use the 'Electron' menu to load publications.",
+                            noLink: true,
+                            normalizeAccessKeys: true,
+                            title: "Readium2 Electron streamer / navigator",
+                            type: "info",
                         });
+                        if (choice === 0) {
+                            debug("ok");
+                        }
                     });
-                    menu = electron_1.Menu.buildFromTemplate(menuTemplate);
-                    electron_1.Menu.setApplicationMenu(menu);
                     return [2];
             }
         });
     }); })();
 });
+function resetMenu() {
+    var _this = this;
+    var menuTemplate = [
+        {
+            label: "Electron R2",
+            submenu: [
+                {
+                    accelerator: "Command+Q",
+                    click: function () { electron_1.app.quit(); },
+                    label: "Quit",
+                },
+            ],
+        },
+    ];
+    menuTemplate[0].submenu.push({
+        click: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            var choice, n, publicationPaths, file, pubManifestUrl;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        choice = electron_1.dialog.showOpenDialog({
+                            defaultPath: lastBookPath || defaultBookPath,
+                            filters: [
+                                { name: "EPUB publication", extensions: ["epub", "epub3"] },
+                                { name: "Comic book", extensions: ["cbz"] },
+                            ],
+                            message: "Choose a file",
+                            properties: ["openFile"],
+                            title: "Load a publication",
+                        });
+                        if (!choice || !choice.length) {
+                            return [2];
+                        }
+                        debug(choice[0]);
+                        lastBookPath = path.dirname(choice[0]);
+                        debug(lastBookPath);
+                        n = _publicationsFilePaths.indexOf(choice[0]);
+                        if (n < 0) {
+                            publicationPaths = _publicationsServer.addPublications(choice);
+                            debug(publicationPaths);
+                            _publicationsFilePaths.push(choice[0]);
+                            debug(_publicationsFilePaths);
+                            _publicationsUrls.push("" + _publicationsRootUrl + publicationPaths[0]);
+                            debug(_publicationsUrls);
+                            n = _publicationsFilePaths.length - 1;
+                            process.nextTick(function () {
+                                resetMenu();
+                            });
+                        }
+                        file = _publicationsFilePaths[n];
+                        pubManifestUrl = _publicationsUrls[n];
+                        return [4, createElectronBrowserWindow(file, pubManifestUrl)];
+                    case 1:
+                        _a.sent();
+                        return [2];
+                }
+            });
+        }); },
+        label: "Open file...",
+    });
+    _publicationsUrls.forEach(function (pubManifestUrl, n) {
+        var file = _publicationsFilePaths[n];
+        debug("MENU ITEM: " + file + " : " + pubManifestUrl);
+        menuTemplate[0].submenu.push({
+            click: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                return tslib_1.__generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4, createElectronBrowserWindow(file, pubManifestUrl)];
+                        case 1:
+                            _a.sent();
+                            return [2];
+                    }
+                });
+            }); },
+            label: file,
+        });
+    });
+    var menu = electron_1.Menu.buildFromTemplate(menuTemplate);
+    electron_1.Menu.setApplicationMenu(menu);
+}
 electron_1.app.on("activate", function () {
     debug("app activate");
 });

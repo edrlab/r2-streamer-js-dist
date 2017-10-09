@@ -263,7 +263,7 @@ var Zip2 = (function (_super) {
         });
     };
     Zip2.prototype.freeDestroy = function () {
-        console.log("freeDestroy: Zip2");
+        console.log("freeDestroy: Zip2 -- " + this.filePath);
         if (this.zip) {
             this.zip.close();
         }

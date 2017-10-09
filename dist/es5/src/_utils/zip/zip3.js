@@ -86,7 +86,7 @@ var Zip3 = (function (_super) {
         });
     };
     Zip3.prototype.freeDestroy = function () {
-        console.log("freeDestroy: Zip3");
+        console.log("freeDestroy: Zip3 -- " + this.filePath);
         if (this.zip) {
         }
     };
