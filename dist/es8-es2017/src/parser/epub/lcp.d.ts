@@ -15,8 +15,12 @@ export declare class LCP {
     Signature: Signature;
     Links: Link[];
     ZipPath: string;
+    JsonSource: string;
     ContentKey: Buffer | undefined;
+    private _usesNativeNodePlugin;
+    private _lcpNative;
+    private _lcpContext;
     private userPassphraseHex;
-    setUserPassphrase(pass: string): boolean;
-    checkCertificate(): void;
+    init(): void;
+    setUserPassphrase(pass: string): Promise<boolean>;
 }

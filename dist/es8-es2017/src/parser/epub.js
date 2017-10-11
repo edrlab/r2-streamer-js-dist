@@ -91,6 +91,8 @@ async function EpubParsePromise(filePath) {
         const lcplJson = global.JSON.parse(lcplStr);
         lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
         lcpl.ZipPath = lcplZipPath;
+        lcpl.JsonSource = lcplStr;
+        lcpl.init();
         publication.LCP = lcpl;
         publication.AddLink("application/vnd.readium.lcp.license-1.0+json", ["license"], lcpl.ZipPath, false);
     }

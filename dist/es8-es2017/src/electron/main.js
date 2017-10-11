@@ -50,13 +50,20 @@ function openAllDevTools() {
 electron_1.ipcMain.on(events_1.R2_EVENT_DEVTOOLS, (_event, _arg) => {
     openAllDevTools();
 });
-electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, (event, publicationFilePath, lcpPass) => {
+electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, async (event, publicationFilePath, lcpPass) => {
     debug(publicationFilePath);
     debug(lcpPass);
-    const okay = tryLcpPass(publicationFilePath, lcpPass);
+    let okay = false;
+    try {
+        okay = await tryLcpPass(publicationFilePath, lcpPass);
+    }
+    catch (err) {
+        debug(err);
+        okay = false;
+    }
     event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "LCP okay. (" + lcpPass + ")" : "LCP problem!? (" + lcpPass + ")"));
 });
-function tryLcpPass(publicationFilePath, lcpPass) {
+async function tryLcpPass(publicationFilePath, lcpPass) {
     const publication = _publicationsServer.cachedPublication(publicationFilePath);
     if (!publication) {
         return false;
@@ -64,7 +71,7 @@ function tryLcpPass(publicationFilePath, lcpPass) {
     const checkSum = crypto.createHash("sha256");
     checkSum.update(lcpPass);
     const lcpPassHex = checkSum.digest("hex");
-    const okay = publication.LCP.setUserPassphrase(lcpPassHex);
+    const okay = await publication.LCP.setUserPassphrase(lcpPassHex);
     if (!okay) {
         debug("FAIL publication.LCP.setUserPassphrase()");
     }
@@ -163,20 +170,42 @@ electron_1.app.on("ready", () => {
         debug(_publicationsUrls);
         resetMenu();
         process.nextTick(() => {
-            const choice = electron_1.dialog.showMessageBox({
-                buttons: ["&OK"],
-                cancelId: 0,
-                defaultId: 0,
-                detail: "Note that this is only a developer application (" +
-                    "test framework) for the Readium2 NodeJS 'streamer' and Electron-based 'navigator'.",
-                message: "Use the 'Electron' menu to load publications.",
-                noLink: true,
-                normalizeAccessKeys: true,
-                title: "Readium2 Electron streamer / navigator",
-                type: "info",
-            });
-            if (choice === 0) {
-                debug("ok");
+            const detail = "Note that this is only a developer application (" +
+                "test framework) for the Readium2 NodeJS 'streamer' and Electron-based 'navigator'.";
+            const message = "Use the 'Electron' menu to load publications.";
+            if (process.platform === "darwin") {
+                const choice = electron_1.dialog.showMessageBox({
+                    buttons: ["&OK"],
+                    cancelId: 0,
+                    defaultId: 0,
+                    detail,
+                    message,
+                    noLink: true,
+                    normalizeAccessKeys: true,
+                    title: "Readium2 Electron streamer / navigator",
+                    type: "info",
+                });
+                if (choice === 0) {
+                    debug("ok");
+                }
+            }
+            else {
+                const html = `<html><h2>${message}<hr>${detail}</h2></html>`;
+                const electronBrowserWindow = new electron_1.BrowserWindow({
+                    height: 300,
+                    webPreferences: {
+                        allowRunningInsecureContent: false,
+                        contextIsolation: false,
+                        devTools: false,
+                        nodeIntegration: false,
+                        nodeIntegrationInWorker: false,
+                        sandbox: false,
+                        webSecurity: true,
+                        webviewTag: false,
+                    },
+                    width: 400,
+                });
+                electronBrowserWindow.webContents.loadURL("data:text/html," + html);
             }
         });
     })();
