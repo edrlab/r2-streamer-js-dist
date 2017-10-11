@@ -23,16 +23,22 @@ let LCP = class LCP {
         this.init();
         return this._usesNativeNodePlugin;
     }
+    isReady() {
+        if (this.isNativeNodePlugin()) {
+            return typeof this._lcpContext !== "undefined";
+        }
+        return typeof this.ContentKey !== "undefined";
+    }
     init() {
-        this.ContentKey = undefined;
-        this._lcpContext = undefined;
         if (typeof this._usesNativeNodePlugin !== "undefined") {
             return;
         }
+        this.ContentKey = undefined;
+        this._lcpContext = undefined;
         const lcpNodeFilePath = path.join(process.cwd(), "LCP/lcp.node");
-        console.log(lcpNodeFilePath);
+        debug(lcpNodeFilePath);
         if (fs.existsSync(lcpNodeFilePath)) {
-            console.log("LCP _usesNativeNodePlugin");
+            debug("LCP _usesNativeNodePlugin");
             this._usesNativeNodePlugin = true;
             this._lcpNative = bind({
                 bindings: "lcp.node",
@@ -44,16 +50,37 @@ let LCP = class LCP {
             });
         }
         else {
-            console.log("LCP JS impl");
+            debug("LCP JS impl");
             this._usesNativeNodePlugin = false;
             this._lcpNative = undefined;
         }
+    }
+    decrypt(encryptedContent) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (!this.isNativeNodePlugin()) {
+                return Promise.reject("direct ecrypt buffer only for native plugin");
+            }
+            if (!this._lcpContext) {
+                return Promise.reject("LCP context not initialized (needs setUserPassphrase)");
+            }
+            return new Promise((resolve, reject) => {
+                this._lcpNative.decrypt(this._lcpContext, encryptedContent, (er, decryptedContent) => {
+                    if (er) {
+                        debug(er);
+                        reject(er);
+                        return;
+                    }
+                    const padding = decryptedContent[decryptedContent.length - 1];
+                    const buff = decryptedContent.slice(0, decryptedContent.length - padding);
+                    resolve(buff);
+                });
+            });
+        });
     }
     setUserPassphrase(pass) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {
             this.init();
             this.userPassphraseHex = pass;
-            debug(this.userPassphraseHex);
             if (!this.userPassphraseHex) {
                 return false;
             }
@@ -75,23 +102,13 @@ let LCP = class LCP {
                             resolve(false);
                         }
                         else {
-                            debug(validHashedPassphrase);
                             this._lcpNative.createContext(this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, (erro, context) => {
                                 if (erro) {
                                     debug(erro);
                                     resolve(false);
                                     return;
                                 }
-                                const userKey = new Buffer(this.userPassphraseHex, "hex");
-                                const buff = new Buffer(context.encryptedContentKey, "hex");
-                                const iv = buff.slice(0, AES_BLOCK_SIZE);
-                                const encrypted = buff.slice(AES_BLOCK_SIZE);
-                                const decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
-                                decryptStream.setAutoPadding(false);
-                                const decryptedContent = decryptStream.update(encrypted);
-                                const nPadding = decryptedContent[decryptedContent.length - 1];
-                                const size = decryptedContent.length - nPadding;
-                                this.ContentKey = decryptedContent.slice(0, size);
+                                this._lcpContext = context;
                                 resolve(true);
                             });
                         }

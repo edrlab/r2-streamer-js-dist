@@ -27,4 +27,19 @@ function streamToBufferPromise(readStream) {
     });
 }
 exports.streamToBufferPromise = streamToBufferPromise;
+function streamToBufferPromise2(readStream) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve, reject) => {
+            const buffers = [];
+            readStream.on("error", reject);
+            readStream.on("data", (data) => {
+                buffers.push(data);
+            });
+            readStream.on("end", () => {
+                resolve(Buffer.concat(buffers));
+            });
+        });
+    });
+}
+exports.streamToBufferPromise2 = streamToBufferPromise2;
 //# sourceMappingURL=BufferUtils.js.map

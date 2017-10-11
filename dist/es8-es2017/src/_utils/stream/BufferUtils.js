@@ -24,4 +24,17 @@ async function streamToBufferPromise(readStream) {
     });
 }
 exports.streamToBufferPromise = streamToBufferPromise;
+async function streamToBufferPromise2(readStream) {
+    return new Promise((resolve, reject) => {
+        const buffers = [];
+        readStream.on("error", reject);
+        readStream.on("data", (data) => {
+            buffers.push(data);
+        });
+        readStream.on("end", () => {
+            resolve(Buffer.concat(buffers));
+        });
+    });
+}
+exports.streamToBufferPromise2 = streamToBufferPromise2;
 //# sourceMappingURL=BufferUtils.js.map

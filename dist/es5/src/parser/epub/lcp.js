@@ -23,16 +23,22 @@ var LCP = (function () {
         this.init();
         return this._usesNativeNodePlugin;
     };
+    LCP.prototype.isReady = function () {
+        if (this.isNativeNodePlugin()) {
+            return typeof this._lcpContext !== "undefined";
+        }
+        return typeof this.ContentKey !== "undefined";
+    };
     LCP.prototype.init = function () {
-        this.ContentKey = undefined;
-        this._lcpContext = undefined;
         if (typeof this._usesNativeNodePlugin !== "undefined") {
             return;
         }
+        this.ContentKey = undefined;
+        this._lcpContext = undefined;
         var lcpNodeFilePath = path.join(process.cwd(), "LCP/lcp.node");
-        console.log(lcpNodeFilePath);
+        debug(lcpNodeFilePath);
         if (fs.existsSync(lcpNodeFilePath)) {
-            console.log("LCP _usesNativeNodePlugin");
+            debug("LCP _usesNativeNodePlugin");
             this._usesNativeNodePlugin = true;
             this._lcpNative = bind({
                 bindings: "lcp.node",
@@ -44,10 +50,35 @@ var LCP = (function () {
             });
         }
         else {
-            console.log("LCP JS impl");
+            debug("LCP JS impl");
             this._usesNativeNodePlugin = false;
             this._lcpNative = undefined;
         }
+    };
+    LCP.prototype.decrypt = function (encryptedContent) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return tslib_1.__generator(this, function (_a) {
+                if (!this.isNativeNodePlugin()) {
+                    return [2, Promise.reject("direct ecrypt buffer only for native plugin")];
+                }
+                if (!this._lcpContext) {
+                    return [2, Promise.reject("LCP context not initialized (needs setUserPassphrase)")];
+                }
+                return [2, new Promise(function (resolve, reject) {
+                        _this._lcpNative.decrypt(_this._lcpContext, encryptedContent, function (er, decryptedContent) {
+                            if (er) {
+                                debug(er);
+                                reject(er);
+                                return;
+                            }
+                            var padding = decryptedContent[decryptedContent.length - 1];
+                            var buff = decryptedContent.slice(0, decryptedContent.length - padding);
+                            resolve(buff);
+                        });
+                    })];
+            });
+        });
     };
     LCP.prototype.setUserPassphrase = function (pass) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
@@ -56,7 +87,6 @@ var LCP = (function () {
             return tslib_1.__generator(this, function (_a) {
                 this.init();
                 this.userPassphraseHex = pass;
-                debug(this.userPassphraseHex);
                 if (!this.userPassphraseHex) {
                     return [2, false];
                 }
@@ -78,23 +108,13 @@ var LCP = (function () {
                                     resolve(false);
                                 }
                                 else {
-                                    debug(validHashedPassphrase);
                                     _this._lcpNative.createContext(_this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, function (erro, context) {
                                         if (erro) {
                                             debug(erro);
                                             resolve(false);
                                             return;
                                         }
-                                        var userKey = new Buffer(_this.userPassphraseHex, "hex");
-                                        var buff = new Buffer(context.encryptedContentKey, "hex");
-                                        var iv = buff.slice(0, AES_BLOCK_SIZE);
-                                        var encrypted = buff.slice(AES_BLOCK_SIZE);
-                                        var decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
-                                        decryptStream.setAutoPadding(false);
-                                        var decryptedContent = decryptStream.update(encrypted);
-                                        var nPadding = decryptedContent[decryptedContent.length - 1];
-                                        var size = decryptedContent.length - nPadding;
-                                        _this.ContentKey = decryptedContent.slice(0, size);
+                                        _this._lcpContext = context;
                                         resolve(true);
                                     });
                                 }

@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const zlib = require("zlib");
 const RangeStream_1 = require("../_utils/stream/RangeStream");
 const debug_ = require("debug");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
 const debug = debug_("r2:transformer:lcp");
 const AES_BLOCK_SIZE = 16;
 const readStream = async (s, n) => {
@@ -23,8 +24,8 @@ class TransformerLCP {
         if (!publication.LCP) {
             return false;
         }
-        if (!publication.LCP.ContentKey) {
-            debug("Missing LCP content key.");
+        if (!publication.LCP.isReady()) {
+            debug("LCP not ready!");
             return false;
         }
         const check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
@@ -40,28 +41,60 @@ class TransformerLCP {
         return true;
     }
     async transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        const contentKey = publication.LCP.ContentKey;
-        let cryptoInfo;
         let plainTextSize = -1;
-        let cypherBlockPadding = -1;
-        if (link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0) {
-            plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
-            cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
-        }
-        else {
-            cryptoInfo = await this.getDecryptedSizeStream(publication, link, stream);
-            plainTextSize = cryptoInfo.length;
-            cypherBlockPadding = cryptoInfo.padding;
+        let nativelyDecryptedStream;
+        if (publication.LCP.isNativeNodePlugin()) {
+            debug("DECRYPT: " + link.Href);
+            let fullEncryptedBuffer;
+            try {
+                fullEncryptedBuffer = await BufferUtils_1.streamToBufferPromise(stream.stream);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject("OUCH!");
+            }
+            let nativelyDecryptedBuffer;
+            try {
+                nativelyDecryptedBuffer = await publication.LCP.decrypt(fullEncryptedBuffer);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject("OUCH!");
+            }
+            plainTextSize = nativelyDecryptedBuffer.length;
             link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
-            link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
-            stream = await stream.reset();
             if (link.Properties.Encrypted.OriginalLength &&
                 link.Properties.Encrypted.Compression === "none" &&
                 link.Properties.Encrypted.OriginalLength !== plainTextSize) {
                 debug(`############### ` +
                     `LCP transformStream() LENGTH NOT MATCH ` +
-                    `link.Properties.Encrypted.OriginalLength !== plainTextSize:` +
+                    `link.Properties.Encrypted.OriginalLength !== plainTextSize: ` +
                     `${link.Properties.Encrypted.OriginalLength} !== ${plainTextSize}`);
+            }
+            nativelyDecryptedStream = BufferUtils_1.bufferToStream(nativelyDecryptedBuffer);
+        }
+        else {
+            let cryptoInfo;
+            let cypherBlockPadding = -1;
+            if (link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0) {
+                plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
+                cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
+            }
+            else {
+                cryptoInfo = await this.getDecryptedSizeStream(publication, link, stream);
+                plainTextSize = cryptoInfo.length;
+                cypherBlockPadding = cryptoInfo.padding;
+                link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
+                link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
+                stream = await stream.reset();
+                if (link.Properties.Encrypted.OriginalLength &&
+                    link.Properties.Encrypted.Compression === "none" &&
+                    link.Properties.Encrypted.OriginalLength !== plainTextSize) {
+                    debug(`############### ` +
+                        `LCP transformStream() LENGTH NOT MATCH ` +
+                        `link.Properties.Encrypted.OriginalLength !== plainTextSize: ` +
+                        `${link.Properties.Encrypted.OriginalLength} !== ${plainTextSize}`);
+                }
             }
         }
         if (partialByteBegin < 0) {
@@ -73,28 +106,34 @@ class TransformerLCP {
                 partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
             }
         }
-        let rawDecryptStream;
-        let ivBuffer;
-        if (link.Properties.Encrypted.CypherBlockIV) {
-            ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
-            const cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
-            stream.stream.pipe(cypherRangeStream);
-            rawDecryptStream = cypherRangeStream;
+        let destStream;
+        if (nativelyDecryptedStream) {
+            destStream = nativelyDecryptedStream;
         }
         else {
-            ivBuffer = await readStream(stream.stream, AES_BLOCK_SIZE);
-            link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
-            stream.stream.resume();
-            rawDecryptStream = stream.stream;
-        }
-        const decryptStream = crypto.createDecipheriv("aes-256-cbc", contentKey, ivBuffer);
-        decryptStream.setAutoPadding(false);
-        rawDecryptStream.pipe(decryptStream);
-        let destStream = decryptStream;
-        if (cypherBlockPadding) {
-            const cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
-            destStream.pipe(cypherUnpaddedStream);
-            destStream = cypherUnpaddedStream;
+            let rawDecryptStream;
+            let ivBuffer;
+            if (link.Properties.Encrypted.CypherBlockIV) {
+                ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
+                const cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
+                stream.stream.pipe(cypherRangeStream);
+                rawDecryptStream = cypherRangeStream;
+            }
+            else {
+                ivBuffer = await readStream(stream.stream, AES_BLOCK_SIZE);
+                link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
+                stream.stream.resume();
+                rawDecryptStream = stream.stream;
+            }
+            const decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
+            decryptStream.setAutoPadding(false);
+            rawDecryptStream.pipe(decryptStream);
+            destStream = decryptStream;
+            if (link.Properties.Encrypted.CypherBlockPadding) {
+                const cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
+                destStream.pipe(cypherUnpaddedStream);
+                destStream = cypherUnpaddedStream;
+            }
         }
         if (link.Properties.Encrypted.Compression === "deflate") {
             const inflateStream = zlib.createInflateRaw();
@@ -119,7 +158,6 @@ class TransformerLCP {
         return Promise.resolve(sal);
     }
     async getDecryptedSizeStream(publication, _link, stream) {
-        const contentKey = publication.LCP.ContentKey;
         return new Promise((resolve, reject) => {
             const TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
             if (stream.length < TWO_AES_BLOCK_SIZE) {
@@ -136,7 +174,7 @@ class TransformerLCP {
                     return;
                 }
                 const encrypted = cypherRangeStream.read(AES_BLOCK_SIZE);
-                const decryptStream = crypto.createDecipheriv("aes-256-cbc", contentKey, ivBuffer);
+                const decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
                 decryptStream.setAutoPadding(false);
                 const buff1 = decryptStream.update(encrypted);
                 if (buff1) {

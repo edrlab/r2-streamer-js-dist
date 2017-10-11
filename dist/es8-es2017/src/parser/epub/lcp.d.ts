@@ -21,7 +21,9 @@ export declare class LCP {
     private _lcpNative;
     private _lcpContext;
     private userPassphraseHex;
-    isNativeNodePlugin(): boolean | undefined;
+    isNativeNodePlugin(): boolean;
+    isReady(): boolean;
     init(): void;
+    decrypt(encryptedContent: Buffer): Promise<Buffer>;
     setUserPassphrase(pass: string): Promise<boolean>;
 }
