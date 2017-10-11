@@ -19,6 +19,10 @@ let LCP = class LCP {
     constructor() {
         this._usesNativeNodePlugin = undefined;
     }
+    isNativeNodePlugin() {
+        this.init();
+        return this._usesNativeNodePlugin;
+    }
     init() {
         this.ContentKey = undefined;
         this._lcpContext = undefined;
