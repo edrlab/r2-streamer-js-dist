@@ -56,6 +56,10 @@ var LCP = (function () {
             return tslib_1.__generator(this, function (_a) {
                 this.init();
                 this.userPassphraseHex = pass;
+                debug(this.userPassphraseHex);
+                if (!this.userPassphraseHex) {
+                    return [2, false];
+                }
                 check = this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
                     && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
                     && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
@@ -68,22 +72,32 @@ var LCP = (function () {
                 }
                 if (this._usesNativeNodePlugin) {
                     return [2, new Promise(function (resolve, _reject) {
-                            _this._lcpNative.createContext(_this.JsonSource, _this.userPassphraseHex, lcp_certificate_1.DUMMY_CRL, function (erro, context) {
-                                if (erro) {
-                                    debug(erro);
+                            _this._lcpNative.findOneValidPassphrase(_this.JsonSource, [_this.userPassphraseHex], function (err, validHashedPassphrase) {
+                                if (err) {
+                                    debug(err);
                                     resolve(false);
-                                    return;
                                 }
-                                debug(context);
-                                _this._lcpNative.findOneValidPassphrase(_this.JsonSource, [_this.userPassphraseHex], function (err, validHashedPassphrase) {
-                                    debug(err, validHashedPassphrase, _this.userPassphraseHex);
-                                    if (err) {
-                                        resolve(false);
-                                    }
-                                    else {
+                                else {
+                                    debug(validHashedPassphrase);
+                                    _this._lcpNative.createContext(_this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, function (erro, context) {
+                                        if (erro) {
+                                            debug(erro);
+                                            resolve(false);
+                                            return;
+                                        }
+                                        var userKey = new Buffer(_this.userPassphraseHex, "hex");
+                                        var buff = new Buffer(context.encryptedContentKey, "hex");
+                                        var iv = buff.slice(0, AES_BLOCK_SIZE);
+                                        var encrypted = buff.slice(AES_BLOCK_SIZE);
+                                        var decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
+                                        decryptStream.setAutoPadding(false);
+                                        var decryptedContent = decryptStream.update(encrypted);
+                                        var nPadding = decryptedContent[decryptedContent.length - 1];
+                                        var size = decryptedContent.length - nPadding;
+                                        _this.ContentKey = decryptedContent.slice(0, size);
                                         resolve(true);
-                                    }
-                                });
+                                    });
+                                }
                             });
                         })];
                 }

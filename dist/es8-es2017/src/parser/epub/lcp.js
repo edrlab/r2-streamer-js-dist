@@ -52,6 +52,10 @@ let LCP = class LCP {
     async setUserPassphrase(pass) {
         this.init();
         this.userPassphraseHex = pass;
+        debug(this.userPassphraseHex);
+        if (!this.userPassphraseHex) {
+            return false;
+        }
         const check = this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
             && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
             && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
@@ -64,22 +68,32 @@ let LCP = class LCP {
         }
         if (this._usesNativeNodePlugin) {
             return new Promise((resolve, _reject) => {
-                this._lcpNative.createContext(this.JsonSource, this.userPassphraseHex, lcp_certificate_1.DUMMY_CRL, (erro, context) => {
-                    if (erro) {
-                        debug(erro);
+                this._lcpNative.findOneValidPassphrase(this.JsonSource, [this.userPassphraseHex], (err, validHashedPassphrase) => {
+                    if (err) {
+                        debug(err);
                         resolve(false);
-                        return;
                     }
-                    debug(context);
-                    this._lcpNative.findOneValidPassphrase(this.JsonSource, [this.userPassphraseHex], (err, validHashedPassphrase) => {
-                        debug(err, validHashedPassphrase, this.userPassphraseHex);
-                        if (err) {
-                            resolve(false);
-                        }
-                        else {
+                    else {
+                        debug(validHashedPassphrase);
+                        this._lcpNative.createContext(this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, (erro, context) => {
+                            if (erro) {
+                                debug(erro);
+                                resolve(false);
+                                return;
+                            }
+                            const userKey = new Buffer(this.userPassphraseHex, "hex");
+                            const buff = new Buffer(context.encryptedContentKey, "hex");
+                            const iv = buff.slice(0, AES_BLOCK_SIZE);
+                            const encrypted = buff.slice(AES_BLOCK_SIZE);
+                            const decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
+                            decryptStream.setAutoPadding(false);
+                            const decryptedContent = decryptStream.update(encrypted);
+                            const nPadding = decryptedContent[decryptedContent.length - 1];
+                            const size = decryptedContent.length - nPadding;
+                            this.ContentKey = decryptedContent.slice(0, size);
                             resolve(true);
-                        }
-                    });
+                        });
+                    }
                 });
             });
         }
