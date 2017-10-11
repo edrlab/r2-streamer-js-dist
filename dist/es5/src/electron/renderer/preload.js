@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var electron_1 = require("electron");
+var events_1 = require("../common/events");
 console.log("PRELOAD");
 var win = global.window;
 console.log(win.location.pathname);
 console.log(win.location.origin);
 var urlRootReadiumCSS = win.location.origin + "/readium-css/iOS/";
-electron_1.ipcRenderer.on("readium", function (_event, messageString) {
+electron_1.ipcRenderer.on(events_1.R2_EVENT_READIUMCSS, function (_event, messageString) {
     var messageJson = JSON.parse(messageString);
     if (messageJson.injectCSS) {
         if (!win.document.head) {
@@ -67,10 +68,22 @@ electron_1.ipcRenderer.on("readium", function (_event, messageString) {
 });
 win.addEventListener("DOMContentLoaded", function () {
     console.log("PRELOAD DOM READY");
+    win.document.addEventListener("click", function (e) {
+        var href = e.target.href;
+        if (!href) {
+            return;
+        }
+        console.log("HREF CLICK: " + href);
+        e.preventDefault();
+        e.stopPropagation();
+        electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_LINK, href);
+        return false;
+    }, true);
 });
 win.addEventListener("resize", function () {
     console.log("webview resize");
     win.document.body.scrollLeft = 0;
+    win.document.body.scrollTop = 0;
 });
 function appendCSS(mod) {
     var linkElement = win.document.createElement("link");

@@ -12,6 +12,8 @@ const filehound = require("filehound");
 const portfinder = require("portfinder");
 const server_1 = require("../http/server");
 const init_globals_1 = require("../init-globals");
+const events_1 = require("./common/events");
+const sessions_1 = require("./common/sessions");
 init_globals_1.initGlobals();
 const debug = debug_("r2:electron:main");
 let _publicationsServer;
@@ -22,21 +24,38 @@ let _publicationsUrls;
 let _electronBrowserWindows;
 const defaultBookPath = fs.realpathSync(path.resolve("./misc/epubs/"));
 let lastBookPath;
-electron_1.ipcMain.on("devtools", (_event, _arg) => {
+electron_1.app.on("web-contents-created", (_evt, wc) => {
+    if (!_electronBrowserWindows || !_electronBrowserWindows.length) {
+        return;
+    }
+    _electronBrowserWindows.forEach((win) => {
+        if (wc.hostWebContents &&
+            wc.hostWebContents.id === win.webContents.id) {
+            debug("WEBVIEW web-contents-created");
+            wc.on("will-navigate", (event, url) => {
+                debug("webview.getWebContents().on('will-navigate'");
+                debug(url);
+                const wcUrl = event.sender.getURL();
+                debug(wcUrl);
+                event.preventDefault();
+                win.webContents.send(events_1.R2_EVENT_LINK, url);
+            });
+        }
+    });
+});
+function openAllDevTools() {
     for (const wc of electron_1.webContents.getAllWebContents()) {
         wc.openDevTools();
     }
+}
+electron_1.ipcMain.on(events_1.R2_EVENT_DEVTOOLS, (_event, _arg) => {
+    openAllDevTools();
 });
-electron_1.ipcMain.on("tryLcpPass", (event, publicationFilePath, lcpPass) => {
+electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, (event, publicationFilePath, lcpPass) => {
     debug(publicationFilePath);
     debug(lcpPass);
     const okay = tryLcpPass(publicationFilePath, lcpPass);
-    if (!okay) {
-        event.sender.send("tryLcpPass", false, "LCP problem! (" + lcpPass + ")");
-    }
-    else {
-        event.sender.send("tryLcpPass", true, "LCP okay. (" + lcpPass + ")");
-    }
+    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "LCP okay. (" + lcpPass + ")" : "LCP problem!? (" + lcpPass + ")"));
 });
 function tryLcpPass(publicationFilePath, lcpPass) {
     const publication = _publicationsServer.cachedPublication(publicationFilePath);
@@ -112,52 +131,18 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
         electronBrowserWindow.webContents.loadURL(fullUrl, { extraHeaders: "pragma: no-cache\n" });
     });
 }
-electron_1.app.on("window-all-closed", () => {
-    debug("app window-all-closed");
-    if (process.platform !== "darwin") {
-        electron_1.app.quit();
-    }
-});
-function clearSession(sess, str) {
-    sess.clearCache(() => {
-        debug("ELECTRON CACHE CLEARED - " + str);
-    });
-    sess.clearStorageData({
-        origin: "*",
-        quotas: [
-            "temporary",
-            "persistent",
-            "syncable"
-        ],
-        storages: [
-            "appcache",
-            "cookies",
-            "filesystem",
-            "indexdb",
-            "localstorage",
-            "shadercache",
-            "websql",
-            "serviceworkers"
-        ],
-    }, () => {
-        debug("ELECTRON STORAGE CLEARED - " + str);
-    });
-}
 electron_1.app.on("ready", () => {
     debug("app ready");
-    if (electron_1.session.defaultSession) {
-        clearSession(electron_1.session.defaultSession, "DEFAULT SESSION");
-    }
-    const sess = electron_1.session.fromPartition("persist:publicationwebview", { cache: false });
+    clearSessions(undefined, undefined);
+    const sess = getWebViewSession();
     if (sess) {
-        clearSession(sess, "SESSION [persist:publicationwebview]");
+        sess.setPermissionRequestHandler((wc, permission, callback) => {
+            console.log("setPermissionRequestHandler");
+            console.log(wc.getURL());
+            console.log(permission);
+            callback(true);
+        });
     }
-    sess.setPermissionRequestHandler((wc, permission, callback) => {
-        console.log("setPermissionRequestHandler");
-        console.log(wc.getURL());
-        console.log(permission);
-        callback(true);
-    });
     (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
         _publicationsFilePaths = yield filehound.create()
             .paths(defaultBookPath)
@@ -202,7 +187,7 @@ electron_1.app.on("ready", () => {
 function resetMenu() {
     const menuTemplate = [
         {
-            label: "Electron R2",
+            label: "Readium2 Electron",
             submenu: [
                 {
                     accelerator: "Command+Q",
@@ -211,8 +196,24 @@ function resetMenu() {
                 },
             ],
         },
+        {
+            label: "Open",
+            submenu: [],
+        },
+        {
+            label: "Tools",
+            submenu: [
+                {
+                    accelerator: "Command+B",
+                    click: () => {
+                        openAllDevTools();
+                    },
+                    label: "Open Dev Tools",
+                },
+            ],
+        },
     ];
-    menuTemplate[0].submenu.push({
+    menuTemplate[1].submenu.push({
         click: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
             const choice = electron_1.dialog.showOpenDialog({
                 defaultPath: lastBookPath || defaultBookPath,
@@ -247,12 +248,12 @@ function resetMenu() {
             const pubManifestUrl = _publicationsUrls[n];
             yield createElectronBrowserWindow(file, pubManifestUrl);
         }),
-        label: "Open file...",
+        label: "Load file...",
     });
     _publicationsUrls.forEach((pubManifestUrl, n) => {
         const file = _publicationsFilePaths[n];
         debug("MENU ITEM: " + file + " : " + pubManifestUrl);
-        menuTemplate[0].submenu.push({
+        menuTemplate[1].submenu.push({
             click: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 yield createElectronBrowserWindow(file, pubManifestUrl);
             }),
@@ -265,8 +266,130 @@ function resetMenu() {
 electron_1.app.on("activate", () => {
     debug("app activate");
 });
+electron_1.app.on("before-quit", () => {
+    debug("app before quit");
+});
+electron_1.app.on("window-all-closed", () => {
+    debug("app window-all-closed");
+    if (process.platform !== "darwin") {
+        electron_1.app.quit();
+    }
+});
+function willQuitCallback(evt) {
+    debug("app will quit");
+    electron_1.app.removeListener("will-quit", willQuitCallback);
+    _publicationsServer.stop();
+    let done = false;
+    setTimeout(() => {
+        if (done) {
+            return;
+        }
+        done = true;
+        debug("Cache and StorageData clearance waited enough => force quitting...");
+        electron_1.app.quit();
+    }, 6000);
+    let sessionCleared = 0;
+    const callback = () => {
+        sessionCleared++;
+        if (sessionCleared >= 2) {
+            if (done) {
+                return;
+            }
+            done = true;
+            debug("Cache and StorageData cleared, now quitting...");
+            electron_1.app.quit();
+        }
+    };
+    clearSessions(callback, callback);
+    evt.preventDefault();
+}
+electron_1.app.on("will-quit", willQuitCallback);
 electron_1.app.on("quit", () => {
     debug("app quit");
-    _publicationsServer.stop();
 });
+function clearSession(sess, str, callbackCache, callbackStorageData) {
+    sess.clearCache(() => {
+        debug("SESSION CACHE CLEARED - " + str);
+        if (callbackCache) {
+            callbackCache();
+        }
+    });
+    sess.clearStorageData({
+        origin: "*",
+        quotas: [
+            "temporary",
+            "persistent",
+            "syncable"
+        ],
+        storages: [
+            "appcache",
+            "cookies",
+            "filesystem",
+            "indexdb",
+            "localstorage",
+            "shadercache",
+            "websql",
+            "serviceworkers"
+        ],
+    }, () => {
+        debug("SESSION STORAGE DATA CLEARED - " + str);
+        if (callbackStorageData) {
+            callbackStorageData();
+        }
+    });
+}
+function getWebViewSession() {
+    return electron_1.session.fromPartition(sessions_1.R2_SESSION_WEBVIEW, { cache: false });
+}
+function clearWebviewSession(callbackCache, callbackStorageData) {
+    const sess = getWebViewSession();
+    if (sess) {
+        clearSession(sess, "[persist:publicationwebview]", callbackCache, callbackStorageData);
+    }
+    else {
+        if (callbackCache) {
+            callbackCache();
+        }
+        if (callbackStorageData) {
+            callbackStorageData();
+        }
+    }
+}
+function clearDefaultSession(callbackCache, callbackStorageData) {
+    if (electron_1.session.defaultSession) {
+        clearSession(electron_1.session.defaultSession, "[default]", callbackCache, callbackStorageData);
+    }
+    else {
+        if (callbackCache) {
+            callbackCache();
+        }
+        if (callbackStorageData) {
+            callbackStorageData();
+        }
+    }
+}
+function clearSessions(callbackCache, callbackStorageData) {
+    let done = false;
+    setTimeout(() => {
+        if (done) {
+            return;
+        }
+        done = true;
+        debug("Cache and StorageData clearance waited enough (default session) => force webview session...");
+        clearWebviewSession(callbackCache, callbackStorageData);
+    }, 6000);
+    let sessionCleared = 0;
+    const callback = () => {
+        sessionCleared++;
+        if (sessionCleared >= 2) {
+            if (done) {
+                return;
+            }
+            done = true;
+            debug("Cache and StorageData cleared (default session), now webview session...");
+            clearWebviewSession(callbackCache, callbackStorageData);
+        }
+    };
+    clearDefaultSession(callback, callback);
+}
 //# sourceMappingURL=main.js.map

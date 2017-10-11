@@ -13,6 +13,8 @@ var filehound = require("filehound");
 var portfinder = require("portfinder");
 var server_1 = require("../http/server");
 var init_globals_1 = require("../init-globals");
+var events_1 = require("./common/events");
+var sessions_1 = require("./common/sessions");
 init_globals_1.initGlobals();
 var debug = debug_("r2:electron:main");
 var _publicationsServer;
@@ -23,22 +25,39 @@ var _publicationsUrls;
 var _electronBrowserWindows;
 var defaultBookPath = fs.realpathSync(path.resolve("./misc/epubs/"));
 var lastBookPath;
-electron_1.ipcMain.on("devtools", function (_event, _arg) {
+electron_1.app.on("web-contents-created", function (_evt, wc) {
+    if (!_electronBrowserWindows || !_electronBrowserWindows.length) {
+        return;
+    }
+    _electronBrowserWindows.forEach(function (win) {
+        if (wc.hostWebContents &&
+            wc.hostWebContents.id === win.webContents.id) {
+            debug("WEBVIEW web-contents-created");
+            wc.on("will-navigate", function (event, url) {
+                debug("webview.getWebContents().on('will-navigate'");
+                debug(url);
+                var wcUrl = event.sender.getURL();
+                debug(wcUrl);
+                event.preventDefault();
+                win.webContents.send(events_1.R2_EVENT_LINK, url);
+            });
+        }
+    });
+});
+function openAllDevTools() {
     for (var _i = 0, _a = electron_1.webContents.getAllWebContents(); _i < _a.length; _i++) {
         var wc = _a[_i];
         wc.openDevTools();
     }
+}
+electron_1.ipcMain.on(events_1.R2_EVENT_DEVTOOLS, function (_event, _arg) {
+    openAllDevTools();
 });
-electron_1.ipcMain.on("tryLcpPass", function (event, publicationFilePath, lcpPass) {
+electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicationFilePath, lcpPass) {
     debug(publicationFilePath);
     debug(lcpPass);
     var okay = tryLcpPass(publicationFilePath, lcpPass);
-    if (!okay) {
-        event.sender.send("tryLcpPass", false, "LCP problem! (" + lcpPass + ")");
-    }
-    else {
-        event.sender.send("tryLcpPass", true, "LCP okay. (" + lcpPass + ")");
-    }
+    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "LCP okay. (" + lcpPass + ")" : "LCP problem!? (" + lcpPass + ")"));
 });
 function tryLcpPass(publicationFilePath, lcpPass) {
     var publication = _publicationsServer.cachedPublication(publicationFilePath);
@@ -125,52 +144,18 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
         });
     });
 }
-electron_1.app.on("window-all-closed", function () {
-    debug("app window-all-closed");
-    if (process.platform !== "darwin") {
-        electron_1.app.quit();
-    }
-});
-function clearSession(sess, str) {
-    sess.clearCache(function () {
-        debug("ELECTRON CACHE CLEARED - " + str);
-    });
-    sess.clearStorageData({
-        origin: "*",
-        quotas: [
-            "temporary",
-            "persistent",
-            "syncable"
-        ],
-        storages: [
-            "appcache",
-            "cookies",
-            "filesystem",
-            "indexdb",
-            "localstorage",
-            "shadercache",
-            "websql",
-            "serviceworkers"
-        ],
-    }, function () {
-        debug("ELECTRON STORAGE CLEARED - " + str);
-    });
-}
 electron_1.app.on("ready", function () {
     debug("app ready");
-    if (electron_1.session.defaultSession) {
-        clearSession(electron_1.session.defaultSession, "DEFAULT SESSION");
-    }
-    var sess = electron_1.session.fromPartition("persist:publicationwebview", { cache: false });
+    clearSessions(undefined, undefined);
+    var sess = getWebViewSession();
     if (sess) {
-        clearSession(sess, "SESSION [persist:publicationwebview]");
+        sess.setPermissionRequestHandler(function (wc, permission, callback) {
+            console.log("setPermissionRequestHandler");
+            console.log(wc.getURL());
+            console.log(permission);
+            callback(true);
+        });
     }
-    sess.setPermissionRequestHandler(function (wc, permission, callback) {
-        console.log("setPermissionRequestHandler");
-        console.log(wc.getURL());
-        console.log(permission);
-        callback(true);
-    });
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var staticOptions, pubPaths;
         return tslib_1.__generator(this, function (_a) {
@@ -226,7 +211,7 @@ function resetMenu() {
     var _this = this;
     var menuTemplate = [
         {
-            label: "Electron R2",
+            label: "Readium2 Electron",
             submenu: [
                 {
                     accelerator: "Command+Q",
@@ -235,8 +220,24 @@ function resetMenu() {
                 },
             ],
         },
+        {
+            label: "Open",
+            submenu: [],
+        },
+        {
+            label: "Tools",
+            submenu: [
+                {
+                    accelerator: "Command+B",
+                    click: function () {
+                        openAllDevTools();
+                    },
+                    label: "Open Dev Tools",
+                },
+            ],
+        },
     ];
-    menuTemplate[0].submenu.push({
+    menuTemplate[1].submenu.push({
         click: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
             var choice, n, publicationPaths, file, pubManifestUrl;
             return tslib_1.__generator(this, function (_a) {
@@ -280,12 +281,12 @@ function resetMenu() {
                 }
             });
         }); },
-        label: "Open file...",
+        label: "Load file...",
     });
     _publicationsUrls.forEach(function (pubManifestUrl, n) {
         var file = _publicationsFilePaths[n];
         debug("MENU ITEM: " + file + " : " + pubManifestUrl);
-        menuTemplate[0].submenu.push({
+        menuTemplate[1].submenu.push({
             click: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                 return tslib_1.__generator(this, function (_a) {
                     switch (_a.label) {
@@ -305,8 +306,130 @@ function resetMenu() {
 electron_1.app.on("activate", function () {
     debug("app activate");
 });
+electron_1.app.on("before-quit", function () {
+    debug("app before quit");
+});
+electron_1.app.on("window-all-closed", function () {
+    debug("app window-all-closed");
+    if (process.platform !== "darwin") {
+        electron_1.app.quit();
+    }
+});
+function willQuitCallback(evt) {
+    debug("app will quit");
+    electron_1.app.removeListener("will-quit", willQuitCallback);
+    _publicationsServer.stop();
+    var done = false;
+    setTimeout(function () {
+        if (done) {
+            return;
+        }
+        done = true;
+        debug("Cache and StorageData clearance waited enough => force quitting...");
+        electron_1.app.quit();
+    }, 6000);
+    var sessionCleared = 0;
+    var callback = function () {
+        sessionCleared++;
+        if (sessionCleared >= 2) {
+            if (done) {
+                return;
+            }
+            done = true;
+            debug("Cache and StorageData cleared, now quitting...");
+            electron_1.app.quit();
+        }
+    };
+    clearSessions(callback, callback);
+    evt.preventDefault();
+}
+electron_1.app.on("will-quit", willQuitCallback);
 electron_1.app.on("quit", function () {
     debug("app quit");
-    _publicationsServer.stop();
 });
+function clearSession(sess, str, callbackCache, callbackStorageData) {
+    sess.clearCache(function () {
+        debug("SESSION CACHE CLEARED - " + str);
+        if (callbackCache) {
+            callbackCache();
+        }
+    });
+    sess.clearStorageData({
+        origin: "*",
+        quotas: [
+            "temporary",
+            "persistent",
+            "syncable"
+        ],
+        storages: [
+            "appcache",
+            "cookies",
+            "filesystem",
+            "indexdb",
+            "localstorage",
+            "shadercache",
+            "websql",
+            "serviceworkers"
+        ],
+    }, function () {
+        debug("SESSION STORAGE DATA CLEARED - " + str);
+        if (callbackStorageData) {
+            callbackStorageData();
+        }
+    });
+}
+function getWebViewSession() {
+    return electron_1.session.fromPartition(sessions_1.R2_SESSION_WEBVIEW, { cache: false });
+}
+function clearWebviewSession(callbackCache, callbackStorageData) {
+    var sess = getWebViewSession();
+    if (sess) {
+        clearSession(sess, "[persist:publicationwebview]", callbackCache, callbackStorageData);
+    }
+    else {
+        if (callbackCache) {
+            callbackCache();
+        }
+        if (callbackStorageData) {
+            callbackStorageData();
+        }
+    }
+}
+function clearDefaultSession(callbackCache, callbackStorageData) {
+    if (electron_1.session.defaultSession) {
+        clearSession(electron_1.session.defaultSession, "[default]", callbackCache, callbackStorageData);
+    }
+    else {
+        if (callbackCache) {
+            callbackCache();
+        }
+        if (callbackStorageData) {
+            callbackStorageData();
+        }
+    }
+}
+function clearSessions(callbackCache, callbackStorageData) {
+    var done = false;
+    setTimeout(function () {
+        if (done) {
+            return;
+        }
+        done = true;
+        debug("Cache and StorageData clearance waited enough (default session) => force webview session...");
+        clearWebviewSession(callbackCache, callbackStorageData);
+    }, 6000);
+    var sessionCleared = 0;
+    var callback = function () {
+        sessionCleared++;
+        if (sessionCleared >= 2) {
+            if (done) {
+                return;
+            }
+            done = true;
+            debug("Cache and StorageData cleared (default session), now webview session...");
+            clearWebviewSession(callbackCache, callbackStorageData);
+        }
+    };
+    clearDefaultSession(callback, callback);
+}
 //# sourceMappingURL=main.js.map
