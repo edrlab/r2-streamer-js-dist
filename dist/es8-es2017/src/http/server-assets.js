@@ -23,7 +23,7 @@ function serverAssets(server, routerPathBase64) {
         const isShow = req.query.show;
         const isHead = req.method.toLowerCase() === "head";
         if (isHead) {
-            console.log("HEAD !!!!!!!!!!!!!!!!!!!");
+            debug("HEAD !!!!!!!!!!!!!!!!!!!");
         }
         const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
         let publication;

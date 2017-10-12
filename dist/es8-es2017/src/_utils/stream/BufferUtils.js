@@ -5,7 +5,7 @@ function bufferToStream(buffer) {
     return new BufferReadableStream_1.BufferReadableStream(buffer);
 }
 exports.bufferToStream = bufferToStream;
-async function streamToBufferPromise(readStream) {
+async function streamToBufferPromise_READABLE(readStream) {
     return new Promise((resolve, reject) => {
         const buffers = [];
         readStream.on("error", reject);
@@ -23,8 +23,8 @@ async function streamToBufferPromise(readStream) {
         });
     });
 }
-exports.streamToBufferPromise = streamToBufferPromise;
-async function streamToBufferPromise2(readStream) {
+exports.streamToBufferPromise_READABLE = streamToBufferPromise_READABLE;
+async function streamToBufferPromise(readStream) {
     return new Promise((resolve, reject) => {
         const buffers = [];
         readStream.on("error", reject);
@@ -36,5 +36,5 @@ async function streamToBufferPromise2(readStream) {
         });
     });
 }
-exports.streamToBufferPromise2 = streamToBufferPromise2;
+exports.streamToBufferPromise = streamToBufferPromise;
 //# sourceMappingURL=BufferUtils.js.map

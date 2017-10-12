@@ -50,7 +50,7 @@ function serverManifestJson(server, routerPathBase64) {
         }
         const isHead = req.method.toLowerCase() === "head";
         if (isHead) {
-            console.log("HEAD !!!!!!!!!!!!!!!!!!!");
+            debug("HEAD !!!!!!!!!!!!!!!!!!!");
         }
         const isCanonical = req.query.canonical && req.query.canonical === "true";
         const isSecureHttp = req.secure ||

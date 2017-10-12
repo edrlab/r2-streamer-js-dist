@@ -85,6 +85,10 @@ function serverOPDS12(_server, topRouter) {
                 + err + "</p></body></html>");
         };
         const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
+                failure("HTTP CODE " + response.statusCode);
+                return;
+            }
             let responseData;
             try {
                 responseData = yield BufferUtils_1.streamToBufferPromise(response);

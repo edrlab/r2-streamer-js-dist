@@ -36,6 +36,10 @@ var HttpZipReader = (function () {
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                            failure("HTTP CODE " + res.statusCode);
+                            return [2];
+                        }
                         if (!this.firstBuffer) return [3, 1];
                         res.pipe(stream);
                         return [3, 6];

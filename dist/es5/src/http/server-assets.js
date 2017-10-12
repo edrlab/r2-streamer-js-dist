@@ -29,7 +29,7 @@ function serverAssets(server, routerPathBase64) {
                     isShow = req.query.show;
                     isHead = req.method.toLowerCase() === "head";
                     if (isHead) {
-                        console.log("HEAD !!!!!!!!!!!!!!!!!!!");
+                        debug("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
                     pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
                     _b.label = 1;

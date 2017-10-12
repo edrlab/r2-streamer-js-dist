@@ -78,10 +78,14 @@ var Zip2 = (function (_super) {
                                     };
                                     success = function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                                         var _this = this;
-                                        var httpZipByteLength, failure_, success_, ress, err_2, httpZipReader;
+                                        var httpZipByteLength, failure_1, success_, ress, err_2, httpZipReader;
                                         return tslib_1.__generator(this, function (_a) {
                                             switch (_a.label) {
                                                 case 0:
+                                                    if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                                                        failure("HTTP CODE " + res.statusCode);
+                                                        return [2];
+                                                    }
                                                     debug(filePath);
                                                     debug(res.headers);
                                                     if (!res.headers["content-length"]) {
@@ -97,7 +101,7 @@ var Zip2 = (function (_super) {
                                                         return [2];
                                                     }
                                                     debug("Downloading: " + filePath);
-                                                    failure_ = function (err) {
+                                                    failure_1 = function (err) {
                                                         debug(err);
                                                         reject(err);
                                                     };
@@ -106,17 +110,23 @@ var Zip2 = (function (_super) {
                                                         return tslib_1.__generator(this, function (_a) {
                                                             switch (_a.label) {
                                                                 case 0:
-                                                                    _a.trys.push([0, 2, , 3]);
-                                                                    return [4, BufferUtils_1.streamToBufferPromise(ress)];
+                                                                    if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
+                                                                        failure_1("HTTP CODE " + ress.statusCode);
+                                                                        return [2];
+                                                                    }
+                                                                    _a.label = 1;
                                                                 case 1:
-                                                                    buffer = _a.sent();
-                                                                    return [3, 3];
+                                                                    _a.trys.push([1, 3, , 4]);
+                                                                    return [4, BufferUtils_1.streamToBufferPromise(ress)];
                                                                 case 2:
+                                                                    buffer = _a.sent();
+                                                                    return [3, 4];
+                                                                case 3:
                                                                     err_3 = _a.sent();
                                                                     debug(err_3);
                                                                     reject(err_3);
                                                                     return [2];
-                                                                case 3:
+                                                                case 4:
                                                                     yauzl.fromBuffer(buffer, { lazyEntries: true }, function (err, zip) {
                                                                         if (err) {
                                                                             debug("yauzl init ERROR");
@@ -158,7 +168,7 @@ var Zip2 = (function (_super) {
                                                         uri: filePath,
                                                     })
                                                         .on("response", success_)
-                                                        .on("error", failure_);
+                                                        .on("error", failure_1);
                                                     return [3, 7];
                                                 case 1:
                                                     ress = void 0;
@@ -176,7 +186,7 @@ var Zip2 = (function (_super) {
                                                     return [3, 5];
                                                 case 4:
                                                     err_2 = _a.sent();
-                                                    failure_(err_2);
+                                                    failure_1(err_2);
                                                     return [2];
                                                 case 5:
                                                     ress = ress;
@@ -263,7 +273,7 @@ var Zip2 = (function (_super) {
         });
     };
     Zip2.prototype.freeDestroy = function () {
-        console.log("freeDestroy: Zip2 -- " + this.filePath);
+        debug("freeDestroy: Zip2 -- " + this.filePath);
         if (this.zip) {
             this.zip.close();
         }

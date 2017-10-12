@@ -34,16 +34,22 @@ var HttpReadableStream = (function (_super) {
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4, BufferUtils_1.streamToBufferPromise(res)];
+                        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                            failure("HTTP CODE " + res.statusCode);
+                            return [2];
+                        }
+                        _a.label = 1;
                     case 1:
-                        buffer = _a.sent();
-                        return [3, 3];
+                        _a.trys.push([1, 3, , 4]);
+                        return [4, BufferUtils_1.streamToBufferPromise(res)];
                     case 2:
+                        buffer = _a.sent();
+                        return [3, 4];
+                    case 3:
                         err_1 = _a.sent();
                         failure(err_1);
                         return [2];
-                    case 3:
+                    case 4:
                         this.alreadyRead += buffer.length;
                         this.push(buffer);
                         return [2];

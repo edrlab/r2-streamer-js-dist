@@ -52,6 +52,10 @@ function serverOPDS(_server, topRouter) {
                 + err + "</p></body></html>");
         };
         const success = async (response) => {
+            if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
+                failure("HTTP CODE " + response.statusCode);
+                return;
+            }
             let responseData;
             try {
                 responseData = await BufferUtils_1.streamToBufferPromise(response);

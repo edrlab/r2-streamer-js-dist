@@ -61,6 +61,10 @@ class Zip2 extends zip_1.Zip {
                 reject(err);
             };
             const success = async (res) => {
+                if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                    failure("HTTP CODE " + res.statusCode);
+                    return;
+                }
                 debug(filePath);
                 debug(res.headers);
                 if (!res.headers["content-length"]) {
@@ -81,6 +85,10 @@ class Zip2 extends zip_1.Zip {
                         reject(err);
                     };
                     const success_ = async (ress) => {
+                        if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
+                            failure_("HTTP CODE " + ress.statusCode);
+                            return;
+                        }
                         let buffer;
                         try {
                             buffer = await BufferUtils_1.streamToBufferPromise(ress);
@@ -211,7 +219,7 @@ class Zip2 extends zip_1.Zip {
         });
     }
     freeDestroy() {
-        console.log("freeDestroy: Zip2 -- " + this.filePath);
+        debug("freeDestroy: Zip2 -- " + this.filePath);
         if (this.zip) {
             this.zip.close();
         }

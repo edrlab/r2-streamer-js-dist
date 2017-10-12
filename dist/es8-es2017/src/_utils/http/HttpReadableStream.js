@@ -26,6 +26,10 @@ class HttpReadableStream extends stream_1.Readable {
             this.push(null);
         };
         const success = async (res) => {
+            if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                failure("HTTP CODE " + res.statusCode);
+                return;
+            }
             let buffer;
             try {
                 buffer = await BufferUtils_1.streamToBufferPromise(res);

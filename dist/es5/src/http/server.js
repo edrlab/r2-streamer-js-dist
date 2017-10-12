@@ -258,10 +258,10 @@ var Server = (function () {
                     env: process.env,
                 });
                 child.stdout.on("data", function (data) {
-                    console.log(data.toString());
+                    debug(data.toString());
                 });
                 child.stderr.on("data", function (data) {
-                    console.log(data.toString());
+                    debug(data.toString());
                 });
             }
             return undefined;

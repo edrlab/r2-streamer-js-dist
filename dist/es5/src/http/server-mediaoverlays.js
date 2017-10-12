@@ -45,7 +45,7 @@ function serverMediaOverlays(server, routerPathBase64) {
                     isShow = req.url.indexOf("/show") >= 0 || req.query.show;
                     isHead = req.method.toLowerCase() === "head";
                     if (isHead) {
-                        console.log("HEAD !!!!!!!!!!!!!!!!!!!");
+                        debug("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
                     isCanonical = req.query.canonical && req.query.canonical === "true";
                     isSecureHttp = req.secure ||

@@ -30,6 +30,10 @@ class HttpZipReader {
             debug(err);
         };
         const success = async (res) => {
+            if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                failure("HTTP CODE " + res.statusCode);
+                return;
+            }
             if (this.firstBuffer) {
                 res.pipe(stream);
             }

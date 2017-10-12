@@ -22,7 +22,7 @@ var Zip1 = (function (_super) {
                             storeEntries: true,
                         });
                         zip.on("error", function (err) {
-                            debug("--ZIP error:");
+                            debug("--ZIP error: " + filePath);
                             debug(err);
                             reject(err);
                         });
@@ -41,7 +41,7 @@ var Zip1 = (function (_super) {
         });
     };
     Zip1.prototype.freeDestroy = function () {
-        console.log("freeDestroy: Zip1 -- " + this.filePath);
+        debug("freeDestroy: Zip1 -- " + this.filePath);
         if (this.zip) {
             this.zip.close();
         }

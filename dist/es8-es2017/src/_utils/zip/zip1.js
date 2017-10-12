@@ -17,7 +17,7 @@ class Zip1 extends zip_1.Zip {
                 storeEntries: true,
             });
             zip.on("error", (err) => {
-                debug("--ZIP error:");
+                debug("--ZIP error: " + filePath);
                 debug(err);
                 reject(err);
             });
@@ -34,7 +34,7 @@ class Zip1 extends zip_1.Zip {
         });
     }
     freeDestroy() {
-        console.log("freeDestroy: Zip1 -- " + this.filePath);
+        debug("freeDestroy: Zip1 -- " + this.filePath);
         if (this.zip) {
             this.zip.close();
         }

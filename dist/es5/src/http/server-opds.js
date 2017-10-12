@@ -138,18 +138,24 @@ function serverOPDS(_server, topRouter) {
                         return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
-                                    _a.trys.push([0, 2, , 3]);
-                                    return [4, BufferUtils_1.streamToBufferPromise(response)];
+                                    if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
+                                        failure("HTTP CODE " + response.statusCode);
+                                        return [2];
+                                    }
+                                    _a.label = 1;
                                 case 1:
-                                    responseData = _a.sent();
-                                    return [3, 3];
+                                    _a.trys.push([1, 3, , 4]);
+                                    return [4, BufferUtils_1.streamToBufferPromise(response)];
                                 case 2:
+                                    responseData = _a.sent();
+                                    return [3, 4];
+                                case 3:
                                     err_2 = _a.sent();
                                     debug(err_2);
                                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                                         + err_2 + "</p></body></html>");
                                     return [2];
-                                case 3:
+                                case 4:
                                     responseStr = responseData.toString("utf8");
                                     responseXml = new xmldom.DOMParser().parseFromString(responseStr);
                                     isEntry = responseXml.documentElement.localName === "entry";

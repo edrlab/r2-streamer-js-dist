@@ -17,6 +17,7 @@ var publication_link_1 = require("../../../es8-es2017/src/models/publication-lin
 var BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
 var xml_js_mapper_1 = require("../../../es8-es2017/src/_utils/xml-js-mapper");
 var zipFactory_1 = require("../../../es8-es2017/src/_utils/zip/zipFactory");
+var debug_ = require("debug");
 var sizeOf = require("image-size");
 var moment = require("moment");
 var ta_json_1 = require("ta-json");
@@ -30,6 +31,7 @@ var opf_1 = require("./epub/opf");
 var opf_author_1 = require("./epub/opf-author");
 var smil_1 = require("./epub/smil");
 var smil_seq_1 = require("./epub/smil-seq");
+var debug = debug_("r2:epub");
 var epub3 = "3.0";
 var epub301 = "3.0.1";
 var epub31 = "3.1";
@@ -68,18 +70,18 @@ exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.
                     if (coverLink.TypeLink &&
                         coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
                             !== ("image/" + imageInfo.type)) {
-                        console.log("Wrong image type? " + coverLink.TypeLink + " -- " + imageInfo.type);
+                        debug("Wrong image type? " + coverLink.TypeLink + " -- " + imageInfo.type);
                     }
                 }
                 return [3, 6];
             case 5:
                 err_1 = _a.sent();
-                console.log(err_1);
+                debug(err_1);
                 return [3, 6];
             case 6: return [3, 8];
             case 7:
                 err_2 = _a.sent();
-                console.log(err_2);
+                debug(err_2);
                 return [3, 8];
             case 8: return [2];
         }
@@ -115,6 +117,7 @@ function EpubParsePromise(filePath) {
                     lcplZipData = _a.sent();
                     lcplStr = lcplZipData.toString("utf8");
                     lcplJson = global.JSON.parse(lcplStr);
+                    debug(lcplJson);
                     lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
                     lcpl.ZipPath = lcplZipPath;
                     lcpl.JsonSource = lcplStr;
@@ -275,7 +278,7 @@ var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib
                                     return [2, "continue"];
                                 }
                                 if (item.Properties && item.Properties.Encrypted) {
-                                    console.log("ENCRYPTED SMIL MEDIA OVERLAY: " + smilFilePath);
+                                    debug("ENCRYPTED SMIL MEDIA OVERLAY: " + smilFilePath);
                                     return [2, "continue"];
                                 }
                                 mo = new media_overlay_1.MediaOverlayNode();
@@ -974,7 +977,7 @@ var fillSpineAndResource = function (publication, rootfile, opf) { return tslib_
                 return [3, 5];
             case 4:
                 err_3 = _e.sent();
-                console.log(err_3);
+                debug(err_3);
                 return [3, 5];
             case 5:
                 if (linkItem && linkItem.Href) {
@@ -1309,7 +1312,7 @@ var addCoverRel = function (publication, rootfile, opf) { return tslib_1.__await
                 return [3, 4];
             case 3:
                 err_4 = _a.sent();
-                console.log(err_4);
+                debug(err_4);
                 return [3, 4];
             case 4:
                 if (!(manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length)) return [3, 6];

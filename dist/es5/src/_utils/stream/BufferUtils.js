@@ -6,7 +6,7 @@ function bufferToStream(buffer) {
     return new BufferReadableStream_1.BufferReadableStream(buffer);
 }
 exports.bufferToStream = bufferToStream;
-function streamToBufferPromise(readStream) {
+function streamToBufferPromise_READABLE(readStream) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
         return tslib_1.__generator(this, function (_a) {
             return [2, new Promise(function (resolve, reject) {
@@ -28,8 +28,8 @@ function streamToBufferPromise(readStream) {
         });
     });
 }
-exports.streamToBufferPromise = streamToBufferPromise;
-function streamToBufferPromise2(readStream) {
+exports.streamToBufferPromise_READABLE = streamToBufferPromise_READABLE;
+function streamToBufferPromise(readStream) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
         return tslib_1.__generator(this, function (_a) {
             return [2, new Promise(function (resolve, reject) {
@@ -45,5 +45,5 @@ function streamToBufferPromise2(readStream) {
         });
     });
 }
-exports.streamToBufferPromise2 = streamToBufferPromise2;
+exports.streamToBufferPromise = streamToBufferPromise;
 //# sourceMappingURL=BufferUtils.js.map
