@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const index_navigator_1 = require("../index_navigator");
 function startServiceWorkerExperiment(publicationJsonUrl) {
     const webview2 = document.createElement("webview");
     webview2.setAttribute("id", "webview2");
@@ -15,7 +14,6 @@ function startServiceWorkerExperiment(publicationJsonUrl) {
     webview2.addEventListener("dom-ready", () => {
         webview2.openDevTools();
         setTimeout(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
-            index_navigator_1.startNavigatorExperiment(publicationJsonUrl);
         }), 2000);
     });
     const swBootUrl = publicationJsonUrl + "/../";

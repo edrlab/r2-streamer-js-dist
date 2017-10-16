@@ -67,7 +67,7 @@ electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, async (event, publicationF
         debug(err);
         okay = false;
     }
-    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "LCP okay. (" + lcpPass + ")" : "LCP problem!? (" + lcpPass + ")"));
+    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "incorrect, please try again."));
 });
 async function tryLcpPass(publicationFilePath, lcpPass) {
     const publication = _publicationsServer.cachedPublication(publicationFilePath);
@@ -195,7 +195,40 @@ electron_1.app.on("ready", () => {
         });
         debug(_publicationsUrls);
         resetMenu();
-        process.nextTick(() => {
+        process.nextTick(async () => {
+            const args = process.argv.slice(2);
+            console.log("args:");
+            console.log(args);
+            let filePathToLoadOnLaunch;
+            if (args && args.length && args[0]) {
+                const argPath = args[0].trim();
+                let filePath = argPath;
+                console.log(filePath);
+                if (!fs.existsSync(filePath)) {
+                    filePath = path.join(__dirname, argPath);
+                    console.log(filePath);
+                    if (!fs.existsSync(filePath)) {
+                        filePath = path.join(process.cwd(), argPath);
+                        console.log(filePath);
+                        if (!fs.existsSync(filePath)) {
+                            console.log("FILEPATH DOES NOT EXIST: " + filePath);
+                        }
+                        else {
+                            filePathToLoadOnLaunch = filePath;
+                        }
+                    }
+                    else {
+                        filePathToLoadOnLaunch = filePath;
+                    }
+                }
+                else {
+                    filePathToLoadOnLaunch = filePath;
+                }
+            }
+            if (filePathToLoadOnLaunch) {
+                await openFileDownload(filePathToLoadOnLaunch);
+                return;
+            }
             const detail = "Note that this is only a developer application (" +
                 "test framework) for the Readium2 NodeJS 'streamer' and Electron-based 'navigator'.";
             const message = "Use the 'Electron' menu to load publications.";

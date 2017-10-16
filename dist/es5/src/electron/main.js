@@ -80,7 +80,7 @@ electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicati
                 okay = false;
                 return [3, 4];
             case 4:
-                event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "LCP okay. (" + lcpPass + ")" : "LCP problem!? (" + lcpPass + ")"));
+                event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "incorrect, please try again."));
                 return [2];
         }
     });
@@ -215,6 +215,7 @@ electron_1.app.on("ready", function () {
         });
     }
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+        var _this = this;
         var staticOptions, pubPaths;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
@@ -243,45 +244,86 @@ electron_1.app.on("ready", function () {
                     });
                     debug(_publicationsUrls);
                     resetMenu();
-                    process.nextTick(function () {
-                        var detail = "Note that this is only a developer application (" +
-                            "test framework) for the Readium2 NodeJS 'streamer' and Electron-based 'navigator'.";
-                        var message = "Use the 'Electron' menu to load publications.";
-                        if (process.platform === "darwin") {
-                            var choice = electron_1.dialog.showMessageBox({
-                                buttons: ["&OK"],
-                                cancelId: 0,
-                                defaultId: 0,
-                                detail: detail,
-                                message: message,
-                                noLink: true,
-                                normalizeAccessKeys: true,
-                                title: "Readium2 Electron streamer / navigator",
-                                type: "info",
-                            });
-                            if (choice === 0) {
-                                debug("ok");
+                    process.nextTick(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                        var args, filePathToLoadOnLaunch, argPath, filePath, detail, message, choice, html, electronBrowserWindow;
+                        return tslib_1.__generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    args = process.argv.slice(2);
+                                    console.log("args:");
+                                    console.log(args);
+                                    if (args && args.length && args[0]) {
+                                        argPath = args[0].trim();
+                                        filePath = argPath;
+                                        console.log(filePath);
+                                        if (!fs.existsSync(filePath)) {
+                                            filePath = path.join(__dirname, argPath);
+                                            console.log(filePath);
+                                            if (!fs.existsSync(filePath)) {
+                                                filePath = path.join(process.cwd(), argPath);
+                                                console.log(filePath);
+                                                if (!fs.existsSync(filePath)) {
+                                                    console.log("FILEPATH DOES NOT EXIST: " + filePath);
+                                                }
+                                                else {
+                                                    filePathToLoadOnLaunch = filePath;
+                                                }
+                                            }
+                                            else {
+                                                filePathToLoadOnLaunch = filePath;
+                                            }
+                                        }
+                                        else {
+                                            filePathToLoadOnLaunch = filePath;
+                                        }
+                                    }
+                                    if (!filePathToLoadOnLaunch) return [3, 2];
+                                    return [4, openFileDownload(filePathToLoadOnLaunch)];
+                                case 1:
+                                    _a.sent();
+                                    return [2];
+                                case 2:
+                                    detail = "Note that this is only a developer application (" +
+                                        "test framework) for the Readium2 NodeJS 'streamer' and Electron-based 'navigator'.";
+                                    message = "Use the 'Electron' menu to load publications.";
+                                    if (process.platform === "darwin") {
+                                        choice = electron_1.dialog.showMessageBox({
+                                            buttons: ["&OK"],
+                                            cancelId: 0,
+                                            defaultId: 0,
+                                            detail: detail,
+                                            message: message,
+                                            noLink: true,
+                                            normalizeAccessKeys: true,
+                                            title: "Readium2 Electron streamer / navigator",
+                                            type: "info",
+                                        });
+                                        if (choice === 0) {
+                                            debug("ok");
+                                        }
+                                    }
+                                    else {
+                                        html = "<html><h2>" + message + "<hr>" + detail + "</h2></html>";
+                                        electronBrowserWindow = new electron_1.BrowserWindow({
+                                            height: 300,
+                                            webPreferences: {
+                                                allowRunningInsecureContent: false,
+                                                contextIsolation: false,
+                                                devTools: false,
+                                                nodeIntegration: false,
+                                                nodeIntegrationInWorker: false,
+                                                sandbox: false,
+                                                webSecurity: true,
+                                                webviewTag: false,
+                                            },
+                                            width: 400,
+                                        });
+                                        electronBrowserWindow.webContents.loadURL("data:text/html," + html);
+                                    }
+                                    return [2];
                             }
-                        }
-                        else {
-                            var html = "<html><h2>" + message + "<hr>" + detail + "</h2></html>";
-                            var electronBrowserWindow = new electron_1.BrowserWindow({
-                                height: 300,
-                                webPreferences: {
-                                    allowRunningInsecureContent: false,
-                                    contextIsolation: false,
-                                    devTools: false,
-                                    nodeIntegration: false,
-                                    nodeIntegrationInWorker: false,
-                                    sandbox: false,
-                                    webSecurity: true,
-                                    webviewTag: false,
-                                },
-                                width: 400,
-                            });
-                            electronBrowserWindow.webContents.loadURL("data:text/html," + html);
-                        }
-                    });
+                        });
+                    }); });
                     return [2];
             }
         });

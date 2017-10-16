@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const index_navigator_1 = require("../index_navigator");
 function startServiceWorkerExperiment(publicationJsonUrl) {
     const webview2 = document.createElement("webview");
     webview2.setAttribute("id", "webview2");
@@ -14,7 +13,6 @@ function startServiceWorkerExperiment(publicationJsonUrl) {
     webview2.addEventListener("dom-ready", () => {
         webview2.openDevTools();
         setTimeout(async () => {
-            index_navigator_1.startNavigatorExperiment(publicationJsonUrl);
         }, 2000);
     });
     const swBootUrl = publicationJsonUrl + "/../";

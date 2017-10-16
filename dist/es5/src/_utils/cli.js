@@ -15,18 +15,18 @@ console.log(__dirname);
 var args = process.argv.slice(2);
 console.log("args:");
 console.log(args);
-var filePath = args[0];
-if (!filePath) {
+if (!args[0]) {
     console.log("FILEPATH ARGUMENT IS MISSING.");
     process.exit(1);
 }
-filePath = filePath.trim();
+var argPath = args[0].trim();
+var filePath = argPath;
 console.log(filePath);
 if (!fs.existsSync(filePath)) {
-    filePath = path.join(__dirname, filePath);
+    filePath = path.join(__dirname, argPath);
     console.log(filePath);
     if (!fs.existsSync(filePath)) {
-        filePath = path.join(process.cwd(), filePath);
+        filePath = path.join(process.cwd(), argPath);
         console.log(filePath);
         if (!fs.existsSync(filePath)) {
             console.log("FILEPATH DOES NOT EXIST.");

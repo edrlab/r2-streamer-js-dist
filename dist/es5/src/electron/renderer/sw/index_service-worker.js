@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var index_navigator_1 = require("../index_navigator");
 function startServiceWorkerExperiment(publicationJsonUrl) {
     var _this = this;
     var webview2 = document.createElement("webview");
@@ -17,7 +16,6 @@ function startServiceWorkerExperiment(publicationJsonUrl) {
         webview2.openDevTools();
         setTimeout(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
             return tslib_1.__generator(this, function (_a) {
-                index_navigator_1.startNavigatorExperiment(publicationJsonUrl);
                 return [2];
             });
         }); }, 2000);
