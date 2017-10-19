@@ -80,7 +80,7 @@ electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicati
                 okay = false;
                 return [3, 4];
             case 4:
-                event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "incorrect, please try again."));
+                event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "Please try again."));
                 return [2];
         }
     });

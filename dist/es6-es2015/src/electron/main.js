@@ -68,7 +68,7 @@ electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, (event, publicationFilePat
         debug(err);
         okay = false;
     }
-    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "incorrect, please try again."));
+    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "Please try again."));
 }));
 function tryLcpPass(publicationFilePath, lcpPass) {
     return tslib_1.__awaiter(this, void 0, void 0, function* () {

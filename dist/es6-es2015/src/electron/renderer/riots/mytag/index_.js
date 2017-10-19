@@ -4,7 +4,7 @@ const riot_mixin_EventTracer_1 = require("../riot_mixin_EventTracer");
 exports.riotMountMyTag = (opts) => {
     const tag = riot.mount("riot-mytag", opts);
     console.log(tag);
-    console.log(tag[0].getOpts());
+    return tag;
 };
 window.riot_mytag = function (opts) {
     console.log(opts);
@@ -33,5 +33,10 @@ window.riot_mytag = function (opts) {
         console.log(document.getElementById("myRiotTagID"));
         console.log(that.root.querySelectorAll("button")[0]);
     });
+    that.shouldUpdate = (data, nextOpts) => {
+        console.log(data);
+        console.log(nextOpts);
+        return true;
+    };
 };
 //# sourceMappingURL=index_.js.map

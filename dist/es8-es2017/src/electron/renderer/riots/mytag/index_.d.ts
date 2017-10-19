@@ -1,1 +1,1 @@
-export declare const riotMountMyTag: (opts: any) => void;
+export declare const riotMountMyTag: (opts: any) => RiotTag[];

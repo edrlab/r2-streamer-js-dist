@@ -4,7 +4,7 @@ var riot_mixin_EventTracer_1 = require("../riot_mixin_EventTracer");
 exports.riotMountMyTag = function (opts) {
     var tag = riot.mount("riot-mytag", opts);
     console.log(tag);
-    console.log(tag[0].getOpts());
+    return tag;
 };
 window.riot_mytag = function (opts) {
     var _this = this;
@@ -34,5 +34,10 @@ window.riot_mytag = function (opts) {
         console.log(document.getElementById("myRiotTagID"));
         console.log(that.root.querySelectorAll("button")[0]);
     });
+    that.shouldUpdate = function (data, nextOpts) {
+        console.log(data);
+        console.log(nextOpts);
+        return true;
+    };
 };
 //# sourceMappingURL=index_.js.map

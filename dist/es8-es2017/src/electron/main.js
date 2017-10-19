@@ -67,7 +67,7 @@ electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, async (event, publicationF
         debug(err);
         okay = false;
     }
-    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "incorrect, please try again."));
+    event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "Please try again."));
 });
 async function tryLcpPass(publicationFilePath, lcpPass) {
     const publication = _publicationsServer.cachedPublication(publicationFilePath);

@@ -7,26 +7,129 @@ var electron_2 = require("electron");
 var events_1 = require("../common/events");
 var sessions_1 = require("../common/sessions");
 var querystring_1 = require("./querystring");
-var index_1 = require("./riots/spinelist/index_");
-var index_2 = require("./riots/spinelistgroup/index_");
-console.log("INDEX");
-console.log(window.location);
-console.log(document.baseURI);
-console.log(document.URL);
+var index_1 = require("./riots/linklist/index_");
+var index_2 = require("./riots/linklistgroup/index_");
+var index_3 = require("./riots/linktree/index_");
+var ElectronStore = require("electron-store");
 var queryParams = querystring_1.getURLQueryParams();
 var publicationJsonUrl = queryParams["pub"];
-console.log(" (((( publicationJsonUrl )))) " + publicationJsonUrl);
 var pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$1");
-console.log(pathBase64);
 var pathDecoded = window.atob(pathBase64);
-console.log(pathDecoded);
 var pathFileName = pathDecoded.substr(pathDecoded.replace(/\\/g, "/").lastIndexOf("/") + 1, pathDecoded.length - 1);
 var lcpHint = queryParams["lcpHint"];
-var basicLinkTitles = true;
+var defaultsStyling = {
+    dark: false,
+    font: "DEFAULT",
+    invert: false,
+    night: false,
+    readiumcss: false,
+    sepia: false,
+};
+var defaults = {
+    basicLinkTitles: true,
+    styling: defaultsStyling,
+};
+var electronStore = new ElectronStore({
+    defaults: defaults,
+    name: "readium2-navigator",
+});
+electronStore.onDidChange("styling.night", function (newValue, oldValue) {
+    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+        return;
+    }
+    var nightSwitch = document.getElementById("night_switch-input");
+    if (nightSwitch) {
+        nightSwitch.checked = newValue;
+    }
+    if (newValue) {
+        document.body.classList.add("mdc-theme--dark");
+    }
+    else {
+        document.body.classList.remove("mdc-theme--dark");
+    }
+    readiumCssOnOff();
+});
+var readiumCssOnOff = function () {
+    var on = electronStore.get("styling.readiumcss");
+    if (on) {
+        var dark = electronStore.get("styling.dark");
+        var font = electronStore.get("styling.font");
+        var invert = electronStore.get("styling.invert");
+        var night = electronStore.get("styling.night");
+        var sepia = electronStore.get("styling.sepia");
+        var cssJson = {
+            dark: dark,
+            font: font,
+            invert: invert,
+            night: night,
+            sepia: sepia,
+        };
+        var jsonMsg_1 = { injectCSS: "yes", setCSS: cssJson };
+        _webviews.forEach(function (wv) {
+            wv.send(events_1.R2_EVENT_READIUMCSS, JSON.stringify(jsonMsg_1));
+        });
+    }
+    else {
+        var jsonMsg_2 = { injectCSS: "rollback", setCSS: "rollback" };
+        _webviews.forEach(function (wv) {
+            wv.send(events_1.R2_EVENT_READIUMCSS, JSON.stringify(jsonMsg_2));
+        });
+    }
+};
+electronStore.onDidChange("styling.readiumcss", function (newValue, oldValue) {
+    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+        return;
+    }
+    var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
+    if (readiumcssSwitch) {
+        readiumcssSwitch.checked = newValue;
+    }
+    readiumCssOnOff();
+    var nightSwitch = document.getElementById("night_switch-input");
+    if (nightSwitch) {
+        nightSwitch.disabled = !newValue;
+    }
+    var fontSelect = document.getElementById("fontSelect");
+    if (fontSelect) {
+        fontSelect.mdcSelect.disabled = !newValue;
+    }
+    if (!newValue) {
+        electronStore.set("styling.night", false);
+    }
+});
+var initFontSelect = function () {
+    var fontSelect = document.getElementById("fontSelect");
+    if (fontSelect) {
+        var font = electronStore.get("styling.font");
+        var i = font === "OLD" ? 1 :
+            (font === "MODERN" ? 2 :
+                (font === "SANS" ? 3 :
+                    (font === "HUMAN" ? 4 :
+                        (font === "DYS" ? 5 :
+                            0))));
+        fontSelect.mdcSelect.selectedIndex = i;
+        fontSelect.mdcSelect.disabled = !electronStore.get("styling.readiumcss");
+    }
+};
+electronStore.onDidChange("styling.font", function (newValue, oldValue) {
+    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+        return;
+    }
+    initFontSelect();
+    readiumCssOnOff();
+});
+electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+        return;
+    }
+    var basicSwitch = document.getElementById("nav_basic_switch-input");
+    if (basicSwitch) {
+        basicSwitch.checked = !newValue;
+    }
+});
 var snackBar;
 var drawer;
 function handleLink(href) {
-    console.log(href);
     var prefix = publicationJsonUrl.replace("manifest.json", "");
     if (href.startsWith(prefix)) {
         if (drawer.open) {
@@ -48,30 +151,15 @@ window.onerror = function (err) {
     console.log("Error", err);
 };
 electron_1.ipcRenderer.on(events_1.R2_EVENT_LINK, function (_event, href) {
-    console.log("R2_EVENT_LINK");
-    console.log(href);
     handleLink(href);
 });
 electron_1.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, function (_event, okay, msg) {
-    console.log("R2_EVENT_TRY_LCP_PASS_RES");
-    console.log(okay);
-    console.log(msg);
     if (!okay) {
-        showLcpDialog(msg);
+        setTimeout(function () {
+            showLcpDialog(msg);
+        }, 500);
         return;
     }
-    var message = "Correct publication passphrase.";
-    var data = {
-        actionHandler: function () {
-            console.log("SnackBar OK");
-        },
-        actionOnBottom: false,
-        actionText: "OK",
-        message: message,
-        multiline: false,
-        timeout: 2000,
-    };
-    snackBar.show(data);
     startNavigatorExperiment();
 });
 var lcpDialog;
@@ -87,8 +175,34 @@ function showLcpDialog(message) {
         var lcpPassInput = document.getElementById("lcpPassInput");
         if (lcpPassInput) {
             lcpPassInput.focus();
+            setTimeout(function () {
+                lcpPassInput.classList.add("no-focus-outline");
+            }, 500);
         }
-    }, 1000);
+    }, 800);
+}
+function installKeyboardMouseFocusHandler() {
+    var dateLastKeyboardEvent = new Date();
+    var dateLastMouseEvent = new Date();
+    document.body.addEventListener("focusin", debounce(function (ev) {
+        var focusWasTriggeredByMouse = dateLastMouseEvent > dateLastKeyboardEvent;
+        if (focusWasTriggeredByMouse) {
+            if (ev.target && ev.target.classList) {
+                ev.target.classList.add("no-focus-outline");
+            }
+        }
+    }, 500));
+    document.body.addEventListener("focusout", function (ev) {
+        if (ev.target && ev.target.classList) {
+            ev.target.classList.remove("no-focus-outline");
+        }
+    });
+    document.body.addEventListener("mousedown", function () {
+        dateLastMouseEvent = new Date();
+    });
+    document.body.addEventListener("keydown", function () {
+        dateLastKeyboardEvent = new Date();
+    });
 }
 window.addEventListener("DOMContentLoaded", function () {
     setTimeout(function () {
@@ -99,11 +213,30 @@ window.addEventListener("DOMContentLoaded", function () {
     if (h1) {
         h1.textContent = pathFileName;
     }
+    installKeyboardMouseFocusHandler();
+    if (electronStore.get("styling.night")) {
+        document.body.classList.add("mdc-theme--dark");
+    }
+    else {
+        document.body.classList.remove("mdc-theme--dark");
+    }
+    var menuFactory = function (menuEl) {
+        var menu = new window.mdc.menu.MDCSimpleMenu(menuEl);
+        menuEl.mdcSimpleMenu = menu;
+        return menu;
+    };
+    var fontSelect = document.getElementById("fontSelect");
+    if (fontSelect) {
+        var fontSelector = new window.mdc.select.MDCSelect(fontSelect, undefined, menuFactory);
+        fontSelect.mdcSelect = fontSelector;
+    }
     var snackBarElem = document.getElementById("snackbar");
     snackBar = new window.mdc.snackbar.MDCSnackbar(snackBarElem);
+    snackBarElem.mdcSnackbar = snackBar;
     snackBar.dismissesOnAction = true;
     var drawerElement = document.getElementById("drawer");
     drawer = new window.mdc.drawer.MDCTemporaryDrawer(drawerElement);
+    drawerElement.mdcTemporaryDrawer = drawer;
     var drawerButton = document.getElementById("drawerButton");
     if (drawerButton) {
         drawerButton.addEventListener("click", function () {
@@ -111,21 +244,42 @@ window.addEventListener("DOMContentLoaded", function () {
         });
     }
     if (drawerElement) {
-        drawerElement.addEventListener("MDCTemporaryDrawer:open", function () {
-            console.log("MDCTemporaryDrawer:open");
-        });
-        drawerElement.addEventListener("MDCTemporaryDrawer:close", function () {
-            console.log("MDCTemporaryDrawer:close");
-        });
+        drawerElement.addEventListener("click", function (ev) {
+            var allMenus = drawerElement.querySelectorAll(".mdc-simple-menu");
+            var openedMenus = [];
+            allMenus.forEach(function (elem) {
+                if (elem.mdcSimpleMenu && elem.mdcSimpleMenu.open) {
+                    openedMenus.push(elem);
+                }
+            });
+            var needsToCloseMenus = true;
+            var currElem = ev.target;
+            while (currElem) {
+                if (openedMenus.indexOf(currElem) >= 0) {
+                    needsToCloseMenus = false;
+                    break;
+                }
+                currElem = currElem.parentNode;
+            }
+            if (needsToCloseMenus) {
+                openedMenus.forEach(function (elem) {
+                    elem.mdcSimpleMenu.open = false;
+                    var ss = elem.parentNode.querySelector(".mdc-select__selected-text");
+                    if (ss) {
+                        ss.style.transform = "initial";
+                        ss.style.opacity = "1";
+                        ss.focus();
+                    }
+                });
+            }
+            else {
+            }
+        }, true);
     }
     var selectElement = document.getElementById("nav-select");
-    var navSelector = new window.mdc.select.MDCSelect(selectElement);
+    var navSelector = new window.mdc.select.MDCSelect(selectElement, undefined, menuFactory);
+    selectElement.mdcSelect = navSelector;
     navSelector.listen("MDCSelect:change", function (ev) {
-        console.log("MDCSelect:change");
-        console.log(ev);
-        console.log(ev.detail.selectedOptions[0].textContent);
-        console.log(ev.detail.selectedIndex);
-        console.log(ev.detail.value);
         var activePanel = document.querySelector(".tabPanel.active");
         if (activePanel) {
             activePanel.classList.remove("active");
@@ -138,13 +292,12 @@ window.addEventListener("DOMContentLoaded", function () {
     var diagElem = document.querySelector("#lcpDialog");
     var lcpPassInput = document.getElementById("lcpPassInput");
     lcpDialog = new window.mdc.dialog.MDCDialog(diagElem);
+    diagElem.mdcDialog = lcpDialog;
     lcpDialog.listen("MDCDialog:accept", function () {
-        console.log("MDCDialog:accept");
         var lcpPass = lcpPassInput.value;
         electron_1.ipcRenderer.send(events_1.R2_EVENT_TRY_LCP_PASS, pathDecoded, lcpPass);
     });
     lcpDialog.listen("MDCDialog:cancel", function () {
-        console.log("MDCDialog:cancel");
         setTimeout(function () {
             showLcpDialog();
         }, 10);
@@ -166,6 +319,52 @@ window.addEventListener("DOMContentLoaded", function () {
     else {
         startNavigatorExperiment();
     }
+    var buttonClearSettings = document.getElementById("buttonClearSettings");
+    if (buttonClearSettings) {
+        buttonClearSettings.addEventListener("click", function () {
+            electronStore.store = defaults;
+            drawer.open = false;
+            setTimeout(function () {
+                var message = "Settings reset.";
+                var data = {
+                    actionHandler: function () {
+                    },
+                    actionOnBottom: false,
+                    actionText: "OK",
+                    message: message,
+                    multiline: false,
+                    timeout: 2000,
+                };
+                snackBar.show(data);
+            }, 500);
+        });
+    }
+    var buttonClearSettingsStyle = document.getElementById("buttonClearSettingsStyle");
+    if (buttonClearSettingsStyle) {
+        buttonClearSettingsStyle.addEventListener("click", function () {
+            electronStore.set("styling", defaultsStyling);
+            drawer.open = false;
+            setTimeout(function () {
+                var message = "Default styles.";
+                var data = {
+                    actionHandler: function () {
+                    },
+                    actionOnBottom: false,
+                    actionText: "OK",
+                    message: message,
+                    multiline: false,
+                    timeout: 2000,
+                };
+                snackBar.show(data);
+            }, 500);
+        });
+    }
+    var buttonOpenSettings = document.getElementById("buttonOpenSettings");
+    if (buttonOpenSettings) {
+        buttonOpenSettings.addEventListener("click", function () {
+            electronStore.openInEditor();
+        });
+    }
     var buttonDebug = document.getElementById("buttonDebug");
     if (buttonDebug) {
         buttonDebug.addEventListener("click", function () {
@@ -174,17 +373,6 @@ window.addEventListener("DOMContentLoaded", function () {
             }
             else {
                 document.documentElement.classList.add("debug");
-            }
-        });
-    }
-    var buttonDark = document.getElementById("buttonDark");
-    if (buttonDark) {
-        buttonDark.addEventListener("click", function () {
-            if (document.body.classList.contains("mdc-theme--dark")) {
-                document.body.classList.remove("mdc-theme--dark");
-            }
-            else {
-                document.body.classList.add("mdc-theme--dark");
             }
         });
     }
@@ -200,23 +388,13 @@ function createWebView() {
     webview1.setAttribute("preload", "./preload.js");
     webview1.setAttribute("disableguestresize", "");
     webview1.addEventListener("ipc-message", function (event) {
-        console.log("webview1 ipc-message");
-        console.log(event.channel);
         if (event.channel === events_1.R2_EVENT_LINK) {
             handleLink(event.args[0]);
         }
     });
     webview1.addEventListener("dom-ready", function () {
-        console.log("WEBVIEW DOM READY: " + _webviews.length);
         webview1.clearHistory();
-        var cssButtonN1 = document.getElementById("cssButtonInject");
-        if (cssButtonN1) {
-            cssButtonN1.removeAttribute("disabled");
-        }
-        var cssButtonN2 = document.getElementById("cssButtonReset");
-        if (cssButtonN2) {
-            cssButtonN2.removeAttribute("disabled");
-        }
+        readiumCssOnOff();
     });
     return webview1;
 }
@@ -248,26 +426,48 @@ function startNavigatorExperiment() {
     if (publicationViewport) {
         publicationViewport.appendChild(webviewFull);
     }
-    var cssButton1 = document.getElementById("cssButtonInject");
-    if (cssButton1) {
-        cssButton1.addEventListener("click", function (_event) {
-            var jsonMsg = { injectCSS: "yes", setCSS: "ok" };
-            _webviews.forEach(function (wv) {
-                wv.send(events_1.R2_EVENT_READIUMCSS, JSON.stringify(jsonMsg));
-            });
+    initFontSelect();
+    var fontSelect = document.getElementById("fontSelect");
+    if (fontSelect) {
+        fontSelect.mdcSelect.listen("MDCSelect:change", function (ev) {
+            var index = ev.detail.selectedIndex;
+            var ff = index === 0 ? "DEFAULT" :
+                (index === 1 ? "OLD" :
+                    (index === 2 ? "MODERN" :
+                        (index === 3 ? "SANS" :
+                            (index === 4 ? "HUMAN" :
+                                (index === 5 ? "DYS" :
+                                    "DEFAULT")))));
+            electronStore.set("styling.font", ff);
         });
     }
-    var cssButton2 = document.getElementById("cssButtonReset");
-    if (cssButton2) {
-        cssButton2.addEventListener("click", function (_event) {
-            var jsonMsg = { injectCSS: "rollback", setCSS: "rollback" };
-            _webviews.forEach(function (wv) {
-                wv.send(events_1.R2_EVENT_READIUMCSS, JSON.stringify(jsonMsg));
-            });
+    var nightSwitch = document.getElementById("night_switch-input");
+    if (nightSwitch) {
+        nightSwitch.checked = electronStore.get("styling.night");
+        nightSwitch.addEventListener("change", function (_event) {
+            var checked = nightSwitch.checked;
+            electronStore.set("styling.night", checked);
+        });
+        nightSwitch.disabled = !electronStore.get("styling.readiumcss");
+    }
+    var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
+    if (readiumcssSwitch) {
+        readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
+        readiumcssSwitch.addEventListener("change", function (_event) {
+            var checked = readiumcssSwitch.checked;
+            electronStore.set("styling.readiumcss", checked);
+        });
+    }
+    var basicSwitch = document.getElementById("nav_basic_switch-input");
+    if (basicSwitch) {
+        basicSwitch.checked = !electronStore.get("basicLinkTitles");
+        basicSwitch.addEventListener("change", function (_event) {
+            var checked = basicSwitch.checked;
+            electronStore.set("basicLinkTitles", !checked);
         });
     }
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var response, e_1, publicationJson, e_2, h1, buttonNavLeft, buttonNavRight, firstLinear_1, readerControlsToc, landmarksData;
+        var response, e_1, publicationJson, e_2, h1, buttonNavLeft, buttonNavRight, opts, firstLinear_1, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -287,9 +487,6 @@ function startNavigatorExperiment() {
                     if (!response.ok) {
                         console.log("BAD RESPONSE?!");
                     }
-                    response.headers.forEach(function (arg0, arg1) {
-                        console.log(arg0 + " => " + arg1);
-                    });
                     _a.label = 4;
                 case 4:
                     _a.trys.push([4, 6, , 7]);
@@ -305,7 +502,6 @@ function startNavigatorExperiment() {
                     if (!publicationJson) {
                         return [2];
                     }
-                    console.log(publicationJson);
                     if (publicationJson.metadata && publicationJson.metadata.title) {
                         h1 = document.getElementById("pubTitle");
                         if (h1) {
@@ -325,7 +521,13 @@ function startNavigatorExperiment() {
                         });
                     }
                     if (publicationJson.spine) {
-                        index_1.riotMountSpineList("#reader_controls_SPINE", { spine: publicationJson.spine, url: publicationJsonUrl, basic: basicLinkTitles });
+                        opts = {
+                            basic: true,
+                            fixBasic: true,
+                            links: publicationJson.spine,
+                            url: publicationJsonUrl,
+                        };
+                        index_1.riotMountLinkList("#reader_controls_SPINE", opts);
                         firstLinear_1 = publicationJson.spine.length ? publicationJson.spine[0] : undefined;
                         if (firstLinear_1) {
                             setTimeout(function () {
@@ -335,99 +537,82 @@ function startNavigatorExperiment() {
                         }
                     }
                     if (publicationJson.toc && publicationJson.toc.length) {
-                        readerControlsToc = document.getElementById("reader_controls_TOC");
-                        if (readerControlsToc) {
-                            appendToc(publicationJson.toc, readerControlsToc);
-                        }
+                        opts = {
+                            basic: electronStore.get("basicLinkTitles"),
+                            links: publicationJson.toc,
+                            url: publicationJsonUrl,
+                        };
+                        tag_1 = index_3.riotMountLinkTree("#reader_controls_TOC", opts)[0];
+                        electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+                            if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+                                return;
+                            }
+                            tag_1.setBasic(newValue);
+                        });
                     }
                     if (publicationJson["page-list"] && publicationJson["page-list"].length) {
-                        index_1.riotMountSpineList("#reader_controls_PAGELIST", { spine: publicationJson["page-list"], url: publicationJsonUrl, basic: basicLinkTitles });
+                        opts = {
+                            basic: electronStore.get("basicLinkTitles"),
+                            links: publicationJson["page-list"],
+                            url: publicationJsonUrl,
+                        };
+                        tag_2 = index_1.riotMountLinkList("#reader_controls_PAGELIST", opts)[0];
+                        electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+                            if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+                                return;
+                            }
+                            tag_2.setBasic(newValue);
+                        });
                     }
                     landmarksData = [];
                     if (publicationJson.landmarks && publicationJson.landmarks.length) {
                         landmarksData.push({
                             label: "Main",
-                            spine: publicationJson.landmarks,
-                            url: publicationJsonUrl,
+                            links: publicationJson.landmarks,
                         });
                     }
                     if (publicationJson.lot && publicationJson.lot.length) {
                         landmarksData.push({
                             label: "Tables",
-                            spine: publicationJson.lot,
-                            url: publicationJsonUrl,
+                            links: publicationJson.lot,
                         });
                     }
                     if (publicationJson.loi && publicationJson.loi.length) {
                         landmarksData.push({
                             label: "Illustrations",
-                            spine: publicationJson.loi,
-                            url: publicationJsonUrl,
+                            links: publicationJson.loi,
                         });
                     }
                     if (publicationJson.lov && publicationJson.lov.length) {
                         landmarksData.push({
                             label: "Video",
-                            spine: publicationJson.lov,
-                            url: publicationJsonUrl,
+                            links: publicationJson.lov,
                         });
                     }
                     if (publicationJson.loa && publicationJson.loa.length) {
                         landmarksData.push({
                             label: "Audio",
-                            spine: publicationJson.loa,
-                            url: publicationJsonUrl,
+                            links: publicationJson.loa,
                         });
                     }
                     if (landmarksData.length) {
-                        index_2.riotMountSpineListGroup("#reader_controls_LANDMARKS", { spinegroup: landmarksData, url: publicationJsonUrl, basic: basicLinkTitles });
+                        opts = {
+                            basic: electronStore.get("basicLinkTitles"),
+                            linksgroup: landmarksData,
+                            url: publicationJsonUrl,
+                        };
+                        tag_3 = index_2.riotMountLinkListGroup("#reader_controls_LANDMARKS", opts)[0];
+                        electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+                            if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+                                return;
+                            }
+                            tag_3.setBasic(newValue);
+                        });
                     }
                     return [2];
             }
         });
     }); })();
-}
-function appendToc(json, anchor) {
-    var ul = document.createElement("ul");
-    json.forEach(function (tocLinkJson) {
-        var li = document.createElement("li");
-        if (!tocLinkJson.title) {
-            tocLinkJson.title = "xxx";
-        }
-        if (tocLinkJson.href) {
-            var tocLink = document.createElement("a");
-            var tocLinkHref_1 = publicationJsonUrl + "/../" + tocLinkJson.href;
-            tocLink.setAttribute("href", tocLinkHref_1);
-            tocLink.setAttribute("data-href", tocLinkJson.href);
-            tocLink.setAttribute("title", tocLinkJson.href);
-            tocLink.addEventListener("click", function (event) {
-                event.preventDefault();
-                handleLink(tocLinkHref_1);
-            });
-            var linkSpan = document.createElement("span");
-            linkSpan.setAttribute("class", "mdc-list-item__text");
-            linkSpan.appendChild(document.createTextNode(tocLinkJson.title));
-            if (!basicLinkTitles) {
-                var tocHeading = document.createElement("span");
-                tocHeading.setAttribute("class", "mdc-list-item__text__secondary");
-                tocHeading.appendChild(document.createTextNode(tocLinkJson.href));
-                linkSpan.appendChild(tocHeading);
-            }
-            tocLink.appendChild(linkSpan);
-            li.appendChild(tocLink);
-        }
-        else {
-            var tocHeading = document.createElement("span");
-            tocHeading.setAttribute("class", "mdc-list-item__text__secondary");
-            tocHeading.appendChild(document.createTextNode(tocLinkJson.title));
-            li.appendChild(tocHeading);
-        }
-        ul.appendChild(li);
-        if (tocLinkJson.children && tocLinkJson.children.length) {
-            appendToc(tocLinkJson.children, li);
-        }
-    });
-    anchor.appendChild(ul);
 }
 function navLeftOrRight(_right, _publicationJsonUrl, _publicationJson) {
 }

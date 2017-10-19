@@ -27,17 +27,5 @@ exports.riot_mixin_EventTracer = {
             console.log("EVENT mount");
         });
     },
-    getOpts() {
-        const that = this;
-        return that.opts;
-    },
-    setOpts(opts, update) {
-        const that = this;
-        that.opts = opts;
-        if (update) {
-            that.update();
-        }
-        return that;
-    },
 };
 //# sourceMappingURL=riot_mixin_EventTracer.js.map
