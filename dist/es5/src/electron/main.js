@@ -5,9 +5,11 @@ var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var fs = require("fs");
 var path = require("path");
-var lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
 var UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
 var zipInjector_1 = require("../../../es8-es2017/src/_utils/zip/zipInjector");
+var server_1 = require("../../../es8-es2017/src/http/server");
+var init_globals_1 = require("../../../es8-es2017/src/init-globals");
+var lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
 var debug_ = require("debug");
 var electron_1 = require("electron");
 var express = require("express");
@@ -16,8 +18,6 @@ var portfinder = require("portfinder");
 var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
-var server_1 = require("../http/server");
-var init_globals_1 = require("../init-globals");
 var events_1 = require("./common/events");
 var sessions_1 = require("./common/sessions");
 var lsd_1 = require("./lsd");
@@ -59,18 +59,16 @@ function openAllDevTools() {
 electron_1.ipcMain.on(events_1.R2_EVENT_DEVTOOLS, function (_event, _arg) {
     openAllDevTools();
 });
-electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicationFilePath, lcpPass) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var okay, err_1;
+electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicationFilePath, lcpPass, isSha256Hex) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var okay, err_1, passSha256Hex, checkSum;
     return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                debug(publicationFilePath);
-                debug(lcpPass);
                 okay = false;
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 4]);
-                return [4, tryLcpPass(publicationFilePath, lcpPass)];
+                return [4, tryLcpPass(publicationFilePath, lcpPass, isSha256Hex)];
             case 2:
                 okay = _a.sent();
                 return [3, 4];
@@ -80,14 +78,24 @@ electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicati
                 okay = false;
                 return [3, 4];
             case 4:
-                event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "Please try again."));
+                if (okay) {
+                    if (isSha256Hex) {
+                        passSha256Hex = lcpPass;
+                    }
+                    else {
+                        checkSum = crypto.createHash("sha256");
+                        checkSum.update(lcpPass);
+                        passSha256Hex = checkSum.digest("hex");
+                    }
+                }
+                event.sender.send(events_1.R2_EVENT_TRY_LCP_PASS_RES, okay, (okay ? "Correct." : "Please try again."), passSha256Hex ? passSha256Hex : "xxx");
                 return [2];
         }
     });
 }); });
-function tryLcpPass(publicationFilePath, lcpPass) {
+function tryLcpPass(publicationFilePath, lcpPass, isSha256Hex) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var publication, checkSum, lcpPassHex, okay;
+        var publication, lcpPassHex, checkSum, okay;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -95,9 +103,14 @@ function tryLcpPass(publicationFilePath, lcpPass) {
                     if (!publication) {
                         return [2, false];
                     }
-                    checkSum = crypto.createHash("sha256");
-                    checkSum.update(lcpPass);
-                    lcpPassHex = checkSum.digest("hex");
+                    if (isSha256Hex) {
+                        lcpPassHex = lcpPass;
+                    }
+                    else {
+                        checkSum = crypto.createHash("sha256");
+                        checkSum.update(lcpPass);
+                        lcpPassHex = checkSum.digest("hex");
+                    }
                     return [4, publication.LCP.setUserPassphrase(lcpPassHex)];
                 case 1:
                     okay = _a.sent();
@@ -231,7 +244,13 @@ electron_1.app.on("ready", function () {
                         disableReaders: false,
                     });
                     staticOptions = {
-                        etag: false,
+                        dotfiles: "ignore",
+                        etag: true,
+                        fallthrough: false,
+                        immutable: true,
+                        index: false,
+                        maxAge: "1d",
+                        redirect: false,
                     };
                     _publicationsServer.expressUse("/readium-css", express.static("misc/ReadiumCSS", staticOptions));
                     pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
@@ -274,6 +293,8 @@ electron_1.app.on("ready", function () {
                                             }
                                         }
                                         else {
+                                            filePath = fs.realpathSync(filePath);
+                                            console.log(filePath);
                                             filePathToLoadOnLaunch = filePath;
                                         }
                                     }
@@ -681,12 +702,12 @@ function clearSession(sess, str, callbackCache, callbackStorageData) {
     });
 }
 function getWebViewSession() {
-    return electron_1.session.fromPartition(sessions_1.R2_SESSION_WEBVIEW, { cache: false });
+    return electron_1.session.fromPartition(sessions_1.R2_SESSION_WEBVIEW, { cache: true });
 }
 function clearWebviewSession(callbackCache, callbackStorageData) {
     var sess = getWebViewSession();
     if (sess) {
-        clearSession(sess, "[persist:publicationwebview]", callbackCache, callbackStorageData);
+        clearSession(sess, "[" + sessions_1.R2_SESSION_WEBVIEW + "]", callbackCache, callbackStorageData);
     }
     else {
         if (callbackCache) {

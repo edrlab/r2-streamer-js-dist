@@ -1,24 +1,41 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const debounce = require("debounce");
 const electron_1 = require("electron");
+const ResizeSensor = require("resize-sensor/ResizeSensor");
 const events_1 = require("../common/events");
 const win = global.window;
 const urlRootReadiumCSS = win.location.origin + "/readium-css/iOS/";
+const DEBUG_VISUALS = true;
+const ensureHead = () => {
+    const docElement = win.document.documentElement;
+    if (!win.document.head) {
+        const headElement = win.document.createElement("head");
+        if (win.document.body) {
+            docElement.insertBefore(headElement, win.document.body);
+        }
+        else {
+            docElement.appendChild(headElement);
+        }
+    }
+};
 electron_1.ipcRenderer.on(events_1.R2_EVENT_READIUMCSS, (_event, messageString) => {
     const messageJson = JSON.parse(messageString);
-    if (messageJson.injectCSS) {
-        if (!win.document.head) {
-            const headElement = win.document.createElement("head");
-            if (win.document.body) {
-                win.document.documentElement.insertBefore(headElement, win.document.body);
-            }
-            else {
-                win.document.documentElement.appendChild(headElement);
-            }
+    readiumCSS(messageJson);
+});
+const readiumCSS = (messageJson) => {
+    const docElement = win.document.documentElement;
+    if (typeof messageJson.injectCSS !== "undefined") {
+        ensureHead();
+        const remove = (typeof messageJson.injectCSS === "string" && messageJson.injectCSS.indexOf("rollback") >= 0)
+            || !messageJson.injectCSS;
+        if (remove) {
+            docElement.removeAttribute("data-readiumcss");
+            removeAllCSS();
+            removeAllCSSInline();
         }
-        removeAllCSS();
-        removeAllCSSInline();
-        if (messageJson.injectCSS.indexOf("rollback") < 0) {
+        else if (!docElement.hasAttribute("data-readiumcss")) {
+            docElement.setAttribute("data-readiumcss", "yes");
             let needsDefaultCSS = true;
             if (win.document.head && win.document.head.childElementCount) {
                 let elem = win.document.head.firstElementChild;
@@ -46,7 +63,7 @@ electron_1.ipcRenderer.on(events_1.R2_EVENT_READIUMCSS, (_event, messageString) 
                 appendCSS("default");
             }
             appendCSS("after");
-            appendCSSInline("scrollbars", `
+            appendCSSInline("scrollbarsAndSelection", `
 ::-webkit-scrollbar-button {
 height: 0px !important;
 width: 0px !important;
@@ -108,6 +125,7 @@ border-top: 1px solid black;
 .mdc-theme--dark ::-webkit-scrollbar-track:vertical {
 border-left: 1px solid black;
 }
+
 ::selection {
 background-color: rgb(155, 179, 240) !important;
 color: black !important;
@@ -117,12 +135,22 @@ color: black !important;
 background-color: rgb(100, 122, 177) !important;
 color: white !important;
 }
-`);
+*:focus {
+outline-style: solid !important;
+outline-width: 2px !important;
+outline-color: blue !important;
+outline-offset: 0px !important;
+}
+*.no-focus-outline:focus {
+outline-style: none !important;
+}
+    `);
         }
     }
-    if (messageJson.setCSS) {
-        const docElement = win.document.documentElement;
-        if (typeof messageJson.setCSS === "string" && messageJson.setCSS.indexOf("rollback") >= 0) {
+    if (typeof messageJson.setCSS !== "undefined") {
+        const remove = (typeof messageJson.setCSS === "string" && messageJson.setCSS.indexOf("rollback") >= 0)
+            || !messageJson.setCSS;
+        if (remove) {
             docElement.style.overflow = "auto";
             const toRemove = [];
             for (let i = 0; i < docElement.style.length; i++) {
@@ -194,8 +222,132 @@ color: white !important;
                     (align === "left" ? "left" : "left")));
         }
     }
-});
+    checkReadyPass();
+};
+const checkReadyPass = () => {
+    if (_readyPassDone) {
+        return;
+    }
+    _readyPassDone = true;
+    if (DEBUG_VISUALS) {
+        if (win.location.hash && win.location.hash.length > 1) {
+            const elem = win.document.getElementById(win.location.hash.substr(1));
+            if (elem) {
+                elem.classList.add("readium2-read-pos");
+            }
+        }
+    }
+    win.addEventListener("resize", () => {
+        scrollToHash();
+    });
+    activateResizeSensor();
+    if (win.document.body) {
+        win.document.body.addEventListener("click", (ev) => {
+            const x = ev.clientX;
+            const y = ev.clientY;
+            processXY(x, y);
+        });
+    }
+};
+const notifyReady = debounce(() => {
+    if (_readyEventSent) {
+        return;
+    }
+    _readyEventSent = true;
+    electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_WEBVIEW_READY, win.location.href);
+}, 500);
+const scrollToHash = debounce(() => {
+    notifyReady();
+    if (_locationHashOverride) {
+        _locationHashOverride.scrollIntoView({
+            behavior: "instant",
+            block: "start",
+            inline: "nearest",
+        });
+    }
+    else if (win.location.hash && win.location.hash.length > 1) {
+        const elem = win.document.getElementById(win.location.hash.substr(1));
+        if (elem) {
+            elem.scrollIntoView({
+                behavior: "instant",
+                block: "start",
+                inline: "nearest",
+            });
+        }
+    }
+    else {
+        if (win.document.body) {
+            win.document.body.scrollLeft = 0;
+            win.document.body.scrollTop = 0;
+        }
+    }
+}, 500);
+const injectReadPosCSS = () => {
+    if (!DEBUG_VISUALS) {
+        return;
+    }
+    ensureHead();
+    const styleElement = win.document.createElement("style");
+    styleElement.setAttribute("id", "Readium2-ReadPos");
+    styleElement.setAttribute("type", "text/css");
+    const css = `
+:root[style*="readium-sepia-on"] .readium2-read-pos,
+:root[style*="readium-night-on"] .readium2-read-pos,
+.readium2-read-pos {
+    color: red !important;
+    background-color: silver !important;
+}
+:root[style*="readium-sepia-on"] .readium2-read-pos2,
+:root[style*="readium-night-on"] .readium2-read-pos2,
+.readium2-read-pos2 {
+    color: blue !important;
+    background-color: yellow !important;
+}
+`;
+    styleElement.appendChild(win.document.createTextNode(css));
+    win.document.head.appendChild(styleElement);
+};
+const activateResizeSensor = () => {
+    const useResizeSensor = true;
+    if (useResizeSensor && win.document.body) {
+        new ResizeSensor(win.document.body, () => {
+            scrollToHash();
+        });
+    }
+    else {
+        scrollToHash();
+    }
+    win.addEventListener("scroll", debounce((_ev) => {
+        processXY(0, 0);
+    }, 800));
+};
+let _locationHashOverride;
+let _readyPassDone = false;
+let _readyEventSent = false;
+const resetInitialState = () => {
+    _locationHashOverride = undefined;
+    _readyPassDone = false;
+    _readyEventSent = false;
+};
 win.addEventListener("DOMContentLoaded", () => {
+    resetInitialState();
+    appendCSSInline("selectionAndFocus", `
+::selection {
+background-color: rgb(155, 179, 240) !important;
+color: black !important;
+}
+*:focus {
+outline-style: solid !important;
+outline-width: 2px !important;
+outline-color: blue !important;
+outline-offset: 0px !important;
+}
+*.no-focus-outline:focus {
+outline-style: none !important;
+}`);
+    if (DEBUG_VISUALS) {
+        injectReadPosCSS();
+    }
     win.document.addEventListener("click", (e) => {
         const href = e.target.href;
         if (!href) {
@@ -206,13 +358,57 @@ win.addEventListener("DOMContentLoaded", () => {
         electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_LINK, href);
         return false;
     }, true);
-});
-win.addEventListener("resize", () => {
-    if (win.document.body) {
-        win.document.body.scrollLeft = 0;
-        win.document.body.scrollTop = 0;
+    try {
+        if (win.location.search) {
+            const token = "readiumcss=";
+            const i = win.location.search.indexOf(token);
+            if (i > 0) {
+                const base64 = win.location.search.substr(i + token.length);
+                const str = window.atob(base64);
+                const messageJson = JSON.parse(str);
+                readiumCSS(messageJson);
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
     }
 });
+const processXY = (x, y) => {
+    let element;
+    let textNode;
+    let textNodeOffset = 0;
+    const range = document.caretRangeFromPoint(x, y);
+    if (range) {
+        const node = range.startContainer;
+        const offset = range.startOffset;
+        if (node) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                element = node;
+            }
+            else if (node.nodeType === Node.TEXT_NODE) {
+                textNode = node;
+                textNodeOffset = offset;
+                if (node.parentNode && node.parentNode.nodeType === Node.ELEMENT_NODE) {
+                    element = node.parentNode;
+                }
+            }
+        }
+    }
+    if (DEBUG_VISUALS) {
+        const existings = document.querySelectorAll(".readium2-read-pos, .readium2-read-pos2");
+        existings.forEach((existing) => {
+            existing.classList.remove("readium2-read-pos");
+            existing.classList.remove("readium2-read-pos2");
+        });
+    }
+    if (element) {
+        _locationHashOverride = element;
+        if (DEBUG_VISUALS) {
+            element.classList.add("readium2-read-pos2");
+        }
+    }
+};
 function appendCSSInline(id, css) {
     const styleElement = win.document.createElement("style");
     styleElement.setAttribute("id", "Readium2-" + id);
@@ -227,7 +423,7 @@ function removeCSSInline(id) {
     }
 }
 function removeAllCSSInline() {
-    removeCSSInline("scrollbars");
+    removeCSSInline("scrollbarsAndSelection");
 }
 function appendCSS(mod) {
     const linkElement = win.document.createElement("link");

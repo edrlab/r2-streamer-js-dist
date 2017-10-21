@@ -1,15 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const init_globals_1 = require("../../init-globals");
+const publication_1 = require("../../models/publication");
 const debounce = require("debounce");
 const electron_1 = require("electron");
 const electron_2 = require("electron");
+const ElectronStore = require("electron-store");
+const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
 const sessions_1 = require("../common/sessions");
 const querystring_1 = require("./querystring");
 const index_1 = require("./riots/linklist/index_");
 const index_2 = require("./riots/linklistgroup/index_");
 const index_3 = require("./riots/linktree/index_");
-const ElectronStore = require("electron-store");
+const index_4 = require("./riots/menuselect/index_");
+init_globals_1.initGlobals();
 const queryParams = querystring_1.getURLQueryParams();
 const publicationJsonUrl = queryParams["pub"];
 const pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$1");
@@ -48,7 +53,7 @@ electronStore.onDidChange("styling.night", (newValue, oldValue) => {
     }
     readiumCssOnOff();
 });
-const readiumCssOnOff = () => {
+const computeReadiumCssJsonMessage = () => {
     const on = electronStore.get("styling.readiumcss");
     if (on) {
         const dark = electronStore.get("styling.dark");
@@ -64,17 +69,19 @@ const readiumCssOnOff = () => {
             sepia,
         };
         const jsonMsg = { injectCSS: "yes", setCSS: cssJson };
-        _webviews.forEach((wv) => {
-            wv.send(events_1.R2_EVENT_READIUMCSS, JSON.stringify(jsonMsg));
-        });
+        return JSON.stringify(jsonMsg, null, 0);
     }
     else {
         const jsonMsg = { injectCSS: "rollback", setCSS: "rollback" };
-        _webviews.forEach((wv) => {
-            wv.send(events_1.R2_EVENT_READIUMCSS, JSON.stringify(jsonMsg));
-        });
+        return JSON.stringify(jsonMsg, null, 0);
     }
 };
+const readiumCssOnOff = debounce(() => {
+    const str = computeReadiumCssJsonMessage();
+    _webviews.forEach((wv) => {
+        wv.send(events_1.R2_EVENT_READIUMCSS, str);
+    });
+}, 500);
 electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
@@ -88,34 +95,9 @@ electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
     if (nightSwitch) {
         nightSwitch.disabled = !newValue;
     }
-    const fontSelect = document.getElementById("fontSelect");
-    if (fontSelect) {
-        fontSelect.mdcSelect.disabled = !newValue;
-    }
     if (!newValue) {
         electronStore.set("styling.night", false);
     }
-});
-const initFontSelect = () => {
-    const fontSelect = document.getElementById("fontSelect");
-    if (fontSelect) {
-        const font = electronStore.get("styling.font");
-        const i = font === "OLD" ? 1 :
-            (font === "MODERN" ? 2 :
-                (font === "SANS" ? 3 :
-                    (font === "HUMAN" ? 4 :
-                        (font === "DYS" ? 5 :
-                            0))));
-        fontSelect.mdcSelect.selectedIndex = i;
-        fontSelect.mdcSelect.disabled = !electronStore.get("styling.readiumcss");
-    }
-};
-electronStore.onDidChange("styling.font", (newValue, oldValue) => {
-    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
-        return;
-    }
-    initFontSelect();
-    readiumCssOnOff();
 });
 electronStore.onDidChange("basicLinkTitles", (newValue, oldValue) => {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
@@ -135,29 +117,62 @@ function handleLink(href) {
             drawer.open = false;
             setTimeout(() => {
                 loadLink(href, href.replace(prefix, ""), publicationJsonUrl);
-            }, 500);
+            }, 200);
         }
         else {
             loadLink(href, href.replace(prefix, ""), publicationJsonUrl);
         }
     }
     else {
-        electron_2.shell.openExternal(href);
+        electron_1.shell.openExternal(href);
     }
 }
 exports.handleLink = handleLink;
 window.onerror = (err) => {
     console.log("Error", err);
 };
-electron_1.ipcRenderer.on(events_1.R2_EVENT_LINK, (_event, href) => {
+const unhideWebView = (_id, forced) => {
+    const hidePanel = document.getElementById("reader_chrome_HIDE");
+    if (hidePanel && hidePanel.style.display === "none") {
+        return;
+    }
+    if (forced) {
+        console.log("unhideWebView FORCED");
+    }
+    if (hidePanel) {
+        hidePanel.style.display = "none";
+    }
+};
+electron_2.ipcRenderer.on(events_1.R2_EVENT_LINK, (_event, href) => {
+    console.log("R2_EVENT_LINK");
+    console.log(href);
     handleLink(href);
 });
-electron_1.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, (_event, okay, msg) => {
+electron_2.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, (_event, okay, msg, passSha256Hex) => {
     if (!okay) {
         setTimeout(() => {
             showLcpDialog(msg);
         }, 500);
         return;
+    }
+    const lcpStore = electronStore.get("lcp");
+    if (!lcpStore) {
+        const lcpObj = {};
+        const pubLcpObj = lcpObj[pathDecoded] = {};
+        pubLcpObj.sha = passSha256Hex;
+        electronStore.set("lcp", lcpObj);
+    }
+    else {
+        const pubLcpStore = lcpStore[pathDecoded];
+        if (pubLcpStore) {
+            pubLcpStore.sha = passSha256Hex;
+        }
+        else {
+            lcpStore[pathDecoded] = {
+                sha: passSha256Hex,
+            };
+        }
+        electronStore.set("lcp", lcpStore);
     }
     startNavigatorExperiment();
 });
@@ -203,6 +218,49 @@ function installKeyboardMouseFocusHandler() {
         dateLastKeyboardEvent = new Date();
     });
 }
+const initFontSelector = () => {
+    const options = [{
+            id: "DEFAULT",
+            label: "Default",
+        }, {
+            id: "OLD",
+            label: "Old Style",
+        }, {
+            id: "MODERN",
+            label: "Modern",
+        }, {
+            id: "SANS",
+            label: "Sans",
+        }, {
+            id: "HUMAN",
+            label: "Humanist",
+        }, {
+            id: "DYS",
+            label: "Readable (dys)",
+        }];
+    const opts = {
+        disabled: !electronStore.get("styling.readiumcss"),
+        options,
+        selected: electronStore.get("styling.font"),
+    };
+    const tag = index_4.riotMountMenuSelect("#fontSelect", opts)[0];
+    tag.on("selectionChanged", (val) => {
+        electronStore.set("styling.font", val);
+    });
+    electronStore.onDidChange("styling.font", (newValue, oldValue) => {
+        if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+            return;
+        }
+        tag.setSelectedItem(newValue);
+        readiumCssOnOff();
+    });
+    electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
+        if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+            return;
+        }
+        tag.setDisabled(!newValue);
+    });
+};
 window.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
         window.mdc.autoInit();
@@ -219,16 +277,7 @@ window.addEventListener("DOMContentLoaded", () => {
     else {
         document.body.classList.remove("mdc-theme--dark");
     }
-    const menuFactory = (menuEl) => {
-        const menu = new window.mdc.menu.MDCSimpleMenu(menuEl);
-        menuEl.mdcSimpleMenu = menu;
-        return menu;
-    };
-    const fontSelect = document.getElementById("fontSelect");
-    if (fontSelect) {
-        const fontSelector = new window.mdc.select.MDCSelect(fontSelect, undefined, menuFactory);
-        fontSelect.mdcSelect = fontSelector;
-    }
+    initFontSelector();
     const snackBarElem = document.getElementById("snackbar");
     snackBar = new window.mdc.snackbar.MDCSnackbar(snackBarElem);
     snackBarElem.mdcSnackbar = snackBar;
@@ -275,6 +324,11 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         }, true);
     }
+    const menuFactory = (menuEl) => {
+        const menu = new window.mdc.menu.MDCSimpleMenu(menuEl);
+        menuEl.mdcSimpleMenu = menu;
+        return menu;
+    };
     const selectElement = document.getElementById("nav-select");
     const navSelector = new window.mdc.select.MDCSelect(selectElement, undefined, menuFactory);
     selectElement.mdcSelect = navSelector;
@@ -294,7 +348,7 @@ window.addEventListener("DOMContentLoaded", () => {
     diagElem.mdcDialog = lcpDialog;
     lcpDialog.listen("MDCDialog:accept", () => {
         const lcpPass = lcpPassInput.value;
-        electron_1.ipcRenderer.send(events_1.R2_EVENT_TRY_LCP_PASS, pathDecoded, lcpPass);
+        electron_2.ipcRenderer.send(events_1.R2_EVENT_TRY_LCP_PASS, pathDecoded, lcpPass, false);
     });
     lcpDialog.listen("MDCDialog:cancel", () => {
         setTimeout(() => {
@@ -313,7 +367,20 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
     if (lcpHint) {
-        showLcpDialog();
+        let lcpPassSha256Hex;
+        const lcpStore = electronStore.get("lcp");
+        if (lcpStore) {
+            const pubLcpStore = lcpStore[pathDecoded];
+            if (pubLcpStore && pubLcpStore.sha) {
+                lcpPassSha256Hex = pubLcpStore.sha;
+            }
+        }
+        if (lcpPassSha256Hex) {
+            electron_2.ipcRenderer.send(events_1.R2_EVENT_TRY_LCP_PASS, pathDecoded, lcpPassSha256Hex, true);
+        }
+        else {
+            showLcpDialog();
+        }
     }
     else {
         startNavigatorExperiment();
@@ -390,10 +457,17 @@ function createWebView() {
         if (event.channel === events_1.R2_EVENT_LINK) {
             handleLink(event.args[0]);
         }
+        else if (event.channel === events_1.R2_EVENT_WEBVIEW_READY) {
+            const id = event.args[0];
+            unhideWebView(id, false);
+        }
+        else {
+            console.log("webview1 ipc-message");
+            console.log(event.channel);
+        }
     });
     webview1.addEventListener("dom-ready", () => {
         webview1.clearHistory();
-        readiumCssOnOff();
     });
     return webview1;
 }
@@ -414,7 +488,31 @@ window.addEventListener("resize", debounce(() => {
 }, 200));
 function loadLink(hrefFull, _hrefPartial, _publicationJsonUrl) {
     if (_webviews.length) {
-        _webviews[0].setAttribute("src", hrefFull);
+        const hidePanel = document.getElementById("reader_chrome_HIDE");
+        if (hidePanel) {
+            hidePanel.style.display = "block";
+        }
+        setTimeout(() => {
+            if (_webviews.length) {
+                const href = _webviews[0].getAttribute("src");
+                if (href) {
+                    unhideWebView(href, true);
+                }
+            }
+        }, 5000);
+        let urlWithSearch = hrefFull;
+        const urlParts = hrefFull.split("#");
+        if (urlParts && (urlParts.length === 1 || urlParts.length === 2)) {
+            const str = computeReadiumCssJsonMessage();
+            const base64 = window.btoa(str);
+            const alreadyHasSearch = urlParts[0].indexOf("?") > 0;
+            urlWithSearch = urlParts[0] +
+                (alreadyHasSearch ? "&" : "?") +
+                "readiumcss=" +
+                base64 +
+                (urlParts.length === 2 ? ("#" + urlParts[1]) : "");
+        }
+        _webviews[0].setAttribute("src", urlWithSearch);
     }
 }
 function startNavigatorExperiment() {
@@ -423,21 +521,6 @@ function startNavigatorExperiment() {
     const publicationViewport = document.getElementById("publication_viewport");
     if (publicationViewport) {
         publicationViewport.appendChild(webviewFull);
-    }
-    initFontSelect();
-    const fontSelect = document.getElementById("fontSelect");
-    if (fontSelect) {
-        fontSelect.mdcSelect.listen("MDCSelect:change", (ev) => {
-            const index = ev.detail.selectedIndex;
-            const ff = index === 0 ? "DEFAULT" :
-                (index === 1 ? "OLD" :
-                    (index === 2 ? "MODERN" :
-                        (index === 3 ? "SANS" :
-                            (index === 4 ? "HUMAN" :
-                                (index === 5 ? "DYS" :
-                                    "DEFAULT")))));
-            electronStore.set("styling.font", ff);
-        });
     }
     const nightSwitch = document.getElementById("night_switch-input");
     if (nightSwitch) {
@@ -478,54 +561,67 @@ function startNavigatorExperiment() {
         if (!response.ok) {
             console.log("BAD RESPONSE?!");
         }
-        let publicationJson;
+        let pubJson;
         try {
-            publicationJson = await response.json();
+            pubJson = await response.json();
         }
         catch (e) {
             console.log(e);
         }
-        if (!publicationJson) {
+        if (!pubJson) {
             return;
         }
-        if (publicationJson.metadata && publicationJson.metadata.title) {
-            const h1 = document.getElementById("pubTitle");
-            if (h1) {
-                h1.textContent = publicationJson.metadata.title;
+        const publication = ta_json_1.JSON.deserialize(pubJson, publication_1.Publication);
+        if (publication.Metadata && publication.Metadata.Title) {
+            let title;
+            if (typeof publication.Metadata.Title === "string") {
+                title = publication.Metadata.Title;
+            }
+            else {
+                const keys = Object.keys(publication.Metadata.Title);
+                if (keys && keys.length) {
+                    title = publication.Metadata.Title[keys[0]];
+                }
+            }
+            if (title) {
+                const h1 = document.getElementById("pubTitle");
+                if (h1) {
+                    h1.textContent = title;
+                }
             }
         }
         const buttonNavLeft = document.getElementById("buttonNavLeft");
         if (buttonNavLeft) {
             buttonNavLeft.addEventListener("click", (_event) => {
-                navLeftOrRight(false, publicationJsonUrl, publicationJson);
+                navLeftOrRight(false, publicationJsonUrl, publication);
             });
         }
         const buttonNavRight = document.getElementById("buttonNavRight");
         if (buttonNavRight) {
             buttonNavRight.addEventListener("click", (_event) => {
-                navLeftOrRight(true, publicationJsonUrl, publicationJson);
+                navLeftOrRight(true, publicationJsonUrl, publication);
             });
         }
-        if (publicationJson.spine) {
+        if (publication.Spine && publication.Spine.length) {
             const opts = {
                 basic: true,
                 fixBasic: true,
-                links: publicationJson.spine,
+                links: pubJson.spine,
                 url: publicationJsonUrl,
             };
             index_1.riotMountLinkList("#reader_controls_SPINE", opts);
-            const firstLinear = publicationJson.spine.length ? publicationJson.spine[0] : undefined;
+            const firstLinear = publication.Spine[0];
             if (firstLinear) {
                 setTimeout(() => {
-                    const firstLinearLinkHref = publicationJsonUrl + "/../" + firstLinear.href;
+                    const firstLinearLinkHref = publicationJsonUrl + "/../" + firstLinear.Href;
                     handleLink(firstLinearLinkHref);
                 }, 200);
             }
         }
-        if (publicationJson.toc && publicationJson.toc.length) {
+        if (publication.TOC && publication.TOC.length) {
             const opts = {
                 basic: electronStore.get("basicLinkTitles"),
-                links: publicationJson.toc,
+                links: pubJson.toc,
                 url: publicationJsonUrl,
             };
             const tag = index_3.riotMountLinkTree("#reader_controls_TOC", opts)[0];
@@ -536,10 +632,10 @@ function startNavigatorExperiment() {
                 tag.setBasic(newValue);
             });
         }
-        if (publicationJson["page-list"] && publicationJson["page-list"].length) {
+        if (publication.PageList && publication.PageList.length) {
             const opts = {
                 basic: electronStore.get("basicLinkTitles"),
-                links: publicationJson["page-list"],
+                links: pubJson["page-list"],
                 url: publicationJsonUrl,
             };
             const tag = index_1.riotMountLinkList("#reader_controls_PAGELIST", opts)[0];
@@ -551,34 +647,34 @@ function startNavigatorExperiment() {
             });
         }
         const landmarksData = [];
-        if (publicationJson.landmarks && publicationJson.landmarks.length) {
+        if (publication.Landmarks && publication.Landmarks.length) {
             landmarksData.push({
                 label: "Main",
-                links: publicationJson.landmarks,
+                links: pubJson.landmarks,
             });
         }
-        if (publicationJson.lot && publicationJson.lot.length) {
+        if (publication.LOT && publication.LOT.length) {
             landmarksData.push({
                 label: "Tables",
-                links: publicationJson.lot,
+                links: pubJson.lot,
             });
         }
-        if (publicationJson.loi && publicationJson.loi.length) {
+        if (publication.LOI && publication.LOI.length) {
             landmarksData.push({
                 label: "Illustrations",
-                links: publicationJson.loi,
+                links: pubJson.loi,
             });
         }
-        if (publicationJson.lov && publicationJson.lov.length) {
+        if (publication.LOV && publication.LOV.length) {
             landmarksData.push({
                 label: "Video",
-                links: publicationJson.lov,
+                links: pubJson.lov,
             });
         }
-        if (publicationJson.loa && publicationJson.loa.length) {
+        if (publication.LOA && publication.LOA.length) {
             landmarksData.push({
                 label: "Audio",
-                links: publicationJson.loa,
+                links: pubJson.loa,
             });
         }
         if (landmarksData.length) {
@@ -597,6 +693,6 @@ function startNavigatorExperiment() {
         }
     })();
 }
-function navLeftOrRight(_right, _publicationJsonUrl, _publicationJson) {
+function navLeftOrRight(_right, _publicationJsonUrl, _publication) {
 }
 //# sourceMappingURL=index.js.map

@@ -66,6 +66,7 @@
     "reflect-metadata": "^0.1.10",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5",
+    "resize-sensor": "github:normanzb/resize-sensor#master",
     "riot": "^3.7.3",
     "slugify": "^1.2.1",
     "ta-json": "github:danielweck/ta-json#dist",

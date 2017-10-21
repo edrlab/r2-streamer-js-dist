@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
-const lcp_1 = require("../parser/epub/lcp");
 const BufferUtils_1 = require("../_utils/stream/BufferUtils");
 const zipInjector_1 = require("../_utils/zip/zipInjector");
+const lcp_1 = require("../parser/epub/lcp");
 const debug_ = require("debug");
 const moment = require("moment");
 const request = require("request");

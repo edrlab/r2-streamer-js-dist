@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
-var lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
 var BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
 var zipInjector_1 = require("../../../es8-es2017/src/_utils/zip/zipInjector");
+var lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
 var debug_ = require("debug");
 var moment = require("moment");
 var request = require("request");
