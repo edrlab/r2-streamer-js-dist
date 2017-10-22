@@ -7,6 +7,7 @@ const electron_2 = require("electron");
 const ElectronStore = require("electron-store");
 const path = require("path");
 const ta_json_1 = require("ta-json");
+const UrlUtils_1 = require("../../_utils/http/UrlUtils");
 const init_globals_1 = require("../../init-globals");
 const publication_1 = require("../../models/publication");
 const lcp_1 = require("../../parser/epub/lcp");
@@ -514,11 +515,30 @@ function loadLink(hrefFull, _hrefPartial, _publicationJsonUrl) {
         if (urlParts && (urlParts.length === 1 || urlParts.length === 2)) {
             const str = computeReadiumCssJsonMessage();
             const base64 = window.btoa(str);
-            const alreadyHasSearch = urlParts[0].indexOf("?") > 0;
+            let alreadyHasSearch = urlParts[0].indexOf("?") > 0;
+            if (alreadyHasSearch) {
+                const token = "readiumcss=";
+                const i = urlParts[0].indexOf(token);
+                if (i > 0) {
+                    let rcss = urlParts[0].substr(i);
+                    const j = rcss.indexOf("&");
+                    if (j > 0) {
+                        rcss = rcss.substr(0, j);
+                    }
+                    urlParts[0] = urlParts[0].replace(rcss, "");
+                    urlParts[0] = urlParts[0].replace("?&", "?");
+                    urlParts[0] = urlParts[0].replace("&&", "&");
+                }
+            }
+            if (alreadyHasSearch &&
+                urlParts[0].indexOf("?") === (urlParts[0].length - 1)) {
+                urlParts[0] = urlParts[0].substr(0, urlParts[0].length - 1);
+                alreadyHasSearch = false;
+            }
             urlWithSearch = urlParts[0] +
                 (alreadyHasSearch ? "&" : "?") +
                 "readiumcss=" +
-                base64 +
+                UrlUtils_1.encodeURIComponent_RFC3986(base64) +
                 (urlParts.length === 2 ? ("#" + urlParts[1]) : "");
         }
         _webviews[0].setAttribute("src", urlWithSearch);

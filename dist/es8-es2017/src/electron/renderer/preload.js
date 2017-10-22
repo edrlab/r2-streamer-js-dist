@@ -4,6 +4,7 @@ const debounce = require("debounce");
 const electron_1 = require("electron");
 const ResizeSensor = require("resize-sensor/ResizeSensor");
 const events_1 = require("../common/events");
+const querystring_1 = require("./querystring");
 const win = global.window;
 const urlRootReadiumCSS = win.location.origin + "/readium-css/iOS/";
 const DEBUG_VISUALS = true;
@@ -360,10 +361,22 @@ outline-style: none !important;
     }, true);
     try {
         if (win.location.search) {
-            const token = "readiumcss=";
-            const i = win.location.search.indexOf(token);
-            if (i > 0) {
-                const base64 = win.location.search.substr(i + token.length);
+            const params = querystring_1.getURLQueryParams(win.location.search);
+            let base64 = params["readiumcss"];
+            if (!base64) {
+                console.log("!readiumcss BASE64 ??!");
+                const token = "readiumcss=";
+                const i = win.location.search.indexOf(token);
+                if (i > 0) {
+                    base64 = win.location.search.substr(i + token.length);
+                    const j = base64.indexOf("&");
+                    if (j > 0) {
+                        base64 = base64.substr(0, j);
+                    }
+                    base64 = decodeURIComponent(base64);
+                }
+            }
+            if (base64) {
                 const str = window.atob(base64);
                 const messageJson = JSON.parse(str);
                 readiumCSS(messageJson);

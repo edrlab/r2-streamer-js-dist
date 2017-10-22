@@ -4,7 +4,6 @@ const tslib_1 = require("tslib");
 const fs = require("fs");
 const path = require("path");
 const UrlUtils_1 = require("../../_utils/http/UrlUtils");
-const zipInjector_1 = require("../../_utils/zip/zipInjector");
 const server_1 = require("../../http/server");
 const init_globals_1 = require("../../init-globals");
 const lcp_1 = require("../../parser/epub/lcp");
@@ -12,9 +11,6 @@ const debug_ = require("debug");
 const electron_1 = require("electron");
 const filehound = require("filehound");
 const portfinder = require("portfinder");
-const request = require("request");
-const requestPromise = require("request-promise-native");
-const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
 const browser_window_tracker_1 = require("./browser-window-tracker");
 const lcp_2 = require("./lcp");
@@ -271,126 +267,53 @@ function openFileDownload(filePath) {
         const filename = path.basename(filePath);
         const destFileName = filename + ".epub";
         if (ext === ".lcpl") {
-            const lcplStr = fs.readFileSync(filePath, { encoding: "utf8" });
-            const lcplJson = global.JSON.parse(lcplStr);
-            const lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
-            if (lcpl.Links) {
-                const pubLink = lcpl.Links.find((link) => {
-                    return link.Rel === "publication";
-                });
-                if (pubLink) {
-                    const destPathTMP = path.join(dir, destFileName + ".tmp");
-                    const destPathFINAL = path.join(dir, destFileName);
-                    const failure = (err) => {
-                        debug(err);
-                        process.nextTick(() => {
-                            const detail = (typeof err === "string") ?
-                                err :
-                                (err.toString ? err.toString() : "ERROR!?");
-                            const message = "LCP EPUB download fail! [" + pubLink.Href + "]";
-                            const res = electron_1.dialog.showMessageBox({
-                                buttons: ["&OK"],
-                                cancelId: 0,
-                                defaultId: 0,
-                                detail,
-                                message,
-                                noLink: true,
-                                normalizeAccessKeys: true,
-                                title: "Readium2 Electron streamer / navigator",
-                                type: "info",
-                            });
-                            if (res === 0) {
-                                debug("ok");
-                            }
-                        });
-                    };
-                    const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                        if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
-                            failure("HTTP CODE " + response.statusCode);
-                            return;
-                        }
-                        const destStreamTMP = fs.createWriteStream(destPathTMP);
-                        response.pipe(destStreamTMP);
-                        destStreamTMP.on("finish", () => {
-                            const zipError = (err) => {
-                                debug(err);
-                                process.nextTick(() => {
-                                    const detail = (typeof err === "string") ?
-                                        err :
-                                        (err.toString ? err.toString() : "ERROR!?");
-                                    const message = "LCP EPUB zip error! [" + destPathTMP + "]";
-                                    const res = electron_1.dialog.showMessageBox({
-                                        buttons: ["&OK"],
-                                        cancelId: 0,
-                                        defaultId: 0,
-                                        detail,
-                                        message,
-                                        noLink: true,
-                                        normalizeAccessKeys: true,
-                                        title: "Readium2 Electron streamer / navigator",
-                                        type: "info",
-                                    });
-                                    if (res === 0) {
-                                        debug("ok");
-                                    }
-                                });
-                            };
-                            const doneCallback = () => {
-                                setTimeout(() => {
-                                    fs.unlinkSync(destPathTMP);
-                                }, 1000);
-                                process.nextTick(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                                    const detail = destPathFINAL + " ---- [" + pubLink.Href + "]";
-                                    const message = "LCP EPUB file download success [" + destFileName + "]";
-                                    const res = electron_1.dialog.showMessageBox({
-                                        buttons: ["&OK"],
-                                        cancelId: 0,
-                                        defaultId: 0,
-                                        detail,
-                                        message,
-                                        noLink: true,
-                                        normalizeAccessKeys: true,
-                                        title: "Readium2 Electron streamer / navigator",
-                                        type: "info",
-                                    });
-                                    if (res === 0) {
-                                        debug("ok");
-                                    }
-                                    yield openFile(destPathFINAL);
-                                }));
-                            };
-                            const zipEntryPath = "META-INF/license.lcpl";
-                            zipInjector_1.injectFileInZip(destPathTMP, destPathFINAL, filePath, zipEntryPath, zipError, doneCallback);
-                        });
+            let epubFilePath;
+            try {
+                epubFilePath = yield lcp_2.downloadFromLCPL(filePath, dir, destFileName);
+            }
+            catch (err) {
+                process.nextTick(() => {
+                    const detail = (typeof err === "string") ?
+                        err :
+                        (err.toString ? err.toString() : "ERROR!?");
+                    const message = "LCP EPUB download fail!]";
+                    const res = electron_1.dialog.showMessageBox({
+                        buttons: ["&OK"],
+                        cancelId: 0,
+                        defaultId: 0,
+                        detail,
+                        message,
+                        noLink: true,
+                        normalizeAccessKeys: true,
+                        title: "Readium2 Electron streamer / navigator",
+                        type: "info",
                     });
-                    const needsStreamingResponse = true;
-                    if (needsStreamingResponse) {
-                        request.get({
-                            headers: {},
-                            method: "GET",
-                            uri: pubLink.Href,
-                        })
-                            .on("response", success)
-                            .on("error", failure);
+                    if (res === 0) {
+                        debug("ok");
                     }
-                    else {
-                        let response;
-                        try {
-                            response = yield requestPromise({
-                                headers: {},
-                                method: "GET",
-                                resolveWithFullResponse: true,
-                                uri: pubLink.Href,
-                            });
-                        }
-                        catch (err) {
-                            failure(err);
-                            return;
-                        }
-                        response = response;
-                        yield success(response);
+                });
+            }
+            if (epubFilePath) {
+                const result = epubFilePath;
+                process.nextTick(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    const detail = result[0] + " ---- [" + result[1] + "]";
+                    const message = "LCP EPUB file download success [" + destFileName + "]";
+                    const res = electron_1.dialog.showMessageBox({
+                        buttons: ["&OK"],
+                        cancelId: 0,
+                        defaultId: 0,
+                        detail,
+                        message,
+                        noLink: true,
+                        normalizeAccessKeys: true,
+                        title: "Readium2 Electron streamer / navigator",
+                        type: "info",
+                    });
+                    if (res === 0) {
+                        debug("ok");
                     }
-                }
+                    yield openFile(result[0]);
+                }));
             }
         }
         else {

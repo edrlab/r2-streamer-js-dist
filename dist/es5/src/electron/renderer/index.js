@@ -7,6 +7,7 @@ var electron_2 = require("electron");
 var ElectronStore = require("electron-store");
 var path = require("path");
 var ta_json_1 = require("ta-json");
+var UrlUtils_1 = require("../../_utils/http/UrlUtils");
 var init_globals_1 = require("../../init-globals");
 var publication_1 = require("../../models/publication");
 var lcp_1 = require("../../parser/epub/lcp");
@@ -515,10 +516,29 @@ function loadLink(hrefFull, _hrefPartial, _publicationJsonUrl) {
             var str = computeReadiumCssJsonMessage();
             var base64 = window.btoa(str);
             var alreadyHasSearch = urlParts[0].indexOf("?") > 0;
+            if (alreadyHasSearch) {
+                var token = "readiumcss=";
+                var i = urlParts[0].indexOf(token);
+                if (i > 0) {
+                    var rcss = urlParts[0].substr(i);
+                    var j = rcss.indexOf("&");
+                    if (j > 0) {
+                        rcss = rcss.substr(0, j);
+                    }
+                    urlParts[0] = urlParts[0].replace(rcss, "");
+                    urlParts[0] = urlParts[0].replace("?&", "?");
+                    urlParts[0] = urlParts[0].replace("&&", "&");
+                }
+            }
+            if (alreadyHasSearch &&
+                urlParts[0].indexOf("?") === (urlParts[0].length - 1)) {
+                urlParts[0] = urlParts[0].substr(0, urlParts[0].length - 1);
+                alreadyHasSearch = false;
+            }
             urlWithSearch = urlParts[0] +
                 (alreadyHasSearch ? "&" : "?") +
                 "readiumcss=" +
-                base64 +
+                UrlUtils_1.encodeURIComponent_RFC3986(base64) +
                 (urlParts.length === 2 ? ("#" + urlParts[1]) : "");
         }
         _webviews[0].setAttribute("src", urlWithSearch);
