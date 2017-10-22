@@ -19,7 +19,9 @@ var LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP/lcp.node");
 function setLcpNativePluginPath(filepath) {
     LCP_NATIVE_PLUGIN_PATH = filepath;
     debug(LCP_NATIVE_PLUGIN_PATH);
-    return fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
+    var exists = fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
+    debug("LCP NATIVE PLUGIN: " + (exists ? "OKAY" : "MISSING"));
+    return exists;
 }
 exports.setLcpNativePluginPath = setLcpNativePluginPath;
 var LCP = (function () {
@@ -44,12 +46,16 @@ var LCP = (function () {
         this._lcpContext = undefined;
         if (fs.existsSync(LCP_NATIVE_PLUGIN_PATH)) {
             debug("LCP _usesNativeNodePlugin");
+            var filePath = path.dirname(LCP_NATIVE_PLUGIN_PATH);
+            var fileName = path.basename(LCP_NATIVE_PLUGIN_PATH);
+            debug(filePath);
+            debug(fileName);
             this._usesNativeNodePlugin = true;
             this._lcpNative = bind({
-                bindings: "lcp.node",
+                bindings: fileName,
+                module_root: filePath,
                 try: [[
                         "module_root",
-                        "LCP",
                         "bindings",
                     ]],
             });
