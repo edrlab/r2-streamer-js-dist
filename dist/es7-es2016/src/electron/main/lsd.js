@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const fs = require("fs");
+const ElectronStore = require("electron-store");
 const BufferUtils_1 = require("../../_utils/stream/BufferUtils");
 const zipInjector_1 = require("../../_utils/zip/zipInjector");
 const lcp_1 = require("../../parser/epub/lcp");
@@ -10,19 +11,54 @@ const moment = require("moment");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
+const uuid = require("uuid");
 const debug = debug_("r2:electron:main:lsd");
+const defaultsLSD = {};
+const electronStoreLSD = new ElectronStore({
+    defaults: defaultsLSD,
+    name: "readium2-navigator-lsd",
+});
+const LSD_STORE_DEVICEID_ENTRY_PREFIX = "deviceID_";
 exports.deviceIDManager = {
-    checkDeviceID: (_key) => {
-        return "";
+    checkDeviceID: (key) => {
+        const entry = LSD_STORE_DEVICEID_ENTRY_PREFIX + key;
+        const lsdStore = electronStoreLSD.get("lsd");
+        if (!lsdStore || !lsdStore[entry]) {
+            return undefined;
+        }
+        return lsdStore[entry];
     },
     getDeviceID: () => {
-        return "";
+        let id = uuid.v4();
+        const lsdStore = electronStoreLSD.get("lsd");
+        if (!lsdStore) {
+            electronStoreLSD.set("lsd", {
+                deviceID: id,
+            });
+        }
+        else {
+            if (lsdStore.deviceID) {
+                id = lsdStore.deviceID;
+            }
+            else {
+                lsdStore.deviceID = id;
+                electronStoreLSD.set("lsd", lsdStore);
+            }
+        }
+        return id;
     },
     getDeviceNAME: () => {
-        return "";
+        return "Readium2 Electron desktop app";
     },
-    recordDeviceID: (_key) => {
-        return;
+    recordDeviceID: (key) => {
+        const id = this.getDeviceID();
+        const lsdStore = electronStoreLSD.get("lsd");
+        if (!lsdStore) {
+            debug("LSD store problem?!");
+            return;
+        }
+        const entry = LSD_STORE_DEVICEID_ENTRY_PREFIX + key;
+        lsdStore[entry] = id;
     },
 };
 function launchStatusDocumentProcessing(publication, publicationPath, _deviceIDManager, onStatusDocumentProcessingComplete) {

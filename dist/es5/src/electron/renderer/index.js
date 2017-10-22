@@ -41,6 +41,11 @@ var electronStore = new ElectronStore({
     defaults: defaults,
     name: "readium2-navigator",
 });
+var defaultsLCP = {};
+var electronStoreLCP = new ElectronStore({
+    defaults: defaultsLCP,
+    name: "readium2-navigator-lcp",
+});
 electronStore.onDidChange("styling.night", function (newValue, oldValue) {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
@@ -159,12 +164,12 @@ electron_2.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, function (_event, 
         }, 500);
         return;
     }
-    var lcpStore = electronStore.get("lcp");
+    var lcpStore = electronStoreLCP.get("lcp");
     if (!lcpStore) {
         var lcpObj = {};
         var pubLcpObj = lcpObj[pathDecoded] = {};
         pubLcpObj.sha = passSha256Hex;
-        electronStore.set("lcp", lcpObj);
+        electronStoreLCP.set("lcp", lcpObj);
     }
     else {
         var pubLcpStore = lcpStore[pathDecoded];
@@ -176,7 +181,7 @@ electron_2.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, function (_event, 
                 sha: passSha256Hex,
             };
         }
-        electronStore.set("lcp", lcpStore);
+        electronStoreLCP.set("lcp", lcpStore);
     }
     startNavigatorExperiment();
 });
@@ -372,7 +377,7 @@ window.addEventListener("DOMContentLoaded", function () {
     }
     if (lcpHint) {
         var lcpPassSha256Hex = void 0;
-        var lcpStore = electronStore.get("lcp");
+        var lcpStore = electronStoreLCP.get("lcp");
         if (lcpStore) {
             var pubLcpStore = lcpStore[pathDecoded];
             if (pubLcpStore && pubLcpStore.sha) {

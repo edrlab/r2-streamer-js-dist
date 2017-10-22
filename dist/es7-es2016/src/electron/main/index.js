@@ -90,7 +90,7 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
             debug("electronBrowserWindow dom-ready " + publicationFilePath + " : " + publicationUrl);
         });
         const urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(publicationUrl);
-        let fullUrl = `file://${__dirname}/renderer/index.html?pub=${urlEncoded}`;
+        let fullUrl = `file://${__dirname}/../renderer/index.html?pub=${urlEncoded}`;
         if (lcpHint) {
             fullUrl = fullUrl + "&lcpHint=" + UrlUtils_1.encodeURIComponent_RFC3986(lcpHint);
         }
