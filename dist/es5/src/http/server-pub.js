@@ -5,7 +5,7 @@ var querystring = require("querystring");
 var debug_ = require("debug");
 var express = require("express");
 var morgan = require("morgan");
-var UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
+var UrlUtils_1 = require("../_utils/http/UrlUtils");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:server:pub");
 function serverPub(server, topRouter) {

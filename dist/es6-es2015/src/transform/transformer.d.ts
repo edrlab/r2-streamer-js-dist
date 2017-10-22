@@ -1,6 +1,6 @@
-import { Publication } from "../../../es8-es2017/src/models/publication";
-import { Link } from "../../../es8-es2017/src/models/publication-link";
-import { IStreamAndLength } from "../../../es8-es2017/src/_utils/zip/zip";
+import { Publication } from "../models/publication";
+import { Link } from "../models/publication-link";
+import { IStreamAndLength } from "../_utils/zip/zip";
 export interface ITransformer {
     supports(publication: Publication, link: Link): boolean;
     transformStream(publication: Publication, link: Link, stream: IStreamAndLength, isPartialByteRangeRequest: boolean, partialByteBegin: number, partialByteEnd: number): Promise<IStreamAndLength>;

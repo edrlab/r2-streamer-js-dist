@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const opds_1 = require("../../../es8-es2017/src/opds/opds1/opds");
-const opds_entry_1 = require("../../../es8-es2017/src/opds/opds1/opds-entry");
-const UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
-const BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
-const xml_js_mapper_1 = require("../../../es8-es2017/src/_utils/xml-js-mapper");
+const opds_1 = require("../opds/opds1/opds");
+const opds_entry_1 = require("../opds/opds1/opds-entry");
+const UrlUtils_1 = require("../_utils/http/UrlUtils");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");

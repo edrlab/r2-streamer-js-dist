@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../../../es8-es2017/src/_utils/xml-js-mapper");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var opf_manifest_1 = require("./opf-manifest");
 var opf_metadata_1 = require("./opf-metadata");
 var opf_reference_1 = require("./opf-reference");

@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var path = require("path");
-var opds_entry_1 = require("../../es8-es2017/src/opds/opds1/opds-entry");
-var opds2_publicationMetadata_1 = require("../../es8-es2017/src/opds/opds2/opds2-publicationMetadata");
-var xml_js_mapper_1 = require("../../es8-es2017/src/_utils/xml-js-mapper");
+var opds_entry_1 = require("../src/opds/opds1/opds-entry");
+var opds2_publicationMetadata_1 = require("../src/opds/opds2/opds2-publicationMetadata");
+var xml_js_mapper_1 = require("../src/_utils/xml-js-mapper");
 var ava_1 = require("ava");
 var ta_json_1 = require("ta-json");
 var xmldom = require("xmldom");
-var lcp_1 = require("../../es8-es2017/src/parser/epub/lcp");
+var lcp_1 = require("../src/parser/epub/lcp");
 var init_globals_1 = require("../src/init-globals");
 var helpers_1 = require("./helpers");
 init_globals_1.initGlobals();

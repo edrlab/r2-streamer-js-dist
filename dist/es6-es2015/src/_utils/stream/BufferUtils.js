@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const BufferReadableStream_1 = require("../../../../es8-es2017/src/_utils/stream/BufferReadableStream");
+const BufferReadableStream_1 = require("./BufferReadableStream");
 function bufferToStream(buffer) {
     return new BufferReadableStream_1.BufferReadableStream(buffer);
 }

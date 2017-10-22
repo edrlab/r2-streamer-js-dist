@@ -4,13 +4,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
 var path = require("path");
-var UrlUtils_1 = require("../../../../es8-es2017/src/_utils/http/UrlUtils");
-var zipInjector_1 = require("../../../../es8-es2017/src/_utils/zip/zipInjector");
-var browser_window_tracker_1 = require("../../../../es8-es2017/src/electron/main/browser-window-tracker");
-var lcp_1 = require("../../../../es8-es2017/src/electron/main/lcp");
-var server_1 = require("../../../../es8-es2017/src/http/server");
-var init_globals_1 = require("../../../../es8-es2017/src/init-globals");
-var lcp_2 = require("../../../../es8-es2017/src/parser/epub/lcp");
+var UrlUtils_1 = require("../../_utils/http/UrlUtils");
+var zipInjector_1 = require("../../_utils/zip/zipInjector");
+var server_1 = require("../../http/server");
+var init_globals_1 = require("../../init-globals");
+var lcp_1 = require("../../parser/epub/lcp");
 var debug_ = require("debug");
 var electron_1 = require("electron");
 var express = require("express");
@@ -21,9 +19,11 @@ var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
 var events_1 = require("../common/events");
 var sessions_1 = require("../common/sessions");
+var browser_window_tracker_1 = require("./browser-window-tracker");
+var lcp_2 = require("./lcp");
 var lsd_1 = require("./lsd");
 init_globals_1.initGlobals();
-lcp_2.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var debug = debug_("r2:electron:main");
 var _publicationsServer;
 var _publicationsServerPort;
@@ -136,7 +136,7 @@ electron_1.app.on("ready", function () {
                         disableDecryption: false,
                         disableReaders: false,
                     });
-                    lcp_1.installLcpHandler(_publicationsServer);
+                    lcp_2.installLcpHandler(_publicationsServer);
                     staticOptions = {
                         dotfiles: "ignore",
                         etag: true,
@@ -343,7 +343,7 @@ function openFileDownload(filePath) {
                     if (!(ext === ".lcpl")) return [3, 8];
                     lcplStr = fs.readFileSync(filePath, { encoding: "utf8" });
                     lcplJson = global.JSON.parse(lcplStr);
-                    lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_2.LCP);
+                    lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
                     if (!lcpl.Links) return [3, 7];
                     pubLink_1 = lcpl.Links.find(function (link) {
                         return link.Rel === "publication";

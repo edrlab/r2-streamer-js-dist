@@ -5,7 +5,7 @@ var stream_1 = require("stream");
 var debug_ = require("debug");
 var request = require("request");
 var requestPromise = require("request-promise-native");
-var BufferUtils_1 = require("../../../../es8-es2017/src/_utils/stream/BufferUtils");
+var BufferUtils_1 = require("../stream/BufferUtils");
 var debug = debug_("r2:httpStream");
 var HttpReadableStream = (function (_super) {
     tslib_1.__extends(HttpReadableStream, _super);

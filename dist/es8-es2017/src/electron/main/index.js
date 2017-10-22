@@ -4,11 +4,9 @@ const fs = require("fs");
 const path = require("path");
 const UrlUtils_1 = require("../../_utils/http/UrlUtils");
 const zipInjector_1 = require("../../_utils/zip/zipInjector");
-const browser_window_tracker_1 = require("./browser-window-tracker");
-const lcp_1 = require("@r2-streamer-js/electron/main/lcp");
 const server_1 = require("../../http/server");
 const init_globals_1 = require("../../init-globals");
-const lcp_2 = require("../../parser/epub/lcp");
+const lcp_1 = require("../../parser/epub/lcp");
 const debug_ = require("debug");
 const electron_1 = require("electron");
 const express = require("express");
@@ -19,9 +17,11 @@ const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
 const sessions_1 = require("../common/sessions");
+const browser_window_tracker_1 = require("./browser-window-tracker");
+const lcp_2 = require("./lcp");
 const lsd_1 = require("./lsd");
 init_globals_1.initGlobals();
-lcp_2.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const debug = debug_("r2:electron:main");
 let _publicationsServer;
 let _publicationsServerPort;
@@ -112,7 +112,7 @@ electron_1.app.on("ready", () => {
             disableDecryption: false,
             disableReaders: false,
         });
-        lcp_1.installLcpHandler(_publicationsServer);
+        lcp_2.installLcpHandler(_publicationsServer);
         const staticOptions = {
             dotfiles: "ignore",
             etag: true,
@@ -282,7 +282,7 @@ async function openFileDownload(filePath) {
     if (ext === ".lcpl") {
         const lcplStr = fs.readFileSync(filePath, { encoding: "utf8" });
         const lcplJson = global.JSON.parse(lcplStr);
-        const lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_2.LCP);
+        const lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
         if (lcpl.Links) {
             const pubLink = lcpl.Links.find((link) => {
                 return link.Rel === "publication";

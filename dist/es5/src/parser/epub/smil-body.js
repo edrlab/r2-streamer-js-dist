@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../../../es8-es2017/src/_utils/xml-js-mapper");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var smil_seq_1 = require("./smil-seq");
 var Body = (function (_super) {
     tslib_1.__extends(Body, _super);

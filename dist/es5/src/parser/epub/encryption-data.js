@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../../../es8-es2017/src/_utils/xml-js-mapper");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 var encryption_cypherdata_1 = require("./encryption-cypherdata");
 var encryption_keyinfo_1 = require("./encryption-keyinfo");
 var encryption_method_1 = require("./encryption-method");

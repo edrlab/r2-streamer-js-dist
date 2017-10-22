@@ -2,15 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const fs = require("fs");
-const BufferUtils_1 = require("../../../../es8-es2017/src/_utils/stream/BufferUtils");
-const zipInjector_1 = require("../../../../es8-es2017/src/_utils/zip/zipInjector");
-const lcp_1 = require("../../../../es8-es2017/src/parser/epub/lcp");
+const BufferUtils_1 = require("../../_utils/stream/BufferUtils");
+const zipInjector_1 = require("../../_utils/zip/zipInjector");
+const lcp_1 = require("../../parser/epub/lcp");
 const debug_ = require("debug");
 const moment = require("moment");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
-const debug = debug_("r2:lsd");
+const debug = debug_("r2:electron:main:lsd");
 exports.deviceIDManager = {
     checkDeviceID: (_key) => {
         return "";

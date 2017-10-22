@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
-var BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
 var TransformerObfIDPF = (function () {
     function TransformerObfIDPF() {
     }

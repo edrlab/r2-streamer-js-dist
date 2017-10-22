@@ -5,7 +5,7 @@ const stream_1 = require("stream");
 const debug_ = require("debug");
 const request = require("request");
 const requestPromise = require("request-promise-native");
-const BufferUtils_1 = require("../../../../es8-es2017/src/_utils/stream/BufferUtils");
+const BufferUtils_1 = require("../stream/BufferUtils");
 const debug = debug_("r2:httpStream");
 class HttpReadableStream extends stream_1.Readable {
     constructor(url, byteLength, byteStart, byteEnd) {

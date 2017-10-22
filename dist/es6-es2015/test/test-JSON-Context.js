@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
-const publication_1 = require("../../es8-es2017/src/models/publication");
-const opds2_1 = require("../../es8-es2017/src/opds/opds2/opds2");
+const publication_1 = require("../src/models/publication");
+const opds2_1 = require("../src/opds/opds2/opds2");
 const ava_1 = require("ava");
 const ta_json_1 = require("ta-json");
-const lcp_1 = require("../../es8-es2017/src/parser/epub/lcp");
+const lcp_1 = require("../src/parser/epub/lcp");
 const init_globals_1 = require("../src/init-globals");
 const helpers_1 = require("./helpers");
 init_globals_1.initGlobals();

@@ -6,7 +6,7 @@ var fs = require("fs");
 var path = require("path");
 var debug_ = require("debug");
 var filehound = require("filehound");
-var lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
+var lcp_1 = require("../parser/epub/lcp");
 var init_globals_1 = require("../init-globals");
 var server_1 = require("./server");
 init_globals_1.initGlobals();

@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const debug_ = require("debug");
 const filehound = require("filehound");
-const lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
+const lcp_1 = require("../parser/epub/lcp");
 const init_globals_1 = require("../init-globals");
 const server_1 = require("./server");
 init_globals_1.initGlobals();

@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var zlib = require("zlib");
-var RangeStream_1 = require("../../../es8-es2017/src/_utils/stream/RangeStream");
+var RangeStream_1 = require("../_utils/stream/RangeStream");
 var debug_ = require("debug");
-var BufferUtils_1 = require("../../../es8-es2017/src/_utils/stream/BufferUtils");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
 var debug = debug_("r2:transformer:lcp");
 var AES_BLOCK_SIZE = 16;
 var readStream = function (s, n) { return tslib_1.__awaiter(_this, void 0, void 0, function () {

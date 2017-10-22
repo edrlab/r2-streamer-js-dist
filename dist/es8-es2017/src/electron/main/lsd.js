@@ -9,7 +9,7 @@ const moment = require("moment");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
-const debug = debug_("r2:lsd");
+const debug = debug_("r2:electron:main:lsd");
 exports.deviceIDManager = {
     checkDeviceID: (_key) => {
         return "";
