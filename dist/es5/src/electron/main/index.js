@@ -17,11 +17,11 @@ var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
 var events_1 = require("../common/events");
-var sessions_1 = require("../common/sessions");
 var browser_window_tracker_1 = require("./browser-window-tracker");
 var lcp_2 = require("./lcp");
 var lsd_1 = require("./lsd");
 var readium_css_1 = require("./readium-css");
+var sessions_1 = require("./sessions");
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var debug = debug_("r2:electron:main");
@@ -118,18 +118,9 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
         });
     });
 }
+sessions_1.initSessions();
 electron_1.app.on("ready", function () {
     debug("app ready");
-    clearSessions(undefined, undefined);
-    var sess = getWebViewSession();
-    if (sess) {
-        sess.setPermissionRequestHandler(function (wc, permission, callback) {
-            debug("setPermissionRequestHandler");
-            debug(wc.getURL());
-            debug(permission);
-            callback(true);
-        });
-    }
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var _this = this;
         var pubPaths;
@@ -533,121 +524,8 @@ electron_1.app.on("window-all-closed", function () {
         electron_1.app.quit();
     }
 });
-function willQuitCallback(evt) {
-    debug("app will quit");
-    electron_1.app.removeListener("will-quit", willQuitCallback);
-    _publicationsServer.stop();
-    var done = false;
-    setTimeout(function () {
-        if (done) {
-            return;
-        }
-        done = true;
-        debug("Cache and StorageData clearance waited enough => force quitting...");
-        electron_1.app.quit();
-    }, 6000);
-    var sessionCleared = 0;
-    var callback = function () {
-        sessionCleared++;
-        if (sessionCleared >= 2) {
-            if (done) {
-                return;
-            }
-            done = true;
-            debug("Cache and StorageData cleared, now quitting...");
-            electron_1.app.quit();
-        }
-    };
-    clearSessions(callback, callback);
-    evt.preventDefault();
-}
-electron_1.app.on("will-quit", willQuitCallback);
 electron_1.app.on("quit", function () {
     debug("app quit");
+    _publicationsServer.stop();
 });
-function clearSession(sess, str, callbackCache, callbackStorageData) {
-    sess.clearCache(function () {
-        debug("SESSION CACHE CLEARED - " + str);
-        if (callbackCache) {
-            callbackCache();
-        }
-    });
-    sess.clearStorageData({
-        origin: "*",
-        quotas: [
-            "temporary",
-            "persistent",
-            "syncable"
-        ],
-        storages: [
-            "appcache",
-            "cookies",
-            "filesystem",
-            "indexdb",
-            "localstorage",
-            "shadercache",
-            "websql",
-            "serviceworkers"
-        ],
-    }, function () {
-        debug("SESSION STORAGE DATA CLEARED - " + str);
-        if (callbackStorageData) {
-            callbackStorageData();
-        }
-    });
-}
-function getWebViewSession() {
-    return electron_1.session.fromPartition(sessions_1.R2_SESSION_WEBVIEW, { cache: true });
-}
-function clearWebviewSession(callbackCache, callbackStorageData) {
-    var sess = getWebViewSession();
-    if (sess) {
-        clearSession(sess, "[" + sessions_1.R2_SESSION_WEBVIEW + "]", callbackCache, callbackStorageData);
-    }
-    else {
-        if (callbackCache) {
-            callbackCache();
-        }
-        if (callbackStorageData) {
-            callbackStorageData();
-        }
-    }
-}
-function clearDefaultSession(callbackCache, callbackStorageData) {
-    if (electron_1.session.defaultSession) {
-        clearSession(electron_1.session.defaultSession, "[default]", callbackCache, callbackStorageData);
-    }
-    else {
-        if (callbackCache) {
-            callbackCache();
-        }
-        if (callbackStorageData) {
-            callbackStorageData();
-        }
-    }
-}
-function clearSessions(callbackCache, callbackStorageData) {
-    var done = false;
-    setTimeout(function () {
-        if (done) {
-            return;
-        }
-        done = true;
-        debug("Cache and StorageData clearance waited enough (default session) => force webview session...");
-        clearWebviewSession(callbackCache, callbackStorageData);
-    }, 6000);
-    var sessionCleared = 0;
-    var callback = function () {
-        sessionCleared++;
-        if (sessionCleared >= 2) {
-            if (done) {
-                return;
-            }
-            done = true;
-            debug("Cache and StorageData cleared (default session), now webview session...");
-            clearWebviewSession(callbackCache, callbackStorageData);
-        }
-    };
-    clearDefaultSession(callback, callback);
-}
 //# sourceMappingURL=index.js.map

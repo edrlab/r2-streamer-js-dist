@@ -16,11 +16,11 @@ const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
-const sessions_1 = require("../common/sessions");
 const browser_window_tracker_1 = require("./browser-window-tracker");
 const lcp_2 = require("./lcp");
 const lsd_1 = require("./lsd");
 const readium_css_1 = require("./readium-css");
+const sessions_1 = require("./sessions");
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const debug = debug_("r2:electron:main");
@@ -98,18 +98,9 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
         electronBrowserWindow.webContents.loadURL(fullUrl, { extraHeaders: "pragma: no-cache\n" });
     });
 }
+sessions_1.initSessions();
 electron_1.app.on("ready", () => {
     debug("app ready");
-    clearSessions(undefined, undefined);
-    const sess = getWebViewSession();
-    if (sess) {
-        sess.setPermissionRequestHandler((wc, permission, callback) => {
-            debug("setPermissionRequestHandler");
-            debug(wc.getURL());
-            debug(permission);
-            callback(true);
-        });
-    }
     (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
         _publicationsFilePaths = yield filehound.create()
             .paths(DEFAULT_BOOK_PATH)
@@ -439,121 +430,8 @@ electron_1.app.on("window-all-closed", () => {
         electron_1.app.quit();
     }
 });
-function willQuitCallback(evt) {
-    debug("app will quit");
-    electron_1.app.removeListener("will-quit", willQuitCallback);
-    _publicationsServer.stop();
-    let done = false;
-    setTimeout(() => {
-        if (done) {
-            return;
-        }
-        done = true;
-        debug("Cache and StorageData clearance waited enough => force quitting...");
-        electron_1.app.quit();
-    }, 6000);
-    let sessionCleared = 0;
-    const callback = () => {
-        sessionCleared++;
-        if (sessionCleared >= 2) {
-            if (done) {
-                return;
-            }
-            done = true;
-            debug("Cache and StorageData cleared, now quitting...");
-            electron_1.app.quit();
-        }
-    };
-    clearSessions(callback, callback);
-    evt.preventDefault();
-}
-electron_1.app.on("will-quit", willQuitCallback);
 electron_1.app.on("quit", () => {
     debug("app quit");
+    _publicationsServer.stop();
 });
-function clearSession(sess, str, callbackCache, callbackStorageData) {
-    sess.clearCache(() => {
-        debug("SESSION CACHE CLEARED - " + str);
-        if (callbackCache) {
-            callbackCache();
-        }
-    });
-    sess.clearStorageData({
-        origin: "*",
-        quotas: [
-            "temporary",
-            "persistent",
-            "syncable"
-        ],
-        storages: [
-            "appcache",
-            "cookies",
-            "filesystem",
-            "indexdb",
-            "localstorage",
-            "shadercache",
-            "websql",
-            "serviceworkers"
-        ],
-    }, () => {
-        debug("SESSION STORAGE DATA CLEARED - " + str);
-        if (callbackStorageData) {
-            callbackStorageData();
-        }
-    });
-}
-function getWebViewSession() {
-    return electron_1.session.fromPartition(sessions_1.R2_SESSION_WEBVIEW, { cache: true });
-}
-function clearWebviewSession(callbackCache, callbackStorageData) {
-    const sess = getWebViewSession();
-    if (sess) {
-        clearSession(sess, "[" + sessions_1.R2_SESSION_WEBVIEW + "]", callbackCache, callbackStorageData);
-    }
-    else {
-        if (callbackCache) {
-            callbackCache();
-        }
-        if (callbackStorageData) {
-            callbackStorageData();
-        }
-    }
-}
-function clearDefaultSession(callbackCache, callbackStorageData) {
-    if (electron_1.session.defaultSession) {
-        clearSession(electron_1.session.defaultSession, "[default]", callbackCache, callbackStorageData);
-    }
-    else {
-        if (callbackCache) {
-            callbackCache();
-        }
-        if (callbackStorageData) {
-            callbackStorageData();
-        }
-    }
-}
-function clearSessions(callbackCache, callbackStorageData) {
-    let done = false;
-    setTimeout(() => {
-        if (done) {
-            return;
-        }
-        done = true;
-        debug("Cache and StorageData clearance waited enough (default session) => force webview session...");
-        clearWebviewSession(callbackCache, callbackStorageData);
-    }, 6000);
-    let sessionCleared = 0;
-    const callback = () => {
-        sessionCleared++;
-        if (sessionCleared >= 2) {
-            if (done) {
-                return;
-            }
-            done = true;
-            debug("Cache and StorageData cleared (default session), now webview session...");
-            clearWebviewSession(callbackCache, callbackStorageData);
-        }
-    };
-    clearDefaultSession(callback, callback);
-}
 //# sourceMappingURL=index.js.map
