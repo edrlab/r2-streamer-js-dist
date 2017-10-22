@@ -9,7 +9,6 @@ const init_globals_1 = require("../../init-globals");
 const lcp_1 = require("../../parser/epub/lcp");
 const debug_ = require("debug");
 const electron_1 = require("electron");
-const express = require("express");
 const filehound = require("filehound");
 const portfinder = require("portfinder");
 const request = require("request");
@@ -20,6 +19,7 @@ const sessions_1 = require("../common/sessions");
 const browser_window_tracker_1 = require("./browser-window-tracker");
 const lcp_2 = require("./lcp");
 const lsd_1 = require("./lsd");
+const readium_css_1 = require("./readium-css");
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const debug = debug_("r2:electron:main");
@@ -113,16 +113,7 @@ electron_1.app.on("ready", () => {
             disableReaders: false,
         });
         lcp_2.installLcpHandler(_publicationsServer);
-        const staticOptions = {
-            dotfiles: "ignore",
-            etag: true,
-            fallthrough: false,
-            immutable: true,
-            index: false,
-            maxAge: "1d",
-            redirect: false,
-        };
-        _publicationsServer.expressUse("/readium-css", express.static("dist/ReadiumCSS", staticOptions));
+        readium_css_1.setupReadiumCSS(_publicationsServer, "dist/ReadiumCSS");
         const pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
         _publicationsServerPort = await portfinder.getPortPromise();
         _publicationsRootUrl = _publicationsServer.start(_publicationsServerPort);

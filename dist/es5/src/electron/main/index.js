@@ -11,7 +11,6 @@ var init_globals_1 = require("../../init-globals");
 var lcp_1 = require("../../parser/epub/lcp");
 var debug_ = require("debug");
 var electron_1 = require("electron");
-var express = require("express");
 var filehound = require("filehound");
 var portfinder = require("portfinder");
 var request = require("request");
@@ -22,6 +21,7 @@ var sessions_1 = require("../common/sessions");
 var browser_window_tracker_1 = require("./browser-window-tracker");
 var lcp_2 = require("./lcp");
 var lsd_1 = require("./lsd");
+var readium_css_1 = require("./readium-css");
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var debug = debug_("r2:electron:main");
@@ -122,7 +122,7 @@ electron_1.app.on("ready", function () {
     }
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var _this = this;
-        var staticOptions, pubPaths;
+        var pubPaths;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4, filehound.create()
@@ -137,16 +137,7 @@ electron_1.app.on("ready", function () {
                         disableReaders: false,
                     });
                     lcp_2.installLcpHandler(_publicationsServer);
-                    staticOptions = {
-                        dotfiles: "ignore",
-                        etag: true,
-                        fallthrough: false,
-                        immutable: true,
-                        index: false,
-                        maxAge: "1d",
-                        redirect: false,
-                    };
-                    _publicationsServer.expressUse("/readium-css", express.static("dist/ReadiumCSS", staticOptions));
+                    readium_css_1.setupReadiumCSS(_publicationsServer, "dist/ReadiumCSS");
                     pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
                     return [4, portfinder.getPortPromise()];
                 case 2:
