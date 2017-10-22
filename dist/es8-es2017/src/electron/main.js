@@ -5,7 +5,8 @@ const fs = require("fs");
 const path = require("path");
 const UrlUtils_1 = require("../_utils/http/UrlUtils");
 const zipInjector_1 = require("../_utils/zip/zipInjector");
-const server_1 = require("../http/server");
+const main_browser_window_tracker_1 = require("./main_browser-window-tracker");
+const server_1 = require("@r2-streamer-js/http/server");
 const init_globals_1 = require("../init-globals");
 const lcp_1 = require("../parser/epub/lcp");
 const debug_ = require("debug");
@@ -20,34 +21,15 @@ const events_1 = require("./common/events");
 const sessions_1 = require("./common/sessions");
 const lsd_1 = require("./lsd");
 init_globals_1.initGlobals();
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const debug = debug_("r2:electron:main");
 let _publicationsServer;
 let _publicationsServerPort;
 let _publicationsRootUrl;
 let _publicationsFilePaths;
 let _publicationsUrls;
-let _electronBrowserWindows;
 const DEFAULT_BOOK_PATH = fs.realpathSync(path.resolve("./misc/epubs/"));
 let _lastBookPath;
-electron_1.app.on("web-contents-created", (_evt, wc) => {
-    if (!_electronBrowserWindows || !_electronBrowserWindows.length) {
-        return;
-    }
-    _electronBrowserWindows.forEach((win) => {
-        if (wc.hostWebContents &&
-            wc.hostWebContents.id === win.webContents.id) {
-            debug("WEBVIEW web-contents-created");
-            wc.on("will-navigate", (event, url) => {
-                debug("webview.getWebContents().on('will-navigate'");
-                debug(url);
-                const wcUrl = event.sender.getURL();
-                debug(wcUrl);
-                event.preventDefault();
-                win.webContents.send(events_1.R2_EVENT_LINK, url);
-            });
-        }
-    });
-});
 function openAllDevTools() {
     for (const wc of electron_1.webContents.getAllWebContents()) {
         wc.openDevTools();
@@ -152,21 +134,9 @@ async function createElectronBrowserWindow(publicationFilePath, publicationUrl) 
         },
         width: 800,
     });
-    if (!_electronBrowserWindows) {
-        _electronBrowserWindows = [];
-    }
-    _electronBrowserWindows.push(electronBrowserWindow);
+    main_browser_window_tracker_1.trackBrowserWindow(electronBrowserWindow);
     electronBrowserWindow.webContents.on("dom-ready", () => {
         debug("electronBrowserWindow dom-ready " + publicationFilePath + " : " + publicationUrl);
-    });
-    electronBrowserWindow.on("closed", () => {
-        debug("electronBrowserWindow closed " + publicationFilePath + " : " + publicationUrl);
-        const i = _electronBrowserWindows.indexOf(electronBrowserWindow);
-        if (i < 0) {
-            debug("electronBrowserWindow NOT FOUND?!");
-            return;
-        }
-        _electronBrowserWindows.splice(i, 1);
     });
     const urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(publicationUrl);
     let fullUrl = `file://${__dirname}/renderer/index.html?pub=${urlEncoded}`;
@@ -207,7 +177,7 @@ electron_1.app.on("ready", () => {
             maxAge: "1d",
             redirect: false,
         };
-        _publicationsServer.expressUse("/readium-css", express.static("misc/ReadiumCSS", staticOptions));
+        _publicationsServer.expressUse("/readium-css", express.static("dist/ReadiumCSS", staticOptions));
         const pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
         _publicationsServerPort = await portfinder.getPortPromise();
         _publicationsRootUrl = _publicationsServer.start(_publicationsServerPort);

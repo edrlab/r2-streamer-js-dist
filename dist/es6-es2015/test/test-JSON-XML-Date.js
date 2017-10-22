@@ -1,14 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
 const opds_entry_1 = require("../../es8-es2017/src/opds/opds1/opds-entry");
 const opds2_publicationMetadata_1 = require("../../es8-es2017/src/opds/opds2/opds2-publicationMetadata");
 const xml_js_mapper_1 = require("../../es8-es2017/src/_utils/xml-js-mapper");
 const ava_1 = require("ava");
 const ta_json_1 = require("ta-json");
 const xmldom = require("xmldom");
+const lcp_1 = require("../../es8-es2017/src/parser/epub/lcp");
 const init_globals_1 = require("../src/init-globals");
 const helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const date = new Date();
 date.setUTCFullYear(2000, 11, 31);
 date.setUTCHours(23, 59, 59, 999);

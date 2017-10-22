@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var path = require("path");
 var publication_1 = require("../../es8-es2017/src/models/publication");
 var opds2_1 = require("../../es8-es2017/src/opds/opds2/opds2");
 var ava_1 = require("ava");
 var ta_json_1 = require("ta-json");
+var lcp_1 = require("../../es8-es2017/src/parser/epub/lcp");
 var init_globals_1 = require("../src/init-globals");
 var helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var contextStr1 = "http://context1";
 var contextStr2 = "http://context2";
 ava_1.test("JSON SERIALIZE: Publication.Context => string[]", function (t) {

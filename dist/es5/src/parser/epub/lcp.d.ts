@@ -4,6 +4,7 @@ import { Link } from "./lcp-link";
 import { Rights } from "./lcp-rights";
 import { Signature } from "./lcp-signature";
 import { User } from "./lcp-user";
+export declare function setLcpNativePluginPath(filepath: string): boolean;
 export declare class LCP {
     ID: string;
     Provider: string;

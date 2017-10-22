@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
 const metadata_1 = require("../../es8-es2017/src/models/metadata");
 const metadata_contributor_1 = require("../../es8-es2017/src/models/metadata-contributor");
 const ava_1 = require("ava");
 const ta_json_1 = require("ta-json");
+const lcp_1 = require("../../es8-es2017/src/parser/epub/lcp");
 const init_globals_1 = require("../src/init-globals");
 const helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const contName1 = "theName1";
 const contRole1 = "theRole1";
 const cont1 = new metadata_contributor_1.Contributor();

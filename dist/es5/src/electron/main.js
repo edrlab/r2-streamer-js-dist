@@ -7,6 +7,7 @@ var fs = require("fs");
 var path = require("path");
 var UrlUtils_1 = require("../../../es8-es2017/src/_utils/http/UrlUtils");
 var zipInjector_1 = require("../../../es8-es2017/src/_utils/zip/zipInjector");
+var main_browser_window_tracker_1 = require("../../../es8-es2017/src/electron/main_browser-window-tracker");
 var server_1 = require("../../../es8-es2017/src/http/server");
 var init_globals_1 = require("../../../es8-es2017/src/init-globals");
 var lcp_1 = require("../../../es8-es2017/src/parser/epub/lcp");
@@ -22,34 +23,15 @@ var events_1 = require("./common/events");
 var sessions_1 = require("./common/sessions");
 var lsd_1 = require("./lsd");
 init_globals_1.initGlobals();
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var debug = debug_("r2:electron:main");
 var _publicationsServer;
 var _publicationsServerPort;
 var _publicationsRootUrl;
 var _publicationsFilePaths;
 var _publicationsUrls;
-var _electronBrowserWindows;
 var DEFAULT_BOOK_PATH = fs.realpathSync(path.resolve("./misc/epubs/"));
 var _lastBookPath;
-electron_1.app.on("web-contents-created", function (_evt, wc) {
-    if (!_electronBrowserWindows || !_electronBrowserWindows.length) {
-        return;
-    }
-    _electronBrowserWindows.forEach(function (win) {
-        if (wc.hostWebContents &&
-            wc.hostWebContents.id === win.webContents.id) {
-            debug("WEBVIEW web-contents-created");
-            wc.on("will-navigate", function (event, url) {
-                debug("webview.getWebContents().on('will-navigate'");
-                debug(url);
-                var wcUrl = event.sender.getURL();
-                debug(wcUrl);
-                event.preventDefault();
-                win.webContents.send(events_1.R2_EVENT_LINK, url);
-            });
-        }
-    });
-});
 function openAllDevTools() {
     for (var _i = 0, _a = electron_1.webContents.getAllWebContents(); _i < _a.length; _i++) {
         var wc = _a[_i];
@@ -187,21 +169,9 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
                         },
                         width: 800,
                     });
-                    if (!_electronBrowserWindows) {
-                        _electronBrowserWindows = [];
-                    }
-                    _electronBrowserWindows.push(electronBrowserWindow);
+                    main_browser_window_tracker_1.trackBrowserWindow(electronBrowserWindow);
                     electronBrowserWindow.webContents.on("dom-ready", function () {
                         debug("electronBrowserWindow dom-ready " + publicationFilePath + " : " + publicationUrl);
-                    });
-                    electronBrowserWindow.on("closed", function () {
-                        debug("electronBrowserWindow closed " + publicationFilePath + " : " + publicationUrl);
-                        var i = _electronBrowserWindows.indexOf(electronBrowserWindow);
-                        if (i < 0) {
-                            debug("electronBrowserWindow NOT FOUND?!");
-                            return;
-                        }
-                        _electronBrowserWindows.splice(i, 1);
                     });
                     urlEncoded = UrlUtils_1.encodeURIComponent_RFC3986(publicationUrl);
                     fullUrl = "file://" + __dirname + "/renderer/index.html?pub=" + urlEncoded;
@@ -252,7 +222,7 @@ electron_1.app.on("ready", function () {
                         maxAge: "1d",
                         redirect: false,
                     };
-                    _publicationsServer.expressUse("/readium-css", express.static("misc/ReadiumCSS", staticOptions));
+                    _publicationsServer.expressUse("/readium-css", express.static("dist/ReadiumCSS", staticOptions));
                     pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
                     return [4, portfinder.getPortPromise()];
                 case 2:

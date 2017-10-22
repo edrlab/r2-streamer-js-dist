@@ -15,6 +15,13 @@ const lcp_signature_1 = require("./lcp-signature");
 const lcp_user_1 = require("./lcp-user");
 const AES_BLOCK_SIZE = 16;
 const debug = debug_("r2:publication:lcp");
+let LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP/lcp.node");
+function setLcpNativePluginPath(filepath) {
+    LCP_NATIVE_PLUGIN_PATH = filepath;
+    debug(LCP_NATIVE_PLUGIN_PATH);
+    return fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
+}
+exports.setLcpNativePluginPath = setLcpNativePluginPath;
 let LCP = class LCP {
     constructor() {
         this._usesNativeNodePlugin = undefined;
@@ -35,9 +42,7 @@ let LCP = class LCP {
         }
         this.ContentKey = undefined;
         this._lcpContext = undefined;
-        const lcpNodeFilePath = path.join(process.cwd(), "LCP/lcp.node");
-        debug(lcpNodeFilePath);
-        if (fs.existsSync(lcpNodeFilePath)) {
+        if (fs.existsSync(LCP_NATIVE_PLUGIN_PATH)) {
             debug("LCP _usesNativeNodePlugin");
             this._usesNativeNodePlugin = true;
             this._lcpNative = bind({
@@ -57,7 +62,7 @@ let LCP = class LCP {
     }
     async decrypt(encryptedContent) {
         if (!this.isNativeNodePlugin()) {
-            return Promise.reject("direct ecrypt buffer only for native plugin");
+            return Promise.reject("direct decrypt buffer only for native plugin");
         }
         if (!this._lcpContext) {
             return Promise.reject("LCP context not initialized (needs setUserPassphrase)");
