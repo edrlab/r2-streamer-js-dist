@@ -52,11 +52,16 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
         if (!publication) {
             return;
         }
-        yield lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_1.deviceIDManager, () => {
-            debug("launchStatusDocumentProcessing DONE.");
-        });
         let lcpHint;
         if (publication && publication.LCP) {
+            try {
+                yield lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_1.deviceIDManager, () => {
+                    debug("launchStatusDocumentProcessing DONE.");
+                });
+            }
+            catch (err) {
+                debug(err);
+            }
             if (publication.LCP.Encryption &&
                 publication.LCP.Encryption.UserKey &&
                 publication.LCP.Encryption.UserKey.TextHint) {

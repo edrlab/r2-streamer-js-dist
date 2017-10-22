@@ -43,7 +43,7 @@ electron_1.ipcMain.on(events_1.R2_EVENT_DEVTOOLS, function (_event, _arg) {
 });
 function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var publication, err_1, lcpHint, electronBrowserWindow, urlEncoded, fullUrl;
+        var publication, err_1, lcpHint, err_2, electronBrowserWindow, urlEncoded, fullUrl;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -63,21 +63,31 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
                     if (!publication) {
                         return [2];
                     }
+                    if (!(publication && publication.LCP)) return [3, 9];
+                    _a.label = 5;
+                case 5:
+                    _a.trys.push([5, 7, , 8]);
                     return [4, lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_1.deviceIDManager, function () {
                             debug("launchStatusDocumentProcessing DONE.");
                         })];
-                case 5:
+                case 6:
                     _a.sent();
-                    if (publication && publication.LCP) {
-                        if (publication.LCP.Encryption &&
-                            publication.LCP.Encryption.UserKey &&
-                            publication.LCP.Encryption.UserKey.TextHint) {
-                            lcpHint = publication.LCP.Encryption.UserKey.TextHint;
-                        }
-                        if (!lcpHint) {
-                            lcpHint = "LCP passphrase";
-                        }
+                    return [3, 8];
+                case 7:
+                    err_2 = _a.sent();
+                    debug(err_2);
+                    return [3, 8];
+                case 8:
+                    if (publication.LCP.Encryption &&
+                        publication.LCP.Encryption.UserKey &&
+                        publication.LCP.Encryption.UserKey.TextHint) {
+                        lcpHint = publication.LCP.Encryption.UserKey.TextHint;
                     }
+                    if (!lcpHint) {
+                        lcpHint = "LCP passphrase";
+                    }
+                    _a.label = 9;
+                case 9:
                     electronBrowserWindow = new electron_1.BrowserWindow({
                         height: 600,
                         webPreferences: {
@@ -321,7 +331,7 @@ function resetMenu() {
 function openFileDownload(filePath) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
         var _this = this;
-        var dir, ext, filename, destFileName, lcplStr, lcplJson, lcpl, pubLink_1, destPathTMP_1, destPathFINAL_1, failure_1, success, needsStreamingResponse, response, err_2;
+        var dir, ext, filename, destFileName, lcplStr, lcplJson, lcpl, pubLink_1, destPathTMP_1, destPathFINAL_1, failure_1, success, needsStreamingResponse, response, err_3;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -463,8 +473,8 @@ function openFileDownload(filePath) {
                     response = _a.sent();
                     return [3, 5];
                 case 4:
-                    err_2 = _a.sent();
-                    failure_1(err_2);
+                    err_3 = _a.sent();
+                    failure_1(err_3);
                     return [2];
                 case 5:
                     response = response;
