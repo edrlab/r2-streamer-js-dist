@@ -1,1 +1,1 @@
-export declare function handleLink(href: string): void;
+export declare function handleLink(href: string, previous: boolean): void;

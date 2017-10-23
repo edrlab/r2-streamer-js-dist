@@ -1,13 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var debounce = require("debounce");
-var electron_1 = require("electron");
 var ResizeSensor = require("resize-sensor/ResizeSensor");
-var events_1 = require("../common/events");
+var electron_1 = require("electron");
 var querystring_1 = require("./querystring");
+var events_1 = require("../common/events");
 var win = global.window;
 var urlRootReadiumCSS = win.location.origin + "/readium-css/iOS/";
 var DEBUG_VISUALS = true;
+var queryParams = win.location.search ? querystring_1.getURLQueryParams(win.location.search) : undefined;
 var ensureHead = function () {
     var docElement = win.document.documentElement;
     if (!win.document.head) {
@@ -23,6 +24,28 @@ var ensureHead = function () {
 electron_1.ipcRenderer.on(events_1.R2_EVENT_READIUMCSS, function (_event, messageString) {
     var messageJson = JSON.parse(messageString);
     readiumCSS(messageJson);
+});
+electron_1.ipcRenderer.on(events_1.R2_EVENT_PAGE_TURN, function (_event, messageString) {
+    var element = win.document.body;
+    if (!element) {
+        return;
+    }
+    var maxHeightShift = element.scrollHeight - win.document.documentElement.clientHeight;
+    var messageJson = JSON.parse(messageString);
+    var goPREVIOUS = messageJson.go === "PREVIOUS";
+    if (!goPREVIOUS) {
+        if (element.scrollTop < maxHeightShift) {
+            element.scrollTop += win.document.documentElement.clientHeight;
+            return;
+        }
+    }
+    else if (goPREVIOUS) {
+        if (element.scrollTop > 0) {
+            element.scrollTop -= win.document.documentElement.clientHeight;
+            return;
+        }
+    }
+    electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_PAGE_TURN_RES, messageString);
 });
 var readiumCSS = function (messageJson) {
     var docElement = win.document.documentElement;
@@ -197,6 +220,16 @@ var scrollToHash = debounce(function () {
     }
     else {
         if (win.document.body) {
+            if (queryParams) {
+                var previous = queryParams["readiumprevious"];
+                var isPreviousNavDirection = previous === "true";
+                if (isPreviousNavDirection) {
+                    var maxHeightShift = win.document.body.scrollHeight - win.document.documentElement.clientHeight;
+                    win.document.body.scrollLeft = 0;
+                    win.document.body.scrollTop = maxHeightShift;
+                    return;
+                }
+            }
             win.document.body.scrollLeft = 0;
             win.document.body.scrollTop = 0;
         }
@@ -217,9 +250,14 @@ var injectReadPosCSS = function () {
 var activateResizeSensor = function () {
     var useResizeSensor = true;
     if (useResizeSensor && win.document.body) {
-        new ResizeSensor(win.document.body, function () {
-            scrollToHash();
-        });
+        scrollToHash();
+        setTimeout(function () {
+            window.requestAnimationFrame(function (_timestamp) {
+                new ResizeSensor(win.document.body, function () {
+                    scrollToHash();
+                });
+            });
+        }, 1000);
     }
     else {
         scrollToHash();
@@ -253,22 +291,8 @@ win.addEventListener("DOMContentLoaded", function () {
         return false;
     }, true);
     try {
-        if (win.location.search) {
-            var params = querystring_1.getURLQueryParams(win.location.search);
-            var base64 = params["readiumcss"];
-            if (!base64) {
-                console.log("!readiumcss BASE64 ??!");
-                var token = "readiumcss=";
-                var i = win.location.search.indexOf(token);
-                if (i > 0) {
-                    base64 = win.location.search.substr(i + token.length);
-                    var j = base64.indexOf("&");
-                    if (j > 0) {
-                        base64 = base64.substr(0, j);
-                    }
-                    base64 = decodeURIComponent(base64);
-                }
-            }
+        if (queryParams) {
+            var base64 = queryParams["readiumcss"];
             if (base64) {
                 var str = window.atob(base64);
                 var messageJson = JSON.parse(str);
