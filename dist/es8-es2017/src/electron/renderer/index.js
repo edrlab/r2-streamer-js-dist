@@ -7,6 +7,7 @@ const electron_1 = require("electron");
 const electron_2 = require("electron");
 const path = require("path");
 const ta_json_1 = require("ta-json");
+const UrlUtils_1 = require("../../_utils/http/UrlUtils");
 const init_globals_1 = require("../../init-globals");
 const publication_1 = require("../../models/publication");
 const lcp_1 = require("../../parser/epub/lcp");
@@ -119,17 +120,17 @@ electronStore.onDidChange("basicLinkTitles", (newValue, oldValue) => {
 });
 let snackBar;
 let drawer;
-function handleLink(href, previous) {
+function handleLink(href, previous, useGoto) {
     const prefix = publicationJsonUrl.replace("manifest.json", "");
     if (href.startsWith(prefix)) {
         if (drawer.open) {
             drawer.open = false;
             setTimeout(() => {
-                loadLink(href, previous);
+                loadLink(href, previous, useGoto);
             }, 200);
         }
         else {
-            loadLink(href, previous);
+            loadLink(href, previous, useGoto);
         }
     }
     else {
@@ -155,7 +156,7 @@ const unhideWebView = (_id, forced) => {
 electron_2.ipcRenderer.on(events_1.R2_EVENT_LINK, (_event, href) => {
     console.log("R2_EVENT_LINK");
     console.log(href);
-    handleLink(href, false);
+    handleLink(href, undefined, false);
 });
 electron_2.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, (_event, okay, msg, passSha256Hex) => {
     if (!okay) {
@@ -271,6 +272,14 @@ const initFontSelector = () => {
     });
 };
 window.addEventListener("DOMContentLoaded", () => {
+    window.document.addEventListener("keydown", (ev) => {
+        if (ev.keyCode === 37) {
+            navLeftOrRight(true);
+        }
+        else if (ev.keyCode === 39) {
+            navLeftOrRight(false);
+        }
+    });
     setTimeout(() => {
         window.mdc.autoInit();
     }, 500);
@@ -452,6 +461,17 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+const saveReadingLocation = (doc, loc) => {
+    let obj = electronStore.get("readingLocation");
+    if (!obj) {
+        obj = {};
+    }
+    obj[pathDecoded] = {
+        doc,
+        loc,
+    };
+    electronStore.set("readingLocation", obj);
+};
 const _webviews = [];
 function createWebView() {
     const webview1 = document.createElement("webview");
@@ -464,11 +484,17 @@ function createWebView() {
     webview1.setAttribute("disableguestresize", "");
     webview1.addEventListener("ipc-message", (event) => {
         if (event.channel === events_1.R2_EVENT_LINK) {
-            handleLink(event.args[0], false);
+            handleLink(event.args[0], undefined, false);
         }
         else if (event.channel === events_1.R2_EVENT_WEBVIEW_READY) {
             const id = event.args[0];
             unhideWebView(id, false);
+        }
+        else if (event.channel === events_1.R2_EVENT_READING_LOCATION) {
+            const cssSelector = event.args[0];
+            if (webview1.READIUM2_LINK) {
+                saveReadingLocation(webview1.READIUM2_LINK.Href, cssSelector);
+            }
         }
         else if (event.channel === events_1.R2_EVENT_PAGE_TURN_RES) {
             if (!_publication) {
@@ -497,7 +523,7 @@ function createWebView() {
                 return;
             }
             const linkHref = publicationJsonUrl + "/../" + nextOrPreviousSpineItem.Href;
-            handleLink(linkHref, goPREVIOUS);
+            handleLink(linkHref, goPREVIOUS, false);
         }
         else {
             console.log("webview1 ipc-message");
@@ -524,7 +550,7 @@ window.addEventListener("resize", debounce(() => {
         }
     });
 }, 200));
-function loadLink(hrefFull, previous) {
+function loadLink(hrefFull, previous, useGoto) {
     if (_publication && _webviews.length) {
         const hidePanel = document.getElementById("reader_chrome_HIDE");
         if (hidePanel) {
@@ -542,9 +568,20 @@ function loadLink(hrefFull, previous) {
         const rcssJsonstrBase64 = window.btoa(rcssJsonstr);
         const linkUri = new URI(hrefFull);
         linkUri.search((data) => {
-            data.readiumprevious = previous ? "true" : "false";
+            if (typeof previous === "undefined") {
+                data.readiumprevious = undefined;
+            }
+            else {
+                data.readiumprevious = previous ? "true" : "false";
+            }
+            if (!useGoto) {
+                data.readiumgoto = undefined;
+            }
             data.readiumcss = rcssJsonstrBase64;
         });
+        if (useGoto) {
+            linkUri.hash("").normalizeHash();
+        }
         const pubUri = new URI(publicationJsonUrl);
         const pathPrefix = pubUri.path().replace("manifest.json", "");
         const linkPath = linkUri.normalizePath().path().replace(pathPrefix, "");
@@ -663,13 +700,6 @@ function startNavigatorExperiment() {
                 url: publicationJsonUrl,
             };
             index_1.riotMountLinkList("#reader_controls_SPINE", opts);
-            const firstLinear = _publication.Spine[0];
-            if (firstLinear) {
-                setTimeout(() => {
-                    const firstLinearLinkHref = publicationJsonUrl + "/../" + firstLinear.Href;
-                    handleLink(firstLinearLinkHref, false);
-                }, 200);
-            }
         }
         if (_publication.TOC && _publication.TOC.length) {
             const opts = {
@@ -743,6 +773,44 @@ function startNavigatorExperiment() {
                 }
                 tag.setBasic(newValue);
             });
+        }
+        const readStore = electronStore.get("readingLocation");
+        let linkToLoad;
+        let linkToLoadGoto;
+        const obj = readStore[pathDecoded];
+        if (obj && obj.doc) {
+            if (_publication.Spine && _publication.Spine.length) {
+                linkToLoad = _publication.Spine.find((spineLink) => {
+                    return spineLink.Href === obj.doc;
+                });
+                if (linkToLoad && obj.loc) {
+                    linkToLoadGoto = obj.loc;
+                }
+            }
+            if (!linkToLoad &&
+                _publication.Resources && _publication.Resources.length) {
+                linkToLoad = _publication.Resources.find((resLink) => {
+                    return resLink.Href === obj.doc;
+                });
+                if (linkToLoad && obj.loc) {
+                    linkToLoadGoto = obj.loc;
+                }
+            }
+        }
+        if (!linkToLoad) {
+            if (_publication.Spine && _publication.Spine.length) {
+                const firstLinear = _publication.Spine[0];
+                if (firstLinear) {
+                    linkToLoad = firstLinear;
+                }
+            }
+        }
+        if (linkToLoad) {
+            setTimeout(() => {
+                const hrefToLoad = publicationJsonUrl + "/../" + linkToLoad.Href +
+                    (linkToLoadGoto ? ("?readiumgoto=" + UrlUtils_1.encodeURIComponent_RFC3986(linkToLoadGoto)) : "");
+                handleLink(hrefToLoad, undefined, true);
+            }, 200);
         }
     })();
 }

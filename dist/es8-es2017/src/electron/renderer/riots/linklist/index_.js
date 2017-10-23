@@ -16,7 +16,7 @@ window.riot_linklist = function (_opts) {
         ev.preventDefault();
         const href = ev.currentTarget.getAttribute("href");
         if (href) {
-            index_1.handleLink(href, false);
+            index_1.handleLink(href, undefined, false);
         }
     };
 };

@@ -8,6 +8,7 @@ var electron_1 = require("electron");
 var electron_2 = require("electron");
 var path = require("path");
 var ta_json_1 = require("ta-json");
+var UrlUtils_1 = require("../../_utils/http/UrlUtils");
 var init_globals_1 = require("../../init-globals");
 var publication_1 = require("../../models/publication");
 var lcp_1 = require("../../parser/epub/lcp");
@@ -120,17 +121,17 @@ electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
 });
 var snackBar;
 var drawer;
-function handleLink(href, previous) {
+function handleLink(href, previous, useGoto) {
     var prefix = publicationJsonUrl.replace("manifest.json", "");
     if (href.startsWith(prefix)) {
         if (drawer.open) {
             drawer.open = false;
             setTimeout(function () {
-                loadLink(href, previous);
+                loadLink(href, previous, useGoto);
             }, 200);
         }
         else {
-            loadLink(href, previous);
+            loadLink(href, previous, useGoto);
         }
     }
     else {
@@ -156,7 +157,7 @@ var unhideWebView = function (_id, forced) {
 electron_2.ipcRenderer.on(events_1.R2_EVENT_LINK, function (_event, href) {
     console.log("R2_EVENT_LINK");
     console.log(href);
-    handleLink(href, false);
+    handleLink(href, undefined, false);
 });
 electron_2.ipcRenderer.on(events_1.R2_EVENT_TRY_LCP_PASS_RES, function (_event, okay, msg, passSha256Hex) {
     if (!okay) {
@@ -272,6 +273,14 @@ var initFontSelector = function () {
     });
 };
 window.addEventListener("DOMContentLoaded", function () {
+    window.document.addEventListener("keydown", function (ev) {
+        if (ev.keyCode === 37) {
+            navLeftOrRight(true);
+        }
+        else if (ev.keyCode === 39) {
+            navLeftOrRight(false);
+        }
+    });
     setTimeout(function () {
         window.mdc.autoInit();
     }, 500);
@@ -453,6 +462,17 @@ window.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+var saveReadingLocation = function (doc, loc) {
+    var obj = electronStore.get("readingLocation");
+    if (!obj) {
+        obj = {};
+    }
+    obj[pathDecoded] = {
+        doc: doc,
+        loc: loc,
+    };
+    electronStore.set("readingLocation", obj);
+};
 var _webviews = [];
 function createWebView() {
     var webview1 = document.createElement("webview");
@@ -465,11 +485,17 @@ function createWebView() {
     webview1.setAttribute("disableguestresize", "");
     webview1.addEventListener("ipc-message", function (event) {
         if (event.channel === events_1.R2_EVENT_LINK) {
-            handleLink(event.args[0], false);
+            handleLink(event.args[0], undefined, false);
         }
         else if (event.channel === events_1.R2_EVENT_WEBVIEW_READY) {
             var id = event.args[0];
             unhideWebView(id, false);
+        }
+        else if (event.channel === events_1.R2_EVENT_READING_LOCATION) {
+            var cssSelector = event.args[0];
+            if (webview1.READIUM2_LINK) {
+                saveReadingLocation(webview1.READIUM2_LINK.Href, cssSelector);
+            }
         }
         else if (event.channel === events_1.R2_EVENT_PAGE_TURN_RES) {
             if (!_publication) {
@@ -498,7 +524,7 @@ function createWebView() {
                 return;
             }
             var linkHref = publicationJsonUrl + "/../" + nextOrPreviousSpineItem.Href;
-            handleLink(linkHref, goPREVIOUS);
+            handleLink(linkHref, goPREVIOUS, false);
         }
         else {
             console.log("webview1 ipc-message");
@@ -525,7 +551,7 @@ window.addEventListener("resize", debounce(function () {
         }
     });
 }, 200));
-function loadLink(hrefFull, previous) {
+function loadLink(hrefFull, previous, useGoto) {
     if (_publication && _webviews.length) {
         var hidePanel = document.getElementById("reader_chrome_HIDE");
         if (hidePanel) {
@@ -543,9 +569,20 @@ function loadLink(hrefFull, previous) {
         var rcssJsonstrBase64_1 = window.btoa(rcssJsonstr);
         var linkUri = new URI(hrefFull);
         linkUri.search(function (data) {
-            data.readiumprevious = previous ? "true" : "false";
+            if (typeof previous === "undefined") {
+                data.readiumprevious = undefined;
+            }
+            else {
+                data.readiumprevious = previous ? "true" : "false";
+            }
+            if (!useGoto) {
+                data.readiumgoto = undefined;
+            }
             data.readiumcss = rcssJsonstrBase64_1;
         });
+        if (useGoto) {
+            linkUri.hash("").normalizeHash();
+        }
         var pubUri = new URI(publicationJsonUrl);
         var pathPrefix = pubUri.path().replace("manifest.json", "");
         var linkPath_1 = linkUri.normalizePath().path().replace(pathPrefix, "");
@@ -604,7 +641,7 @@ function startNavigatorExperiment() {
         });
     }
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var response, e_1, e_2, title, keys, h1, buttonNavLeft, buttonNavRight, opts, firstLinear_1, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3;
+        var response, e_1, e_2, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj, firstLinear;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -678,13 +715,6 @@ function startNavigatorExperiment() {
                             url: publicationJsonUrl,
                         };
                         index_1.riotMountLinkList("#reader_controls_SPINE", opts);
-                        firstLinear_1 = _publication.Spine[0];
-                        if (firstLinear_1) {
-                            setTimeout(function () {
-                                var firstLinearLinkHref = publicationJsonUrl + "/../" + firstLinear_1.Href;
-                                handleLink(firstLinearLinkHref, false);
-                            }, 200);
-                        }
                     }
                     if (_publication.TOC && _publication.TOC.length) {
                         opts = {
@@ -758,6 +788,42 @@ function startNavigatorExperiment() {
                             }
                             tag_3.setBasic(newValue);
                         });
+                    }
+                    readStore = electronStore.get("readingLocation");
+                    obj = readStore[pathDecoded];
+                    if (obj && obj.doc) {
+                        if (_publication.Spine && _publication.Spine.length) {
+                            linkToLoad = _publication.Spine.find(function (spineLink) {
+                                return spineLink.Href === obj.doc;
+                            });
+                            if (linkToLoad && obj.loc) {
+                                linkToLoadGoto = obj.loc;
+                            }
+                        }
+                        if (!linkToLoad &&
+                            _publication.Resources && _publication.Resources.length) {
+                            linkToLoad = _publication.Resources.find(function (resLink) {
+                                return resLink.Href === obj.doc;
+                            });
+                            if (linkToLoad && obj.loc) {
+                                linkToLoadGoto = obj.loc;
+                            }
+                        }
+                    }
+                    if (!linkToLoad) {
+                        if (_publication.Spine && _publication.Spine.length) {
+                            firstLinear = _publication.Spine[0];
+                            if (firstLinear) {
+                                linkToLoad = firstLinear;
+                            }
+                        }
+                    }
+                    if (linkToLoad) {
+                        setTimeout(function () {
+                            var hrefToLoad = publicationJsonUrl + "/../" + linkToLoad.Href +
+                                (linkToLoadGoto ? ("?readiumgoto=" + UrlUtils_1.encodeURIComponent_RFC3986(linkToLoadGoto)) : "");
+                            handleLink(hrefToLoad, undefined, true);
+                        }, 200);
                     }
                     return [2];
             }

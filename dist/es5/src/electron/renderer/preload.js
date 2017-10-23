@@ -3,12 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var debounce = require("debounce");
 var ResizeSensor = require("resize-sensor/ResizeSensor");
 var electron_1 = require("electron");
+var animateProperty_1 = require("./animateProperty");
+var easings_1 = require("./easings");
 var querystring_1 = require("./querystring");
 var events_1 = require("../common/events");
+var cssselector_1 = require("./cssselector");
 var win = global.window;
 var urlRootReadiumCSS = win.location.origin + "/readium-css/iOS/";
-var DEBUG_VISUALS = true;
+var DEBUG_VISUALS = false;
 var queryParams = win.location.search ? querystring_1.getURLQueryParams(win.location.search) : undefined;
+var _hashElement;
 var ensureHead = function () {
     var docElement = win.document.documentElement;
     if (!win.document.head) {
@@ -35,13 +39,13 @@ electron_1.ipcRenderer.on(events_1.R2_EVENT_PAGE_TURN, function (_event, message
     var goPREVIOUS = messageJson.go === "PREVIOUS";
     if (!goPREVIOUS) {
         if (element.scrollTop < maxHeightShift) {
-            element.scrollTop += win.document.documentElement.clientHeight;
+            animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, element, element.scrollTop + win.document.documentElement.clientHeight, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
             return;
         }
     }
     else if (goPREVIOUS) {
         if (element.scrollTop > 0) {
-            element.scrollTop -= win.document.documentElement.clientHeight;
+            animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, element, element.scrollTop - win.document.documentElement.clientHeight, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
             return;
         }
     }
@@ -165,7 +169,6 @@ var readiumCSS = function (messageJson) {
                     (align === "left" ? "left" : "left")));
         }
     }
-    checkReadyPass();
 };
 var checkReadyPass = function () {
     if (_readyPassDone) {
@@ -173,17 +176,34 @@ var checkReadyPass = function () {
     }
     _readyPassDone = true;
     if (DEBUG_VISUALS) {
-        if (win.location.hash && win.location.hash.length > 1) {
-            var elem = win.document.getElementById(win.location.hash.substr(1));
-            if (elem) {
-                elem.classList.add("readium2-read-pos");
-            }
+        if (_hashElement) {
+            _hashElement.classList.add("readium2-read-pos");
         }
     }
     win.addEventListener("resize", function () {
         scrollToHash();
     });
-    activateResizeSensor();
+    setTimeout(function () {
+        scrollToHashRaw(true);
+        win.addEventListener("scroll", function (_ev) {
+            if (_ignoreScrollEvent) {
+                _ignoreScrollEvent = false;
+                return;
+            }
+            processXY(0, 0);
+        });
+    }, 800);
+    var useResizeSensor = true;
+    if (useResizeSensor && win.document.body) {
+        setTimeout(function () {
+            window.requestAnimationFrame(function (_timestamp) {
+                new ResizeSensor(win.document.body, function () {
+                    console.log("ResizeSensor");
+                    scrollToHash();
+                });
+            });
+        }, 2000);
+    }
     if (win.document.body) {
         win.document.body.addEventListener("click", function (ev) {
             var x = ev.clientX;
@@ -192,31 +212,45 @@ var checkReadyPass = function () {
         });
     }
 };
-var notifyReady = debounce(function () {
+var notifyReady = function () {
     if (_readyEventSent) {
         return;
     }
     _readyEventSent = true;
     electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_WEBVIEW_READY, win.location.href);
-}, 500);
-var scrollToHash = debounce(function () {
-    notifyReady();
+};
+var scrollToHashRaw = function (firstCall) {
+    console.log("scrollToHash: " + firstCall);
     if (_locationHashOverride) {
+        console.log("_locationHashOverride");
+        if (_locationHashOverride === win.document.body) {
+            console.log("body...");
+            return;
+        }
+        notifyReady();
+        notifyReadingLocation();
+        _ignoreScrollEvent = true;
         _locationHashOverride.scrollIntoView({
             behavior: "instant",
             block: "start",
             inline: "nearest",
         });
+        return;
     }
-    else if (win.location.hash && win.location.hash.length > 1) {
-        var elem = win.document.getElementById(win.location.hash.substr(1));
-        if (elem) {
-            elem.scrollIntoView({
+    else if (_hashElement) {
+        console.log("_hashElement");
+        _locationHashOverride = _hashElement;
+        notifyReady();
+        notifyReadingLocation();
+        if (!firstCall) {
+            _ignoreScrollEvent = true;
+            _hashElement.scrollIntoView({
                 behavior: "instant",
                 block: "start",
                 inline: "nearest",
             });
         }
+        return;
     }
     else {
         if (win.document.body) {
@@ -224,16 +258,56 @@ var scrollToHash = debounce(function () {
                 var previous = queryParams["readiumprevious"];
                 var isPreviousNavDirection = previous === "true";
                 if (isPreviousNavDirection) {
+                    console.log("_hashElement");
                     var maxHeightShift = win.document.body.scrollHeight - win.document.documentElement.clientHeight;
+                    _ignoreScrollEvent = true;
                     win.document.body.scrollLeft = 0;
                     win.document.body.scrollTop = maxHeightShift;
+                    _locationHashOverride = undefined;
+                    _locationHashOverrideCSSselector = undefined;
+                    notifyReady();
+                    notifyReadingLocation();
                     return;
                 }
+                var gotoCssSelector = queryParams["readiumgoto"];
+                if (gotoCssSelector) {
+                    gotoCssSelector = gotoCssSelector.replace(/\+/g, " ");
+                    var selected = null;
+                    try {
+                        selected = document.querySelector(gotoCssSelector);
+                    }
+                    catch (err) {
+                        console.log(err);
+                    }
+                    if (selected) {
+                        console.log("readiumgoto");
+                        _locationHashOverride = selected;
+                        _locationHashOverrideCSSselector = gotoCssSelector;
+                        notifyReady();
+                        notifyReadingLocation();
+                        _ignoreScrollEvent = true;
+                        selected.scrollIntoView({
+                            behavior: "instant",
+                            block: "start",
+                            inline: "nearest",
+                        });
+                        return;
+                    }
+                }
             }
+            console.log("_locationHashOverride = win.document.body");
+            _locationHashOverride = win.document.body;
+            _locationHashOverrideCSSselector = undefined;
+            _ignoreScrollEvent = true;
             win.document.body.scrollLeft = 0;
             win.document.body.scrollTop = 0;
         }
     }
+    notifyReady();
+    notifyReadingLocation();
+};
+var scrollToHash = debounce(function () {
+    scrollToHashRaw(false);
 }, 500);
 var injectReadPosCSS = function () {
     if (!DEBUG_VISUALS) {
@@ -247,26 +321,9 @@ var injectReadPosCSS = function () {
     styleElement.appendChild(win.document.createTextNode(css));
     win.document.head.appendChild(styleElement);
 };
-var activateResizeSensor = function () {
-    var useResizeSensor = true;
-    if (useResizeSensor && win.document.body) {
-        scrollToHash();
-        setTimeout(function () {
-            window.requestAnimationFrame(function (_timestamp) {
-                new ResizeSensor(win.document.body, function () {
-                    scrollToHash();
-                });
-            });
-        }, 1000);
-    }
-    else {
-        scrollToHash();
-    }
-    win.addEventListener("scroll", debounce(function (_ev) {
-        processXY(0, 0);
-    }, 800));
-};
+var _ignoreScrollEvent = false;
 var _locationHashOverride;
+var _locationHashOverrideCSSselector;
 var _readyPassDone = false;
 var _readyEventSent = false;
 var resetInitialState = function () {
@@ -274,7 +331,13 @@ var resetInitialState = function () {
     _readyPassDone = false;
     _readyEventSent = false;
 };
+win.addEventListener("load", function () {
+    checkReadyPass();
+});
 win.addEventListener("DOMContentLoaded", function () {
+    if (win.location.hash && win.location.hash.length > 1) {
+        _hashElement = win.document.getElementById(win.location.hash.substr(1));
+    }
     resetInitialState();
     appendCSSInline("selectionAndFocus", "\n::selection {\nbackground-color: rgb(155, 179, 240) !important;\ncolor: black !important;\n}\n*:focus {\noutline-style: solid !important;\noutline-width: 2px !important;\noutline-color: blue !important;\noutline-offset: 0px !important;\n}\n*.no-focus-outline:focus {\noutline-style: none !important;\n}");
     if (DEBUG_VISUALS) {
@@ -304,7 +367,8 @@ win.addEventListener("DOMContentLoaded", function () {
         console.log(err);
     }
 });
-var processXY = function (x, y) {
+var processXY = debounce(function (x, y) {
+    console.log("processXY");
     var element;
     var textNode;
     var textNodeOffset = 0;
@@ -334,10 +398,18 @@ var processXY = function (x, y) {
     }
     if (element) {
         _locationHashOverride = element;
+        notifyReadingLocation();
         if (DEBUG_VISUALS) {
             element.classList.add("readium2-read-pos2");
         }
     }
+}, 300);
+var notifyReadingLocation = function () {
+    if (!_locationHashOverride) {
+        return;
+    }
+    _locationHashOverrideCSSselector = cssselector_1.fullQualifiedSelector(_locationHashOverride, false);
+    electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_READING_LOCATION, _locationHashOverrideCSSselector);
 };
 function appendCSSInline(id, css) {
     var styleElement = win.document.createElement("style");
