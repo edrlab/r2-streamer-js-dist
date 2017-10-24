@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const SystemFonts = require("system-font-families");
 const debounce = require("debounce");
 const ElectronStore = require("electron-store");
 const URI = require("urijs");
@@ -229,39 +230,48 @@ function installKeyboardMouseFocusHandler() {
     });
 }
 const initFontSelector = () => {
+    const ID_PREFIX = "fontselect_";
     const options = [{
-            id: "DEFAULT",
+            id: ID_PREFIX + "DEFAULT",
             label: "Default",
         }, {
-            id: "OLD",
+            id: ID_PREFIX + "OLD",
             label: "Old Style",
         }, {
-            id: "MODERN",
+            id: ID_PREFIX + "MODERN",
             label: "Modern",
         }, {
-            id: "SANS",
+            id: ID_PREFIX + "SANS",
             label: "Sans",
         }, {
-            id: "HUMAN",
+            id: ID_PREFIX + "HUMAN",
             label: "Humanist",
         }, {
-            id: "DYS",
+            id: ID_PREFIX + "DYS",
             label: "Readable (dys)",
         }];
+    let selectedID = ID_PREFIX + electronStore.get("styling.font");
+    const foundItem = options.find((item) => {
+        return item.id === selectedID;
+    });
+    if (!foundItem) {
+        selectedID = options[0].id;
+    }
     const opts = {
         disabled: !electronStore.get("styling.readiumcss"),
         options,
-        selected: electronStore.get("styling.font"),
+        selected: selectedID,
     };
     const tag = index_4.riotMountMenuSelect("#fontSelect", opts)[0];
     tag.on("selectionChanged", (val) => {
+        val = val.replace(ID_PREFIX, "");
         electronStore.set("styling.font", val);
     });
     electronStore.onDidChange("styling.font", (newValue, oldValue) => {
         if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
             return;
         }
-        tag.setSelectedItem(newValue);
+        tag.setSelectedItem(ID_PREFIX + newValue);
         readiumCssOnOff();
     });
     electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
@@ -270,6 +280,40 @@ const initFontSelector = () => {
         }
         tag.setDisabled(!newValue);
     });
+    setTimeout(async () => {
+        let _sysFonts = [];
+        const systemFonts = new SystemFonts.default();
+        try {
+            _sysFonts = await systemFonts.getFonts();
+        }
+        catch (err) {
+            console.log(err);
+        }
+        if (_sysFonts && _sysFonts.length) {
+            const arr = tag.opts.options;
+            const divider = {
+                id: ID_PREFIX + "_",
+                label: "_",
+            };
+            arr.push(divider);
+            _sysFonts.forEach((sysFont) => {
+                const option = {
+                    id: ID_PREFIX + sysFont,
+                    label: sysFont,
+                };
+                arr.push(option);
+            });
+            let newSelectedID = ID_PREFIX + electronStore.get("styling.font");
+            const newFoundItem = options.find((item) => {
+                return item.id === newSelectedID;
+            });
+            if (!newFoundItem) {
+                newSelectedID = arr[0].id;
+            }
+            tag.opts.selected = newSelectedID;
+            tag.update();
+        }
+    }, 5000);
 };
 window.addEventListener("DOMContentLoaded", () => {
     window.document.addEventListener("keydown", (ev) => {
@@ -447,17 +491,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (buttonOpenSettings) {
         buttonOpenSettings.addEventListener("click", () => {
             electronStore.openInEditor();
-        });
-    }
-    const buttonDebug = document.getElementById("buttonDebug");
-    if (buttonDebug) {
-        buttonDebug.addEventListener("click", () => {
-            if (document.documentElement.classList.contains("debug")) {
-                document.documentElement.classList.remove("debug");
-            }
-            else {
-                document.documentElement.classList.add("debug");
-            }
         });
     }
 });

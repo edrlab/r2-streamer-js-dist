@@ -7,16 +7,24 @@ exports.riotMountMenuSelect = function (selector, opts) {
 window.riot_menuselect = function (_opts) {
     var that = this;
     that.getIndexForId = function (id) {
+        var index = -1;
         var found = this.opts.options.find(function (option) {
+            if (option.label !== "_") {
+                index++;
+            }
             return option.id === id;
         });
-        return found ? this.opts.options.indexOf(found) : undefined;
+        return found ? index : undefined;
     };
     that.getIndexForLabel = function (label) {
+        var index = -1;
         var found = this.opts.options.find(function (option) {
+            if (option.label !== "_") {
+                index++;
+            }
             return option.label === label;
         });
-        return found ? this.opts.options.indexOf(found) : undefined;
+        return found ? index : undefined;
     };
     that.getLabelForId = function (id) {
         var found = this.opts.options.find(function (option) {
@@ -31,8 +39,13 @@ window.riot_menuselect = function (_opts) {
         return found ? found.id : undefined;
     };
     that.setSelectedItem = function (item) {
+        var index = that.getIndexForId(item);
+        if (typeof index === "undefined" || index < 0) {
+            index = 0;
+            item = this.opts.options[0].id;
+        }
         this.opts.selected = item;
-        that.root.mdcSelect.selectedIndex = that.getIndexForId(item);
+        that.root.mdcSelect.selectedIndex = index;
         this.update();
     };
     that.setDisabled = function (disabled) {

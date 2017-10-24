@@ -1,6 +1,8 @@
 "use strict";
+var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var SystemFonts = require("system-font-families");
 var debounce = require("debounce");
 var ElectronStore = require("electron-store");
 var URI = require("urijs");
@@ -230,39 +232,48 @@ function installKeyboardMouseFocusHandler() {
     });
 }
 var initFontSelector = function () {
+    var ID_PREFIX = "fontselect_";
     var options = [{
-            id: "DEFAULT",
+            id: ID_PREFIX + "DEFAULT",
             label: "Default",
         }, {
-            id: "OLD",
+            id: ID_PREFIX + "OLD",
             label: "Old Style",
         }, {
-            id: "MODERN",
+            id: ID_PREFIX + "MODERN",
             label: "Modern",
         }, {
-            id: "SANS",
+            id: ID_PREFIX + "SANS",
             label: "Sans",
         }, {
-            id: "HUMAN",
+            id: ID_PREFIX + "HUMAN",
             label: "Humanist",
         }, {
-            id: "DYS",
+            id: ID_PREFIX + "DYS",
             label: "Readable (dys)",
         }];
+    var selectedID = ID_PREFIX + electronStore.get("styling.font");
+    var foundItem = options.find(function (item) {
+        return item.id === selectedID;
+    });
+    if (!foundItem) {
+        selectedID = options[0].id;
+    }
     var opts = {
         disabled: !electronStore.get("styling.readiumcss"),
         options: options,
-        selected: electronStore.get("styling.font"),
+        selected: selectedID,
     };
     var tag = index_4.riotMountMenuSelect("#fontSelect", opts)[0];
     tag.on("selectionChanged", function (val) {
+        val = val.replace(ID_PREFIX, "");
         electronStore.set("styling.font", val);
     });
     electronStore.onDidChange("styling.font", function (newValue, oldValue) {
         if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
             return;
         }
-        tag.setSelectedItem(newValue);
+        tag.setSelectedItem(ID_PREFIX + newValue);
         readiumCssOnOff();
     });
     electronStore.onDidChange("styling.readiumcss", function (newValue, oldValue) {
@@ -271,6 +282,53 @@ var initFontSelector = function () {
         }
         tag.setDisabled(!newValue);
     });
+    setTimeout(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+        var _sysFonts, systemFonts, err_1, arr_1, divider, newSelectedID_1, newFoundItem;
+        return tslib_1.__generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _sysFonts = [];
+                    systemFonts = new SystemFonts.default();
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4, systemFonts.getFonts()];
+                case 2:
+                    _sysFonts = _a.sent();
+                    return [3, 4];
+                case 3:
+                    err_1 = _a.sent();
+                    console.log(err_1);
+                    return [3, 4];
+                case 4:
+                    if (_sysFonts && _sysFonts.length) {
+                        arr_1 = tag.opts.options;
+                        divider = {
+                            id: ID_PREFIX + "_",
+                            label: "_",
+                        };
+                        arr_1.push(divider);
+                        _sysFonts.forEach(function (sysFont) {
+                            var option = {
+                                id: ID_PREFIX + sysFont,
+                                label: sysFont,
+                            };
+                            arr_1.push(option);
+                        });
+                        newSelectedID_1 = ID_PREFIX + electronStore.get("styling.font");
+                        newFoundItem = options.find(function (item) {
+                            return item.id === newSelectedID_1;
+                        });
+                        if (!newFoundItem) {
+                            newSelectedID_1 = arr_1[0].id;
+                        }
+                        tag.opts.selected = newSelectedID_1;
+                        tag.update();
+                    }
+                    return [2];
+            }
+        });
+    }); }, 5000);
 };
 window.addEventListener("DOMContentLoaded", function () {
     window.document.addEventListener("keydown", function (ev) {
@@ -448,17 +506,6 @@ window.addEventListener("DOMContentLoaded", function () {
     if (buttonOpenSettings) {
         buttonOpenSettings.addEventListener("click", function () {
             electronStore.openInEditor();
-        });
-    }
-    var buttonDebug = document.getElementById("buttonDebug");
-    if (buttonDebug) {
-        buttonDebug.addEventListener("click", function () {
-            if (document.documentElement.classList.contains("debug")) {
-                document.documentElement.classList.remove("debug");
-            }
-            else {
-                document.documentElement.classList.add("debug");
-            }
         });
     }
 });
