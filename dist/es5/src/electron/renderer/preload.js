@@ -29,6 +29,39 @@ electron_1.ipcRenderer.on(events_1.R2_EVENT_READIUMCSS, function (_event, messag
     var messageJson = JSON.parse(messageString);
     readiumCSS(messageJson);
 });
+electron_1.ipcRenderer.on(events_1.R2_EVENT_SCROLLTO, function (_event, messageString) {
+    console.log("R2_EVENT_SCROLLTO");
+    console.log(messageString);
+    var messageJson = JSON.parse(messageString);
+    if (!queryParams) {
+        queryParams = {};
+    }
+    if (messageJson.previous) {
+        queryParams["readiumprevious"] = "true";
+    }
+    else {
+        if (typeof queryParams["readiumprevious"] !== "undefined") {
+            delete queryParams["readiumprevious"];
+        }
+    }
+    if (messageJson.goto) {
+        queryParams["readiumgoto"] = "true";
+    }
+    else {
+        if (typeof queryParams["readiumgoto"] !== "undefined") {
+            delete queryParams["readiumgoto"];
+        }
+    }
+    if (messageJson.hash) {
+        _hashElement = win.document.getElementById(messageJson.hash);
+    }
+    else {
+        _hashElement = null;
+    }
+    _readyEventSent = false;
+    _locationHashOverride = undefined;
+    scrollToHashRaw(false);
+});
 electron_1.ipcRenderer.on(events_1.R2_EVENT_PAGE_TURN, function (_event, messageString) {
     var element = win.document.body;
     if (!element) {
@@ -259,13 +292,16 @@ var scrollToHashRaw = function (firstCall) {
                 var previous = queryParams["readiumprevious"];
                 var isPreviousNavDirection = previous === "true";
                 if (isPreviousNavDirection) {
-                    console.log("_hashElement");
+                    console.log("readiumprevious");
                     var maxHeightShift = win.document.body.scrollHeight - win.document.documentElement.clientHeight;
                     _ignoreScrollEvent = true;
                     win.document.body.scrollLeft = 0;
                     win.document.body.scrollTop = maxHeightShift;
                     _locationHashOverride = undefined;
                     _locationHashOverrideCSSselector = undefined;
+                    processXYRaw(0, win.document.documentElement.clientHeight - 1);
+                    console.log("BOTTOM (previous):");
+                    console.log(_locationHashOverride);
                     notifyReady();
                     notifyReadingLocation();
                     return;
@@ -368,7 +404,7 @@ win.addEventListener("DOMContentLoaded", function () {
         console.log(err);
     }
 });
-var processXY = debounce(function (x, y) {
+var processXYRaw = function (x, y) {
     console.log("processXY");
     var element;
     var textNode;
@@ -404,6 +440,9 @@ var processXY = debounce(function (x, y) {
             element.classList.add("readium2-read-pos2");
         }
     }
+};
+var processXY = debounce(function (x, y) {
+    processXYRaw(x, y);
 }, 300);
 var notifyReadingLocation = function () {
     if (!_locationHashOverride) {

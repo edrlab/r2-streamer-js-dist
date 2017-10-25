@@ -11,7 +11,7 @@ const cssselector_1 = require("./cssselector");
 const win = global.window;
 const urlRootReadiumCSS = win.location.origin + "/readium-css/iOS/";
 const DEBUG_VISUALS = false;
-const queryParams = win.location.search ? querystring_1.getURLQueryParams(win.location.search) : undefined;
+let queryParams = win.location.search ? querystring_1.getURLQueryParams(win.location.search) : undefined;
 let _hashElement;
 const ensureHead = () => {
     const docElement = win.document.documentElement;
@@ -28,6 +28,39 @@ const ensureHead = () => {
 electron_1.ipcRenderer.on(events_1.R2_EVENT_READIUMCSS, (_event, messageString) => {
     const messageJson = JSON.parse(messageString);
     readiumCSS(messageJson);
+});
+electron_1.ipcRenderer.on(events_1.R2_EVENT_SCROLLTO, (_event, messageString) => {
+    console.log("R2_EVENT_SCROLLTO");
+    console.log(messageString);
+    const messageJson = JSON.parse(messageString);
+    if (!queryParams) {
+        queryParams = {};
+    }
+    if (messageJson.previous) {
+        queryParams["readiumprevious"] = "true";
+    }
+    else {
+        if (typeof queryParams["readiumprevious"] !== "undefined") {
+            delete queryParams["readiumprevious"];
+        }
+    }
+    if (messageJson.goto) {
+        queryParams["readiumgoto"] = "true";
+    }
+    else {
+        if (typeof queryParams["readiumgoto"] !== "undefined") {
+            delete queryParams["readiumgoto"];
+        }
+    }
+    if (messageJson.hash) {
+        _hashElement = win.document.getElementById(messageJson.hash);
+    }
+    else {
+        _hashElement = null;
+    }
+    _readyEventSent = false;
+    _locationHashOverride = undefined;
+    scrollToHashRaw(false);
 });
 electron_1.ipcRenderer.on(events_1.R2_EVENT_PAGE_TURN, (_event, messageString) => {
     const element = win.document.body;
@@ -340,13 +373,16 @@ const scrollToHashRaw = (firstCall) => {
                 const previous = queryParams["readiumprevious"];
                 const isPreviousNavDirection = previous === "true";
                 if (isPreviousNavDirection) {
-                    console.log("_hashElement");
+                    console.log("readiumprevious");
                     const maxHeightShift = win.document.body.scrollHeight - win.document.documentElement.clientHeight;
                     _ignoreScrollEvent = true;
                     win.document.body.scrollLeft = 0;
                     win.document.body.scrollTop = maxHeightShift;
                     _locationHashOverride = undefined;
                     _locationHashOverrideCSSselector = undefined;
+                    processXYRaw(0, win.document.documentElement.clientHeight - 1);
+                    console.log("BOTTOM (previous):");
+                    console.log(_locationHashOverride);
                     notifyReady();
                     notifyReadingLocation();
                     return;
@@ -475,7 +511,7 @@ outline-style: none !important;
         console.log(err);
     }
 });
-const processXY = debounce((x, y) => {
+const processXYRaw = (x, y) => {
     console.log("processXY");
     let element;
     let textNode;
@@ -511,6 +547,9 @@ const processXY = debounce((x, y) => {
             element.classList.add("readium2-read-pos2");
         }
     }
+};
+const processXY = debounce((x, y) => {
+    processXYRaw(x, y);
 }, 300);
 const notifyReadingLocation = () => {
     if (!_locationHashOverride) {

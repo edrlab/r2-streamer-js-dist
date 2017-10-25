@@ -55,9 +55,7 @@ electronStore.onDidChange("styling.night", function (newValue, oldValue) {
         return;
     }
     var nightSwitch = document.getElementById("night_switch-input");
-    if (nightSwitch) {
-        nightSwitch.checked = newValue;
-    }
+    nightSwitch.checked = newValue;
     if (newValue) {
         document.body.classList.add("mdc-theme--dark");
     }
@@ -91,23 +89,18 @@ var computeReadiumCssJsonMessage = function () {
 };
 var readiumCssOnOff = debounce(function () {
     var str = computeReadiumCssJsonMessage();
-    _webviews.forEach(function (wv) {
-        wv.send(events_1.R2_EVENT_READIUMCSS, str);
-    });
+    _webview1.send(events_1.R2_EVENT_READIUMCSS, str);
+    _webview2.send(events_1.R2_EVENT_READIUMCSS, str);
 }, 500);
 electronStore.onDidChange("styling.readiumcss", function (newValue, oldValue) {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
     var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
-    if (readiumcssSwitch) {
-        readiumcssSwitch.checked = newValue;
-    }
+    readiumcssSwitch.checked = newValue;
     readiumCssOnOff();
     var nightSwitch = document.getElementById("night_switch-input");
-    if (nightSwitch) {
-        nightSwitch.disabled = !newValue;
-    }
+    nightSwitch.disabled = !newValue;
     if (!newValue) {
         electronStore.set("styling.night", false);
     }
@@ -117,36 +110,20 @@ electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
         return;
     }
     var basicSwitch = document.getElementById("nav_basic_switch-input");
-    if (basicSwitch) {
-        basicSwitch.checked = !newValue;
-    }
+    basicSwitch.checked = !newValue;
 });
 var snackBar;
 var drawer;
-function handleLink(href, previous, useGoto) {
-    var prefix = publicationJsonUrl.replace("manifest.json", "");
-    if (href.startsWith(prefix)) {
-        if (drawer.open) {
-            drawer.open = false;
-            setTimeout(function () {
-                loadLink(href, previous, useGoto);
-            }, 200);
-        }
-        else {
-            loadLink(href, previous, useGoto);
-        }
-    }
-    else {
-        electron_1.shell.openExternal(href);
-    }
-}
-exports.handleLink = handleLink;
 window.onerror = function (err) {
     console.log("Error", err);
 };
-var unhideWebView = function (_id, forced) {
+var unhideWebView = function (forced) {
+    if (_viewHideInterval) {
+        clearInterval(_viewHideInterval);
+        _viewHideInterval = undefined;
+    }
     var hidePanel = document.getElementById("reader_chrome_HIDE");
-    if (hidePanel && hidePanel.style.display === "none") {
+    if (hidePanel.style.display === "none") {
         return;
     }
     if (forced) {
@@ -200,12 +177,10 @@ function showLcpDialog(message) {
     lcpDialog.show();
     setTimeout(function () {
         var lcpPassInput = document.getElementById("lcpPassInput");
-        if (lcpPassInput) {
-            lcpPassInput.focus();
-            setTimeout(function () {
-                lcpPassInput.classList.add("no-focus-outline");
-            }, 500);
-        }
+        lcpPassInput.focus();
+        setTimeout(function () {
+            lcpPassInput.classList.add("no-focus-outline");
+        }, 500);
     }, 800);
 }
 function installKeyboardMouseFocusHandler() {
@@ -328,7 +303,7 @@ var initFontSelector = function () {
                     return [2];
             }
         });
-    }); }, 5000);
+    }); }, 100);
 };
 window.addEventListener("DOMContentLoaded", function () {
     window.document.addEventListener("keydown", function (ev) {
@@ -344,9 +319,7 @@ window.addEventListener("DOMContentLoaded", function () {
     }, 500);
     window.document.title = "Readium2 [ " + pathFileName + "]";
     var h1 = document.getElementById("pubTitle");
-    if (h1) {
-        h1.textContent = pathFileName;
-    }
+    h1.textContent = pathFileName;
     installKeyboardMouseFocusHandler();
     if (electronStore.get("styling.night")) {
         document.body.classList.add("mdc-theme--dark");
@@ -363,44 +336,40 @@ window.addEventListener("DOMContentLoaded", function () {
     drawer = new window.mdc.drawer.MDCTemporaryDrawer(drawerElement);
     drawerElement.mdcTemporaryDrawer = drawer;
     var drawerButton = document.getElementById("drawerButton");
-    if (drawerButton) {
-        drawerButton.addEventListener("click", function () {
-            drawer.open = true;
+    drawerButton.addEventListener("click", function () {
+        drawer.open = true;
+    });
+    drawerElement.addEventListener("click", function (ev) {
+        var allMenus = drawerElement.querySelectorAll(".mdc-simple-menu");
+        var openedMenus = [];
+        allMenus.forEach(function (elem) {
+            if (elem.mdcSimpleMenu && elem.mdcSimpleMenu.open) {
+                openedMenus.push(elem);
+            }
         });
-    }
-    if (drawerElement) {
-        drawerElement.addEventListener("click", function (ev) {
-            var allMenus = drawerElement.querySelectorAll(".mdc-simple-menu");
-            var openedMenus = [];
-            allMenus.forEach(function (elem) {
-                if (elem.mdcSimpleMenu && elem.mdcSimpleMenu.open) {
-                    openedMenus.push(elem);
+        var needsToCloseMenus = true;
+        var currElem = ev.target;
+        while (currElem) {
+            if (openedMenus.indexOf(currElem) >= 0) {
+                needsToCloseMenus = false;
+                break;
+            }
+            currElem = currElem.parentNode;
+        }
+        if (needsToCloseMenus) {
+            openedMenus.forEach(function (elem) {
+                elem.mdcSimpleMenu.open = false;
+                var ss = elem.parentNode.querySelector(".mdc-select__selected-text");
+                if (ss) {
+                    ss.style.transform = "initial";
+                    ss.style.opacity = "1";
+                    ss.focus();
                 }
             });
-            var needsToCloseMenus = true;
-            var currElem = ev.target;
-            while (currElem) {
-                if (openedMenus.indexOf(currElem) >= 0) {
-                    needsToCloseMenus = false;
-                    break;
-                }
-                currElem = currElem.parentNode;
-            }
-            if (needsToCloseMenus) {
-                openedMenus.forEach(function (elem) {
-                    elem.mdcSimpleMenu.open = false;
-                    var ss = elem.parentNode.querySelector(".mdc-select__selected-text");
-                    if (ss) {
-                        ss.style.transform = "initial";
-                        ss.style.opacity = "1";
-                        ss.focus();
-                    }
-                });
-            }
-            else {
-            }
-        }, true);
-    }
+        }
+        else {
+        }
+    }, true);
     var menuFactory = function (menuEl) {
         var menu = new window.mdc.menu.MDCSimpleMenu(menuEl);
         menuEl.mdcSimpleMenu = menu;
@@ -437,9 +406,7 @@ window.addEventListener("DOMContentLoaded", function () {
             if (ev.keyCode === 13) {
                 ev.preventDefault();
                 var lcpDialogAcceptButton = document.getElementById("lcpDialogAcceptButton");
-                if (lcpDialogAcceptButton) {
-                    lcpDialogAcceptButton.click();
-                }
+                lcpDialogAcceptButton.click();
             }
         });
     }
@@ -463,51 +430,46 @@ window.addEventListener("DOMContentLoaded", function () {
         startNavigatorExperiment();
     }
     var buttonClearSettings = document.getElementById("buttonClearSettings");
-    if (buttonClearSettings) {
-        buttonClearSettings.addEventListener("click", function () {
-            electronStore.store = defaults;
-            drawer.open = false;
-            setTimeout(function () {
-                var message = "Settings reset.";
-                var data = {
-                    actionHandler: function () {
-                    },
-                    actionOnBottom: false,
-                    actionText: "OK",
-                    message: message,
-                    multiline: false,
-                    timeout: 2000,
-                };
-                snackBar.show(data);
-            }, 500);
-        });
-    }
+    buttonClearSettings.addEventListener("click", function () {
+        electronStore.store = defaults;
+        drawer.open = false;
+        setTimeout(function () {
+            var message = "Settings reset.";
+            var data = {
+                actionHandler: function () {
+                },
+                actionOnBottom: false,
+                actionText: "OK",
+                message: message,
+                multiline: false,
+                timeout: 2000,
+            };
+            snackBar.show(data);
+        }, 500);
+    });
     var buttonClearSettingsStyle = document.getElementById("buttonClearSettingsStyle");
-    if (buttonClearSettingsStyle) {
-        buttonClearSettingsStyle.addEventListener("click", function () {
-            electronStore.set("styling", defaultsStyling);
-            drawer.open = false;
-            setTimeout(function () {
-                var message = "Default styles.";
-                var data = {
-                    actionHandler: function () {
-                    },
-                    actionOnBottom: false,
-                    actionText: "OK",
-                    message: message,
-                    multiline: false,
-                    timeout: 2000,
-                };
-                snackBar.show(data);
-            }, 500);
-        });
-    }
+    buttonClearSettingsStyle.addEventListener("click", function () {
+        electronStore.set("styling", defaultsStyling);
+        drawer.open = false;
+        setTimeout(function () {
+            var message = "Default styles.";
+            var data = {
+                actionHandler: function () {
+                },
+                actionOnBottom: false,
+                actionText: "OK",
+                message: message,
+                multiline: false,
+                timeout: 2000,
+            };
+            snackBar.show(data);
+        }, 500);
+    });
     var buttonOpenSettings = document.getElementById("buttonOpenSettings");
-    if (buttonOpenSettings) {
-        buttonOpenSettings.addEventListener("click", function () {
-            electronStore.openInEditor();
-        });
-    }
+    buttonOpenSettings.addEventListener("click", function () {
+        electronStore.openInEditor();
+        electronStoreLCP.openInEditor();
+    });
 });
 var saveReadingLocation = function (doc, loc) {
     var obj = electronStore.get("readingLocation");
@@ -520,28 +482,35 @@ var saveReadingLocation = function (doc, loc) {
     };
     electronStore.set("readingLocation", obj);
 };
-var _webviews = [];
+var _webview1;
+var _webview2;
 function createWebView() {
-    var webview1 = document.createElement("webview");
-    webview1.setAttribute("class", "singleFull");
-    webview1.setAttribute("webpreferences", "nodeIntegration=0, nodeIntegrationInWorker=0, sandbox=0, javascript=1, " +
+    var wv = document.createElement("webview");
+    wv.setAttribute("webpreferences", "nodeIntegration=0, nodeIntegrationInWorker=0, sandbox=0, javascript=1, " +
         "contextIsolation=0, webSecurity=1, allowRunningInsecureContent=0");
-    webview1.setAttribute("partition", sessions_1.R2_SESSION_WEBVIEW);
-    webview1.setAttribute("httpreferrer", publicationJsonUrl);
-    webview1.setAttribute("preload", "./preload.js");
-    webview1.setAttribute("disableguestresize", "");
-    webview1.addEventListener("ipc-message", function (event) {
+    wv.setAttribute("partition", sessions_1.R2_SESSION_WEBVIEW);
+    wv.setAttribute("httpreferrer", publicationJsonUrl);
+    wv.setAttribute("preload", "./preload.js");
+    wv.setAttribute("disableguestresize", "");
+    wv.addEventListener("dom-ready", function () {
+        wv.clearHistory();
+    });
+    wv.addEventListener("ipc-message", function (event) {
+        var webview = event.currentTarget;
+        var activeWebView = getActiveWebView();
+        if (webview !== activeWebView) {
+            return;
+        }
         if (event.channel === events_1.R2_EVENT_LINK) {
             handleLink(event.args[0], undefined, false);
         }
         else if (event.channel === events_1.R2_EVENT_WEBVIEW_READY) {
-            var id = event.args[0];
-            unhideWebView(id, false);
+            unhideWebView(false);
         }
         else if (event.channel === events_1.R2_EVENT_READING_LOCATION) {
             var cssSelector = event.args[0];
-            if (webview1.READIUM2_LINK) {
-                saveReadingLocation(webview1.READIUM2_LINK.Href, cssSelector);
+            if (webview.READIUM2_LINK) {
+                saveReadingLocation(webview.READIUM2_LINK.Href, cssSelector);
             }
         }
         else if (event.channel === events_1.R2_EVENT_PAGE_TURN_RES) {
@@ -551,13 +520,13 @@ function createWebView() {
             var messageString = event.args[0];
             var messageJson = JSON.parse(messageString);
             var goPREVIOUS = messageJson.go === "PREVIOUS";
-            if (!webview1.READIUM2_LINK) {
+            if (!webview.READIUM2_LINK) {
                 console.log("WEBVIEW READIUM2_LINK ??!!");
                 return;
             }
             var nextOrPreviousSpineItem = void 0;
             for (var i = 0; i < _publication.Spine.length; i++) {
-                if (_publication.Spine[i] === webview1.READIUM2_LINK) {
+                if (_publication.Spine[i] === webview.READIUM2_LINK) {
                     if (goPREVIOUS && (i - 1) >= 0) {
                         nextOrPreviousSpineItem = _publication.Spine[i - 1];
                     }
@@ -578,115 +547,233 @@ function createWebView() {
             console.log(event.channel);
         }
     });
-    webview1.addEventListener("dom-ready", function () {
-        webview1.clearHistory();
-    });
-    return webview1;
+    return wv;
 }
+var adjustResize = function (webview) {
+    var width = webview.clientWidth;
+    var height = webview.clientHeight;
+    var wc = webview.getWebContents();
+    if (wc && width && height) {
+        wc.setSize({
+            normal: {
+                height: height,
+                width: width,
+            },
+        });
+    }
+};
 window.addEventListener("resize", debounce(function () {
-    _webviews.forEach(function (wv) {
-        var width = wv.clientWidth;
-        var height = wv.clientHeight;
-        var wc = wv.getWebContents();
-        if (wc && width && height) {
-            wc.setSize({
-                normal: {
-                    height: height,
-                    width: width,
-                },
-            });
-        }
-    });
+    adjustResize(_webview1);
+    adjustResize(_webview2);
 }, 200));
-function loadLink(hrefFull, previous, useGoto) {
-    if (_publication && _webviews.length) {
-        var hidePanel = document.getElementById("reader_chrome_HIDE");
-        if (hidePanel) {
-            hidePanel.style.display = "block";
-        }
-        setTimeout(function () {
-            if (_webviews.length) {
-                var href = _webviews[0].getAttribute("src");
-                if (href) {
-                    unhideWebView(href, true);
-                }
-            }
-        }, 5000);
-        var rcssJsonstr = computeReadiumCssJsonMessage();
-        var rcssJsonstrBase64_1 = window.btoa(rcssJsonstr);
-        var linkUri = new URI(hrefFull);
-        linkUri.search(function (data) {
-            if (typeof previous === "undefined") {
-                data.readiumprevious = undefined;
-            }
-            else {
-                data.readiumprevious = previous ? "true" : "false";
-            }
-            if (!useGoto) {
-                data.readiumgoto = undefined;
-            }
-            data.readiumcss = rcssJsonstrBase64_1;
-        });
-        if (useGoto) {
-            linkUri.hash("").normalizeHash();
-        }
-        var pubUri = new URI(publicationJsonUrl);
-        var pathPrefix = pubUri.path().replace("manifest.json", "");
-        var linkPath_1 = linkUri.normalizePath().path().replace(pathPrefix, "");
-        var pubLink = _publication.Spine.find(function (spineLink) {
-            return spineLink.Href === linkPath_1;
-        });
-        if (!pubLink) {
-            pubLink = _publication.Resources.find(function (spineLink) {
-                return spineLink.Href === linkPath_1;
-            });
-        }
-        if (pubLink) {
-            _webviews[0].READIUM2_LINK = pubLink;
+function handleLink(href, previous, useGoto) {
+    var prefix = publicationJsonUrl.replace("manifest.json", "");
+    if (href.startsWith(prefix)) {
+        if (drawer.open) {
+            drawer.open = false;
+            setTimeout(function () {
+                loadLink(href, previous, useGoto);
+            }, 200);
         }
         else {
-            console.log("WEBVIEW READIUM2_LINK ??!!");
-            _webviews[0].READIUM2_LINK = undefined;
+            loadLink(href, previous, useGoto);
         }
-        var uriStr = linkUri.toString();
-        _webviews[0].setAttribute("src", uriStr);
+    }
+    else {
+        electron_1.shell.openExternal(href);
     }
 }
+exports.handleLink = handleLink;
+var _viewHideInterval;
+function loadLink(hrefFull, previous, useGoto) {
+    if (!_publication) {
+        return;
+    }
+    var rcssJsonstr = computeReadiumCssJsonMessage();
+    var rcssJsonstrBase64 = window.btoa(rcssJsonstr);
+    var linkUri = new URI(hrefFull);
+    linkUri.search(function (data) {
+        if (typeof previous === "undefined") {
+            data.readiumprevious = undefined;
+        }
+        else {
+            data.readiumprevious = previous ? "true" : "false";
+        }
+        if (!useGoto) {
+            data.readiumgoto = undefined;
+        }
+        data.readiumcss = rcssJsonstrBase64;
+    });
+    if (useGoto) {
+        linkUri.hash("").normalizeHash();
+    }
+    var pubUri = new URI(publicationJsonUrl);
+    var pathPrefix = pubUri.path().replace("manifest.json", "");
+    var linkPath = linkUri.normalizePath().path().replace(pathPrefix, "");
+    var pubLink = _publication.Spine.find(function (spineLink) {
+        return spineLink.Href === linkPath;
+    });
+    if (!pubLink) {
+        pubLink = _publication.Resources.find(function (spineLink) {
+            return spineLink.Href === linkPath;
+        });
+    }
+    if (!pubLink) {
+        console.log("FATAL WEBVIEW READIUM2_LINK ??!!");
+        return;
+    }
+    var activeWebView = getActiveWebView();
+    var wv1AlreadyLoaded = _webview1.READIUM2_LINK === pubLink;
+    var wv2AlreadyLoaded = _webview2.READIUM2_LINK === pubLink;
+    if (wv1AlreadyLoaded || wv2AlreadyLoaded) {
+        var msgJson = {
+            goto: useGoto ? linkUri.search("readiumgoto") : undefined,
+            hash: useGoto ? undefined : linkUri.fragment(),
+            previous: previous,
+        };
+        var msgStr = JSON.stringify(msgJson);
+        console.log("ALREADY LOADED: " + pubLink.Href);
+        console.log(msgStr);
+        var webviewToReuse = wv1AlreadyLoaded ? _webview1 : _webview2;
+        if (webviewToReuse !== activeWebView) {
+            console.log("INTO VIEW ...");
+            var slidingView = document.getElementById("sliding_viewport");
+            var animate = true;
+            if (msgJson.goto || msgJson.hash) {
+                console.log("DISABLE ANIM");
+                animate = false;
+            }
+            else if (previous) {
+                if (!slidingView.classList.contains("shiftedLeft")) {
+                    console.log("DISABLE ANIM");
+                    animate = false;
+                }
+            }
+            if (animate) {
+                if (!slidingView.classList.contains("animated")) {
+                    slidingView.classList.add("animated");
+                }
+            }
+            else {
+                if (slidingView.classList.contains("animated")) {
+                    slidingView.classList.remove("animated");
+                }
+            }
+            if (slidingView.classList.contains("shiftedLeft")) {
+                slidingView.classList.remove("shiftedLeft");
+            }
+            else {
+                slidingView.classList.add("shiftedLeft");
+            }
+        }
+        webviewToReuse.send(events_1.R2_EVENT_SCROLLTO, msgStr);
+        return;
+    }
+    var hidePanel = document.getElementById("reader_chrome_HIDE");
+    hidePanel.style.display = "block";
+    _viewHideInterval = setInterval(function () {
+        unhideWebView(true);
+    }, 5000);
+    var uriStr = linkUri.toString();
+    console.log("####### >>> ---");
+    console.log(activeWebView.readiumwebviewid);
+    console.log(pubLink.Href);
+    console.log(linkUri.hash());
+    console.log(linkUri.search(true)["readiumgoto"]);
+    console.log(linkUri.search(true)["readiumprevious"]);
+    console.log("####### >>> ---");
+    activeWebView.READIUM2_LINK = pubLink;
+    activeWebView.setAttribute("src", uriStr);
+    var enableOffScreenRenderPreload = false;
+    if (enableOffScreenRenderPreload) {
+        setTimeout(function () {
+            if (!_publication || !pubLink) {
+                return;
+            }
+            var otherWebview = activeWebView === _webview2 ? _webview1 : _webview2;
+            var index = _publication.Spine.indexOf(pubLink);
+            if (index >= 0 &&
+                previous && (index - 1) >= 0 ||
+                !previous && (index + 1) < _publication.Spine.length) {
+                var nextPubLink = _publication.Spine[previous ? (index - 1) : (index + 1)];
+                if (otherWebview.READIUM2_LINK !== nextPubLink) {
+                    var linkUriNext = new URI(publicationJsonUrl + "/../" + nextPubLink.Href);
+                    linkUriNext.normalizePath();
+                    linkUriNext.search(function (data) {
+                        data.readiumcss = rcssJsonstrBase64;
+                    });
+                    var uriStrNext = linkUriNext.toString();
+                    console.log("####### ======");
+                    console.log(otherWebview.readiumwebviewid);
+                    console.log(nextPubLink.Href);
+                    console.log(linkUriNext.hash());
+                    console.log(linkUriNext.search(true)["readiumgoto"]);
+                    console.log(linkUriNext.search(true)["readiumprevious"]);
+                    console.log("####### ======");
+                    otherWebview.READIUM2_LINK = nextPubLink;
+                    otherWebview.setAttribute("src", uriStrNext);
+                }
+            }
+        }, 300);
+    }
+}
+var getActiveWebView = function () {
+    var activeWebView;
+    var slidingViewport = document.getElementById("sliding_viewport");
+    if (slidingViewport.classList.contains("shiftedLeft")) {
+        if (_webview1.classList.contains("posRight")) {
+            activeWebView = _webview1;
+        }
+        else {
+            activeWebView = _webview2;
+        }
+    }
+    else {
+        if (_webview2.classList.contains("posRight")) {
+            activeWebView = _webview1;
+        }
+        else {
+            activeWebView = _webview2;
+        }
+    }
+    return activeWebView;
+};
 var _publication;
 var _publicationJSON;
 function startNavigatorExperiment() {
     var _this = this;
-    var webviewFull = createWebView();
-    _webviews.push(webviewFull);
-    var publicationViewport = document.getElementById("publication_viewport");
-    if (publicationViewport) {
-        publicationViewport.appendChild(webviewFull);
-    }
+    var drawerButton = document.getElementById("drawerButton");
+    drawerButton.focus();
+    _webview1 = createWebView();
+    _webview1.readiumwebviewid = 1;
+    _webview1.setAttribute("id", "webview1");
+    _webview1.setAttribute("class", "full");
+    _webview2 = createWebView();
+    _webview2.readiumwebviewid = 2;
+    _webview2.setAttribute("id", "webview2");
+    _webview2.setAttribute("class", "full posRight");
+    var slidingViewport = document.getElementById("sliding_viewport");
+    slidingViewport.appendChild(_webview1);
+    slidingViewport.appendChild(_webview2);
     var nightSwitch = document.getElementById("night_switch-input");
-    if (nightSwitch) {
-        nightSwitch.checked = electronStore.get("styling.night");
-        nightSwitch.addEventListener("change", function (_event) {
-            var checked = nightSwitch.checked;
-            electronStore.set("styling.night", checked);
-        });
-        nightSwitch.disabled = !electronStore.get("styling.readiumcss");
-    }
+    nightSwitch.checked = electronStore.get("styling.night");
+    nightSwitch.addEventListener("change", function (_event) {
+        var checked = nightSwitch.checked;
+        electronStore.set("styling.night", checked);
+    });
+    nightSwitch.disabled = !electronStore.get("styling.readiumcss");
     var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
-    if (readiumcssSwitch) {
-        readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
-        readiumcssSwitch.addEventListener("change", function (_event) {
-            var checked = readiumcssSwitch.checked;
-            electronStore.set("styling.readiumcss", checked);
-        });
-    }
+    readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
+    readiumcssSwitch.addEventListener("change", function (_event) {
+        var checked = readiumcssSwitch.checked;
+        electronStore.set("styling.readiumcss", checked);
+    });
     var basicSwitch = document.getElementById("nav_basic_switch-input");
-    if (basicSwitch) {
-        basicSwitch.checked = !electronStore.get("basicLinkTitles");
-        basicSwitch.addEventListener("change", function (_event) {
-            var checked = basicSwitch.checked;
-            electronStore.set("basicLinkTitles", !checked);
-        });
-    }
+    basicSwitch.checked = !electronStore.get("basicLinkTitles");
+    basicSwitch.addEventListener("change", function (_event) {
+        var checked = basicSwitch.checked;
+        electronStore.set("basicLinkTitles", !checked);
+    });
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var response, e_1, e_2, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj, firstLinear;
         return tslib_1.__generator(this, function (_a) {
@@ -737,23 +824,17 @@ function startNavigatorExperiment() {
                         }
                         if (title) {
                             h1 = document.getElementById("pubTitle");
-                            if (h1) {
-                                h1.textContent = title;
-                            }
+                            h1.textContent = title;
                         }
                     }
                     buttonNavLeft = document.getElementById("buttonNavLeft");
-                    if (buttonNavLeft) {
-                        buttonNavLeft.addEventListener("click", function (_event) {
-                            navLeftOrRight(true);
-                        });
-                    }
+                    buttonNavLeft.addEventListener("click", function (_event) {
+                        navLeftOrRight(true);
+                    });
                     buttonNavRight = document.getElementById("buttonNavRight");
-                    if (buttonNavRight) {
-                        buttonNavRight.addEventListener("click", function (_event) {
-                            navLeftOrRight(false);
-                        });
-                    }
+                    buttonNavRight.addEventListener("click", function (_event) {
+                        navLeftOrRight(false);
+                    });
                     if (_publication.Spine && _publication.Spine.length) {
                         opts = {
                             basic: true,
@@ -865,13 +946,14 @@ function startNavigatorExperiment() {
                             }
                         }
                     }
-                    if (linkToLoad) {
-                        setTimeout(function () {
+                    setTimeout(function () {
+                        drawer.open = true;
+                        if (linkToLoad) {
                             var hrefToLoad = publicationJsonUrl + "/../" + linkToLoad.Href +
                                 (linkToLoadGoto ? ("?readiumgoto=" + UrlUtils_1.encodeURIComponent_RFC3986(linkToLoadGoto)) : "");
                             handleLink(hrefToLoad, undefined, true);
-                        }, 200);
-                    }
+                        }
+                    }, 100);
                     return [2];
             }
         });
@@ -881,6 +963,7 @@ function navLeftOrRight(left) {
     if (!_publication) {
         return;
     }
+    var activeWebView = getActiveWebView();
     var isRTL = _publication.Metadata &&
         _publication.Metadata.Direction &&
         _publication.Metadata.Direction.toLowerCase() === "rtl";
@@ -890,8 +973,6 @@ function navLeftOrRight(left) {
         go: goPREVIOUS ? "PREVIOUS" : "NEXT",
     };
     var messageStr = JSON.stringify(messageJson);
-    _webviews.forEach(function (wv) {
-        wv.send(events_1.R2_EVENT_PAGE_TURN, messageStr);
-    });
+    activeWebView.send(events_1.R2_EVENT_PAGE_TURN, messageStr);
 }
 //# sourceMappingURL=index.js.map

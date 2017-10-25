@@ -14,7 +14,7 @@ const ta_json_1 = require("ta-json");
 const uuid = require("uuid");
 const debug = debug_("r2:electron:main:lsd");
 const defaultsLSD = {};
-const electronStoreLSD = new ElectronStore({
+exports.electronStoreLSD = new ElectronStore({
     defaults: defaultsLSD,
     name: "readium2-navigator-lsd",
 });
@@ -22,7 +22,7 @@ const LSD_STORE_DEVICEID_ENTRY_PREFIX = "deviceID_";
 exports.deviceIDManager = {
     checkDeviceID: (key) => {
         const entry = LSD_STORE_DEVICEID_ENTRY_PREFIX + key;
-        const lsdStore = electronStoreLSD.get("lsd");
+        const lsdStore = exports.electronStoreLSD.get("lsd");
         if (!lsdStore || !lsdStore[entry]) {
             return undefined;
         }
@@ -30,9 +30,9 @@ exports.deviceIDManager = {
     },
     getDeviceID: () => {
         let id = uuid.v4();
-        const lsdStore = electronStoreLSD.get("lsd");
+        const lsdStore = exports.electronStoreLSD.get("lsd");
         if (!lsdStore) {
-            electronStoreLSD.set("lsd", {
+            exports.electronStoreLSD.set("lsd", {
                 deviceID: id,
             });
         }
@@ -42,7 +42,7 @@ exports.deviceIDManager = {
             }
             else {
                 lsdStore.deviceID = id;
-                electronStoreLSD.set("lsd", lsdStore);
+                exports.electronStoreLSD.set("lsd", lsdStore);
             }
         }
         return id;
@@ -52,7 +52,7 @@ exports.deviceIDManager = {
     },
     recordDeviceID: (key) => {
         const id = this.getDeviceID();
-        const lsdStore = electronStoreLSD.get("lsd");
+        const lsdStore = exports.electronStoreLSD.get("lsd");
         if (!lsdStore) {
             debug("LSD store problem?!");
             return;

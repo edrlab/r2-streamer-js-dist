@@ -1,4 +1,7 @@
+/// <reference types="electron-store" />
+import ElectronStore = require("electron-store");
 import { Publication } from "../../models/publication";
+export declare const electronStoreLSD: ElectronStore;
 export interface IDeviceIDManager {
     getDeviceNAME(): string;
     getDeviceID(): string;
