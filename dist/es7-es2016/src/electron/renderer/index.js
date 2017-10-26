@@ -912,23 +912,25 @@ function startNavigatorExperiment() {
         const readStore = electronStore.get("readingLocation");
         let linkToLoad;
         let linkToLoadGoto;
-        const obj = readStore[pathDecoded];
-        if (obj && obj.doc) {
-            if (_publication.Spine && _publication.Spine.length) {
-                linkToLoad = _publication.Spine.find((spineLink) => {
-                    return spineLink.Href === obj.doc;
-                });
-                if (linkToLoad && obj.loc) {
-                    linkToLoadGoto = obj.loc;
+        if (readStore) {
+            const obj = readStore[pathDecoded];
+            if (obj && obj.doc) {
+                if (_publication.Spine && _publication.Spine.length) {
+                    linkToLoad = _publication.Spine.find((spineLink) => {
+                        return spineLink.Href === obj.doc;
+                    });
+                    if (linkToLoad && obj.loc) {
+                        linkToLoadGoto = obj.loc;
+                    }
                 }
-            }
-            if (!linkToLoad &&
-                _publication.Resources && _publication.Resources.length) {
-                linkToLoad = _publication.Resources.find((resLink) => {
-                    return resLink.Href === obj.doc;
-                });
-                if (linkToLoad && obj.loc) {
-                    linkToLoadGoto = obj.loc;
+                if (!linkToLoad &&
+                    _publication.Resources && _publication.Resources.length) {
+                    linkToLoad = _publication.Resources.find((resLink) => {
+                        return resLink.Href === obj.doc;
+                    });
+                    if (linkToLoad && obj.loc) {
+                        linkToLoadGoto = obj.loc;
+                    }
                 }
             }
         }

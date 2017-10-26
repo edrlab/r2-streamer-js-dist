@@ -788,7 +788,7 @@ function startNavigatorExperiment() {
         electronStore.set("basicLinkTitles", !checked);
     });
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var response, e_1, e_2, isRTL, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj, firstLinear;
+        var response, e_1, e_2, isRTL, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj_1, firstLinear;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -937,23 +937,25 @@ function startNavigatorExperiment() {
                         });
                     }
                     readStore = electronStore.get("readingLocation");
-                    obj = readStore[pathDecoded];
-                    if (obj && obj.doc) {
-                        if (_publication.Spine && _publication.Spine.length) {
-                            linkToLoad = _publication.Spine.find(function (spineLink) {
-                                return spineLink.Href === obj.doc;
-                            });
-                            if (linkToLoad && obj.loc) {
-                                linkToLoadGoto = obj.loc;
+                    if (readStore) {
+                        obj_1 = readStore[pathDecoded];
+                        if (obj_1 && obj_1.doc) {
+                            if (_publication.Spine && _publication.Spine.length) {
+                                linkToLoad = _publication.Spine.find(function (spineLink) {
+                                    return spineLink.Href === obj_1.doc;
+                                });
+                                if (linkToLoad && obj_1.loc) {
+                                    linkToLoadGoto = obj_1.loc;
+                                }
                             }
-                        }
-                        if (!linkToLoad &&
-                            _publication.Resources && _publication.Resources.length) {
-                            linkToLoad = _publication.Resources.find(function (resLink) {
-                                return resLink.Href === obj.doc;
-                            });
-                            if (linkToLoad && obj.loc) {
-                                linkToLoadGoto = obj.loc;
+                            if (!linkToLoad &&
+                                _publication.Resources && _publication.Resources.length) {
+                                linkToLoad = _publication.Resources.find(function (resLink) {
+                                    return resLink.Href === obj_1.doc;
+                                });
+                                if (linkToLoad && obj_1.loc) {
+                                    linkToLoadGoto = obj_1.loc;
+                                }
                             }
                         }
                     }
