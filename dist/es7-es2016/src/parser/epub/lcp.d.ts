@@ -17,6 +17,7 @@ export declare class LCP {
     Links: Link[];
     ZipPath: string;
     JsonSource: string;
+    LSDJson: any;
     ContentKey: Buffer | undefined;
     private _usesNativeNodePlugin;
     private _lcpNative;

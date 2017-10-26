@@ -8,8 +8,20 @@ class TransformerObfAdobe {
     }
     transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            const data = yield BufferUtils_1.streamToBufferPromise(stream.stream);
-            const buff = yield this.transformBuffer(publication, link, data);
+            let data;
+            try {
+                data = yield BufferUtils_1.streamToBufferPromise(stream.stream);
+            }
+            catch (err) {
+                return Promise.reject(err);
+            }
+            let buff;
+            try {
+                buff = yield this.transformBuffer(publication, link, data);
+            }
+            catch (err) {
+                return Promise.reject(err);
+            }
             const sal = {
                 length: buff.length,
                 reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {

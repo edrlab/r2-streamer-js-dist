@@ -81,12 +81,24 @@ class TransformerLCP {
                 cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
             }
             else {
-                cryptoInfo = await this.getDecryptedSizeStream(publication, link, stream);
+                try {
+                    cryptoInfo = await this.getDecryptedSizeStream(publication, link, stream);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
                 plainTextSize = cryptoInfo.length;
                 cypherBlockPadding = cryptoInfo.padding;
                 link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
                 link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
-                stream = await stream.reset();
+                try {
+                    stream = await stream.reset();
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
                 if (link.Properties.Encrypted.OriginalLength &&
                     link.Properties.Encrypted.Compression === "none" &&
                     link.Properties.Encrypted.OriginalLength !== plainTextSize) {
@@ -120,7 +132,13 @@ class TransformerLCP {
                 rawDecryptStream = cypherRangeStream;
             }
             else {
-                ivBuffer = await readStream(stream.stream, AES_BLOCK_SIZE);
+                try {
+                    ivBuffer = await readStream(stream.stream, AES_BLOCK_SIZE);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
                 link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
                 stream.stream.resume();
                 rawDecryptStream = stream.stream;
@@ -150,7 +168,17 @@ class TransformerLCP {
         const sal = {
             length: l,
             reset: async () => {
-                const resetedStream = await stream.reset();
+                let resetedStream;
+                try {
+                    resetedStream = await stream.reset();
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
+                if (!resetedStream) {
+                    return Promise.reject("??");
+                }
                 return this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
             },
             stream: destStream,

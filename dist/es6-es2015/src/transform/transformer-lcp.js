@@ -83,12 +83,24 @@ class TransformerLCP {
                     cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
                 }
                 else {
-                    cryptoInfo = yield this.getDecryptedSizeStream(publication, link, stream);
+                    try {
+                        cryptoInfo = yield this.getDecryptedSizeStream(publication, link, stream);
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
                     plainTextSize = cryptoInfo.length;
                     cypherBlockPadding = cryptoInfo.padding;
                     link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
                     link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
-                    stream = yield stream.reset();
+                    try {
+                        stream = yield stream.reset();
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
                     if (link.Properties.Encrypted.OriginalLength &&
                         link.Properties.Encrypted.Compression === "none" &&
                         link.Properties.Encrypted.OriginalLength !== plainTextSize) {
@@ -122,7 +134,13 @@ class TransformerLCP {
                     rawDecryptStream = cypherRangeStream;
                 }
                 else {
-                    ivBuffer = yield readStream(stream.stream, AES_BLOCK_SIZE);
+                    try {
+                        ivBuffer = yield readStream(stream.stream, AES_BLOCK_SIZE);
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
                     link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
                     stream.stream.resume();
                     rawDecryptStream = stream.stream;
@@ -152,7 +170,17 @@ class TransformerLCP {
             const sal = {
                 length: l,
                 reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    const resetedStream = yield stream.reset();
+                    let resetedStream;
+                    try {
+                        resetedStream = yield stream.reset();
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
+                    if (!resetedStream) {
+                        return Promise.reject("??");
+                    }
                     return this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
                 }),
                 stream: destStream,

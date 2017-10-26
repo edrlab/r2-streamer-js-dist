@@ -47,22 +47,23 @@ exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this,
             let zipStream;
             try {
                 zipStream = yield zip.entryStreamPromise(coverLink.Href);
-                let zipData;
-                try {
-                    zipData = yield BufferUtils_1.streamToBufferPromise(zipStream.stream);
-                    const imageInfo = sizeOf(zipData);
-                    if (imageInfo) {
-                        coverLink.Width = imageInfo.width;
-                        coverLink.Height = imageInfo.height;
-                        if (coverLink.TypeLink &&
-                            coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
-                                !== ("image/" + imageInfo.type)) {
-                            debug(`Wrong image type? ${coverLink.TypeLink} -- ${imageInfo.type}`);
-                        }
+            }
+            catch (err) {
+                debug(err);
+                return;
+            }
+            let zipData;
+            try {
+                zipData = yield BufferUtils_1.streamToBufferPromise(zipStream.stream);
+                const imageInfo = sizeOf(zipData);
+                if (imageInfo) {
+                    coverLink.Width = imageInfo.width;
+                    coverLink.Height = imageInfo.height;
+                    if (coverLink.TypeLink &&
+                        coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
+                            !== ("image/" + imageInfo.type)) {
+                        debug(`Wrong image type? ${coverLink.TypeLink} -- ${imageInfo.type}`);
                     }
-                }
-                catch (err) {
-                    debug(err);
                 }
             }
             catch (err) {
@@ -73,7 +74,14 @@ exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this,
 });
 function EpubParsePromise(filePath) {
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        const zip = yield zipFactory_1.zipLoadPromise(filePath);
+        let zip;
+        try {
+            zip = yield zipFactory_1.zipLoadPromise(filePath);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         if (!zip.hasEntries()) {
             return Promise.reject("EPUB zip empty");
         }
@@ -88,9 +96,23 @@ function EpubParsePromise(filePath) {
         let lcpl;
         const lcplZipPath = "META-INF/license.lcpl";
         if (zip.hasEntry(lcplZipPath)) {
-            const lcplZipStream_ = yield zip.entryStreamPromise(lcplZipPath);
+            let lcplZipStream_;
+            try {
+                lcplZipStream_ = yield zip.entryStreamPromise(lcplZipPath);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
             const lcplZipStream = lcplZipStream_.stream;
-            const lcplZipData = yield BufferUtils_1.streamToBufferPromise(lcplZipStream);
+            let lcplZipData;
+            try {
+                lcplZipData = yield BufferUtils_1.streamToBufferPromise(lcplZipStream);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
             const lcplStr = lcplZipData.toString("utf8");
             const lcplJson = global.JSON.parse(lcplStr);
             debug(lcplJson);
@@ -104,26 +126,68 @@ function EpubParsePromise(filePath) {
         let encryption;
         const encZipPath = "META-INF/encryption.xml";
         if (zip.hasEntry(encZipPath)) {
-            const encryptionXmlZipStream_ = yield zip.entryStreamPromise(encZipPath);
+            let encryptionXmlZipStream_;
+            try {
+                encryptionXmlZipStream_ = yield zip.entryStreamPromise(encZipPath);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
             const encryptionXmlZipStream = encryptionXmlZipStream_.stream;
-            const encryptionXmlZipData = yield BufferUtils_1.streamToBufferPromise(encryptionXmlZipStream);
+            let encryptionXmlZipData;
+            try {
+                encryptionXmlZipData = yield BufferUtils_1.streamToBufferPromise(encryptionXmlZipStream);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
             const encryptionXmlStr = encryptionXmlZipData.toString("utf8");
             const encryptionXmlDoc = new xmldom.DOMParser().parseFromString(encryptionXmlStr);
             encryption = xml_js_mapper_1.XML.deserialize(encryptionXmlDoc, encryption_1.Encryption);
             encryption.ZipPath = encZipPath;
         }
         const containerZipPath = "META-INF/container.xml";
-        const containerXmlZipStream_ = yield zip.entryStreamPromise(containerZipPath);
+        let containerXmlZipStream_;
+        try {
+            containerXmlZipStream_ = yield zip.entryStreamPromise(containerZipPath);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         const containerXmlZipStream = containerXmlZipStream_.stream;
-        const containerXmlZipData = yield BufferUtils_1.streamToBufferPromise(containerXmlZipStream);
+        let containerXmlZipData;
+        try {
+            containerXmlZipData = yield BufferUtils_1.streamToBufferPromise(containerXmlZipStream);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         const containerXmlStr = containerXmlZipData.toString("utf8");
         const containerXmlDoc = new xmldom.DOMParser().parseFromString(containerXmlStr);
         const container = xml_js_mapper_1.XML.deserialize(containerXmlDoc, container_1.Container);
         container.ZipPath = containerZipPath;
         const rootfile = container.Rootfile[0];
-        const opfZipStream_ = yield zip.entryStreamPromise(rootfile.Path);
+        let opfZipStream_;
+        try {
+            opfZipStream_ = yield zip.entryStreamPromise(rootfile.Path);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         const opfZipStream = opfZipStream_.stream;
-        const opfZipData = yield BufferUtils_1.streamToBufferPromise(opfZipStream);
+        let opfZipData;
+        try {
+            opfZipData = yield BufferUtils_1.streamToBufferPromise(opfZipStream);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         const opfStr = opfZipData.toString("utf8");
         const opfDoc = new xmldom.DOMParser().parseFromString(opfStr);
         const opf = xml_js_mapper_1.XML.deserialize(opfDoc, opf_1.OPF);
@@ -136,9 +200,23 @@ function EpubParsePromise(filePath) {
             if (ncxManItem) {
                 const ncxFilePath = path.join(path.dirname(opf.ZipPath), ncxManItem.Href)
                     .replace(/\\/g, "/");
-                const ncxZipStream_ = yield zip.entryStreamPromise(ncxFilePath);
+                let ncxZipStream_;
+                try {
+                    ncxZipStream_ = yield zip.entryStreamPromise(ncxFilePath);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
                 const ncxZipStream = ncxZipStream_.stream;
-                const ncxZipData = yield BufferUtils_1.streamToBufferPromise(ncxZipStream);
+                let ncxZipData;
+                try {
+                    ncxZipData = yield BufferUtils_1.streamToBufferPromise(ncxZipStream);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
                 const ncxStr = ncxZipData.toString("utf8");
                 const ncxDoc = new xmldom.DOMParser().parseFromString(ncxStr);
                 ncx = xml_js_mapper_1.XML.deserialize(ncxDoc, ncx_1.NCX);
@@ -267,9 +345,23 @@ const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(
                     exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
             }
         });
-        const smilZipStream_ = yield zip.entryStreamPromise(smilFilePath);
+        let smilZipStream_;
+        try {
+            smilZipStream_ = yield zip.entryStreamPromise(smilFilePath);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         const smilZipStream = smilZipStream_.stream;
-        const smilZipData = yield BufferUtils_1.streamToBufferPromise(smilZipStream);
+        let smilZipData;
+        try {
+            smilZipData = yield BufferUtils_1.streamToBufferPromise(smilZipStream);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
         const smilStr = smilZipData.toString("utf8");
         const smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
         const smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
@@ -775,6 +867,7 @@ const fillSpineAndResource = (publication, rootfile, opf) => tslib_1.__awaiter(t
                 }
                 catch (err) {
                     debug(err);
+                    continue;
                 }
                 if (linkItem && linkItem.Href) {
                     if (!publication.Spine) {
@@ -958,9 +1051,23 @@ const fillTOCFromNavDoc = (publication, _rootfile, _opf, zip) => tslib_1.__await
     if (!zip.hasEntry(navDocFilePath)) {
         return;
     }
-    const navDocZipStream_ = yield zip.entryStreamPromise(navDocFilePath);
+    let navDocZipStream_;
+    try {
+        navDocZipStream_ = yield zip.entryStreamPromise(navDocFilePath);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
     const navDocZipStream = navDocZipStream_.stream;
-    const navDocZipData = yield BufferUtils_1.streamToBufferPromise(navDocZipStream);
+    let navDocZipData;
+    try {
+        navDocZipData = yield BufferUtils_1.streamToBufferPromise(navDocZipStream);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
     const navDocStr = navDocZipData.toString("utf8");
     const navXmlDoc = new xmldom.DOMParser().parseFromString(navDocStr);
     const select = xpath.useNamespaces({
@@ -1078,6 +1185,7 @@ const addCoverRel = (publication, rootfile, opf) => tslib_1.__awaiter(this, void
         }
         catch (err) {
             debug(err);
+            return;
         }
         if (manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length) {
             const href = manifestInfo.Href;

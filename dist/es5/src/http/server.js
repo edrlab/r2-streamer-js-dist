@@ -195,7 +195,7 @@ var Server = (function () {
                     case 3:
                         err_1 = _a.sent();
                         debug(err_1);
-                        throw new Error(err_1);
+                        return [2, Promise.reject(err_1)];
                     case 4:
                         this.cachePublication(filePath, publication);
                         _a.label = 5;

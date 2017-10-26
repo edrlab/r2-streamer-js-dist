@@ -152,7 +152,6 @@ class Zip2 extends zip_1.Zip {
                             failure_(err);
                             return;
                         }
-                        ress = ress;
                         await success_(ress);
                     }
                     return;
@@ -213,7 +212,6 @@ class Zip2 extends zip_1.Zip {
                     failure(err);
                     return;
                 }
-                res = res;
                 await success(res);
             }
         });

@@ -2,8 +2,6 @@
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var fs = require("fs");
-var path = require("path");
 var UrlUtils_1 = require("../../_utils/http/UrlUtils");
 var server_1 = require("../../http/server");
 var init_globals_1 = require("../../init-globals");
@@ -11,11 +9,14 @@ var lcp_1 = require("../../parser/epub/lcp");
 var debug_ = require("debug");
 var electron_1 = require("electron");
 var filehound = require("filehound");
+var fs = require("fs");
+var path = require("path");
 var portfinder = require("portfinder");
 var events_1 = require("../common/events");
 var browser_window_tracker_1 = require("./browser-window-tracker");
 var lcp_2 = require("./lcp");
 var lsd_1 = require("./lsd");
+var lsd_deviceid_manager_1 = require("./lsd-deviceid-manager");
 var readium_css_1 = require("./readium-css");
 var sessions_1 = require("./sessions");
 init_globals_1.initGlobals();
@@ -54,16 +55,13 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
                 case 3:
                     err_1 = _a.sent();
                     debug(err_1);
-                    return [3, 4];
+                    return [2];
                 case 4:
-                    if (!publication) {
-                        return [2];
-                    }
                     if (!(publication && publication.LCP)) return [3, 9];
                     _a.label = 5;
                 case 5:
                     _a.trys.push([5, 7, , 8]);
-                    return [4, lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_1.deviceIDManager, function () {
+                    return [4, lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_deviceid_manager_1.deviceIDManager, function () {
                             debug("launchStatusDocumentProcessing DONE.");
                         })];
                 case 6:
@@ -119,26 +117,43 @@ electron_1.app.on("ready", function () {
     debug("app ready");
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var _this = this;
-        var pubPaths;
+        var err_3, pubPaths, err_4;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4, filehound.create()
-                        .paths(DEFAULT_BOOK_PATH)
-                        .ext([".epub", ".epub3", ".cbz", ".lcpl"])
-                        .find()];
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4, filehound.create()
+                            .paths(DEFAULT_BOOK_PATH)
+                            .ext([".epub", ".epub3", ".cbz", ".lcpl"])
+                            .find()];
                 case 1:
                     _publicationsFilePaths = _a.sent();
+                    return [3, 3];
+                case 2:
+                    err_3 = _a.sent();
+                    debug(err_3);
+                    return [3, 3];
+                case 3:
                     debug(_publicationsFilePaths);
                     _publicationsServer = new server_1.Server({
                         disableDecryption: false,
                         disableReaders: false,
                     });
-                    lcp_2.installLcpHandler(_publicationsServer);
+                    lcp_2.installLcpHandler(_publicationsServer, lsd_deviceid_manager_1.deviceIDManager);
                     readium_css_1.setupReadiumCSS(_publicationsServer, "dist/ReadiumCSS");
                     pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
+                    _a.label = 4;
+                case 4:
+                    _a.trys.push([4, 6, , 7]);
                     return [4, portfinder.getPortPromise()];
-                case 2:
+                case 5:
                     _publicationsServerPort = _a.sent();
+                    return [3, 7];
+                case 6:
+                    err_4 = _a.sent();
+                    debug(err_4);
+                    return [3, 7];
+                case 7:
                     _publicationsRootUrl = _publicationsServer.start(_publicationsServerPort);
                     _publicationsUrls = pubPaths.map(function (pubPath) {
                         return "" + _publicationsRootUrl + pubPath;
@@ -318,7 +333,7 @@ function resetMenu() {
 function openFileDownload(filePath) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
         var _this = this;
-        var dir, ext, filename, destFileName, epubFilePath, err_3, result_1;
+        var dir, ext, filename, destFileName, epubFilePath, err_5, result_1;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -338,11 +353,11 @@ function openFileDownload(filePath) {
                     epubFilePath = _a.sent();
                     return [3, 4];
                 case 3:
-                    err_3 = _a.sent();
+                    err_5 = _a.sent();
                     process.nextTick(function () {
-                        var detail = (typeof err_3 === "string") ?
-                            err_3 :
-                            (err_3.toString ? err_3.toString() : "ERROR!?");
+                        var detail = (typeof err_5 === "string") ?
+                            err_5 :
+                            (err_5.toString ? err_5.toString() : "ERROR!?");
                         var message = "LCP EPUB download fail!]";
                         var res = electron_1.dialog.showMessageBox({
                             buttons: ["&OK"],
@@ -359,39 +374,37 @@ function openFileDownload(filePath) {
                             debug("ok");
                         }
                     });
-                    return [3, 4];
+                    return [2];
                 case 4:
-                    if (epubFilePath) {
-                        result_1 = epubFilePath;
-                        process.nextTick(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                            var detail, message, res;
-                            return tslib_1.__generator(this, function (_a) {
-                                switch (_a.label) {
-                                    case 0:
-                                        detail = result_1[0] + " ---- [" + result_1[1] + "]";
-                                        message = "LCP EPUB file download success [" + destFileName + "]";
-                                        res = electron_1.dialog.showMessageBox({
-                                            buttons: ["&OK"],
-                                            cancelId: 0,
-                                            defaultId: 0,
-                                            detail: detail,
-                                            message: message,
-                                            noLink: true,
-                                            normalizeAccessKeys: true,
-                                            title: "Readium2 Electron streamer / navigator",
-                                            type: "info",
-                                        });
-                                        if (res === 0) {
-                                            debug("ok");
-                                        }
-                                        return [4, openFile(result_1[0])];
-                                    case 1:
-                                        _a.sent();
-                                        return [2];
-                                }
-                            });
-                        }); });
-                    }
+                    result_1 = epubFilePath;
+                    process.nextTick(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                        var detail, message, res;
+                        return tslib_1.__generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    detail = result_1[0] + " ---- [" + result_1[1] + "]";
+                                    message = "LCP EPUB file download success [" + destFileName + "]";
+                                    res = electron_1.dialog.showMessageBox({
+                                        buttons: ["&OK"],
+                                        cancelId: 0,
+                                        defaultId: 0,
+                                        detail: detail,
+                                        message: message,
+                                        noLink: true,
+                                        normalizeAccessKeys: true,
+                                        title: "Readium2 Electron streamer / navigator",
+                                        type: "info",
+                                    });
+                                    if (res === 0) {
+                                        debug("ok");
+                                    }
+                                    return [4, openFile(result_1[0])];
+                                case 1:
+                                    _a.sent();
+                                    return [2];
+                            }
+                        });
+                    }); });
                     return [3, 7];
                 case 5: return [4, openFile(filePath)];
                 case 6:

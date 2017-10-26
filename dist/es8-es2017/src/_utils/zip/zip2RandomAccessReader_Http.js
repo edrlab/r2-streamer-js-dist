@@ -79,7 +79,6 @@ class HttpZipReader {
                     failure(err);
                     return;
                 }
-                res = res;
                 await success(res);
             })();
         }

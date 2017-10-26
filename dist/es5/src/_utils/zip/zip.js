@@ -20,7 +20,7 @@ var Zip = (function () {
                     case 2:
                         err_1 = _a.sent();
                         console.log(err_1);
-                        throw err_1;
+                        return [2, Promise.reject(err_1)];
                     case 3:
                         streamAndLength = streamAndLength;
                         b = begin < 0 ? 0 : begin;

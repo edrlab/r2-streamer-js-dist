@@ -80,7 +80,6 @@ class HttpZipReader {
                     failure(err);
                     return;
                 }
-                res = res;
                 yield success(res);
             }))();
         }

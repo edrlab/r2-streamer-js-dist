@@ -217,7 +217,6 @@ function serverOPDS(_server, topRouter) {
                 failure(err);
                 return;
             }
-            response = response;
             yield success(response);
         }
     }));

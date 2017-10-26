@@ -1,19 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
 const zipInjector_1 = require("../../_utils/zip/zipInjector");
 const lcp_1 = require("../../parser/epub/lcp");
+const crypto = require("crypto");
 const debug_ = require("debug");
 const electron_1 = require("electron");
+const fs = require("fs");
+const path = require("path");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
+const lsd_1 = require("./lsd");
 const debug = debug_("r2:electron:main:lcp");
-function installLcpHandler(_publicationsServer) {
+function installLcpHandler(publicationsServer, deviceIDManager) {
+    lsd_1.installLsdHandler(publicationsServer, deviceIDManager);
     electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, (event, publicationFilePath, lcpPass, isSha256Hex) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         let okay = false;
         try {
@@ -38,7 +40,7 @@ function installLcpHandler(_publicationsServer) {
     }));
     function tryLcpPass(publicationFilePath, lcpPass, isSha256Hex) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            const publication = _publicationsServer.cachedPublication(publicationFilePath);
+            const publication = publicationsServer.cachedPublication(publicationFilePath);
             if (!publication) {
                 return false;
             }
@@ -51,7 +53,14 @@ function installLcpHandler(_publicationsServer) {
                 checkSum.update(lcpPass);
                 lcpPassHex = checkSum.digest("hex");
             }
-            const okay = yield publication.LCP.setUserPassphrase(lcpPassHex);
+            let okay = false;
+            try {
+                okay = yield publication.LCP.setUserPassphrase(lcpPassHex);
+            }
+            catch (err) {
+                debug(err);
+                okay = false;
+            }
             if (!okay) {
                 debug("FAIL publication.LCP.setUserPassphrase()");
             }
@@ -123,7 +132,6 @@ function downloadFromLCPL(filePath, dir, destFileName) {
                             failure(err);
                             return;
                         }
-                        response = response;
                         yield success(response);
                     }
                 }

@@ -203,7 +203,7 @@ class Server {
             }
             catch (err) {
                 debug(err);
-                throw new Error(err);
+                return Promise.reject(err);
             }
             this.cachePublication(filePath, publication);
         }

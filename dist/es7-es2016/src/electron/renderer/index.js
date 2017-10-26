@@ -3,23 +3,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const SystemFonts = require("system-font-families");
 const debounce = require("debounce");
-const ElectronStore = require("electron-store");
 const URI = require("urijs");
-const electron_1 = require("electron");
-const electron_2 = require("electron");
-const path = require("path");
-const ta_json_1 = require("ta-json");
 const UrlUtils_1 = require("../../_utils/http/UrlUtils");
 const init_globals_1 = require("../../init-globals");
 const publication_1 = require("../../models/publication");
 const lcp_1 = require("../../parser/epub/lcp");
+const electron_1 = require("electron");
+const electron_2 = require("electron");
+const path = require("path");
+const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
 const sessions_1 = require("../common/sessions");
+const store_electron_1 = require("../common/store-electron");
 const querystring_1 = require("./querystring");
 const index_1 = require("./riots/linklist/index_");
 const index_2 = require("./riots/linklistgroup/index_");
 const index_3 = require("./riots/linktree/index_");
 const index_4 = require("./riots/menuselect/index_");
+const electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
+    basicLinkTitles: true,
+    styling: {
+        dark: false,
+        font: "DEFAULT",
+        invert: false,
+        night: false,
+        readiumcss: false,
+        sepia: false,
+    },
+});
+const electronStoreLCP = new store_electron_1.StoreElectron("readium2-navigator-lcp", {});
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const queryParams = querystring_1.getURLQueryParams();
@@ -28,28 +40,7 @@ const pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$
 const pathDecoded = window.atob(pathBase64);
 const pathFileName = pathDecoded.substr(pathDecoded.replace(/\\/g, "/").lastIndexOf("/") + 1, pathDecoded.length - 1);
 const lcpHint = queryParams["lcpHint"];
-const defaultsStyling = {
-    dark: false,
-    font: "DEFAULT",
-    invert: false,
-    night: false,
-    readiumcss: false,
-    sepia: false,
-};
-const defaults = {
-    basicLinkTitles: true,
-    styling: defaultsStyling,
-};
-const electronStore = new ElectronStore({
-    defaults,
-    name: "readium2-navigator",
-});
-const defaultsLCP = {};
-const electronStoreLCP = new ElectronStore({
-    defaults: defaultsLCP,
-    name: "readium2-navigator-lcp",
-});
-electronStore.onDidChange("styling.night", (newValue, oldValue) => {
+electronStore.onChanged("styling.night", (newValue, oldValue) => {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
@@ -91,7 +82,7 @@ const readiumCssOnOff = debounce(() => {
     _webview1.send(events_1.R2_EVENT_READIUMCSS, str);
     _webview2.send(events_1.R2_EVENT_READIUMCSS, str);
 }, 500);
-electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
+electronStore.onChanged("styling.readiumcss", (newValue, oldValue) => {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
@@ -104,7 +95,7 @@ electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
         electronStore.set("styling.night", false);
     }
 });
-electronStore.onDidChange("basicLinkTitles", (newValue, oldValue) => {
+electronStore.onChanged("basicLinkTitles", (newValue, oldValue) => {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
@@ -243,14 +234,14 @@ const initFontSelector = () => {
         val = val.replace(ID_PREFIX, "");
         electronStore.set("styling.font", val);
     });
-    electronStore.onDidChange("styling.font", (newValue, oldValue) => {
+    electronStore.onChanged("styling.font", (newValue, oldValue) => {
         if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
             return;
         }
         tag.setSelectedItem(ID_PREFIX + newValue);
         readiumCssOnOff();
     });
-    electronStore.onDidChange("styling.readiumcss", (newValue, oldValue) => {
+    electronStore.onChanged("styling.readiumcss", (newValue, oldValue) => {
         if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
             return;
         }
@@ -417,7 +408,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     const buttonClearSettings = document.getElementById("buttonClearSettings");
     buttonClearSettings.addEventListener("click", () => {
-        electronStore.store = defaults;
+        electronStore.set(undefined, electronStore.getDefaults());
         drawer.open = false;
         setTimeout(() => {
             const message = "Settings reset.";
@@ -435,7 +426,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
     const buttonClearSettingsStyle = document.getElementById("buttonClearSettingsStyle");
     buttonClearSettingsStyle.addEventListener("click", () => {
-        electronStore.set("styling", defaultsStyling);
+        electronStore.set("styling", electronStore.getDefaults().styling);
         drawer.open = false;
         setTimeout(() => {
             const message = "Default styles.";
@@ -453,9 +444,31 @@ window.addEventListener("DOMContentLoaded", () => {
     });
     const buttonOpenSettings = document.getElementById("buttonOpenSettings");
     buttonOpenSettings.addEventListener("click", () => {
-        electronStore.openInEditor();
-        electronStoreLCP.openInEditor();
+        if (electronStore.reveal) {
+            electronStore.reveal();
+        }
+        if (electronStoreLCP.reveal) {
+            electronStoreLCP.reveal();
+        }
     });
+    const buttonLSDRenew = document.getElementById("buttonLSDRenew");
+    buttonLSDRenew.addEventListener("click", () => {
+        electron_2.ipcRenderer.send(events_1.R2_EVENT_LCP_LSD_RENEW, pathDecoded, "");
+    });
+    const buttonLSDReturn = document.getElementById("buttonLSDReturn");
+    buttonLSDReturn.addEventListener("click", () => {
+        electron_2.ipcRenderer.send(events_1.R2_EVENT_LCP_LSD_RETURN, pathDecoded);
+    });
+});
+electron_2.ipcRenderer.on(events_1.R2_EVENT_LCP_LSD_RENEW_RES, (_event, okay, msg) => {
+    console.log("R2_EVENT_LCP_LSD_RENEW_RES");
+    console.log(okay);
+    console.log(msg);
+});
+electron_2.ipcRenderer.on(events_1.R2_EVENT_LCP_LSD_RETURN_RES, (_event, okay, msg) => {
+    console.log("R2_EVENT_LCP_LSD_RETURN_RES");
+    console.log(okay);
+    console.log(msg);
 });
 const saveReadingLocation = (doc, loc) => {
     let obj = electronStore.get("readingLocation");
@@ -736,7 +749,7 @@ function startNavigatorExperiment() {
     _webview2 = createWebView();
     _webview2.readiumwebviewid = 2;
     _webview2.setAttribute("id", "webview2");
-    _webview2.setAttribute("class", "full posRight");
+    _webview2.setAttribute("class", "full");
     const slidingViewport = document.getElementById("sliding_viewport");
     slidingViewport.appendChild(_webview1);
     slidingViewport.appendChild(_webview2);
@@ -766,8 +779,6 @@ function startNavigatorExperiment() {
         }
         catch (e) {
             console.log(e);
-        }
-        if (!response) {
             return;
         }
         if (!response.ok) {
@@ -783,6 +794,15 @@ function startNavigatorExperiment() {
             return;
         }
         _publication = ta_json_1.JSON.deserialize(_publicationJSON, publication_1.Publication);
+        const isRTL = _publication.Metadata &&
+            _publication.Metadata.Direction &&
+            _publication.Metadata.Direction.toLowerCase() === "rtl";
+        if (isRTL) {
+            _webview1.classList.add("posRight");
+        }
+        else {
+            _webview2.classList.add("posRight");
+        }
         if (_publication.Metadata && _publication.Metadata.Title) {
             let title;
             if (typeof _publication.Metadata.Title === "string") {
@@ -823,7 +843,7 @@ function startNavigatorExperiment() {
                 url: publicationJsonUrl,
             };
             const tag = index_3.riotMountLinkTree("#reader_controls_TOC", opts)[0];
-            electronStore.onDidChange("basicLinkTitles", (newValue, oldValue) => {
+            electronStore.onChanged("basicLinkTitles", (newValue, oldValue) => {
                 if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
                     return;
                 }
@@ -837,7 +857,7 @@ function startNavigatorExperiment() {
                 url: publicationJsonUrl,
             };
             const tag = index_1.riotMountLinkList("#reader_controls_PAGELIST", opts)[0];
-            electronStore.onDidChange("basicLinkTitles", (newValue, oldValue) => {
+            electronStore.onChanged("basicLinkTitles", (newValue, oldValue) => {
                 if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
                     return;
                 }
@@ -882,7 +902,7 @@ function startNavigatorExperiment() {
                 url: publicationJsonUrl,
             };
             const tag = index_2.riotMountLinkListGroup("#reader_controls_LANDMARKS", opts)[0];
-            electronStore.onDidChange("basicLinkTitles", (newValue, oldValue) => {
+            electronStore.onChanged("basicLinkTitles", (newValue, oldValue) => {
                 if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
                     return;
                 }

@@ -49,7 +49,7 @@ var TransformerLCP = (function () {
     TransformerLCP.prototype.transformStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
-            var plainTextSize, nativelyDecryptedStream, fullEncryptedBuffer, err_1, nativelyDecryptedBuffer, err_2, cryptoInfo, cypherBlockPadding, destStream, rawDecryptStream, ivBuffer, cypherRangeStream, decryptStream, cypherUnpaddedStream, inflateStream, l, rangeStream, sal;
+            var plainTextSize, nativelyDecryptedStream, fullEncryptedBuffer, err_1, nativelyDecryptedBuffer, err_2, cryptoInfo, cypherBlockPadding, err_3, err_4, destStream, rawDecryptStream, ivBuffer, cypherRangeStream, err_5, decryptStream, cypherUnpaddedStream, inflateStream, l, rangeStream, sal;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -93,24 +93,41 @@ var TransformerLCP = (function () {
                                 (link.Properties.Encrypted.OriginalLength + " !== " + plainTextSize));
                         }
                         nativelyDecryptedStream = BufferUtils_1.bufferToStream(nativelyDecryptedBuffer);
-                        return [3, 13];
+                        return [3, 18];
                     case 9:
                         cryptoInfo = void 0;
                         cypherBlockPadding = -1;
                         if (!(link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0)) return [3, 10];
                         plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
                         cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
-                        return [3, 13];
-                    case 10: return [4, this.getDecryptedSizeStream(publication, link, stream)];
+                        return [3, 18];
+                    case 10:
+                        _a.trys.push([10, 12, , 13]);
+                        return [4, this.getDecryptedSizeStream(publication, link, stream)];
                     case 11:
                         cryptoInfo = _a.sent();
+                        return [3, 13];
+                    case 12:
+                        err_3 = _a.sent();
+                        debug(err_3);
+                        return [2, Promise.reject(err_3)];
+                    case 13:
                         plainTextSize = cryptoInfo.length;
                         cypherBlockPadding = cryptoInfo.padding;
                         link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
                         link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
+                        _a.label = 14;
+                    case 14:
+                        _a.trys.push([14, 16, , 17]);
                         return [4, stream.reset()];
-                    case 12:
+                    case 15:
                         stream = _a.sent();
+                        return [3, 17];
+                    case 16:
+                        err_4 = _a.sent();
+                        debug(err_4);
+                        return [2, Promise.reject(err_4)];
+                    case 17:
                         if (link.Properties.Encrypted.OriginalLength &&
                             link.Properties.Encrypted.Compression === "none" &&
                             link.Properties.Encrypted.OriginalLength !== plainTextSize) {
@@ -119,8 +136,8 @@ var TransformerLCP = (function () {
                                 "link.Properties.Encrypted.OriginalLength !== plainTextSize: " +
                                 (link.Properties.Encrypted.OriginalLength + " !== " + plainTextSize));
                         }
-                        _a.label = 13;
-                    case 13:
+                        _a.label = 18;
+                    case 18:
                         if (partialByteBegin < 0) {
                             partialByteBegin = 0;
                         }
@@ -130,26 +147,34 @@ var TransformerLCP = (function () {
                                 partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
                             }
                         }
-                        if (!nativelyDecryptedStream) return [3, 14];
+                        if (!nativelyDecryptedStream) return [3, 19];
                         destStream = nativelyDecryptedStream;
-                        return [3, 18];
-                    case 14:
+                        return [3, 25];
+                    case 19:
                         rawDecryptStream = void 0;
                         ivBuffer = void 0;
-                        if (!link.Properties.Encrypted.CypherBlockIV) return [3, 15];
+                        if (!link.Properties.Encrypted.CypherBlockIV) return [3, 20];
                         ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
                         cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
                         stream.stream.pipe(cypherRangeStream);
                         rawDecryptStream = cypherRangeStream;
-                        return [3, 17];
-                    case 15: return [4, readStream(stream.stream, AES_BLOCK_SIZE)];
-                    case 16:
+                        return [3, 24];
+                    case 20:
+                        _a.trys.push([20, 22, , 23]);
+                        return [4, readStream(stream.stream, AES_BLOCK_SIZE)];
+                    case 21:
                         ivBuffer = _a.sent();
+                        return [3, 23];
+                    case 22:
+                        err_5 = _a.sent();
+                        debug(err_5);
+                        return [2, Promise.reject(err_5)];
+                    case 23:
                         link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
                         stream.stream.resume();
                         rawDecryptStream = stream.stream;
-                        _a.label = 17;
-                    case 17:
+                        _a.label = 24;
+                    case 24:
                         decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
                         decryptStream.setAutoPadding(false);
                         rawDecryptStream.pipe(decryptStream);
@@ -159,8 +184,8 @@ var TransformerLCP = (function () {
                             destStream.pipe(cypherUnpaddedStream);
                             destStream = cypherUnpaddedStream;
                         }
-                        _a.label = 18;
-                    case 18:
+                        _a.label = 25;
+                    case 25:
                         if (link.Properties.Encrypted.Compression === "deflate") {
                             inflateStream = zlib.createInflateRaw();
                             destStream.pipe(inflateStream);
@@ -176,12 +201,23 @@ var TransformerLCP = (function () {
                         sal = {
                             length: l,
                             reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                var resetedStream;
+                                var resetedStream, err_6;
                                 return tslib_1.__generator(this, function (_a) {
                                     switch (_a.label) {
-                                        case 0: return [4, stream.reset()];
+                                        case 0:
+                                            _a.trys.push([0, 2, , 3]);
+                                            return [4, stream.reset()];
                                         case 1:
                                             resetedStream = _a.sent();
+                                            return [3, 3];
+                                        case 2:
+                                            err_6 = _a.sent();
+                                            debug(err_6);
+                                            return [2, Promise.reject(err_6)];
+                                        case 3:
+                                            if (!resetedStream) {
+                                                return [2, Promise.reject("??")];
+                                            }
                                             return [2, this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
                                     }
                                 });

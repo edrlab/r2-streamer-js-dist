@@ -166,7 +166,9 @@ function serverAssets(server, routerPathBase64) {
                 case 14:
                     err_3 = _b.sent();
                     debug(err_3);
-                    return [3, 15];
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + err_3 + "</p></body></html>");
+                    return [2];
                 case 15:
                     if (transformedStream) {
                         zipStream_ = transformedStream;

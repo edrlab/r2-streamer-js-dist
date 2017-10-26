@@ -186,7 +186,6 @@ function serverOPDS12(_server, topRouter) {
                 failure(err);
                 return;
             }
-            response = response;
             await success(response);
         }
     });

@@ -69,7 +69,6 @@ class HttpReadableStream extends stream_1.Readable {
                     failure(err);
                     return;
                 }
-                res = res;
                 await success(res);
             })();
         }

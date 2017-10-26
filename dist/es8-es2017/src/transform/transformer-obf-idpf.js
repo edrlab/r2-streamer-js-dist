@@ -7,8 +7,20 @@ class TransformerObfIDPF {
         return link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding";
     }
     async transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
-        const data = await BufferUtils_1.streamToBufferPromise(stream.stream);
-        const buff = await this.transformBuffer(publication, link, data);
+        let data;
+        try {
+            data = await BufferUtils_1.streamToBufferPromise(stream.stream);
+        }
+        catch (err) {
+            return Promise.reject(err);
+        }
+        let buff;
+        try {
+            buff = await this.transformBuffer(publication, link, data);
+        }
+        catch (err) {
+            return Promise.reject(err);
+        }
         const sal = {
             length: buff.length,
             reset: async () => {

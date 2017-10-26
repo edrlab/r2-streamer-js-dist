@@ -188,9 +188,7 @@ var Zip2 = (function (_super) {
                                                     err_2 = _a.sent();
                                                     failure_1(err_2);
                                                     return [2];
-                                                case 5:
-                                                    ress = ress;
-                                                    return [4, success_(ress)];
+                                                case 5: return [4, success_(ress)];
                                                 case 6:
                                                     _a.sent();
                                                     _a.label = 7;
@@ -259,9 +257,7 @@ var Zip2 = (function (_super) {
                                     err_1 = _a.sent();
                                     failure(err_1);
                                     return [2];
-                                case 5:
-                                    res = res;
-                                    return [4, success(res)];
+                                case 5: return [4, success(res)];
                                 case 6:
                                     _a.sent();
                                     _a.label = 7;

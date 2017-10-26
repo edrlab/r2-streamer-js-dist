@@ -98,9 +98,7 @@ var HttpZipReader = (function () {
                             err_2 = _a.sent();
                             failure(err_2);
                             return [2];
-                        case 3:
-                            res = res;
-                            return [4, success(res)];
+                        case 3: return [4, success(res)];
                         case 4:
                             _a.sent();
                             return [2];

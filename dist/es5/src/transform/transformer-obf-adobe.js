@@ -11,15 +11,28 @@ var TransformerObfAdobe = (function () {
     TransformerObfAdobe.prototype.transformStream = function (publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
-            var data, buff, sal;
+            var data, err_1, buff, err_2, sal;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
                     case 1:
                         data = _a.sent();
-                        return [4, this.transformBuffer(publication, link, data)];
+                        return [3, 3];
                     case 2:
+                        err_1 = _a.sent();
+                        return [2, Promise.reject(err_1)];
+                    case 3:
+                        _a.trys.push([3, 5, , 6]);
+                        return [4, this.transformBuffer(publication, link, data)];
+                    case 4:
                         buff = _a.sent();
+                        return [3, 6];
+                    case 5:
+                        err_2 = _a.sent();
+                        return [2, Promise.reject(err_2)];
+                    case 6:
                         sal = {
                             length: buff.length,
                             reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {

@@ -4,23 +4,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var SystemFonts = require("system-font-families");
 var debounce = require("debounce");
-var ElectronStore = require("electron-store");
 var URI = require("urijs");
-var electron_1 = require("electron");
-var electron_2 = require("electron");
-var path = require("path");
-var ta_json_1 = require("ta-json");
 var UrlUtils_1 = require("../../_utils/http/UrlUtils");
 var init_globals_1 = require("../../init-globals");
 var publication_1 = require("../../models/publication");
 var lcp_1 = require("../../parser/epub/lcp");
+var electron_1 = require("electron");
+var electron_2 = require("electron");
+var path = require("path");
+var ta_json_1 = require("ta-json");
 var events_1 = require("../common/events");
 var sessions_1 = require("../common/sessions");
+var store_electron_1 = require("../common/store-electron");
 var querystring_1 = require("./querystring");
 var index_1 = require("./riots/linklist/index_");
 var index_2 = require("./riots/linklistgroup/index_");
 var index_3 = require("./riots/linktree/index_");
 var index_4 = require("./riots/menuselect/index_");
+var electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
+    basicLinkTitles: true,
+    styling: {
+        dark: false,
+        font: "DEFAULT",
+        invert: false,
+        night: false,
+        readiumcss: false,
+        sepia: false,
+    },
+});
+var electronStoreLCP = new store_electron_1.StoreElectron("readium2-navigator-lcp", {});
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var queryParams = querystring_1.getURLQueryParams();
@@ -29,28 +41,7 @@ var pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$1"
 var pathDecoded = window.atob(pathBase64);
 var pathFileName = pathDecoded.substr(pathDecoded.replace(/\\/g, "/").lastIndexOf("/") + 1, pathDecoded.length - 1);
 var lcpHint = queryParams["lcpHint"];
-var defaultsStyling = {
-    dark: false,
-    font: "DEFAULT",
-    invert: false,
-    night: false,
-    readiumcss: false,
-    sepia: false,
-};
-var defaults = {
-    basicLinkTitles: true,
-    styling: defaultsStyling,
-};
-var electronStore = new ElectronStore({
-    defaults: defaults,
-    name: "readium2-navigator",
-});
-var defaultsLCP = {};
-var electronStoreLCP = new ElectronStore({
-    defaults: defaultsLCP,
-    name: "readium2-navigator-lcp",
-});
-electronStore.onDidChange("styling.night", function (newValue, oldValue) {
+electronStore.onChanged("styling.night", function (newValue, oldValue) {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
@@ -92,7 +83,7 @@ var readiumCssOnOff = debounce(function () {
     _webview1.send(events_1.R2_EVENT_READIUMCSS, str);
     _webview2.send(events_1.R2_EVENT_READIUMCSS, str);
 }, 500);
-electronStore.onDidChange("styling.readiumcss", function (newValue, oldValue) {
+electronStore.onChanged("styling.readiumcss", function (newValue, oldValue) {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
@@ -105,7 +96,7 @@ electronStore.onDidChange("styling.readiumcss", function (newValue, oldValue) {
         electronStore.set("styling.night", false);
     }
 });
-electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+electronStore.onChanged("basicLinkTitles", function (newValue, oldValue) {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
     }
@@ -244,14 +235,14 @@ var initFontSelector = function () {
         val = val.replace(ID_PREFIX, "");
         electronStore.set("styling.font", val);
     });
-    electronStore.onDidChange("styling.font", function (newValue, oldValue) {
+    electronStore.onChanged("styling.font", function (newValue, oldValue) {
         if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
             return;
         }
         tag.setSelectedItem(ID_PREFIX + newValue);
         readiumCssOnOff();
     });
-    electronStore.onDidChange("styling.readiumcss", function (newValue, oldValue) {
+    electronStore.onChanged("styling.readiumcss", function (newValue, oldValue) {
         if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
             return;
         }
@@ -431,7 +422,7 @@ window.addEventListener("DOMContentLoaded", function () {
     }
     var buttonClearSettings = document.getElementById("buttonClearSettings");
     buttonClearSettings.addEventListener("click", function () {
-        electronStore.store = defaults;
+        electronStore.set(undefined, electronStore.getDefaults());
         drawer.open = false;
         setTimeout(function () {
             var message = "Settings reset.";
@@ -449,7 +440,7 @@ window.addEventListener("DOMContentLoaded", function () {
     });
     var buttonClearSettingsStyle = document.getElementById("buttonClearSettingsStyle");
     buttonClearSettingsStyle.addEventListener("click", function () {
-        electronStore.set("styling", defaultsStyling);
+        electronStore.set("styling", electronStore.getDefaults().styling);
         drawer.open = false;
         setTimeout(function () {
             var message = "Default styles.";
@@ -467,9 +458,31 @@ window.addEventListener("DOMContentLoaded", function () {
     });
     var buttonOpenSettings = document.getElementById("buttonOpenSettings");
     buttonOpenSettings.addEventListener("click", function () {
-        electronStore.openInEditor();
-        electronStoreLCP.openInEditor();
+        if (electronStore.reveal) {
+            electronStore.reveal();
+        }
+        if (electronStoreLCP.reveal) {
+            electronStoreLCP.reveal();
+        }
     });
+    var buttonLSDRenew = document.getElementById("buttonLSDRenew");
+    buttonLSDRenew.addEventListener("click", function () {
+        electron_2.ipcRenderer.send(events_1.R2_EVENT_LCP_LSD_RENEW, pathDecoded, "");
+    });
+    var buttonLSDReturn = document.getElementById("buttonLSDReturn");
+    buttonLSDReturn.addEventListener("click", function () {
+        electron_2.ipcRenderer.send(events_1.R2_EVENT_LCP_LSD_RETURN, pathDecoded);
+    });
+});
+electron_2.ipcRenderer.on(events_1.R2_EVENT_LCP_LSD_RENEW_RES, function (_event, okay, msg) {
+    console.log("R2_EVENT_LCP_LSD_RENEW_RES");
+    console.log(okay);
+    console.log(msg);
+});
+electron_2.ipcRenderer.on(events_1.R2_EVENT_LCP_LSD_RETURN_RES, function (_event, okay, msg) {
+    console.log("R2_EVENT_LCP_LSD_RETURN_RES");
+    console.log(okay);
+    console.log(msg);
 });
 var saveReadingLocation = function (doc, loc) {
     var obj = electronStore.get("readingLocation");
@@ -751,7 +764,7 @@ function startNavigatorExperiment() {
     _webview2 = createWebView();
     _webview2.readiumwebviewid = 2;
     _webview2.setAttribute("id", "webview2");
-    _webview2.setAttribute("class", "full posRight");
+    _webview2.setAttribute("class", "full");
     var slidingViewport = document.getElementById("sliding_viewport");
     slidingViewport.appendChild(_webview1);
     slidingViewport.appendChild(_webview2);
@@ -775,7 +788,7 @@ function startNavigatorExperiment() {
         electronStore.set("basicLinkTitles", !checked);
     });
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var response, e_1, e_2, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj, firstLinear;
+        var response, e_1, e_2, isRTL, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj, firstLinear;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -787,11 +800,8 @@ function startNavigatorExperiment() {
                 case 2:
                     e_1 = _a.sent();
                     console.log(e_1);
-                    return [3, 3];
+                    return [2];
                 case 3:
-                    if (!response) {
-                        return [2];
-                    }
                     if (!response.ok) {
                         console.log("BAD RESPONSE?!");
                     }
@@ -811,6 +821,15 @@ function startNavigatorExperiment() {
                         return [2];
                     }
                     _publication = ta_json_1.JSON.deserialize(_publicationJSON, publication_1.Publication);
+                    isRTL = _publication.Metadata &&
+                        _publication.Metadata.Direction &&
+                        _publication.Metadata.Direction.toLowerCase() === "rtl";
+                    if (isRTL) {
+                        _webview1.classList.add("posRight");
+                    }
+                    else {
+                        _webview2.classList.add("posRight");
+                    }
                     if (_publication.Metadata && _publication.Metadata.Title) {
                         title = void 0;
                         if (typeof _publication.Metadata.Title === "string") {
@@ -851,7 +870,7 @@ function startNavigatorExperiment() {
                             url: publicationJsonUrl,
                         };
                         tag_1 = index_3.riotMountLinkTree("#reader_controls_TOC", opts)[0];
-                        electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+                        electronStore.onChanged("basicLinkTitles", function (newValue, oldValue) {
                             if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
                                 return;
                             }
@@ -865,7 +884,7 @@ function startNavigatorExperiment() {
                             url: publicationJsonUrl,
                         };
                         tag_2 = index_1.riotMountLinkList("#reader_controls_PAGELIST", opts)[0];
-                        electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+                        electronStore.onChanged("basicLinkTitles", function (newValue, oldValue) {
                             if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
                                 return;
                             }
@@ -910,7 +929,7 @@ function startNavigatorExperiment() {
                             url: publicationJsonUrl,
                         };
                         tag_3 = index_2.riotMountLinkListGroup("#reader_controls_LANDMARKS", opts)[0];
-                        electronStore.onDidChange("basicLinkTitles", function (newValue, oldValue) {
+                        electronStore.onChanged("basicLinkTitles", function (newValue, oldValue) {
                             if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
                                 return;
                             }

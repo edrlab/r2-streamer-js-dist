@@ -1,20 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var crypto = require("crypto");
-var fs = require("fs");
-var path = require("path");
 var zipInjector_1 = require("../../_utils/zip/zipInjector");
 var lcp_1 = require("../../parser/epub/lcp");
+var crypto = require("crypto");
 var debug_ = require("debug");
 var electron_1 = require("electron");
+var fs = require("fs");
+var path = require("path");
 var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
 var events_1 = require("../common/events");
+var lsd_1 = require("./lsd");
 var debug = debug_("r2:electron:main:lcp");
-function installLcpHandler(_publicationsServer) {
+function installLcpHandler(publicationsServer, deviceIDManager) {
     var _this = this;
+    lsd_1.installLsdHandler(publicationsServer, deviceIDManager);
     electron_1.ipcMain.on(events_1.R2_EVENT_TRY_LCP_PASS, function (event, publicationFilePath, lcpPass, isSha256Hex) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var okay, err_1, passSha256Hex, checkSum;
         return tslib_1.__generator(this, function (_a) {
@@ -51,11 +53,11 @@ function installLcpHandler(_publicationsServer) {
     }); });
     function tryLcpPass(publicationFilePath, lcpPass, isSha256Hex) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var publication, lcpPassHex, checkSum, okay;
+            var publication, lcpPassHex, checkSum, okay, err_2;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        publication = _publicationsServer.cachedPublication(publicationFilePath);
+                        publication = publicationsServer.cachedPublication(publicationFilePath);
                         if (!publication) {
                             return [2, false];
                         }
@@ -67,9 +69,20 @@ function installLcpHandler(_publicationsServer) {
                             checkSum.update(lcpPass);
                             lcpPassHex = checkSum.digest("hex");
                         }
-                        return [4, publication.LCP.setUserPassphrase(lcpPassHex)];
+                        okay = false;
+                        _a.label = 1;
                     case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4, publication.LCP.setUserPassphrase(lcpPassHex)];
+                    case 2:
                         okay = _a.sent();
+                        return [3, 4];
+                    case 3:
+                        err_2 = _a.sent();
+                        debug(err_2);
+                        okay = false;
+                        return [3, 4];
+                    case 4:
                         if (!okay) {
                             debug("FAIL publication.LCP.setUserPassphrase()");
                         }
@@ -86,7 +99,7 @@ function downloadFromLCPL(filePath, dir, destFileName) {
         return tslib_1.__generator(this, function (_a) {
             return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                     var _this = this;
-                    var lcplStr, lcplJson, lcpl, pubLink_1, destPathTMP_1, destPathFINAL_1, failure_1, success, needsStreamingResponse, response, err_2;
+                    var lcplStr, lcplJson, lcpl, pubLink_1, destPathTMP_1, destPathFINAL_1, failure_1, success, needsStreamingResponse, response, err_3;
                     return tslib_1.__generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
@@ -155,12 +168,10 @@ function downloadFromLCPL(filePath, dir, destFileName) {
                                 response = _a.sent();
                                 return [3, 5];
                             case 4:
-                                err_2 = _a.sent();
-                                failure_1(err_2);
+                                err_3 = _a.sent();
+                                failure_1(err_3);
                                 return [2];
-                            case 5:
-                                response = response;
-                                return [4, success(response)];
+                            case 5: return [4, success(response)];
                             case 6:
                                 _a.sent();
                                 _a.label = 7;

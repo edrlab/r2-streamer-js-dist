@@ -9,7 +9,7 @@ class Zip {
         }
         catch (err) {
             console.log(err);
-            throw err;
+            return Promise.reject(err);
         }
         streamAndLength = streamAndLength;
         const b = begin < 0 ? 0 : begin;

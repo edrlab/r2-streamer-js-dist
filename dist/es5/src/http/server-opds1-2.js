@@ -184,9 +184,7 @@ function serverOPDS12(_server, topRouter) {
                     err_1 = _a.sent();
                     failure(err_1);
                     return [2];
-                case 5:
-                    response = response;
-                    return [4, success(response)];
+                case 5: return [4, success(response)];
                 case 6:
                     _a.sent();
                     _a.label = 7;

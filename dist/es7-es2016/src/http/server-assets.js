@@ -143,6 +143,9 @@ function serverAssets(server, routerPathBase64) {
             }
             catch (err) {
                 debug(err);
+                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                    + err + "</p></body></html>");
+                return;
             }
             if (transformedStream) {
                 zipStream_ = transformedStream;

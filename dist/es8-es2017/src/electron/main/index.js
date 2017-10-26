@@ -1,7 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs = require("fs");
-const path = require("path");
 const UrlUtils_1 = require("../../_utils/http/UrlUtils");
 const server_1 = require("../../http/server");
 const init_globals_1 = require("../../init-globals");
@@ -9,11 +7,14 @@ const lcp_1 = require("../../parser/epub/lcp");
 const debug_ = require("debug");
 const electron_1 = require("electron");
 const filehound = require("filehound");
+const fs = require("fs");
+const path = require("path");
 const portfinder = require("portfinder");
 const events_1 = require("../common/events");
 const browser_window_tracker_1 = require("./browser-window-tracker");
 const lcp_2 = require("./lcp");
 const lsd_1 = require("./lsd");
+const lsd_deviceid_manager_1 = require("./lsd-deviceid-manager");
 const readium_css_1 = require("./readium-css");
 const sessions_1 = require("./sessions");
 init_globals_1.initGlobals();
@@ -42,14 +43,12 @@ async function createElectronBrowserWindow(publicationFilePath, publicationUrl) 
     }
     catch (err) {
         debug(err);
-    }
-    if (!publication) {
         return;
     }
     let lcpHint;
     if (publication && publication.LCP) {
         try {
-            await lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_1.deviceIDManager, () => {
+            await lsd_1.launchStatusDocumentProcessing(publication, publicationFilePath, lsd_deviceid_manager_1.deviceIDManager, () => {
                 debug("launchStatusDocumentProcessing DONE.");
             });
         }
@@ -95,19 +94,29 @@ sessions_1.initSessions();
 electron_1.app.on("ready", () => {
     debug("app ready");
     (async () => {
-        _publicationsFilePaths = await filehound.create()
-            .paths(DEFAULT_BOOK_PATH)
-            .ext([".epub", ".epub3", ".cbz", ".lcpl"])
-            .find();
+        try {
+            _publicationsFilePaths = await filehound.create()
+                .paths(DEFAULT_BOOK_PATH)
+                .ext([".epub", ".epub3", ".cbz", ".lcpl"])
+                .find();
+        }
+        catch (err) {
+            debug(err);
+        }
         debug(_publicationsFilePaths);
         _publicationsServer = new server_1.Server({
             disableDecryption: false,
             disableReaders: false,
         });
-        lcp_2.installLcpHandler(_publicationsServer);
+        lcp_2.installLcpHandler(_publicationsServer, lsd_deviceid_manager_1.deviceIDManager);
         readium_css_1.setupReadiumCSS(_publicationsServer, "dist/ReadiumCSS");
         const pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
-        _publicationsServerPort = await portfinder.getPortPromise();
+        try {
+            _publicationsServerPort = await portfinder.getPortPromise();
+        }
+        catch (err) {
+            debug(err);
+        }
         _publicationsRootUrl = _publicationsServer.start(_publicationsServerPort);
         _publicationsUrls = pubPaths.map((pubPath) => {
             return `${_publicationsRootUrl}${pubPath}`;
@@ -288,29 +297,28 @@ async function openFileDownload(filePath) {
                     debug("ok");
                 }
             });
+            return;
         }
-        if (epubFilePath) {
-            const result = epubFilePath;
-            process.nextTick(async () => {
-                const detail = result[0] + " ---- [" + result[1] + "]";
-                const message = "LCP EPUB file download success [" + destFileName + "]";
-                const res = electron_1.dialog.showMessageBox({
-                    buttons: ["&OK"],
-                    cancelId: 0,
-                    defaultId: 0,
-                    detail,
-                    message,
-                    noLink: true,
-                    normalizeAccessKeys: true,
-                    title: "Readium2 Electron streamer / navigator",
-                    type: "info",
-                });
-                if (res === 0) {
-                    debug("ok");
-                }
-                await openFile(result[0]);
+        const result = epubFilePath;
+        process.nextTick(async () => {
+            const detail = result[0] + " ---- [" + result[1] + "]";
+            const message = "LCP EPUB file download success [" + destFileName + "]";
+            const res = electron_1.dialog.showMessageBox({
+                buttons: ["&OK"],
+                cancelId: 0,
+                defaultId: 0,
+                detail,
+                message,
+                noLink: true,
+                normalizeAccessKeys: true,
+                title: "Readium2 Electron streamer / navigator",
+                type: "info",
             });
-        }
+            if (res === 0) {
+                debug("ok");
+            }
+            await openFile(result[0]);
+        });
     }
     else {
         await openFile(filePath);
