@@ -14,7 +14,7 @@ const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
 const sessions_1 = require("../common/sessions");
 const store_electron_1 = require("../common/store-electron");
-const querystring_1 = require("./querystring");
+const querystring_1 = require("./common/querystring");
 const index_1 = require("./riots/linklist/index_");
 const index_2 = require("./riots/linklistgroup/index_");
 const index_3 = require("./riots/linktree/index_");
@@ -293,6 +293,7 @@ const initFontSelector = () => {
     }, 100);
 };
 window.addEventListener("DOMContentLoaded", () => {
+    window.mdc.menu.MDCSimpleMenuFoundation.numbers.TRANSITION_DURATION_MS = 200;
     window.document.addEventListener("keydown", (ev) => {
         if (ev.keyCode === 37) {
             navLeftOrRight(true);
@@ -416,6 +417,24 @@ window.addEventListener("DOMContentLoaded", () => {
     else {
         startNavigatorExperiment();
     }
+    const buttonClearReadingLocations = document.getElementById("buttonClearReadingLocations");
+    buttonClearReadingLocations.addEventListener("click", () => {
+        electronStore.set("readingLocation", {});
+        drawer.open = false;
+        setTimeout(() => {
+            const message = "Reading locations reset.";
+            const data = {
+                actionHandler: () => {
+                },
+                actionOnBottom: false,
+                actionText: "OK",
+                message,
+                multiline: false,
+                timeout: 2000,
+            };
+            snackBar.show(data);
+        }, 500);
+    });
     const buttonClearSettings = document.getElementById("buttonClearSettings");
     buttonClearSettings.addEventListener("click", () => {
         electronStore.set(undefined, electronStore.getDefaults());
@@ -499,7 +518,7 @@ function createWebView() {
         "contextIsolation=0, webSecurity=1, allowRunningInsecureContent=0");
     wv.setAttribute("partition", sessions_1.R2_SESSION_WEBVIEW);
     wv.setAttribute("httpreferrer", publicationJsonUrl);
-    wv.setAttribute("preload", "./preload.js");
+    wv.setAttribute("preload", "./webview/preload.js");
     wv.setAttribute("disableguestresize", "");
     wv.addEventListener("dom-ready", () => {
         wv.clearHistory();
