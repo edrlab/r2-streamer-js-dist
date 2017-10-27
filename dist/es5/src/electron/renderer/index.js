@@ -27,6 +27,7 @@ var electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
         align: "left",
         dark: false,
         font: "DEFAULT",
+        fontSize: "100%",
         invert: false,
         night: false,
         readiumcss: false,
@@ -70,6 +71,7 @@ var computeReadiumCssJsonMessage = function () {
         var align = electronStore.get("styling.align");
         var dark = electronStore.get("styling.dark");
         var font = electronStore.get("styling.font");
+        var fontSize = electronStore.get("styling.fontSize");
         var invert = electronStore.get("styling.invert");
         var night = electronStore.get("styling.night");
         var sepia = electronStore.get("styling.sepia");
@@ -77,6 +79,7 @@ var computeReadiumCssJsonMessage = function () {
             align: align,
             dark: dark,
             font: font,
+            fontSize: fontSize,
             invert: invert,
             night: night,
             sepia: sepia,
@@ -94,9 +97,20 @@ var readiumCssOnOff = debounce(function () {
     _webview1.send(events_1.R2_EVENT_READIUMCSS, str);
     _webview2.send(events_1.R2_EVENT_READIUMCSS, str);
 }, 500);
+function ensureSliderLayout() {
+    setTimeout(function () {
+        var fontSizeSelector = document.getElementById("fontSizeSelector");
+        fontSizeSelector.mdcSlider.layout();
+    }, 100);
+}
 electronStore.onChanged("styling.readiumcss", function (newValue, oldValue) {
     if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
         return;
+    }
+    var stylingWrapper = document.getElementById("stylingWrapper");
+    stylingWrapper.style.display = newValue ? "block" : "none";
+    if (newValue) {
+        ensureSliderLayout();
     }
     var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
     readiumcssSwitch.checked = newValue;
@@ -210,11 +224,40 @@ function installKeyboardMouseFocusHandler() {
         dateLastKeyboardEvent = new Date();
     });
 }
+var initFontSizeSelector = function () {
+    var fontSizeSelector = document.getElementById("fontSizeSelector");
+    var slider = new window.mdc.slider.MDCSlider(fontSizeSelector);
+    fontSizeSelector.mdcSlider = slider;
+    slider.disabled = !electronStore.get("styling.readiumcss");
+    var val = electronStore.get("styling.fontSize");
+    if (val) {
+        slider.value = parseInt(val.replace("%", ""), 10);
+    }
+    else {
+        slider.value = 100;
+    }
+    electronStore.onChanged("styling.readiumcss", function (newValue, oldValue) {
+        if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+            return;
+        }
+        slider.disabled = !newValue;
+    });
+    slider.listen("MDCSlider:change", function (event) {
+        electronStore.set("styling.fontSize", event.detail.value + "%");
+    });
+    electronStore.onChanged("styling.fontSize", function (newValue, oldValue) {
+        if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+            return;
+        }
+        slider.value = parseInt(newValue.replace("%", ""), 10);
+        readiumCssOnOff();
+    });
+};
 var initFontSelector = function () {
     var ID_PREFIX = "fontselect_";
     var options = [{
             id: ID_PREFIX + "DEFAULT",
-            label: "Default",
+            label: "Default font",
         }, {
             id: ID_PREFIX + "OLD",
             label: "Old Style",
@@ -343,11 +386,6 @@ window.addEventListener("DOMContentLoaded", function () {
     else {
         document.body.classList.remove("mdc-theme--dark");
     }
-    initFontSelector();
-    var snackBarElem = document.getElementById("snackbar");
-    snackBar = new window.mdc.snackbar.MDCSnackbar(snackBarElem);
-    snackBarElem.mdcSnackbar = snackBar;
-    snackBar.dismissesOnAction = true;
     var drawerElement = document.getElementById("drawer");
     drawer = new window.mdc.drawer.MDCTemporaryDrawer(drawerElement);
     drawerElement.mdcTemporaryDrawer = drawer;
@@ -386,6 +424,43 @@ window.addEventListener("DOMContentLoaded", function () {
         else {
         }
     }, true);
+    initFontSelector();
+    initFontSizeSelector();
+    var nightSwitch = document.getElementById("night_switch-input");
+    nightSwitch.checked = electronStore.get("styling.night");
+    nightSwitch.addEventListener("change", function (_event) {
+        var checked = nightSwitch.checked;
+        electronStore.set("styling.night", checked);
+    });
+    nightSwitch.disabled = !electronStore.get("styling.readiumcss");
+    var justifySwitch = document.getElementById("justify_switch-input");
+    justifySwitch.checked = electronStore.get("styling.align") === "justify";
+    justifySwitch.addEventListener("change", function (_event) {
+        var checked = justifySwitch.checked;
+        electronStore.set("styling.align", checked ? "justify" : "left");
+    });
+    justifySwitch.disabled = !electronStore.get("styling.readiumcss");
+    var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
+    readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
+    var stylingWrapper = document.getElementById("stylingWrapper");
+    stylingWrapper.style.display = readiumcssSwitch.checked ? "block" : "none";
+    if (readiumcssSwitch.checked) {
+        ensureSliderLayout();
+    }
+    readiumcssSwitch.addEventListener("change", function (_event) {
+        var checked = readiumcssSwitch.checked;
+        electronStore.set("styling.readiumcss", checked);
+    });
+    var basicSwitch = document.getElementById("nav_basic_switch-input");
+    basicSwitch.checked = !electronStore.get("basicLinkTitles");
+    basicSwitch.addEventListener("change", function (_event) {
+        var checked = basicSwitch.checked;
+        electronStore.set("basicLinkTitles", !checked);
+    });
+    var snackBarElem = document.getElementById("snackbar");
+    snackBar = new window.mdc.snackbar.MDCSnackbar(snackBarElem);
+    snackBarElem.mdcSnackbar = snackBar;
+    snackBar.dismissesOnAction = true;
     var menuFactory = function (menuEl) {
         var menu = new window.mdc.menu.MDCSimpleMenu(menuEl);
         menuEl.mdcSimpleMenu = menu;
@@ -402,6 +477,10 @@ window.addEventListener("DOMContentLoaded", function () {
         var newActivePanel = document.querySelector(".tabPanel:nth-child(" + (ev.detail.selectedIndex + 1) + ")");
         if (newActivePanel) {
             newActivePanel.classList.add("active");
+            var div = document.getElementById("reader_controls_STYLES");
+            if (newActivePanel === div) {
+                ensureSliderLayout();
+            }
         }
     });
     var diagElem = document.querySelector("#lcpDialog");
@@ -811,32 +890,6 @@ function startNavigatorExperiment() {
     var slidingViewport = document.getElementById("sliding_viewport");
     slidingViewport.appendChild(_webview1);
     slidingViewport.appendChild(_webview2);
-    var nightSwitch = document.getElementById("night_switch-input");
-    nightSwitch.checked = electronStore.get("styling.night");
-    nightSwitch.addEventListener("change", function (_event) {
-        var checked = nightSwitch.checked;
-        electronStore.set("styling.night", checked);
-    });
-    nightSwitch.disabled = !electronStore.get("styling.readiumcss");
-    var justifySwitch = document.getElementById("justify_switch-input");
-    justifySwitch.checked = electronStore.get("styling.align") === "justify";
-    justifySwitch.addEventListener("change", function (_event) {
-        var checked = justifySwitch.checked;
-        electronStore.set("styling.align", checked ? "justify" : "left");
-    });
-    justifySwitch.disabled = !electronStore.get("styling.readiumcss");
-    var readiumcssSwitch = document.getElementById("readiumcss_switch-input");
-    readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
-    readiumcssSwitch.addEventListener("change", function (_event) {
-        var checked = readiumcssSwitch.checked;
-        electronStore.set("styling.readiumcss", checked);
-    });
-    var basicSwitch = document.getElementById("nav_basic_switch-input");
-    basicSwitch.checked = !electronStore.get("basicLinkTitles");
-    basicSwitch.addEventListener("change", function (_event) {
-        var checked = basicSwitch.checked;
-        electronStore.set("basicLinkTitles", !checked);
-    });
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var response, e_1, e_2, isRTL, title, keys, h1, buttonNavLeft, buttonNavRight, opts, opts, tag_1, opts, tag_2, landmarksData, opts, tag_3, readStore, linkToLoad, linkToLoadGoto, obj_1, firstLinear;
         return tslib_1.__generator(this, function (_a) {

@@ -108,6 +108,7 @@ function readiumCSSSet(messageJson) {
         var invert = false;
         var paged = false;
         var font = void 0;
+        var fontSize = void 0;
         var align = void 0;
         if (typeof messageJson.setCSS === "object") {
             if (messageJson.setCSS.dark) {
@@ -127,6 +128,9 @@ function readiumCSSSet(messageJson) {
             }
             if (typeof messageJson.setCSS.font === "string") {
                 font = messageJson.setCSS.font;
+            }
+            if (typeof messageJson.setCSS.fontSize === "string") {
+                fontSize = messageJson.setCSS.fontSize;
             }
             if (typeof messageJson.setCSS.align === "string") {
                 align = messageJson.setCSS.align;
@@ -161,6 +165,7 @@ function readiumCSSSet(messageJson) {
             (align === "right" ? "right" :
                 (align === "left" ? "left" :
                     (align === "center" ? "center" : "left"))));
+        docElement.style.setProperty("--USER__fontSize", fontSize ? fontSize : "100%");
     }
 }
 exports.readiumCSS = function (messageJson) {
