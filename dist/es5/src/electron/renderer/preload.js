@@ -197,7 +197,8 @@ var readiumCSS = function (messageJson) {
                         (font === "MODERN" ? "var(--RS__modernTf)" :
                             (font === "SANS" ? "var(--RS__sansTf)" :
                                 (font === "HUMAN" ? "var(--RS__humanistTf)" :
-                                    (font ? font : "var(--RS__oldStyleTf)")))))));
+                                    (font === "MONO" ? "var(--RS__monospaceTf)" :
+                                        (font ? font : "var(--RS__oldStyleTf)"))))))));
             docElement.style.setProperty("--USER__textAlign", align === "justify" ? "justify" :
                 (align === "right" ? "right" :
                     (align === "left" ? "left" : "left")));

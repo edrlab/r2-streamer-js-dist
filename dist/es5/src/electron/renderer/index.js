@@ -205,18 +205,28 @@ var initFontSelector = function () {
         }, {
             id: ID_PREFIX + "OLD",
             label: "Old Style",
+            style: "font-family: \"Iowan Old Style\", \"Sitka Text\", Palatino, \"Book Antiqua\", serif;",
         }, {
             id: ID_PREFIX + "MODERN",
             label: "Modern",
+            style: "font-family: Athelas, Constantia, Georgia, serif;",
         }, {
             id: ID_PREFIX + "SANS",
             label: "Sans",
+            style: "font-family: -apple-system, system-ui, BlinkMacSystemFont," +
+                " \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;",
         }, {
             id: ID_PREFIX + "HUMAN",
             label: "Humanist",
+            style: "font-family: Seravek, Calibri, Roboto, Arial, sans-serif;",
         }, {
             id: ID_PREFIX + "DYS",
             label: "Readable (dys)",
+            style: "font-family: AccessibleDfa;",
+        }, {
+            id: ID_PREFIX + "MONO",
+            label: "Monospace",
+            style: "font-family: \"Andale Mono\", Consolas, monospace;",
         }];
     var selectedID = ID_PREFIX + electronStore.get("styling.font");
     var foundItem = options.find(function (item) {
@@ -278,6 +288,7 @@ var initFontSelector = function () {
                             var option = {
                                 id: ID_PREFIX + sysFont,
                                 label: sysFont,
+                                style: "font-family: " + sysFont + ";",
                             };
                             arr_1.push(option);
                         });
