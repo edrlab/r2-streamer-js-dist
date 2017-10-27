@@ -22,6 +22,7 @@ const index_4 = require("./riots/menuselect/index_");
 const electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
     basicLinkTitles: true,
     styling: {
+        align: "left",
         dark: false,
         font: "DEFAULT",
         invert: false,
@@ -53,15 +54,25 @@ electronStore.onChanged("styling.night", (newValue, oldValue) => {
     }
     readiumCssOnOff();
 });
+electronStore.onChanged("styling.align", (newValue, oldValue) => {
+    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+        return;
+    }
+    const nightSwitch = document.getElementById("justify_switch-input");
+    nightSwitch.checked = (newValue === "justify");
+    readiumCssOnOff();
+});
 const computeReadiumCssJsonMessage = () => {
     const on = electronStore.get("styling.readiumcss");
     if (on) {
+        const align = electronStore.get("styling.align");
         const dark = electronStore.get("styling.dark");
         const font = electronStore.get("styling.font");
         const invert = electronStore.get("styling.invert");
         const night = electronStore.get("styling.night");
         const sepia = electronStore.get("styling.sepia");
         const cssJson = {
+            align,
             dark,
             font,
             invert,
@@ -88,6 +99,8 @@ electronStore.onChanged("styling.readiumcss", (newValue, oldValue) => {
     const readiumcssSwitch = document.getElementById("readiumcss_switch-input");
     readiumcssSwitch.checked = newValue;
     readiumCssOnOff();
+    const justifySwitch = document.getElementById("justify_switch-input");
+    justifySwitch.disabled = !newValue;
     const nightSwitch = document.getElementById("night_switch-input");
     nightSwitch.disabled = !newValue;
     if (!newValue) {
@@ -789,6 +802,13 @@ function startNavigatorExperiment() {
         electronStore.set("styling.night", checked);
     });
     nightSwitch.disabled = !electronStore.get("styling.readiumcss");
+    const justifySwitch = document.getElementById("justify_switch-input");
+    justifySwitch.checked = electronStore.get("styling.align") === "justify";
+    justifySwitch.addEventListener("change", (_event) => {
+        const checked = justifySwitch.checked;
+        electronStore.set("styling.align", checked ? "justify" : "left");
+    });
+    justifySwitch.disabled = !electronStore.get("styling.readiumcss");
     const readiumcssSwitch = document.getElementById("readiumcss_switch-input");
     readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
     readiumcssSwitch.addEventListener("change", (_event) => {

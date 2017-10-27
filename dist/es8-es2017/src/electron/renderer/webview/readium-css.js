@@ -26,11 +26,11 @@ color: black !important;
 background-color: rgb(100, 122, 177) !important;
 color: white !important;
 }
+/*
 .readium2-hash {
     color: black !important;
     background-color: rgb(185, 207, 255) !important;
 }
-/*
 :root.mdc-theme--dark .readium2-hash {
     color: white !important;
     background-color: rgb(67, 64, 125) !important;
@@ -262,7 +262,8 @@ function readiumCSSSet(messageJson) {
                                     (font ? font : "var(--RS__oldStyleTf)"))))))));
         docElement.style.setProperty("--USER__textAlign", align === "justify" ? "justify" :
             (align === "right" ? "right" :
-                (align === "left" ? "left" : "left")));
+                (align === "left" ? "left" :
+                    (align === "center" ? "center" : "left"))));
     }
 }
 exports.readiumCSS = (messageJson) => {
