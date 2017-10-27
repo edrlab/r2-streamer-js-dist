@@ -227,7 +227,7 @@ win.addEventListener("DOMContentLoaded", function () {
         _hashElement = win.document.getElementById(win.location.hash.substr(1));
     }
     resetInitialState();
-    readium_css_1.injectSelectionAndFocusCSS();
+    readium_css_1.injectDefaultCSS();
     if (readium_css_1.DEBUG_VISUALS) {
         readium_css_1.injectReadPosCSS();
     }

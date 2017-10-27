@@ -1,9 +1,9 @@
 {
-  "short": "a2048de",
-  "long": "a2048de0ad132e185673f5006db3f9175c00b34f",
+  "short": "679ce9e",
+  "long": "679ce9e5f161ccfcc411475296f66d7f9cd3c849",
   "branch": "develop",
-  "date": "2017-10-27T10:40:58.000Z",
+  "date": "2017-10-27T12:46:27.000Z",
   "dirty": true,
-  "urlHistory": "https://github.com/edrlab/r2-streamer-js/commits/a2048de0ad132e185673f5006db3f9175c00b34f",
-  "urlDiff": "https://github.com/edrlab/r2-streamer-js/compare/a2048de0ad132e185673f5006db3f9175c00b34f...develop"
+  "urlHistory": "https://github.com/edrlab/r2-streamer-js/commits/679ce9e5f161ccfcc411475296f66d7f9cd3c849",
+  "urlDiff": "https://github.com/edrlab/r2-streamer-js/compare/679ce9e5f161ccfcc411475296f66d7f9cd3c849...develop"
 }
