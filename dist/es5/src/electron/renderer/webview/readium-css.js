@@ -109,6 +109,8 @@ function readiumCSSSet(messageJson) {
         var paged = false;
         var font = void 0;
         var fontSize = void 0;
+        var lineHeight = void 0;
+        var colCount = void 0;
         var align = void 0;
         if (typeof messageJson.setCSS === "object") {
             if (messageJson.setCSS.dark) {
@@ -132,6 +134,12 @@ function readiumCSSSet(messageJson) {
             if (typeof messageJson.setCSS.fontSize === "string") {
                 fontSize = messageJson.setCSS.fontSize;
             }
+            if (typeof messageJson.setCSS.lineHeight === "string") {
+                lineHeight = messageJson.setCSS.lineHeight;
+            }
+            if (typeof messageJson.setCSS.colCount === "string") {
+                colCount = messageJson.setCSS.colCount;
+            }
             if (typeof messageJson.setCSS.align === "string") {
                 align = messageJson.setCSS.align;
             }
@@ -150,6 +158,10 @@ function readiumCSSSet(messageJson) {
         docElement.style.setProperty("--USER__view", paged ? "readium-paged-on" : "readium-scroll-on");
         if (paged) {
             docElement.style.overflow = "hidden";
+            docElement.classList.add("readium-paginated");
+        }
+        else {
+            docElement.classList.remove("readium-paginated");
         }
         var needsFontOverride = typeof font !== "undefined" && font !== "DEFAULT";
         docElement.style.setProperty("--USER__fontOverride", needsFontOverride ? "readium-font-on" : "readium-font-off");
@@ -166,6 +178,8 @@ function readiumCSSSet(messageJson) {
                 (align === "left" ? "left" :
                     (align === "center" ? "center" : "left"))));
         docElement.style.setProperty("--USER__fontSize", fontSize ? fontSize : "100%");
+        docElement.style.setProperty("--USER__lineHeight", lineHeight ? lineHeight : "2");
+        docElement.style.setProperty("--USER__colCount", colCount ? colCount : "auto");
     }
 }
 exports.readiumCSS = function (messageJson) {

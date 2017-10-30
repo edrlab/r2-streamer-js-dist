@@ -8,6 +8,7 @@ var StoreElectron = (function () {
             defaults: defaults,
             name: name,
         });
+        this._electronStore.events.setMaxListeners(0);
     }
     StoreElectron.prototype.getDefaults = function () {
         return this.defaults;

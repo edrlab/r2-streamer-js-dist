@@ -96,7 +96,19 @@
 
                 <div id="stylingWrapper" style="margin-left: 1em; padding-left: 1em; margin-bottom: 1em;">
 
+
                   <div style="padding:0;padding-top:0.6em;">
+                    <i class="material-icons" style="vertical-align: bottom; display: inline;" role="presentation" aria-hidden="true">import_contacts</i> <!-- view_carousel -->
+                    <div class="mdc-switch">
+                      <input type="checkbox" id="paginate_switch-input" class="mdc-switch__native-control" />
+                      <div class="mdc-switch__background">
+                        <div class="mdc-switch__knob"></div>
+                      </div>
+                    </div>
+                    <label for="paginate_switch-input" class="mdc-switch-label">Pagination</label>
+                  </div>
+
+                  <div style="padding:0;padding-top:1em;">
                     <i class="material-icons" style="vertical-align: bottom; display: inline;" role="presentation" aria-hidden="true">brightness_4</i> <!-- invert_colors -->
                     <div class="mdc-switch">
                       <input type="checkbox" id="night_switch-input" class="mdc-switch__native-control" />
@@ -121,9 +133,11 @@
                   <div data-is="riot-menuselect" id="fontSelect" style="margin-bottom: 1em;"> </div>
 
                   <!-- <i class="material-icons" role="presentation" style="vertical-align: top;" aria-label="font size" aria-hidden>format_size</i> -->
-                  <span class="mdc-typography--text" style="display: block;">%</span>
+                  <span class="mdc-typography--text" style="display: block;">Font size (%):</span>
 
-                  <div id="fontSizeSelector" class="mdc-slider mdc-slider--discrete mdc-slider--display-markers" tabindex="0" role="slider" aria-valuemin="75" aria-valuemax="250" aria-valuenow="100" data-step="25" aria-label="Font size (%)">
+                  <div id="fontSizeSelector" class="mdc-slider mdc-slider--discrete mdc-slider--display-markers" tabindex="0" role="slider"
+                    aria-valuemin="75" aria-valuemax="250" aria-valuenow="100" data-step="25"
+                    aria-label="Font size (%)">
                     <div class="mdc-slider__track-container">
                       <div class="mdc-slider__track"></div>
                       <div class="mdc-slider__track-marker-container"></div>
@@ -139,6 +153,26 @@
                     </div>
                   </div>
 
+                  <span class="mdc-typography--text" style="display: block;">Line Height (%):</span>
+
+                  <!-- aria-valuemin="1" aria-valuemax="3" aria-valuenow="1.5" data-step="0.25" -->
+                  <div id="lineHeightSelector" class="mdc-slider mdc-slider--discrete mdc-slider--display-markers" tabindex="0" role="slider"
+                    aria-valuemin="100" aria-valuemax="300" aria-valuenow="150" data-step="25"
+                    aria-label="Line height (%)">
+                    <div class="mdc-slider__track-container">
+                      <div class="mdc-slider__track"></div>
+                      <div class="mdc-slider__track-marker-container"></div>
+                    </div>
+                    <div class="mdc-slider__thumb-container">
+                      <div class="mdc-slider__pin">
+                        <span class="mdc-slider__pin-value-marker"></span>
+                      </div>
+                      <svg class="mdc-slider__thumb" width="21" height="21">
+                        <circle cx="10.5" cy="10.5" r="7.875"></circle>
+                      </svg>
+                      <div class="mdc-slider__focus-ring"></div>
+                    </div>
+                  </div>
 
                 </div>
 

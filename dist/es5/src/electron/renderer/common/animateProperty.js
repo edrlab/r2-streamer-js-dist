@@ -1,35 +1,49 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.animateProperty = function (cAF, callback, property, duration, object, destVal, rAF, transition) {
-    var originVal = object[property];
-    var deltaVal = destVal - originVal;
-    var startTime = Date.now();
-    var id = 0;
-    var lastVal = 0;
+    var state = {
+        animating: false,
+        deltaVal: destVal - object[property],
+        destVal: destVal,
+        duration: duration,
+        id: 0,
+        lastVal: 0,
+        nowTime: 0,
+        object: object,
+        originVal: object[property],
+        property: property,
+        startTime: Date.now(),
+    };
     var animate = function () {
-        var nowTime = Date.now();
-        var newVal = Math.floor(transition(nowTime - startTime, originVal, deltaVal, duration));
-        if (!lastVal || object[property] !== destVal) {
-            object[property] = newVal;
-            lastVal = newVal;
+        state.animating = true;
+        state.nowTime = Date.now();
+        var newVal = Math.floor(transition(state.nowTime - state.startTime, state.originVal, state.deltaVal, state.duration));
+        if (!state.lastVal || state.object[state.property] !== state.destVal) {
+            state.object[state.property] = newVal;
+            state.lastVal = newVal;
         }
         else {
+            state.animating = false;
+            state.object = {};
             if (callback) {
                 callback(true);
             }
-            cAF(id);
+            cAF(state.id);
             return;
         }
-        if (nowTime > (startTime + duration)) {
-            object[property] = destVal;
+        if (state.nowTime > (state.startTime + state.duration)) {
+            state.animating = false;
+            state.object[state.property] = state.destVal;
+            state.object = {};
             if (callback) {
                 callback(false);
             }
-            cAF(id);
+            cAF(state.id);
             return;
         }
-        id = rAF(animate);
+        state.id = rAF(animate);
     };
-    id = rAF(animate);
+    state.id = rAF(animate);
+    return state;
 };
 //# sourceMappingURL=animateProperty.js.map

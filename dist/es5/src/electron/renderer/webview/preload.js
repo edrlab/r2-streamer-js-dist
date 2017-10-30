@@ -13,8 +13,6 @@ var win = global.window;
 var queryParams = win.location.search ? querystring_1.getURLQueryParams(win.location.search) : undefined;
 var _hashElement;
 electron_1.ipcRenderer.on(events_1.R2_EVENT_SCROLLTO, function (_event, messageString) {
-    console.log("R2_EVENT_SCROLLTO");
-    console.log(messageString);
     var messageJson = JSON.parse(messageString);
     if (!queryParams) {
         queryParams = {};
@@ -45,24 +43,64 @@ electron_1.ipcRenderer.on(events_1.R2_EVENT_SCROLLTO, function (_event, messageS
     _locationHashOverride = undefined;
     scrollToHashRaw(false);
 });
+var _lastAnimState;
 electron_1.ipcRenderer.on(events_1.R2_EVENT_PAGE_TURN, function (_event, messageString) {
-    var element = win.document.body;
-    if (!element) {
+    if (!win.document.body) {
+        electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_PAGE_TURN_RES, messageString);
         return;
     }
-    var maxHeightShift = element.scrollHeight - win.document.documentElement.clientHeight;
+    var isPaged = win.document.documentElement.classList.contains("readium-paginated");
+    var maxHeightShift = isPaged ?
+        win.document.body.scrollWidth - win.document.documentElement.offsetWidth :
+        win.document.body.scrollHeight - win.document.documentElement.clientHeight;
     var messageJson = JSON.parse(messageString);
     var goPREVIOUS = messageJson.go === "PREVIOUS";
     if (!goPREVIOUS) {
-        if (element.scrollTop < maxHeightShift) {
-            animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, element, element.scrollTop + win.document.documentElement.clientHeight, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
-            return;
+        if (isPaged) {
+            if (win.document.body.scrollLeft < maxHeightShift) {
+                if (_lastAnimState && _lastAnimState.animating) {
+                    win.cancelAnimationFrame(_lastAnimState.id);
+                    _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
+                }
+                var newVal = win.document.body.scrollLeft + win.document.documentElement.offsetWidth;
+                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollLeft", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
+                return;
+            }
+        }
+        else {
+            if (win.document.body.scrollTop < maxHeightShift) {
+                if (_lastAnimState && _lastAnimState.animating) {
+                    win.cancelAnimationFrame(_lastAnimState.id);
+                    _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
+                }
+                var newVal = win.document.body.scrollTop + win.document.documentElement.clientHeight;
+                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
+                return;
+            }
         }
     }
     else if (goPREVIOUS) {
-        if (element.scrollTop > 0) {
-            animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, element, element.scrollTop - win.document.documentElement.clientHeight, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
-            return;
+        if (isPaged) {
+            if (win.document.body.scrollLeft > 0) {
+                if (_lastAnimState && _lastAnimState.animating) {
+                    win.cancelAnimationFrame(_lastAnimState.id);
+                    _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
+                }
+                var newVal = win.document.body.scrollLeft - win.document.documentElement.offsetWidth;
+                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollLeft", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
+                return;
+            }
+        }
+        else {
+            if (win.document.body.scrollTop > 0) {
+                if (_lastAnimState && _lastAnimState.animating) {
+                    win.cancelAnimationFrame(_lastAnimState.id);
+                    _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
+                }
+                var newVal = win.document.body.scrollTop - win.document.documentElement.clientHeight;
+                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
+                return;
+            }
         }
     }
     electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_PAGE_TURN_RES, messageString);
@@ -116,10 +154,20 @@ var notifyReady = function () {
     _readyEventSent = true;
     electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_WEBVIEW_READY, win.location.href);
 };
+function scrollIntoView(element) {
+    if (!win.document.body) {
+        return;
+    }
+    var colIndex = element.offsetTop / win.document.body.scrollHeight;
+    colIndex = Math.floor(colIndex);
+    var isTwoPage = win.document.documentElement.offsetWidth > win.document.body.offsetWidth;
+    var spreadIndex = isTwoPage ? Math.floor(colIndex / 2) : colIndex;
+    var left = (spreadIndex * win.document.documentElement.offsetWidth);
+    win.document.body.scrollLeft = left;
+}
 var scrollToHashRaw = function (firstCall) {
-    console.log("scrollToHash: " + firstCall);
+    var isPaged = win.document.documentElement.classList.contains("readium-paginated");
     if (_locationHashOverride) {
-        console.log("_locationHashOverride");
         if (_locationHashOverride === win.document.body) {
             console.log("body...");
             return;
@@ -127,11 +175,16 @@ var scrollToHashRaw = function (firstCall) {
         notifyReady();
         notifyReadingLocation();
         _ignoreScrollEvent = true;
-        _locationHashOverride.scrollIntoView({
-            behavior: "instant",
-            block: "start",
-            inline: "nearest",
-        });
+        if (isPaged) {
+            scrollIntoView(_locationHashOverride);
+        }
+        else {
+            _locationHashOverride.scrollIntoView({
+                behavior: "instant",
+                block: "start",
+                inline: "start",
+            });
+        }
         return;
     }
     else if (_hashElement) {
@@ -141,11 +194,16 @@ var scrollToHashRaw = function (firstCall) {
         notifyReadingLocation();
         if (!firstCall) {
             _ignoreScrollEvent = true;
-            _hashElement.scrollIntoView({
-                behavior: "instant",
-                block: "start",
-                inline: "nearest",
-            });
+            if (isPaged) {
+                scrollIntoView(_hashElement);
+            }
+            else {
+                _hashElement.scrollIntoView({
+                    behavior: "instant",
+                    block: "start",
+                    inline: "start",
+                });
+            }
         }
         return;
     }
@@ -156,13 +214,24 @@ var scrollToHashRaw = function (firstCall) {
                 var isPreviousNavDirection = previous === "true";
                 if (isPreviousNavDirection) {
                     console.log("readiumprevious");
-                    var maxHeightShift = win.document.body.scrollHeight - win.document.documentElement.clientHeight;
+                    var maxHeightShift = isPaged ?
+                        win.document.body.scrollWidth - win.document.documentElement.offsetWidth :
+                        win.document.body.scrollHeight - win.document.documentElement.clientHeight;
                     _ignoreScrollEvent = true;
-                    win.document.body.scrollLeft = 0;
-                    win.document.body.scrollTop = maxHeightShift;
+                    if (isPaged) {
+                        win.document.body.scrollLeft = maxHeightShift;
+                        win.document.body.scrollTop = 0;
+                    }
+                    else {
+                        win.document.body.scrollLeft = 0;
+                        win.document.body.scrollTop = maxHeightShift;
+                    }
                     _locationHashOverride = undefined;
                     _locationHashOverrideCSSselector = undefined;
-                    processXYRaw(0, win.document.documentElement.clientHeight - 1);
+                    processXYRaw(0, (isPaged ?
+                        win.document.documentElement.offsetHeight :
+                        win.document.documentElement.clientHeight)
+                        - 1);
                     console.log("BOTTOM (previous):");
                     console.log(_locationHashOverride);
                     notifyReady();
@@ -180,17 +249,21 @@ var scrollToHashRaw = function (firstCall) {
                         console.log(err);
                     }
                     if (selected) {
-                        console.log("readiumgoto");
                         _locationHashOverride = selected;
                         _locationHashOverrideCSSselector = gotoCssSelector;
                         notifyReady();
                         notifyReadingLocation();
                         _ignoreScrollEvent = true;
-                        selected.scrollIntoView({
-                            behavior: "instant",
-                            block: "start",
-                            inline: "nearest",
-                        });
+                        if (isPaged) {
+                            scrollIntoView(selected);
+                        }
+                        else {
+                            selected.scrollIntoView({
+                                behavior: "instant",
+                                block: "start",
+                                inline: "start",
+                            });
+                        }
                         return;
                     }
                 }
@@ -231,6 +304,14 @@ win.addEventListener("DOMContentLoaded", function () {
     if (readium_css_1.DEBUG_VISUALS) {
         readium_css_1.injectReadPosCSS();
     }
+    win.document.body.addEventListener("focusin", function (ev) {
+        var isPaged = win.document.documentElement.classList.contains("readium-paginated");
+        if (isPaged) {
+            setTimeout(function () {
+                scrollIntoView(ev.target);
+            }, 30);
+        }
+    });
     win.document.addEventListener("click", function (e) {
         var href = e.target.href;
         if (!href) {
@@ -256,7 +337,6 @@ win.addEventListener("DOMContentLoaded", function () {
     }
 });
 var processXYRaw = function (x, y) {
-    console.log("processXY");
     var element;
     var textNode;
     var textNodeOffset = 0;

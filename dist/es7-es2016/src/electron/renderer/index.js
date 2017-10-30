@@ -24,11 +24,14 @@ const electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
     basicLinkTitles: true,
     styling: {
         align: "left",
+        colCount: "auto",
         dark: false,
         font: "DEFAULT",
         fontSize: "100%",
         invert: false,
+        lineHeight: "1.5",
         night: false,
+        paged: false,
         readiumcss: false,
         sepia: false,
     },
@@ -64,23 +67,37 @@ electronStore.onChanged("styling.align", (newValue, oldValue) => {
     nightSwitch.checked = (newValue === "justify");
     readiumCssOnOff();
 });
+electronStore.onChanged("styling.paged", (newValue, oldValue) => {
+    if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+        return;
+    }
+    const paginateSwitch = document.getElementById("paginate_switch-input");
+    paginateSwitch.checked = newValue;
+    readiumCssOnOff();
+});
 const computeReadiumCssJsonMessage = () => {
     const on = electronStore.get("styling.readiumcss");
     if (on) {
         const align = electronStore.get("styling.align");
+        const colCount = electronStore.get("styling.colCount");
         const dark = electronStore.get("styling.dark");
         const font = electronStore.get("styling.font");
         const fontSize = electronStore.get("styling.fontSize");
+        const lineHeight = electronStore.get("styling.lineHeight");
         const invert = electronStore.get("styling.invert");
         const night = electronStore.get("styling.night");
+        const paged = electronStore.get("styling.paged");
         const sepia = electronStore.get("styling.sepia");
         const cssJson = {
             align,
+            colCount,
             dark,
             font,
             fontSize,
             invert,
+            lineHeight,
             night,
+            paged,
             sepia,
         };
         const jsonMsg = { injectCSS: "yes", setCSS: cssJson };
@@ -100,6 +117,8 @@ function ensureSliderLayout() {
     setTimeout(() => {
         const fontSizeSelector = document.getElementById("fontSizeSelector");
         fontSizeSelector.mdcSlider.layout();
+        const lineHeightSelector = document.getElementById("lineHeightSelector");
+        lineHeightSelector.mdcSlider.layout();
     }, 100);
 }
 electronStore.onChanged("styling.readiumcss", (newValue, oldValue) => {
@@ -116,6 +135,8 @@ electronStore.onChanged("styling.readiumcss", (newValue, oldValue) => {
     readiumCssOnOff();
     const justifySwitch = document.getElementById("justify_switch-input");
     justifySwitch.disabled = !newValue;
+    const paginateSwitch = document.getElementById("paginate_switch-input");
+    paginateSwitch.disabled = !newValue;
     const nightSwitch = document.getElementById("night_switch-input");
     nightSwitch.disabled = !newValue;
     if (!newValue) {
@@ -223,6 +244,35 @@ function installKeyboardMouseFocusHandler() {
         dateLastKeyboardEvent = new Date();
     });
 }
+const initLineHeightSelector = () => {
+    const lineHeightSelector = document.getElementById("lineHeightSelector");
+    const slider = new window.mdc.slider.MDCSlider(lineHeightSelector);
+    lineHeightSelector.mdcSlider = slider;
+    slider.disabled = !electronStore.get("styling.readiumcss");
+    const val = electronStore.get("styling.lineHeight");
+    if (val) {
+        slider.value = parseFloat(val) * 100;
+    }
+    else {
+        slider.value = 1.5 * 100;
+    }
+    electronStore.onChanged("styling.readiumcss", (newValue, oldValue) => {
+        if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+            return;
+        }
+        slider.disabled = !newValue;
+    });
+    slider.listen("MDCSlider:change", (event) => {
+        electronStore.set("styling.lineHeight", "" + (event.detail.value / 100));
+    });
+    electronStore.onChanged("styling.lineHeight", (newValue, oldValue) => {
+        if (typeof newValue === "undefined" || typeof oldValue === "undefined") {
+            return;
+        }
+        slider.value = parseFloat(newValue) * 100;
+        readiumCssOnOff();
+    });
+};
 const initFontSizeSelector = () => {
     const fontSizeSelector = document.getElementById("fontSizeSelector");
     const slider = new window.mdc.slider.MDCSlider(fontSizeSelector);
@@ -352,6 +402,12 @@ const initFontSelector = () => {
 window.addEventListener("DOMContentLoaded", () => {
     window.mdc.menu.MDCSimpleMenuFoundation.numbers.TRANSITION_DURATION_MS = 200;
     window.document.addEventListener("keydown", (ev) => {
+        if (drawer.open) {
+            return;
+        }
+        if (ev.target.mdcSlider) {
+            return;
+        }
         if (ev.keyCode === 37) {
             navLeftOrRight(true);
         }
@@ -412,6 +468,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }, true);
     initFontSelector();
     initFontSizeSelector();
+    initLineHeightSelector();
     const nightSwitch = document.getElementById("night_switch-input");
     nightSwitch.checked = electronStore.get("styling.night");
     nightSwitch.addEventListener("change", (_event) => {
@@ -426,6 +483,13 @@ window.addEventListener("DOMContentLoaded", () => {
         electronStore.set("styling.align", checked ? "justify" : "left");
     });
     justifySwitch.disabled = !electronStore.get("styling.readiumcss");
+    const paginateSwitch = document.getElementById("paginate_switch-input");
+    paginateSwitch.checked = electronStore.get("styling.paged");
+    paginateSwitch.addEventListener("change", (_event) => {
+        const checked = paginateSwitch.checked;
+        electronStore.set("styling.paged", checked);
+    });
+    paginateSwitch.disabled = !electronStore.get("styling.readiumcss");
     const readiumcssSwitch = document.getElementById("readiumcss_switch-input");
     readiumcssSwitch.checked = electronStore.get("styling.readiumcss");
     const stylingWrapper = document.getElementById("stylingWrapper");

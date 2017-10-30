@@ -8,6 +8,7 @@ class StoreElectron {
             defaults,
             name,
         });
+        this._electronStore.events.setMaxListeners(0);
     }
     getDefaults() {
         return this.defaults;
