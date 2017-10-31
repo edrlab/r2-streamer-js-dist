@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var bind = require("bindings");
 var crypto = require("crypto");
 var fs = require("fs");
 var path = require("path");
@@ -50,15 +49,17 @@ var LCP = (function () {
             var fileName = path.basename(LCP_NATIVE_PLUGIN_PATH);
             debug(filePath);
             debug(fileName);
+            try {
+                this._lcpNative = require(LCP_NATIVE_PLUGIN_PATH);
+            }
+            catch (ex) {
+                debug("LCP JS impl fallback :(");
+                debug(ex);
+                this._usesNativeNodePlugin = false;
+                this._lcpNative = undefined;
+                return;
+            }
             this._usesNativeNodePlugin = true;
-            this._lcpNative = bind({
-                bindings: fileName,
-                module_root: filePath,
-                try: [[
-                        "module_root",
-                        "bindings",
-                    ]],
-            });
         }
         else {
             debug("LCP JS impl");
