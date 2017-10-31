@@ -92,7 +92,8 @@ let LCP = class LCP {
         if (!this.userPassphraseHex) {
             return false;
         }
-        const check = this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
+        const check = (this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
+            || this.Encryption.Profile === "http://readium.org/lcp/profile-1.0")
             && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
             && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
         if (!check) {

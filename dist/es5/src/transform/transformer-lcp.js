@@ -35,7 +35,8 @@ var TransformerLCP = (function () {
             return false;
         }
         var check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
-            && link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile"
+            && (link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile" ||
+                link.Properties.Encrypted.Profile === "http://readium.org/lcp/profile-1.0")
             && link.Properties.Encrypted.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
         if (!check) {
             debug("Incorrect resource LCP fields.");
