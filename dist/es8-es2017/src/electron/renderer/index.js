@@ -6,10 +6,8 @@ const URI = require("urijs");
 const UrlUtils_1 = require("../../_utils/http/UrlUtils");
 const init_globals_1 = require("../../init-globals");
 const publication_1 = require("../../models/publication");
-const lcp_1 = require("../../parser/epub/lcp");
 const electron_1 = require("electron");
 const electron_2 = require("electron");
-const path = require("path");
 const ta_json_1 = require("ta-json");
 const events_1 = require("../common/events");
 const sessions_1 = require("../common/sessions");
@@ -38,14 +36,6 @@ const electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
 const electronStoreLCP = new store_electron_1.StoreElectron("readium2-navigator-lcp", {});
 init_globals_1.initGlobals();
 const queryParams = querystring_1.getURLQueryParams();
-const lcpPluginBase64 = queryParams["lcpPlugin"];
-if (lcpPluginBase64) {
-    const lcpPlugin = window.atob(lcpPluginBase64);
-    lcp_1.setLcpNativePluginPath(lcpPlugin);
-}
-else {
-    lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
-}
 const publicationJsonUrl = queryParams["pub"];
 const pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$1");
 const pathDecoded = window.atob(pathBase64);

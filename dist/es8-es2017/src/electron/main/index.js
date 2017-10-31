@@ -88,7 +88,6 @@ async function createElectronBrowserWindow(publicationFilePath, publicationUrl) 
     if (lcpHint) {
         fullUrl = fullUrl + "&lcpHint=" + UrlUtils_1.encodeURIComponent_RFC3986(lcpHint);
     }
-    fullUrl = fullUrl + "&lcpPlugin=" + UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(lcpPluginPath).toString("base64"));
     debug(fullUrl);
     electronBrowserWindow.webContents.loadURL(fullUrl, { extraHeaders: "pragma: no-cache\n" });
 }
