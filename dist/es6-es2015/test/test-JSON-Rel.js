@@ -9,7 +9,7 @@ const lcp_1 = require("../src/parser/epub/lcp");
 const init_globals_1 = require("../src/init-globals");
 const helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 const relStr1 = "rel1";
 const relStr2 = "rel2";
 ava_1.test("JSON SERIALIZE: OPDSLink.Rel => string[]", (t) => {

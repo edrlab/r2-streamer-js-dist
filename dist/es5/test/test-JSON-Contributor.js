@@ -9,7 +9,7 @@ var lcp_1 = require("../src/parser/epub/lcp");
 var init_globals_1 = require("../src/init-globals");
 var helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 var contName1 = "theName1";
 var contRole1 = "theRole1";
 var cont1 = new metadata_contributor_1.Contributor();

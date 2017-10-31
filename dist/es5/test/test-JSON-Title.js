@@ -9,7 +9,7 @@ var lcp_1 = require("../src/parser/epub/lcp");
 var init_globals_1 = require("../src/init-globals");
 var helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 var titleStr1 = "str1";
 var titleStr2 = "str2";
 var titleLang1 = "lang1";

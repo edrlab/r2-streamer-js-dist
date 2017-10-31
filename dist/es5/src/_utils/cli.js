@@ -9,7 +9,7 @@ var publication_parser_1 = require("../parser/publication-parser");
 var lcp_1 = require("../parser/epub/lcp");
 var init_globals_1 = require("../init-globals");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 console.log("process.cwd():");
 console.log(process.cwd());
 console.log("__dirname: ");

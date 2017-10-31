@@ -39,8 +39,15 @@ var electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
 });
 var electronStoreLCP = new store_electron_1.StoreElectron("readium2-navigator-lcp", {});
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 var queryParams = querystring_1.getURLQueryParams();
+var lcpPluginBase64 = queryParams["lcpPlugin"];
+if (lcpPluginBase64) {
+    var lcpPlugin = window.atob(lcpPluginBase64);
+    lcp_1.setLcpNativePluginPath(lcpPlugin);
+}
+else {
+    lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
+}
 var publicationJsonUrl = queryParams["pub"];
 var pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$1");
 var pathDecoded = window.atob(pathBase64);

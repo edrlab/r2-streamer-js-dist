@@ -9,7 +9,7 @@ const lcp_1 = require("../src/parser/epub/lcp");
 const init_globals_1 = require("../src/init-globals");
 const helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 const contextStr1 = "http://context1";
 const contextStr2 = "http://context2";
 ava_1.test("JSON SERIALIZE: Publication.Context => string[]", (t) => {

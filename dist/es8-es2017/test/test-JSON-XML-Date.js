@@ -11,7 +11,7 @@ const lcp_1 = require("../src/parser/epub/lcp");
 const init_globals_1 = require("../src/init-globals");
 const helpers_1 = require("./helpers");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 const date = new Date();
 date.setUTCFullYear(2000, 11, 31);
 date.setUTCHours(23, 59, 59, 999);

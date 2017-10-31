@@ -15,7 +15,7 @@ var lcp_signature_1 = require("./lcp-signature");
 var lcp_user_1 = require("./lcp-user");
 var AES_BLOCK_SIZE = 16;
 var debug = debug_("r2:publication:lcp");
-var LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP/lcp.node");
+var LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP", "lcp.node");
 function setLcpNativePluginPath(filepath) {
     LCP_NATIVE_PLUGIN_PATH = filepath;
     debug(LCP_NATIVE_PLUGIN_PATH);

@@ -38,8 +38,15 @@ const electronStore = new store_electron_1.StoreElectron("readium2-navigator", {
 });
 const electronStoreLCP = new store_electron_1.StoreElectron("readium2-navigator-lcp", {});
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
 const queryParams = querystring_1.getURLQueryParams();
+const lcpPluginBase64 = queryParams["lcpPlugin"];
+if (lcpPluginBase64) {
+    const lcpPlugin = window.atob(lcpPluginBase64);
+    lcp_1.setLcpNativePluginPath(lcpPlugin);
+}
+else {
+    lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
+}
 const publicationJsonUrl = queryParams["pub"];
 const pathBase64 = publicationJsonUrl.replace(/.*\/pub\/(.*)\/manifest.json/, "$1");
 const pathDecoded = window.atob(pathBase64);

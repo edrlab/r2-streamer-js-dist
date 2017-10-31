@@ -20,7 +20,8 @@ var lsd_deviceid_manager_1 = require("./lsd-deviceid-manager");
 var readium_css_1 = require("./readium-css");
 var sessions_1 = require("./sessions");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+var lcpPluginPath = path.join(process.cwd(), "LCP", "lcp.node");
+lcp_1.setLcpNativePluginPath(lcpPluginPath);
 var debug = debug_("r2:electron:main");
 var _publicationsServer;
 var _publicationsServerPort;
@@ -105,6 +106,7 @@ function createElectronBrowserWindow(publicationFilePath, publicationUrl) {
                     if (lcpHint) {
                         fullUrl = fullUrl + "&lcpHint=" + UrlUtils_1.encodeURIComponent_RFC3986(lcpHint);
                     }
+                    fullUrl = fullUrl + "&lcpPlugin=" + UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(lcpPluginPath).toString("base64"));
                     debug(fullUrl);
                     electronBrowserWindow.webContents.loadURL(fullUrl, { extraHeaders: "pragma: no-cache\n" });
                     return [2];

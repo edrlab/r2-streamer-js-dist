@@ -8,7 +8,7 @@ const lcp_1 = require("../parser/epub/lcp");
 const init_globals_1 = require("../init-globals");
 const server_1 = require("./server");
 init_globals_1.initGlobals();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP/lcp.node"));
+lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
 const debug = debug_("r2:server:cli");
 debug(`process.cwd(): ${process.cwd()}`);
 debug(`__dirname: ${__dirname}`);
