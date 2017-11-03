@@ -4,6 +4,10 @@ const tslib_1 = require("tslib");
 const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
 let SeqOrPar = class SeqOrPar {
 };
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+    tslib_1.__metadata("design:type", String)
+], SeqOrPar.prototype, "EpubType", void 0);
 SeqOrPar = tslib_1.__decorate([
     xml_js_mapper_1.XmlObject({
         epub: "http://www.idpf.org/2007/ops",

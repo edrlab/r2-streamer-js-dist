@@ -13,6 +13,7 @@ const metadata_properties_1 = require("../models/metadata-properties");
 const metadata_subject_1 = require("../models/metadata-subject");
 const publication_1 = require("../models/publication");
 const publication_link_1 = require("../models/publication-link");
+const transformer_1 = require("../transform/transformer");
 const BufferUtils_1 = require("../_utils/stream/BufferUtils");
 const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
 const zipFactory_1 = require("../_utils/zip/zipFactory");
@@ -49,6 +50,8 @@ exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this,
                 zipStream = yield zip.entryStreamPromise(coverLink.Href);
             }
             catch (err) {
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
                 debug(err);
                 return;
             }
@@ -67,6 +70,8 @@ exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this,
                 }
             }
             catch (err) {
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
                 debug(err);
             }
         }
@@ -285,6 +290,160 @@ function EpubParsePromise(filePath) {
     });
 }
 exports.EpubParsePromise = EpubParsePromise;
+function getAllMediaOverlays(publication) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const mos = [];
+        if (publication.Spine) {
+            for (const link of publication.Spine) {
+                if (link.MediaOverlays) {
+                    for (const mo of link.MediaOverlays) {
+                        try {
+                            yield fillMediaOverlayParse(publication, mo);
+                        }
+                        catch (err) {
+                            return Promise.reject(err);
+                        }
+                        mos.push(mo);
+                    }
+                }
+            }
+        }
+        return Promise.resolve(mos);
+    });
+}
+exports.getAllMediaOverlays = getAllMediaOverlays;
+function getMediaOverlay(publication, spineHref) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const mos = [];
+        if (publication.Spine) {
+            for (const link of publication.Spine) {
+                if (link.MediaOverlays && link.Href.indexOf(spineHref) >= 0) {
+                    for (const mo of link.MediaOverlays) {
+                        try {
+                            yield fillMediaOverlayParse(publication, mo);
+                        }
+                        catch (err) {
+                            return Promise.reject(err);
+                        }
+                        mos.push(mo);
+                    }
+                }
+            }
+        }
+        return Promise.resolve(mos);
+    });
+}
+exports.getMediaOverlay = getMediaOverlay;
+const fillMediaOverlayParse = (publication, mo) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    if (mo.initialized) {
+        return;
+    }
+    let link;
+    if (publication.Resources) {
+        const relativePath = mo.SmilPathInZip;
+        if (publication.Resources) {
+            link = publication.Resources.find((l) => {
+                if (l.Href === relativePath) {
+                    return true;
+                }
+                return false;
+            });
+        }
+        if (!link) {
+            if (publication.Spine) {
+                link = publication.Spine.find((l) => {
+                    if (l.Href === relativePath) {
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+        if (!link) {
+            const err = "Asset not declared in publication spine/resources! " + relativePath;
+            debug(err);
+            return Promise.reject(err);
+        }
+    }
+    const zipInternal = publication.findFromInternal("zip");
+    if (!zipInternal) {
+        return;
+    }
+    const zip = zipInternal.Value;
+    let smilZipStream_;
+    try {
+        smilZipStream_ = yield zip.entryStreamPromise(mo.SmilPathInZip);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
+    if (link && link.Properties && link.Properties.Encrypted) {
+        let decryptFail = false;
+        let transformedStream;
+        try {
+            transformedStream = yield transformer_1.Transformers.tryStream(publication, link, smilZipStream_, false, 0, 0);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        if (transformedStream) {
+            smilZipStream_ = transformedStream;
+        }
+        else {
+            decryptFail = true;
+        }
+        if (decryptFail) {
+            const err = "Encryption scheme not supported.";
+            debug(err);
+            return Promise.reject(err);
+        }
+    }
+    const smilZipStream = smilZipStream_.stream;
+    let smilZipData;
+    try {
+        smilZipData = yield BufferUtils_1.streamToBufferPromise(smilZipStream);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
+    const smilStr = smilZipData.toString("utf8");
+    const smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
+    const smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
+    smil.ZipPath = mo.SmilPathInZip;
+    mo.initialized = true;
+    debug("PARSED SMIL: " + mo.SmilPathInZip);
+    mo.Role = [];
+    mo.Role.push("section");
+    if (smil.Body) {
+        if (smil.Body.EpubType) {
+            smil.Body.EpubType.trim().split(" ").forEach((role) => {
+                if (!role.length) {
+                    return;
+                }
+                if (mo.Role.indexOf(role) < 0) {
+                    mo.Role.push(role);
+                }
+            });
+        }
+        if (smil.Body.TextRef) {
+            const zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
+                .replace(/\\/g, "/");
+            mo.Text = zipPath;
+        }
+        if (smil.Body.Children && smil.Body.Children.length) {
+            smil.Body.Children.forEach((seqChild) => {
+                if (!mo.Children) {
+                    mo.Children = [];
+                }
+                addSeqToMediaOverlay(smil, publication, mo, mo.Children, seqChild);
+            });
+        }
+    }
+    return;
+});
 const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(this, void 0, void 0, function* () {
     if (!publication.Resources) {
         return;
@@ -293,16 +452,9 @@ const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(
         if (item.TypeLink !== "application/smil+xml") {
             continue;
         }
-        const smilFilePath = item.Href;
-        if (!zip.hasEntry(smilFilePath)) {
+        if (!zip.hasEntry(item.Href)) {
             continue;
         }
-        if (item.Properties && item.Properties.Encrypted) {
-            debug("ENCRYPTED SMIL MEDIA OVERLAY: " + smilFilePath);
-            continue;
-        }
-        const mo = new media_overlay_1.MediaOverlayNode();
-        mo.SmilPathInZip = smilFilePath;
         const manItemsHtmlWithSmil = [];
         opf.Manifest.forEach((manItemHtmlWithSmil) => {
             if (manItemHtmlWithSmil.MediaOverlay) {
@@ -315,12 +467,15 @@ const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(
                 if (manItemSmil) {
                     const smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
                         .replace(/\\/g, "/");
-                    if (smilFilePath2 === smilFilePath) {
+                    if (smilFilePath2 === item.Href) {
                         manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
                     }
                 }
             }
         });
+        const mo = new media_overlay_1.MediaOverlayNode();
+        mo.SmilPathInZip = item.Href;
+        mo.initialized = false;
         manItemsHtmlWithSmil.forEach((manItemHtmlWithSmil) => {
             const htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
                 .replace(/\\/g, "/");
@@ -330,7 +485,7 @@ const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(
                     link.MediaOverlays = [];
                 }
                 const alreadyExists = link.MediaOverlays.find((moo) => {
-                    if (mo.SmilPathInZip === moo.SmilPathInZip) {
+                    if (item.Href === moo.SmilPathInZip) {
                         return true;
                     }
                     return false;
@@ -345,54 +500,31 @@ const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(
                     exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
             }
         });
-        let smilZipStream_;
-        try {
-            smilZipStream_ = yield zip.entryStreamPromise(smilFilePath);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        const smilZipStream = smilZipStream_.stream;
-        let smilZipData;
-        try {
-            smilZipData = yield BufferUtils_1.streamToBufferPromise(smilZipStream);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        const smilStr = smilZipData.toString("utf8");
-        const smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
-        const smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
-        smil.ZipPath = smilFilePath;
-        mo.Role = [];
-        mo.Role.push("section");
-        if (smil.Body) {
-            if (smil.Body.TextRef) {
-                const zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
-                    .replace(/\\/g, "/");
-                mo.Text = zipPath;
-            }
-            if (smil.Body.Children && smil.Body.Children.length) {
-                smil.Body.Children.forEach((seqChild) => {
-                    if (!mo.Children) {
-                        mo.Children = [];
-                    }
-                    addSeqToMediaOverlay(smil, publication, rootfile, opf, mo, mo.Children, seqChild);
-                });
-            }
+        if (item.Properties && item.Properties.Encrypted) {
+            debug("ENCRYPTED SMIL MEDIA OVERLAY: " + item.Href);
+            continue;
         }
     }
     return;
 });
-const addSeqToMediaOverlay = (smil, publication, rootfile, opf, rootMO, mo, seqChild) => {
+const addSeqToMediaOverlay = (smil, publication, rootMO, mo, seqChild) => {
     const moc = new media_overlay_1.MediaOverlayNode();
+    moc.initialized = rootMO.initialized;
     mo.push(moc);
     if (seqChild instanceof smil_seq_1.Seq) {
         moc.Role = [];
         moc.Role.push("section");
         const seq = seqChild;
+        if (seq.EpubType) {
+            seq.EpubType.trim().split(" ").forEach((role) => {
+                if (!role.length) {
+                    return;
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
         if (seq.TextRef) {
             const zipPath = path.join(path.dirname(smil.ZipPath), seq.TextRef)
                 .replace(/\\/g, "/");
@@ -403,12 +535,25 @@ const addSeqToMediaOverlay = (smil, publication, rootfile, opf, rootMO, mo, seqC
                 if (!moc.Children) {
                     moc.Children = [];
                 }
-                addSeqToMediaOverlay(smil, publication, rootfile, opf, rootMO, moc.Children, child);
+                addSeqToMediaOverlay(smil, publication, rootMO, moc.Children, child);
             });
         }
     }
     else {
         const par = seqChild;
+        if (par.EpubType) {
+            par.EpubType.trim().split(" ").forEach((role) => {
+                if (!role.length) {
+                    return;
+                }
+                if (!moc.Role) {
+                    moc.Role = [];
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
         if (par.Text && par.Text.Src) {
             const zipPath = path.join(path.dirname(smil.ZipPath), par.Text.Src)
                 .replace(/\\/g, "/");
@@ -655,7 +800,7 @@ const addRelAndPropertiesToLink = (publication, link, linkEpub, rootfile, opf) =
     }
 });
 const addToLinkFromProperties = (publication, link, propertiesString) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    const properties = propertiesString.split(" ");
+    const properties = propertiesString.trim().split(" ");
     const propertiesStruct = new metadata_properties_1.Properties();
     for (const p of properties) {
         switch (p) {
@@ -1080,7 +1225,9 @@ const fillTOCFromNavDoc = (publication, _rootfile, _opf, zip) => tslib_1.__await
             const typeNav = select("@epub:type", navElement);
             if (typeNav && typeNav.length) {
                 const olElem = select("xhtml:ol", navElement);
-                switch (typeNav[0].value) {
+                const roles = typeNav[0].value;
+                const role = roles.trim().split(" ")[0];
+                switch (role) {
                     case "toc": {
                         publication.TOC = [];
                         fillTOCFromNavDocWithOL(select, olElem, publication.TOC, navLink.Href);

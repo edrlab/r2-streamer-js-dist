@@ -338,19 +338,14 @@ win.addEventListener("DOMContentLoaded", function () {
 });
 var processXYRaw = function (x, y) {
     var element;
-    var textNode;
-    var textNodeOffset = 0;
     var range = document.caretRangeFromPoint(x, y);
     if (range) {
         var node = range.startContainer;
-        var offset = range.startOffset;
         if (node) {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 element = node;
             }
             else if (node.nodeType === Node.TEXT_NODE) {
-                textNode = node;
-                textNodeOffset = offset;
                 if (node.parentNode && node.parentNode.nodeType === Node.ELEMENT_NODE) {
                     element = node.parentNode;
                 }

@@ -790,7 +790,7 @@ function loadLink(hrefFull, previous, useGoto) {
     }
     const pubUri = new URI(publicationJsonUrl);
     const pathPrefix = pubUri.path().replace("manifest.json", "");
-    const linkPath = linkUri.normalizePath().path().replace(pathPrefix, "");
+    const linkPath = decodeURIComponent(linkUri.normalizePath().path().replace(pathPrefix, ""));
     let pubLink = _publication.Spine.find((spineLink) => {
         return spineLink.Href === linkPath;
     });
@@ -800,7 +800,7 @@ function loadLink(hrefFull, previous, useGoto) {
         });
     }
     if (!pubLink) {
-        console.log("FATAL WEBVIEW READIUM2_LINK ??!!");
+        console.log("FATAL WEBVIEW READIUM2_LINK ??!! " + hrefFull + " ==> " + linkPath);
         return;
     }
     const activeWebView = getActiveWebView();

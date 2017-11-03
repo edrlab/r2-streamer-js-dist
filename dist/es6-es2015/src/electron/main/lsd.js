@@ -78,6 +78,9 @@ function launchStatusDocumentProcessing(publication, publicationPath, deviceIDMa
             }
         };
         const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            Object.keys(response.headers).forEach((header) => {
+                debug(header + " => " + response.headers[header]);
+            });
             if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                 failure("HTTP CODE " + response.statusCode);
                 return;
@@ -100,7 +103,10 @@ function launchStatusDocumentProcessing(publication, publicationPath, deviceIDMa
                 return;
             }
             const responseStr = responseData.toString("utf8");
-            debug(responseStr);
+            if (response.headers["content-type"] === "application/vnd.readium.license.status.v1.0+json" ||
+                response.headers["content-type"] === "application/json") {
+                debug(responseStr);
+            }
             const lsdJson = global.JSON.parse(responseStr);
             debug(lsdJson);
             publication.LCP.LSDJson = lsdJson;

@@ -8,6 +8,10 @@ tslib_1.__decorate([
     xml_js_mapper_1.XmlXPathSelector("@src"),
     tslib_1.__metadata("design:type", String)
 ], Text.prototype, "Src", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+    tslib_1.__metadata("design:type", String)
+], Text.prototype, "EpubType", void 0);
 Text = tslib_1.__decorate([
     xml_js_mapper_1.XmlObject({
         epub: "http://www.idpf.org/2007/ops",

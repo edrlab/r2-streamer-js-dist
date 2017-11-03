@@ -805,7 +805,7 @@ function loadLink(hrefFull, previous, useGoto) {
     }
     var pubUri = new URI(publicationJsonUrl);
     var pathPrefix = pubUri.path().replace("manifest.json", "");
-    var linkPath = linkUri.normalizePath().path().replace(pathPrefix, "");
+    var linkPath = decodeURIComponent(linkUri.normalizePath().path().replace(pathPrefix, ""));
     var pubLink = _publication.Spine.find(function (spineLink) {
         return spineLink.Href === linkPath;
     });
@@ -815,7 +815,7 @@ function loadLink(hrefFull, previous, useGoto) {
         });
     }
     if (!pubLink) {
-        console.log("FATAL WEBVIEW READIUM2_LINK ??!!");
+        console.log("FATAL WEBVIEW READIUM2_LINK ??!! " + hrefFull + " ==> " + linkPath);
         return;
     }
     var activeWebView = getActiveWebView();

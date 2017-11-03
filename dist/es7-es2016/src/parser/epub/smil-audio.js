@@ -16,6 +16,10 @@ tslib_1.__decorate([
     xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
     tslib_1.__metadata("design:type", String)
 ], Audio.prototype, "ClipEnd", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+    tslib_1.__metadata("design:type", String)
+], Audio.prototype, "EpubType", void 0);
 Audio = tslib_1.__decorate([
     xml_js_mapper_1.XmlObject({
         epub: "http://www.idpf.org/2007/ops",

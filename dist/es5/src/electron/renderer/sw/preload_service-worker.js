@@ -1,3 +1,4 @@
+"use strict";
 console.log("PRELOAD SERVICE WORKER");
 console.log(global.navigator.serviceWorker.controller);
 var pathItems = global.window.location.pathname.split("/");

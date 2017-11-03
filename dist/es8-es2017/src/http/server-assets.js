@@ -54,18 +54,12 @@ function serverAssets(server, routerPathBase64) {
             return;
         }
         let link;
-        if (publication.Resources
+        if ((publication.Resources || publication.Spine)
             && pathInZip.indexOf("META-INF/") !== 0
             && !pathInZip.endsWith(".opf")) {
             const relativePath = pathInZip;
-            link = publication.Resources.find((l) => {
-                if (l.Href === relativePath) {
-                    return true;
-                }
-                return false;
-            });
-            if (!link) {
-                link = publication.Spine.find((l) => {
+            if (publication.Resources) {
+                link = publication.Resources.find((l) => {
                     if (l.Href === relativePath) {
                         return true;
                     }
@@ -73,7 +67,17 @@ function serverAssets(server, routerPathBase64) {
                 });
             }
             if (!link) {
-                const err = "Asset not declared in publication spine/resources!";
+                if (publication.Spine) {
+                    link = publication.Spine.find((l) => {
+                        if (l.Href === relativePath) {
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            }
+            if (!link) {
+                const err = "Asset not declared in publication spine/resources!" + relativePath;
                 debug(err);
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + err + "</p></body></html>");

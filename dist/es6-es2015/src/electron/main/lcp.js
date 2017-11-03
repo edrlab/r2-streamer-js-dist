@@ -87,6 +87,9 @@ function downloadFromLCPL(filePath, dir, destFileName) {
                         reject(pubLink.Href + " (" + err + ")");
                     };
                     const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                        Object.keys(response.headers).forEach((header) => {
+                            debug(header + " => " + response.headers[header]);
+                        });
                         if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                             failure("HTTP CODE " + response.statusCode);
                             return;

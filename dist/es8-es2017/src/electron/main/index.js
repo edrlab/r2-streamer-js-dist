@@ -110,7 +110,7 @@ electron_1.app.on("ready", () => {
             disableReaders: false,
         });
         lcp_2.installLcpHandler(_publicationsServer, lsd_deviceid_manager_1.deviceIDManager);
-        readium_css_1.setupReadiumCSS(_publicationsServer, "dist/ReadiumCSS");
+        readium_css_1.setupReadiumCSS(_publicationsServer, path.join(process.cwd(), "dist/ReadiumCSS"));
         const pubPaths = _publicationsServer.addPublications(_publicationsFilePaths);
         try {
             _publicationsServerPort = await portfinder.getPortPromise();

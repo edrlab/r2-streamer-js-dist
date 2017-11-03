@@ -120,6 +120,9 @@ function downloadFromLCPL(filePath, dir, destFileName) {
                                 success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                                     var destStreamTMP;
                                     return tslib_1.__generator(this, function (_a) {
+                                        Object.keys(response.headers).forEach(function (header) {
+                                            debug(header + " => " + response.headers[header]);
+                                        });
                                         if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                                             failure_1("HTTP CODE " + response.statusCode);
                                             return [2];

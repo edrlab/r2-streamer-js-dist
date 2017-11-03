@@ -23,12 +23,13 @@ tslib_1.__decorate([
     tslib_1.__metadata("design:type", Number)
 ], NavPoint.prototype, "PlayerOrder", void 0);
 tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id"),
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
     tslib_1.__metadata("design:type", String)
 ], NavPoint.prototype, "ID", void 0);
 NavPoint = NavPoint_1 = tslib_1.__decorate([
     xml_js_mapper_1.XmlObject({
         ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        xml: "http://www.w3.org/XML/1998/namespace",
     })
 ], NavPoint);
 exports.NavPoint = NavPoint;

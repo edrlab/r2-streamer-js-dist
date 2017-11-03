@@ -32,7 +32,7 @@ function serverMediaOverlays(server, routerPathBase64) {
                 }
             });
         }
-        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, rootUrl, objToSerialize, resource, jsonObj, jsonPretty, jsonStr, checkSum, hash, match;
+        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, rootUrl, objToSerialize, resource, err_2, err_3, jsonObj, jsonPretty, jsonStr, checkSum, hash, match;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -76,12 +76,34 @@ function serverMediaOverlays(server, routerPathBase64) {
                     resource = isShow ?
                         (req.query.show ? req.query.show : req.params[epub_1.mediaOverlayURLParam]) :
                         req.query[epub_1.mediaOverlayURLParam];
-                    if (resource && resource !== "all") {
-                        objToSerialize = publication.FindMediaOverlayByHref(resource);
-                    }
-                    else {
-                        objToSerialize = publication.FindAllMediaOverlay();
-                    }
+                    if (!(resource && resource !== "all")) return [3, 9];
+                    _a.label = 5;
+                case 5:
+                    _a.trys.push([5, 7, , 8]);
+                    return [4, epub_1.getMediaOverlay(publication, resource)];
+                case 6:
+                    objToSerialize = _a.sent();
+                    return [3, 8];
+                case 7:
+                    err_2 = _a.sent();
+                    debug(err_2);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + err_2 + "</p></body></html>");
+                    return [2];
+                case 8: return [3, 12];
+                case 9:
+                    _a.trys.push([9, 11, , 12]);
+                    return [4, epub_1.getAllMediaOverlays(publication)];
+                case 10:
+                    objToSerialize = _a.sent();
+                    return [3, 12];
+                case 11:
+                    err_3 = _a.sent();
+                    debug(err_3);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + err_3 + "</p></body></html>");
+                    return [2];
+                case 12:
                     if (!objToSerialize) {
                         objToSerialize = [];
                     }

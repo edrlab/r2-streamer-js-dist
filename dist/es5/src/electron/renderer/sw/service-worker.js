@@ -1,3 +1,4 @@
+"use strict";
 var _this = this;
 console.log("SERVICE WORKER");
 self.addEventListener("install", function (_event) { return __awaiter(_this, void 0, void 0, function () {

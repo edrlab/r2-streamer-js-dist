@@ -63,18 +63,12 @@ function serverAssets(server, routerPathBase64) {
                             + err + "</p></body></html>");
                         return [2];
                     }
-                    if (publication.Resources
+                    if ((publication.Resources || publication.Spine)
                         && pathInZip.indexOf("META-INF/") !== 0
                         && !pathInZip.endsWith(".opf")) {
                         relativePath_1 = pathInZip;
-                        link = publication.Resources.find(function (l) {
-                            if (l.Href === relativePath_1) {
-                                return true;
-                            }
-                            return false;
-                        });
-                        if (!link) {
-                            link = publication.Spine.find(function (l) {
+                        if (publication.Resources) {
+                            link = publication.Resources.find(function (l) {
                                 if (l.Href === relativePath_1) {
                                     return true;
                                 }
@@ -82,7 +76,17 @@ function serverAssets(server, routerPathBase64) {
                             });
                         }
                         if (!link) {
-                            err = "Asset not declared in publication spine/resources!";
+                            if (publication.Spine) {
+                                link = publication.Spine.find(function (l) {
+                                    if (l.Href === relativePath_1) {
+                                        return true;
+                                    }
+                                    return false;
+                                });
+                            }
+                        }
+                        if (!link) {
+                            err = "Asset not declared in publication spine/resources!" + relativePath_1;
                             debug(err);
                             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                                 + err + "</p></body></html>");

@@ -154,7 +154,15 @@ function serverManifestJson(server, routerPathBase64) {
                         break;
                     }
                     case "mediaoverlays": {
-                        objToSerialize = publication.FindAllMediaOverlay();
+                        try {
+                            objToSerialize = yield epub_1.getAllMediaOverlays(publication);
+                        }
+                        catch (err) {
+                            debug(err);
+                            res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                                + err + "</p></body></html>");
+                            return;
+                        }
                         break;
                     }
                     case "spine": {

@@ -86,32 +86,6 @@ var Publication = (function () {
         }
         this.Links.push(link);
     };
-    Publication.prototype.FindAllMediaOverlay = function () {
-        var mos = [];
-        if (this.Spine) {
-            this.Spine.forEach(function (link) {
-                if (link.MediaOverlays) {
-                    link.MediaOverlays.forEach(function (mo) {
-                        mos.push(mo);
-                    });
-                }
-            });
-        }
-        return mos;
-    };
-    Publication.prototype.FindMediaOverlayByHref = function (href) {
-        var mos = [];
-        if (this.Spine) {
-            this.Spine.forEach(function (link) {
-                if (link.MediaOverlays && link.Href.indexOf(href) >= 0) {
-                    link.MediaOverlays.forEach(function (mo) {
-                        mos.push(mo);
-                    });
-                }
-            });
-        }
-        return mos;
-    };
     Publication.prototype.GetPreFetchResources = function () {
         var links = [];
         if (this.Resources) {

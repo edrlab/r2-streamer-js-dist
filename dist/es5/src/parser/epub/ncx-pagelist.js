@@ -16,12 +16,13 @@ var PageList = (function () {
         tslib_1.__metadata("design:type", String)
     ], PageList.prototype, "Class", void 0);
     tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id"),
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
         tslib_1.__metadata("design:type", String)
     ], PageList.prototype, "ID", void 0);
     PageList = tslib_1.__decorate([
         xml_js_mapper_1.XmlObject({
             ncx: "http://www.daisy.org/z3986/2005/ncx/",
+            xml: "http://www.w3.org/XML/1998/namespace",
         })
     ], PageList);
     return PageList;

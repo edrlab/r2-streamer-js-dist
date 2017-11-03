@@ -32,9 +32,9 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, okay, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, jsonObj, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
+        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, okay, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        return tslib_1.__generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
                     if (!req.params.pathBase64) {
                         req.params.pathBase64 = req.pathBase64;
@@ -55,15 +55,15 @@ function serverManifestJson(server, routerPathBase64) {
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
                     pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
-                    _a.label = 1;
+                    _b.label = 1;
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
+                    _b.trys.push([1, 3, , 4]);
                     return [4, server.loadOrGetCachedPublication(pathBase64Str)];
                 case 2:
-                    publication = _a.sent();
+                    publication = _b.sent();
                     return [3, 4];
                 case 3:
-                    err_1 = _a.sent();
+                    err_1 = _b.sent();
                     debug(err_1);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_1 + "</p></body></html>");
@@ -73,15 +73,15 @@ function serverManifestJson(server, routerPathBase64) {
                     lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
                     if (!publication.LCP) return [3, 9];
                     okay = false;
-                    _a.label = 5;
+                    _b.label = 5;
                 case 5:
-                    _a.trys.push([5, 7, , 8]);
+                    _b.trys.push([5, 7, , 8]);
                     return [4, publication.LCP.setUserPassphrase(lcpPass)];
                 case 6:
-                    okay = _a.sent();
+                    okay = _b.sent();
                     return [3, 8];
                 case 7:
-                    err_2 = _a.sent();
+                    err_2 = _b.sent();
                     debug(err_2);
                     okay = false;
                     return [3, 8];
@@ -93,7 +93,7 @@ function serverManifestJson(server, routerPathBase64) {
                             + errMsg + "</p></body></html>");
                         return [2];
                     }
-                    _a.label = 9;
+                    _b.label = 9;
                 case 9:
                     rootUrl = (isSecureHttp ? "https://" : "http://")
                         + req.headers.host + "/pub/"
@@ -133,115 +133,157 @@ function serverManifestJson(server, routerPathBase64) {
                             coverImage = absoluteURL(coverImage);
                         }
                     }
-                    if (isShow) {
+                    if (!isShow) return [3, 27];
+                    objToSerialize = null;
+                    if (!req.params.jsonPath) return [3, 25];
+                    _a = req.params.jsonPath;
+                    switch (_a) {
+                        case "all": return [3, 10];
+                        case "cover": return [3, 11];
+                        case "mediaoverlays": return [3, 12];
+                        case "spine": return [3, 16];
+                        case "pagelist": return [3, 17];
+                        case "landmarks": return [3, 18];
+                        case "links": return [3, 19];
+                        case "resources": return [3, 20];
+                        case "toc": return [3, 21];
+                        case "metadata": return [3, 22];
+                    }
+                    return [3, 23];
+                case 10:
+                    {
+                        objToSerialize = publication;
+                        return [3, 24];
+                    }
+                    _b.label = 11;
+                case 11:
+                    {
+                        objToSerialize = publication.GetCover();
+                        return [3, 24];
+                    }
+                    _b.label = 12;
+                case 12:
+                    _b.trys.push([12, 14, , 15]);
+                    return [4, epub_1.getAllMediaOverlays(publication)];
+                case 13:
+                    objToSerialize = _b.sent();
+                    return [3, 15];
+                case 14:
+                    err_3 = _b.sent();
+                    debug(err_3);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + err_3 + "</p></body></html>");
+                    return [2];
+                case 15: return [3, 24];
+                case 16:
+                    {
+                        objToSerialize = publication.Spine;
+                        return [3, 24];
+                    }
+                    _b.label = 17;
+                case 17:
+                    {
+                        objToSerialize = publication.PageList;
+                        return [3, 24];
+                    }
+                    _b.label = 18;
+                case 18:
+                    {
+                        objToSerialize = publication.Landmarks;
+                        return [3, 24];
+                    }
+                    _b.label = 19;
+                case 19:
+                    {
+                        objToSerialize = publication.Links;
+                        return [3, 24];
+                    }
+                    _b.label = 20;
+                case 20:
+                    {
+                        objToSerialize = publication.Resources;
+                        return [3, 24];
+                    }
+                    _b.label = 21;
+                case 21:
+                    {
+                        objToSerialize = publication.TOC;
+                        return [3, 24];
+                    }
+                    _b.label = 22;
+                case 22:
+                    {
+                        objToSerialize = publication.Metadata;
+                        return [3, 24];
+                    }
+                    _b.label = 23;
+                case 23:
+                    {
                         objToSerialize = null;
-                        if (req.params.jsonPath) {
-                            switch (req.params.jsonPath) {
-                                case "all": {
-                                    objToSerialize = publication;
-                                    break;
-                                }
-                                case "cover": {
-                                    objToSerialize = publication.GetCover();
-                                    break;
-                                }
-                                case "mediaoverlays": {
-                                    objToSerialize = publication.FindAllMediaOverlay();
-                                    break;
-                                }
-                                case "spine": {
-                                    objToSerialize = publication.Spine;
-                                    break;
-                                }
-                                case "pagelist": {
-                                    objToSerialize = publication.PageList;
-                                    break;
-                                }
-                                case "landmarks": {
-                                    objToSerialize = publication.Landmarks;
-                                    break;
-                                }
-                                case "links": {
-                                    objToSerialize = publication.Links;
-                                    break;
-                                }
-                                case "resources": {
-                                    objToSerialize = publication.Resources;
-                                    break;
-                                }
-                                case "toc": {
-                                    objToSerialize = publication.TOC;
-                                    break;
-                                }
-                                case "metadata": {
-                                    objToSerialize = publication.Metadata;
-                                    break;
-                                }
-                                default: {
-                                    objToSerialize = null;
-                                }
-                            }
+                    }
+                    _b.label = 24;
+                case 24: return [3, 26];
+                case 25:
+                    objToSerialize = publication;
+                    _b.label = 26;
+                case 26:
+                    if (!objToSerialize) {
+                        objToSerialize = {};
+                    }
+                    jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+                    absolutizeURLs(jsonObj);
+                    jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
+                    res.status(200).send("<html>" +
+                        "<head><script type=\"application/ld+json\" href=\"" +
+                        manifestURL +
+                        "\"></script></head>" +
+                        "<body>" +
+                        "<h1>" + path.basename(pathBase64Str) + "</h1>" +
+                        (coverImage ? "<img src=\"" + coverImage + "\" alt=\"\"/>" : "") +
+                        "<hr><p><pre>" + jsonPretty + "</pre></p>" +
+                        "</body></html>");
+                    return [3, 28];
+                case 27:
+                    server.setResponseCORS(res);
+                    res.set("Content-Type", "application/webpub+json; charset=utf-8");
+                    publicationJsonObj = ta_json_1.JSON.serialize(publication);
+                    if (isCanonical) {
+                        if (publicationJsonObj.links) {
+                            delete publicationJsonObj.links;
                         }
-                        else {
-                            objToSerialize = publication;
-                        }
-                        if (!objToSerialize) {
-                            objToSerialize = {};
-                        }
-                        jsonObj = ta_json_1.JSON.serialize(objToSerialize);
-                        absolutizeURLs(jsonObj);
-                        jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
-                        res.status(200).send("<html>" +
-                            "<head><script type=\"application/ld+json\" href=\"" +
-                            manifestURL +
-                            "\"></script></head>" +
-                            "<body>" +
-                            "<h1>" + path.basename(pathBase64Str) + "</h1>" +
-                            (coverImage ? "<img src=\"" + coverImage + "\" alt=\"\"/>" : "") +
-                            "<hr><p><pre>" + jsonPretty + "</pre></p>" +
-                            "</body></html>");
+                    }
+                    publicationJsonStr = isCanonical ?
+                        global.JSON.stringify(JsonUtils_1.sortObject(publicationJsonObj), null, "") :
+                        global.JSON.stringify(publicationJsonObj, null, "  ");
+                    checkSum = crypto.createHash("sha256");
+                    checkSum.update(publicationJsonStr);
+                    hash = checkSum.digest("hex");
+                    match = req.header("If-None-Match");
+                    if (match === hash) {
+                        debug("manifest.json cache");
+                        res.status(304);
+                        res.end();
+                        return [2];
+                    }
+                    res.setHeader("ETag", hash);
+                    links = publication.GetPreFetchResources();
+                    if (links && links.length) {
+                        prefetch_1 = "";
+                        links.forEach(function (l) {
+                            var href = absoluteURL(l.Href);
+                            prefetch_1 += "<" + href + ">;" + "rel=prefetch,";
+                        });
+                        res.setHeader("Link", prefetch_1);
+                    }
+                    res.status(200);
+                    if (isHead) {
+                        res.end();
                     }
                     else {
-                        server.setResponseCORS(res);
-                        res.set("Content-Type", "application/webpub+json; charset=utf-8");
-                        publicationJsonObj = ta_json_1.JSON.serialize(publication);
-                        if (isCanonical) {
-                            if (publicationJsonObj.links) {
-                                delete publicationJsonObj.links;
-                            }
-                        }
-                        publicationJsonStr = isCanonical ?
-                            global.JSON.stringify(JsonUtils_1.sortObject(publicationJsonObj), null, "") :
-                            global.JSON.stringify(publicationJsonObj, null, "  ");
-                        checkSum = crypto.createHash("sha256");
-                        checkSum.update(publicationJsonStr);
-                        hash = checkSum.digest("hex");
-                        match = req.header("If-None-Match");
-                        if (match === hash) {
-                            debug("manifest.json cache");
-                            res.status(304);
-                            res.end();
-                            return [2];
-                        }
-                        res.setHeader("ETag", hash);
-                        links = publication.GetPreFetchResources();
-                        if (links && links.length) {
-                            prefetch_1 = "";
-                            links.forEach(function (l) {
-                                var href = absoluteURL(l.Href);
-                                prefetch_1 += "<" + href + ">;" + "rel=prefetch,";
-                            });
-                            res.setHeader("Link", prefetch_1);
-                        }
-                        res.status(200);
-                        if (isHead) {
-                            res.end();
-                        }
-                        else {
-                            res.send(publicationJsonStr);
-                        }
+                        res.send(publicationJsonStr);
                     }
-                    return [2];
+                    _b.label = 28;
+                case 28: return [2];
             }
         });
     }); });

@@ -14,6 +14,7 @@ var metadata_properties_1 = require("../models/metadata-properties");
 var metadata_subject_1 = require("../models/metadata-subject");
 var publication_1 = require("../models/publication");
 var publication_link_1 = require("../models/publication-link");
+var transformer_1 = require("../transform/transformer");
 var BufferUtils_1 = require("../_utils/stream/BufferUtils");
 var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
 var zipFactory_1 = require("../_utils/zip/zipFactory");
@@ -59,6 +60,8 @@ exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.
                 return [3, 4];
             case 3:
                 err_1 = _a.sent();
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
                 debug(err_1);
                 return [2];
             case 4:
@@ -82,6 +85,8 @@ exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.
                 return [3, 8];
             case 7:
                 err_2 = _a.sent();
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
                 debug(err_2);
                 return [3, 8];
             case 8: return [2];
@@ -362,151 +367,311 @@ function EpubParsePromise(filePath) {
     });
 }
 exports.EpubParsePromise = EpubParsePromise;
-var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var _loop_1, _a, _b, item, state_1;
-    return tslib_1.__generator(this, function (_c) {
-        switch (_c.label) {
+function getAllMediaOverlays(publication) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var mos, _a, _b, link, _c, _d, mo, err_14;
+        return tslib_1.__generator(this, function (_e) {
+            switch (_e.label) {
+                case 0:
+                    mos = [];
+                    if (!publication.Spine) return [3, 9];
+                    _a = 0, _b = publication.Spine;
+                    _e.label = 1;
+                case 1:
+                    if (!(_a < _b.length)) return [3, 9];
+                    link = _b[_a];
+                    if (!link.MediaOverlays) return [3, 8];
+                    _c = 0, _d = link.MediaOverlays;
+                    _e.label = 2;
+                case 2:
+                    if (!(_c < _d.length)) return [3, 8];
+                    mo = _d[_c];
+                    _e.label = 3;
+                case 3:
+                    _e.trys.push([3, 5, , 6]);
+                    return [4, fillMediaOverlayParse(publication, mo)];
+                case 4:
+                    _e.sent();
+                    return [3, 6];
+                case 5:
+                    err_14 = _e.sent();
+                    return [2, Promise.reject(err_14)];
+                case 6:
+                    mos.push(mo);
+                    _e.label = 7;
+                case 7:
+                    _c++;
+                    return [3, 2];
+                case 8:
+                    _a++;
+                    return [3, 1];
+                case 9: return [2, Promise.resolve(mos)];
+            }
+        });
+    });
+}
+exports.getAllMediaOverlays = getAllMediaOverlays;
+function getMediaOverlay(publication, spineHref) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var mos, _a, _b, link, _c, _d, mo, err_15;
+        return tslib_1.__generator(this, function (_e) {
+            switch (_e.label) {
+                case 0:
+                    mos = [];
+                    if (!publication.Spine) return [3, 9];
+                    _a = 0, _b = publication.Spine;
+                    _e.label = 1;
+                case 1:
+                    if (!(_a < _b.length)) return [3, 9];
+                    link = _b[_a];
+                    if (!(link.MediaOverlays && link.Href.indexOf(spineHref) >= 0)) return [3, 8];
+                    _c = 0, _d = link.MediaOverlays;
+                    _e.label = 2;
+                case 2:
+                    if (!(_c < _d.length)) return [3, 8];
+                    mo = _d[_c];
+                    _e.label = 3;
+                case 3:
+                    _e.trys.push([3, 5, , 6]);
+                    return [4, fillMediaOverlayParse(publication, mo)];
+                case 4:
+                    _e.sent();
+                    return [3, 6];
+                case 5:
+                    err_15 = _e.sent();
+                    return [2, Promise.reject(err_15)];
+                case 6:
+                    mos.push(mo);
+                    _e.label = 7;
+                case 7:
+                    _c++;
+                    return [3, 2];
+                case 8:
+                    _a++;
+                    return [3, 1];
+                case 9: return [2, Promise.resolve(mos)];
+            }
+        });
+    });
+}
+exports.getMediaOverlay = getMediaOverlay;
+var fillMediaOverlayParse = function (publication, mo) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var link, relativePath_1, err, zipInternal, zip, smilZipStream_, err_16, decryptFail, transformedStream, err_17, err, smilZipStream, smilZipData, err_18, smilStr, smilXmlDoc, smil, zipPath;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                if (!publication.Resources) {
+                if (mo.initialized) {
                     return [2];
                 }
-                _loop_1 = function (item) {
-                    var smilFilePath, mo, manItemsHtmlWithSmil, smilZipStream_, err_14, smilZipStream, smilZipData, err_15, smilStr, smilXmlDoc, smil, zipPath;
-                    return tslib_1.__generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0:
-                                if (item.TypeLink !== "application/smil+xml") {
-                                    return [2, "continue"];
+                if (publication.Resources) {
+                    relativePath_1 = mo.SmilPathInZip;
+                    if (publication.Resources) {
+                        link = publication.Resources.find(function (l) {
+                            if (l.Href === relativePath_1) {
+                                return true;
+                            }
+                            return false;
+                        });
+                    }
+                    if (!link) {
+                        if (publication.Spine) {
+                            link = publication.Spine.find(function (l) {
+                                if (l.Href === relativePath_1) {
+                                    return true;
                                 }
-                                smilFilePath = item.Href;
-                                if (!zip.hasEntry(smilFilePath)) {
-                                    return [2, "continue"];
-                                }
-                                if (item.Properties && item.Properties.Encrypted) {
-                                    debug("ENCRYPTED SMIL MEDIA OVERLAY: " + smilFilePath);
-                                    return [2, "continue"];
-                                }
-                                mo = new media_overlay_1.MediaOverlayNode();
-                                mo.SmilPathInZip = smilFilePath;
-                                manItemsHtmlWithSmil = [];
-                                opf.Manifest.forEach(function (manItemHtmlWithSmil) {
-                                    if (manItemHtmlWithSmil.MediaOverlay) {
-                                        var manItemSmil = opf.Manifest.find(function (mi) {
-                                            if (mi.ID === manItemHtmlWithSmil.MediaOverlay) {
-                                                return true;
-                                            }
-                                            return false;
-                                        });
-                                        if (manItemSmil) {
-                                            var smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
-                                                .replace(/\\/g, "/");
-                                            if (smilFilePath2 === smilFilePath) {
-                                                manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
-                                            }
-                                        }
-                                    }
-                                });
-                                manItemsHtmlWithSmil.forEach(function (manItemHtmlWithSmil) {
-                                    var htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
-                                        .replace(/\\/g, "/");
-                                    var link = findLinKByHref(publication, rootfile, opf, htmlPathInZip);
-                                    if (link) {
-                                        if (!link.MediaOverlays) {
-                                            link.MediaOverlays = [];
-                                        }
-                                        var alreadyExists = link.MediaOverlays.find(function (moo) {
-                                            if (mo.SmilPathInZip === moo.SmilPathInZip) {
-                                                return true;
-                                            }
-                                            return false;
-                                        });
-                                        if (!alreadyExists) {
-                                            link.MediaOverlays.push(mo);
-                                        }
-                                        if (!link.Properties) {
-                                            link.Properties = new metadata_properties_1.Properties();
-                                        }
-                                        link.Properties.MediaOverlay = exports.mediaOverlayURLPath + "?" +
-                                            exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
-                                    }
-                                });
-                                smilZipStream_ = void 0;
-                                _a.label = 1;
-                            case 1:
-                                _a.trys.push([1, 3, , 4]);
-                                return [4, zip.entryStreamPromise(smilFilePath)];
-                            case 2:
-                                smilZipStream_ = _a.sent();
-                                return [3, 4];
-                            case 3:
-                                err_14 = _a.sent();
-                                debug(err_14);
-                                return [2, { value: Promise.reject(err_14) }];
-                            case 4:
-                                smilZipStream = smilZipStream_.stream;
-                                smilZipData = void 0;
-                                _a.label = 5;
-                            case 5:
-                                _a.trys.push([5, 7, , 8]);
-                                return [4, BufferUtils_1.streamToBufferPromise(smilZipStream)];
-                            case 6:
-                                smilZipData = _a.sent();
-                                return [3, 8];
-                            case 7:
-                                err_15 = _a.sent();
-                                debug(err_15);
-                                return [2, { value: Promise.reject(err_15) }];
-                            case 8:
-                                smilStr = smilZipData.toString("utf8");
-                                smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
-                                smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
-                                smil.ZipPath = smilFilePath;
-                                mo.Role = [];
-                                mo.Role.push("section");
-                                if (smil.Body) {
-                                    if (smil.Body.TextRef) {
-                                        zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
-                                            .replace(/\\/g, "/");
-                                        mo.Text = zipPath;
-                                    }
-                                    if (smil.Body.Children && smil.Body.Children.length) {
-                                        smil.Body.Children.forEach(function (seqChild) {
-                                            if (!mo.Children) {
-                                                mo.Children = [];
-                                            }
-                                            addSeqToMediaOverlay(smil, publication, rootfile, opf, mo, mo.Children, seqChild);
-                                        });
-                                    }
-                                }
-                                return [2];
+                                return false;
+                            });
                         }
-                    });
-                };
-                _a = 0, _b = publication.Resources;
-                _c.label = 1;
+                    }
+                    if (!link) {
+                        err = "Asset not declared in publication spine/resources! " + relativePath_1;
+                        debug(err);
+                        return [2, Promise.reject(err)];
+                    }
+                }
+                zipInternal = publication.findFromInternal("zip");
+                if (!zipInternal) {
+                    return [2];
+                }
+                zip = zipInternal.Value;
+                _a.label = 1;
             case 1:
-                if (!(_a < _b.length)) return [3, 4];
-                item = _b[_a];
-                return [5, _loop_1(item)];
+                _a.trys.push([1, 3, , 4]);
+                return [4, zip.entryStreamPromise(mo.SmilPathInZip)];
             case 2:
-                state_1 = _c.sent();
-                if (typeof state_1 === "object")
-                    return [2, state_1.value];
-                _c.label = 3;
+                smilZipStream_ = _a.sent();
+                return [3, 4];
             case 3:
-                _a++;
-                return [3, 1];
-            case 4: return [2];
+                err_16 = _a.sent();
+                debug(err_16);
+                return [2, Promise.reject(err_16)];
+            case 4:
+                if (!(link && link.Properties && link.Properties.Encrypted)) return [3, 9];
+                decryptFail = false;
+                transformedStream = void 0;
+                _a.label = 5;
+            case 5:
+                _a.trys.push([5, 7, , 8]);
+                return [4, transformer_1.Transformers.tryStream(publication, link, smilZipStream_, false, 0, 0)];
+            case 6:
+                transformedStream = _a.sent();
+                return [3, 8];
+            case 7:
+                err_17 = _a.sent();
+                debug(err_17);
+                return [2, Promise.reject(err_17)];
+            case 8:
+                if (transformedStream) {
+                    smilZipStream_ = transformedStream;
+                }
+                else {
+                    decryptFail = true;
+                }
+                if (decryptFail) {
+                    err = "Encryption scheme not supported.";
+                    debug(err);
+                    return [2, Promise.reject(err)];
+                }
+                _a.label = 9;
+            case 9:
+                smilZipStream = smilZipStream_.stream;
+                _a.label = 10;
+            case 10:
+                _a.trys.push([10, 12, , 13]);
+                return [4, BufferUtils_1.streamToBufferPromise(smilZipStream)];
+            case 11:
+                smilZipData = _a.sent();
+                return [3, 13];
+            case 12:
+                err_18 = _a.sent();
+                debug(err_18);
+                return [2, Promise.reject(err_18)];
+            case 13:
+                smilStr = smilZipData.toString("utf8");
+                smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
+                smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
+                smil.ZipPath = mo.SmilPathInZip;
+                mo.initialized = true;
+                debug("PARSED SMIL: " + mo.SmilPathInZip);
+                mo.Role = [];
+                mo.Role.push("section");
+                if (smil.Body) {
+                    if (smil.Body.EpubType) {
+                        smil.Body.EpubType.trim().split(" ").forEach(function (role) {
+                            if (!role.length) {
+                                return;
+                            }
+                            if (mo.Role.indexOf(role) < 0) {
+                                mo.Role.push(role);
+                            }
+                        });
+                    }
+                    if (smil.Body.TextRef) {
+                        zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
+                            .replace(/\\/g, "/");
+                        mo.Text = zipPath;
+                    }
+                    if (smil.Body.Children && smil.Body.Children.length) {
+                        smil.Body.Children.forEach(function (seqChild) {
+                            if (!mo.Children) {
+                                mo.Children = [];
+                            }
+                            addSeqToMediaOverlay(smil, publication, mo, mo.Children, seqChild);
+                        });
+                    }
+                }
+                return [2];
         }
     });
 }); };
-var addSeqToMediaOverlay = function (smil, publication, rootfile, opf, rootMO, mo, seqChild) {
+var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var _loop_1, _a, _b, item;
+    return tslib_1.__generator(this, function (_c) {
+        if (!publication.Resources) {
+            return [2];
+        }
+        _loop_1 = function (item) {
+            if (item.TypeLink !== "application/smil+xml") {
+                return "continue";
+            }
+            if (!zip.hasEntry(item.Href)) {
+                return "continue";
+            }
+            var manItemsHtmlWithSmil = [];
+            opf.Manifest.forEach(function (manItemHtmlWithSmil) {
+                if (manItemHtmlWithSmil.MediaOverlay) {
+                    var manItemSmil = opf.Manifest.find(function (mi) {
+                        if (mi.ID === manItemHtmlWithSmil.MediaOverlay) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (manItemSmil) {
+                        var smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
+                            .replace(/\\/g, "/");
+                        if (smilFilePath2 === item.Href) {
+                            manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
+                        }
+                    }
+                }
+            });
+            var mo = new media_overlay_1.MediaOverlayNode();
+            mo.SmilPathInZip = item.Href;
+            mo.initialized = false;
+            manItemsHtmlWithSmil.forEach(function (manItemHtmlWithSmil) {
+                var htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
+                    .replace(/\\/g, "/");
+                var link = findLinKByHref(publication, rootfile, opf, htmlPathInZip);
+                if (link) {
+                    if (!link.MediaOverlays) {
+                        link.MediaOverlays = [];
+                    }
+                    var alreadyExists = link.MediaOverlays.find(function (moo) {
+                        if (item.Href === moo.SmilPathInZip) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (!alreadyExists) {
+                        link.MediaOverlays.push(mo);
+                    }
+                    if (!link.Properties) {
+                        link.Properties = new metadata_properties_1.Properties();
+                    }
+                    link.Properties.MediaOverlay = exports.mediaOverlayURLPath + "?" +
+                        exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
+                }
+            });
+            if (item.Properties && item.Properties.Encrypted) {
+                debug("ENCRYPTED SMIL MEDIA OVERLAY: " + item.Href);
+                return "continue";
+            }
+        };
+        for (_a = 0, _b = publication.Resources; _a < _b.length; _a++) {
+            item = _b[_a];
+            _loop_1(item);
+        }
+        return [2];
+    });
+}); };
+var addSeqToMediaOverlay = function (smil, publication, rootMO, mo, seqChild) {
     var moc = new media_overlay_1.MediaOverlayNode();
+    moc.initialized = rootMO.initialized;
     mo.push(moc);
     if (seqChild instanceof smil_seq_1.Seq) {
         moc.Role = [];
         moc.Role.push("section");
         var seq = seqChild;
+        if (seq.EpubType) {
+            seq.EpubType.trim().split(" ").forEach(function (role) {
+                if (!role.length) {
+                    return;
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
         if (seq.TextRef) {
             var zipPath = path.join(path.dirname(smil.ZipPath), seq.TextRef)
                 .replace(/\\/g, "/");
@@ -517,12 +682,25 @@ var addSeqToMediaOverlay = function (smil, publication, rootfile, opf, rootMO, m
                 if (!moc.Children) {
                     moc.Children = [];
                 }
-                addSeqToMediaOverlay(smil, publication, rootfile, opf, rootMO, moc.Children, child);
+                addSeqToMediaOverlay(smil, publication, rootMO, moc.Children, child);
             });
         }
     }
     else {
         var par = seqChild;
+        if (par.EpubType) {
+            par.EpubType.trim().split(" ").forEach(function (role) {
+                if (!role.length) {
+                    return;
+                }
+                if (!moc.Role) {
+                    moc.Role = [];
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
         if (par.Text && par.Text.Src) {
             var zipPath = path.join(path.dirname(smil.ZipPath), par.Text.Src)
                 .replace(/\\/g, "/");
@@ -785,7 +963,7 @@ var addToLinkFromProperties = function (publication, link, propertiesString) { r
     return tslib_1.__generator(this, function (_c) {
         switch (_c.label) {
             case 0:
-                properties = propertiesString.split(" ");
+                properties = propertiesString.trim().split(" ");
                 propertiesStruct = new metadata_properties_1.Properties();
                 _a = 0, properties_1 = properties;
                 _c.label = 1;
@@ -1083,7 +1261,7 @@ var addRendition = function (publication, _rootfile, opf) {
     }
 };
 var fillSpineAndResource = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var _a, _b, item, linkItem, err_16, _c, _d, item, zipPath, linkSpine, linkItem;
+    var _a, _b, item, linkItem, err_19, _c, _d, item, zipPath, linkSpine, linkItem;
     return tslib_1.__generator(this, function (_e) {
         switch (_e.label) {
             case 0:
@@ -1103,8 +1281,8 @@ var fillSpineAndResource = function (publication, rootfile, opf) { return tslib_
                 linkItem = _e.sent();
                 return [3, 5];
             case 4:
-                err_16 = _e.sent();
-                debug(err_16);
+                err_19 = _e.sent();
+                debug(err_19);
                 return [3, 6];
             case 5:
                 if (linkItem && linkItem.Href) {
@@ -1293,7 +1471,7 @@ var fillCalibreSerieInfo = function (publication, _rootfile, opf) {
     }
 };
 var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var navLink, navDocFilePath, navDocZipStream_, err_17, navDocZipStream, navDocZipData, err_18, navDocStr, navXmlDoc, select, navs;
+    var navLink, navDocFilePath, navDocZipStream_, err_20, navDocZipStream, navDocZipData, err_21, navDocStr, navXmlDoc, select, navs;
     return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1313,9 +1491,9 @@ var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return ts
                 navDocZipStream_ = _a.sent();
                 return [3, 4];
             case 3:
-                err_17 = _a.sent();
-                debug(err_17);
-                return [2, Promise.reject(err_17)];
+                err_20 = _a.sent();
+                debug(err_20);
+                return [2, Promise.reject(err_20)];
             case 4:
                 navDocZipStream = navDocZipStream_.stream;
                 _a.label = 5;
@@ -1326,9 +1504,9 @@ var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return ts
                 navDocZipData = _a.sent();
                 return [3, 8];
             case 7:
-                err_18 = _a.sent();
-                debug(err_18);
-                return [2, Promise.reject(err_18)];
+                err_21 = _a.sent();
+                debug(err_21);
+                return [2, Promise.reject(err_21)];
             case 8:
                 navDocStr = navDocZipData.toString("utf8");
                 navXmlDoc = new xmldom.DOMParser().parseFromString(navDocStr);
@@ -1342,7 +1520,9 @@ var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return ts
                         var typeNav = select("@epub:type", navElement);
                         if (typeNav && typeNav.length) {
                             var olElem = select("xhtml:ol", navElement);
-                            switch (typeNav[0].value) {
+                            var roles = typeNav[0].value;
+                            var role = roles.trim().split(" ")[0];
+                            switch (role) {
                                 case "toc": {
                                     publication.TOC = [];
                                     fillTOCFromNavDocWithOL(select, olElem, publication.TOC, navLink.Href);
@@ -1433,7 +1613,7 @@ var fillTOCFromNavDocWithOL = function (select, olElems, node, navDocPath) {
     });
 };
 var addCoverRel = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var coverID, manifestInfo, err_19, href_1, linky;
+    var coverID, manifestInfo, err_22, href_1, linky;
     return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -1456,8 +1636,8 @@ var addCoverRel = function (publication, rootfile, opf) { return tslib_1.__await
                 manifestInfo = _a.sent();
                 return [3, 4];
             case 3:
-                err_19 = _a.sent();
-                debug(err_19);
+                err_22 = _a.sent();
+                debug(err_22);
                 return [2];
             case 4:
                 if (!(manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length)) return [3, 6];

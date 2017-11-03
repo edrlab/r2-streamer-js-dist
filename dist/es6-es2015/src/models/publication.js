@@ -84,32 +84,6 @@ let Publication = class Publication {
         }
         this.Links.push(link);
     }
-    FindAllMediaOverlay() {
-        const mos = [];
-        if (this.Spine) {
-            this.Spine.forEach((link) => {
-                if (link.MediaOverlays) {
-                    link.MediaOverlays.forEach((mo) => {
-                        mos.push(mo);
-                    });
-                }
-            });
-        }
-        return mos;
-    }
-    FindMediaOverlayByHref(href) {
-        const mos = [];
-        if (this.Spine) {
-            this.Spine.forEach((link) => {
-                if (link.MediaOverlays && link.Href.indexOf(href) >= 0) {
-                    link.MediaOverlays.forEach((mo) => {
-                        mos.push(mo);
-                    });
-                }
-            });
-        }
-        return mos;
-    }
     GetPreFetchResources() {
         const links = [];
         if (this.Resources) {

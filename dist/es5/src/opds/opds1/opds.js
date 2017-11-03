@@ -42,7 +42,7 @@ var OPDS = (function () {
         tslib_1.__metadata("design:type", Array)
     ], OPDS.prototype, "Authors", void 0);
     tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@lang"),
+        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
         tslib_1.__metadata("design:type", String)
     ], OPDS.prototype, "Lang", void 0);
     tslib_1.__decorate([
@@ -67,6 +67,7 @@ var OPDS = (function () {
             relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
             schema: "http://schema.org",
             thr: "http://purl.org/syndication/thread/1.0",
+            xml: "http://www.w3.org/XML/1998/namespace",
             xsi: "http://www.w3.org/2001/XMLSchema-instance",
         })
     ], OPDS);

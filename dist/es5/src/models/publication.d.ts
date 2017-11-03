@@ -1,6 +1,5 @@
 import { LCP } from "../parser/epub/lcp";
 import { IInternal } from "./internal";
-import { MediaOverlayNode } from "./media-overlay";
 import { Metadata } from "./metadata";
 import { Link } from "./publication-link";
 export declare class Publication {
@@ -26,8 +25,6 @@ export declare class Publication {
     GetNavDoc(): Link | undefined;
     searchLinkByRel(rel: string): Link | undefined;
     AddLink(typeLink: string, rel: string[], url: string, templated: boolean): void;
-    FindAllMediaOverlay(): MediaOverlayNode[];
-    FindMediaOverlayByHref(href: string): MediaOverlayNode[];
     GetPreFetchResources(): Link[];
     private _OnDeserialized();
 }

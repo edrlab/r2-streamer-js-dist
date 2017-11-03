@@ -338,19 +338,14 @@ win.addEventListener("DOMContentLoaded", () => {
 });
 const processXYRaw = (x, y) => {
     let element;
-    let textNode;
-    let textNodeOffset = 0;
     const range = document.caretRangeFromPoint(x, y);
     if (range) {
         const node = range.startContainer;
-        const offset = range.startOffset;
         if (node) {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 element = node;
             }
             else if (node.nodeType === Node.TEXT_NODE) {
-                textNode = node;
-                textNodeOffset = offset;
                 if (node.parentNode && node.parentNode.nodeType === Node.ELEMENT_NODE) {
                     element = node.parentNode;
                 }

@@ -89,10 +89,26 @@ function serverMediaOverlays(server, routerPathBase64) {
             (req.query.show ? req.query.show : req.params[epub_1.mediaOverlayURLParam]) :
             req.query[epub_1.mediaOverlayURLParam];
         if (resource && resource !== "all") {
-            objToSerialize = publication.FindMediaOverlayByHref(resource);
+            try {
+                objToSerialize = await epub_1.getMediaOverlay(publication, resource);
+            }
+            catch (err) {
+                debug(err);
+                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                    + err + "</p></body></html>");
+                return;
+            }
         }
         else {
-            objToSerialize = publication.FindAllMediaOverlay();
+            try {
+                objToSerialize = await epub_1.getAllMediaOverlays(publication);
+            }
+            catch (err) {
+                debug(err);
+                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                    + err + "</p></body></html>");
+                return;
+            }
         }
         if (!objToSerialize) {
             objToSerialize = [];

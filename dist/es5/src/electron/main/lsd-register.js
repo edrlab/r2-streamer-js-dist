@@ -60,6 +60,9 @@ function lsdRegister(lsdJson, deviceIDManager) {
                                     return tslib_1.__generator(this, function (_a) {
                                         switch (_a.label) {
                                             case 0:
+                                                Object.keys(response.headers).forEach(function (header) {
+                                                    debug(header + " => " + response.headers[header]);
+                                                });
                                                 if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                                                     failure("HTTP CODE " + response.statusCode);
                                                     return [2];

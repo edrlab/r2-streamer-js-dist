@@ -64,6 +64,9 @@ async function lsdLcpUpdate(lsdJson, publication) {
                         reject(err);
                     };
                     const success = async (response) => {
+                        Object.keys(response.headers).forEach((header) => {
+                            debug(header + " => " + response.headers[header]);
+                        });
                         if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                             if (licenseLink.href.indexOf("/licenses/") > 0) {
                                 licenseLink.href = licenseLink.href.replace("/licenses/", "/api/v1/purchases/license/");
