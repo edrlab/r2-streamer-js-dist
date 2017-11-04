@@ -20,6 +20,76 @@ exports.injectReadPosCSS = function () {
     }
     appendCSSInline("electron-readPos", readPosCssStyles);
 };
+var _isVerticalWritingMode = false;
+function isVerticalWritingMode() {
+    return _isVerticalWritingMode;
+}
+exports.isVerticalWritingMode = isVerticalWritingMode;
+var _isRTL = false;
+function isRTL() {
+    return _isRTL;
+}
+exports.isRTL = isRTL;
+function computeVerticalRTL() {
+    var dirAttr = win.document.documentElement.getAttribute("dir");
+    if (dirAttr === "rtl") {
+        _isRTL = true;
+    }
+    if (!_isRTL && win.document.body) {
+        dirAttr = win.document.body.getAttribute("dir");
+        if (dirAttr === "rtl") {
+            _isRTL = true;
+        }
+    }
+    var htmlStyle = window.getComputedStyle(win.document.documentElement);
+    if (htmlStyle) {
+        var prop = htmlStyle.getPropertyValue("writing-mode");
+        if (!prop) {
+            prop = htmlStyle.getPropertyValue("-epub-writing-mode");
+        }
+        if (prop && prop.indexOf("vertical") >= 0) {
+            _isVerticalWritingMode = true;
+        }
+        if (prop && prop.indexOf("-rl") > 0) {
+            _isRTL = true;
+        }
+        if (!_isRTL) {
+            prop = htmlStyle.getPropertyValue("direction");
+            if (prop && prop.indexOf("rtl") >= 0) {
+                _isRTL = true;
+            }
+        }
+    }
+    if ((!_isVerticalWritingMode || !_isRTL) && win.document.body) {
+        var bodyStyle = window.getComputedStyle(win.document.body);
+        if (bodyStyle) {
+            var prop = void 0;
+            if (!_isVerticalWritingMode) {
+                prop = bodyStyle.getPropertyValue("writing-mode");
+                if (!prop) {
+                    prop = bodyStyle.getPropertyValue("-epub-writing-mode");
+                }
+                if (prop && prop.indexOf("vertical") >= 0) {
+                    _isVerticalWritingMode = true;
+                }
+                if (prop && prop.indexOf("-rl") > 0) {
+                    _isRTL = true;
+                }
+            }
+            if (!_isRTL) {
+                prop = htmlStyle.getPropertyValue("direction");
+                if (prop && prop.indexOf("rtl") >= 0) {
+                    _isRTL = true;
+                }
+            }
+        }
+    }
+    console.log("_isVerticalWritingMode: " + _isVerticalWritingMode);
+    console.log("_isRTL: " + _isRTL);
+}
+win.addEventListener("load", function () {
+    computeVerticalRTL();
+});
 var ensureHead = function () {
     var docElement = win.document.documentElement;
     if (!win.document.head) {
@@ -176,7 +246,8 @@ function readiumCSSSet(messageJson) {
         docElement.style.setProperty("--USER__textAlign", align === "justify" ? "justify" :
             (align === "right" ? "right" :
                 (align === "left" ? "left" :
-                    (align === "center" ? "center" : "left"))));
+                    (align === "center" ? "center" :
+                        (align === "initial" ? "initial" : "inherit")))));
         docElement.style.setProperty("--USER__fontSize", fontSize ? fontSize : "100%");
         docElement.style.setProperty("--USER__lineHeight", lineHeight ? lineHeight : "2");
         docElement.style.setProperty("--USER__colCount", colCount ? colCount : "auto");

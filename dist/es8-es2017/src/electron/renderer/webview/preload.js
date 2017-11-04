@@ -51,54 +51,70 @@ electron_1.ipcRenderer.on(events_1.R2_EVENT_PAGE_TURN, (_event, messageString) =
     }
     const isPaged = win.document.documentElement.classList.contains("readium-paginated");
     const maxHeightShift = isPaged ?
-        win.document.body.scrollWidth - win.document.documentElement.offsetWidth :
-        win.document.body.scrollHeight - win.document.documentElement.clientHeight;
+        ((readium_css_1.isVerticalWritingMode() ?
+            (win.document.body.scrollHeight - win.document.documentElement.offsetHeight) :
+            (win.document.body.scrollWidth - win.document.documentElement.offsetWidth))) :
+        ((readium_css_1.isVerticalWritingMode() ?
+            (win.document.body.scrollWidth - win.document.documentElement.clientWidth) :
+            (win.document.body.scrollHeight - win.document.documentElement.clientHeight)));
     const messageJson = JSON.parse(messageString);
     const goPREVIOUS = messageJson.go === "PREVIOUS";
     if (!goPREVIOUS) {
         if (isPaged) {
-            if (win.document.body.scrollLeft < maxHeightShift) {
+            if (Math.abs(win.document.body.scrollLeft) < maxHeightShift) {
                 if (_lastAnimState && _lastAnimState.animating) {
                     win.cancelAnimationFrame(_lastAnimState.id);
                     _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
                 }
-                const newVal = win.document.body.scrollLeft + win.document.documentElement.offsetWidth;
+                const newVal = win.document.body.scrollLeft +
+                    (readium_css_1.isRTL() ? -1 : 1) * win.document.documentElement.offsetWidth;
                 _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollLeft", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
                 return;
             }
         }
         else {
-            if (win.document.body.scrollTop < maxHeightShift) {
+            if (readium_css_1.isVerticalWritingMode() && (Math.abs(win.document.body.scrollLeft) < maxHeightShift) ||
+                !readium_css_1.isVerticalWritingMode() && (Math.abs(win.document.body.scrollTop) < maxHeightShift)) {
                 if (_lastAnimState && _lastAnimState.animating) {
                     win.cancelAnimationFrame(_lastAnimState.id);
                     _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
                 }
-                const newVal = win.document.body.scrollTop + win.document.documentElement.clientHeight;
-                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
+                const newVal = readium_css_1.isVerticalWritingMode() ?
+                    (win.document.body.scrollLeft +
+                        (readium_css_1.isRTL() ? -1 : 1) * win.document.documentElement.clientWidth) :
+                    (win.document.body.scrollTop +
+                        win.document.documentElement.clientHeight);
+                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, readium_css_1.isVerticalWritingMode() ? "scrollLeft" : "scrollTop", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
                 return;
             }
         }
     }
     else if (goPREVIOUS) {
         if (isPaged) {
-            if (win.document.body.scrollLeft > 0) {
+            if (Math.abs(win.document.body.scrollLeft) > 0) {
                 if (_lastAnimState && _lastAnimState.animating) {
                     win.cancelAnimationFrame(_lastAnimState.id);
                     _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
                 }
-                const newVal = win.document.body.scrollLeft - win.document.documentElement.offsetWidth;
+                const newVal = win.document.body.scrollLeft -
+                    (readium_css_1.isRTL() ? -1 : 1) * win.document.documentElement.offsetWidth;
                 _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollLeft", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
                 return;
             }
         }
         else {
-            if (win.document.body.scrollTop > 0) {
+            if (readium_css_1.isVerticalWritingMode() && (Math.abs(win.document.body.scrollLeft) > 0) ||
+                !readium_css_1.isVerticalWritingMode() && (Math.abs(win.document.body.scrollTop) > 0)) {
                 if (_lastAnimState && _lastAnimState.animating) {
                     win.cancelAnimationFrame(_lastAnimState.id);
                     _lastAnimState.object[_lastAnimState.property] = _lastAnimState.destVal;
                 }
-                const newVal = win.document.body.scrollTop - win.document.documentElement.clientHeight;
-                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, "scrollTop", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
+                const newVal = readium_css_1.isVerticalWritingMode() ?
+                    (win.document.body.scrollLeft -
+                        (readium_css_1.isRTL() ? -1 : 1) * win.document.documentElement.clientWidth) :
+                    (win.document.body.scrollTop -
+                        win.document.documentElement.clientHeight);
+                _lastAnimState = animateProperty_1.animateProperty(win.cancelAnimationFrame, undefined, readium_css_1.isVerticalWritingMode() ? "scrollLeft" : "scrollTop", 300, win.document.body, newVal, win.requestAnimationFrame, easings_1.easings.easeInOutQuad);
                 return;
             }
         }
@@ -125,7 +141,8 @@ const checkReadyPass = () => {
                 _ignoreScrollEvent = false;
                 return;
             }
-            processXY(0, 0);
+            const x = (readium_css_1.isRTL() ? win.document.documentElement.offsetWidth - 1 : 0);
+            processXY(x, 0);
         });
     }, 800);
     const useResizeSensor = true;
@@ -163,7 +180,7 @@ function scrollIntoView(element) {
     const isTwoPage = win.document.documentElement.offsetWidth > win.document.body.offsetWidth;
     const spreadIndex = isTwoPage ? Math.floor(colIndex / 2) : colIndex;
     const left = (spreadIndex * win.document.documentElement.offsetWidth);
-    win.document.body.scrollLeft = left;
+    win.document.body.scrollLeft = (readium_css_1.isRTL() ? -1 : 1) * left;
 }
 const scrollToHashRaw = (firstCall) => {
     const isPaged = win.document.documentElement.classList.contains("readium-paginated");
@@ -215,22 +232,42 @@ const scrollToHashRaw = (firstCall) => {
                 if (isPreviousNavDirection) {
                     console.log("readiumprevious");
                     const maxHeightShift = isPaged ?
-                        win.document.body.scrollWidth - win.document.documentElement.offsetWidth :
-                        win.document.body.scrollHeight - win.document.documentElement.clientHeight;
+                        ((readium_css_1.isVerticalWritingMode() ?
+                            (win.document.body.scrollHeight - win.document.documentElement.offsetHeight) :
+                            (win.document.body.scrollWidth - win.document.documentElement.offsetWidth))) :
+                        ((readium_css_1.isVerticalWritingMode() ?
+                            (win.document.body.scrollWidth - win.document.documentElement.clientWidth) :
+                            (win.document.body.scrollHeight - win.document.documentElement.clientHeight)));
                     _ignoreScrollEvent = true;
                     if (isPaged) {
-                        win.document.body.scrollLeft = maxHeightShift;
-                        win.document.body.scrollTop = 0;
+                        if (readium_css_1.isVerticalWritingMode()) {
+                            win.document.body.scrollLeft = 0;
+                            win.document.body.scrollTop = maxHeightShift;
+                        }
+                        else {
+                            win.document.body.scrollLeft = (readium_css_1.isRTL() ? -1 : 1) * maxHeightShift;
+                            win.document.body.scrollTop = 0;
+                        }
                     }
                     else {
-                        win.document.body.scrollLeft = 0;
-                        win.document.body.scrollTop = maxHeightShift;
+                        if (readium_css_1.isVerticalWritingMode()) {
+                            win.document.body.scrollLeft = (readium_css_1.isRTL() ? -1 : 1) * maxHeightShift;
+                            win.document.body.scrollTop = 0;
+                        }
+                        else {
+                            win.document.body.scrollLeft = 0;
+                            win.document.body.scrollTop = maxHeightShift;
+                        }
                     }
                     _locationHashOverride = undefined;
                     _locationHashOverrideCSSselector = undefined;
                     processXYRaw(0, (isPaged ?
-                        win.document.documentElement.offsetHeight :
-                        win.document.documentElement.clientHeight)
+                        (readium_css_1.isVerticalWritingMode() ?
+                            win.document.documentElement.offsetWidth :
+                            win.document.documentElement.offsetHeight) :
+                        (readium_css_1.isVerticalWritingMode() ?
+                            win.document.documentElement.clientWidth :
+                            win.document.documentElement.clientHeight))
                         - 1);
                     console.log("BOTTOM (previous):");
                     console.log(_locationHashOverride);

@@ -477,7 +477,7 @@ window.addEventListener("DOMContentLoaded", () => {
     justifySwitch.checked = electronStore.get("styling.align") === "justify";
     justifySwitch.addEventListener("change", (_event) => {
         const checked = justifySwitch.checked;
-        electronStore.set("styling.align", checked ? "justify" : "left");
+        electronStore.set("styling.align", checked ? "justify" : "initial");
     });
     justifySwitch.disabled = !electronStore.get("styling.readiumcss");
     const paginateSwitch = document.getElementById("paginate_switch-input");
