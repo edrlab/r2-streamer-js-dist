@@ -4,6 +4,7 @@ var tslib_1 = require("tslib");
 var ta_json_1 = require("ta-json");
 var metadata_belongsto_1 = require("./metadata-belongsto");
 var metadata_contributor_1 = require("./metadata-contributor");
+var metadata_media_overlay_1 = require("./metadata-media-overlay");
 var metadata_properties_1 = require("./metadata-properties");
 var metadata_subject_1 = require("./metadata-subject");
 var Metadata = (function () {
@@ -146,9 +147,9 @@ var Metadata = (function () {
         tslib_1.__metadata("design:type", Number)
     ], Metadata.prototype, "Duration", void 0);
     tslib_1.__decorate([
-        ta_json_1.JsonProperty("mediaActiveClass"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "MediaActiveClass", void 0);
+        ta_json_1.JsonProperty("media-overlay"),
+        tslib_1.__metadata("design:type", metadata_media_overlay_1.MediaOverlay)
+    ], Metadata.prototype, "MediaOverlay", void 0);
     tslib_1.__decorate([
         ta_json_1.OnDeserialized(),
         tslib_1.__metadata("design:type", Function),

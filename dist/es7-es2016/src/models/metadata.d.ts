@@ -1,5 +1,6 @@
 import { BelongsTo } from "./metadata-belongsto";
 import { Contributor } from "./metadata-contributor";
+import { MediaOverlay } from "./metadata-media-overlay";
 import { IStringMap } from "./metadata-multilang";
 import { Properties } from "./metadata-properties";
 import { Subject } from "./metadata-subject";
@@ -32,6 +33,6 @@ export declare class Metadata {
     Subject: Subject[];
     BelongsTo: BelongsTo;
     Duration: number;
-    MediaActiveClass: string;
+    MediaOverlay: MediaOverlay;
     private _OnDeserialized();
 }

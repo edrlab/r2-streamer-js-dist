@@ -10,6 +10,7 @@ var metadata_belongsto_1 = require("../models/metadata-belongsto");
 var metadata_collection_1 = require("../models/metadata-collection");
 var metadata_contributor_1 = require("../models/metadata-contributor");
 var metadata_encrypted_1 = require("../models/metadata-encrypted");
+var metadata_media_overlay_1 = require("../models/metadata-media-overlay");
 var metadata_properties_1 = require("../models/metadata-properties");
 var metadata_subject_1 = require("../models/metadata-subject");
 var publication_1 = require("../models/publication");
@@ -95,7 +96,7 @@ exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.
 }); };
 function EpubParsePromise(filePath) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var zip, err_3, publication, lcpl, lcplZipPath, lcplZipStream_, err_4, lcplZipStream, lcplZipData, err_5, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, err_6, encryptionXmlZipStream, encryptionXmlZipData, err_7, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, err_8, containerXmlZipStream, containerXmlZipData, err_9, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, err_10, opfZipStream, opfZipData, err_11, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, err_12, ncxZipStream, ncxZipData, err_13, ncxStr, ncxDoc, metasDuration_1, metasNarrator_1, metasActiveClass_1;
+        var zip, err_3, publication, lcpl, lcplZipPath, lcplZipStream_, err_4, lcplZipStream, lcplZipData, err_5, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, err_6, encryptionXmlZipStream, encryptionXmlZipData, err_7, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, err_8, containerXmlZipStream, containerXmlZipData, err_9, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, err_10, opfZipStream, opfZipData, err_11, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, err_12, ncxZipStream, ncxZipData, err_13, ncxStr, ncxDoc, metasDuration_1, metasNarrator_1, metasActiveClass_1, metasPlaybackActiveClass_1;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -332,6 +333,7 @@ function EpubParsePromise(filePath) {
                             metasDuration_1 = [];
                             metasNarrator_1 = [];
                             metasActiveClass_1 = [];
+                            metasPlaybackActiveClass_1 = [];
                             opf.Metadata.Meta.forEach(function (metaTag) {
                                 if (metaTag.Property === "media:duration") {
                                     metasDuration_1.push(metaTag);
@@ -341,6 +343,9 @@ function EpubParsePromise(filePath) {
                                 }
                                 if (metaTag.Property === "media:active-class") {
                                     metasActiveClass_1.push(metaTag);
+                                }
+                                if (metaTag.Property === "media:playback-active-class") {
+                                    metasPlaybackActiveClass_1.push(metaTag);
                                 }
                             });
                             if (metasDuration_1.length) {
@@ -357,7 +362,16 @@ function EpubParsePromise(filePath) {
                                 });
                             }
                             if (metasActiveClass_1.length) {
-                                publication.Metadata.MediaActiveClass = metasActiveClass_1[0].Data;
+                                if (!publication.Metadata.MediaOverlay) {
+                                    publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
+                                }
+                                publication.Metadata.MediaOverlay.ActiveClass = metasActiveClass_1[0].Data;
+                            }
+                            if (metasPlaybackActiveClass_1.length) {
+                                if (!publication.Metadata.MediaOverlay) {
+                                    publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
+                                }
+                                publication.Metadata.MediaOverlay.PlaybackActiveClass = metasPlaybackActiveClass_1[0].Data;
                             }
                         }
                     }
