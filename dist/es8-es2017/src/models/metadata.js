@@ -145,6 +145,10 @@ tslib_1.__decorate([
     tslib_1.__metadata("design:type", Number)
 ], Metadata.prototype, "Duration", void 0);
 tslib_1.__decorate([
+    ta_json_1.JsonProperty("mediaActiveClass"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "MediaActiveClass", void 0);
+tslib_1.__decorate([
     ta_json_1.OnDeserialized(),
     tslib_1.__metadata("design:type", Function),
     tslib_1.__metadata("design:paramtypes", []),

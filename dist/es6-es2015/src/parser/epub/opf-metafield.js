@@ -21,6 +21,10 @@ tslib_1.__decorate([
     tslib_1.__metadata("design:type", String)
 ], Metafield.prototype, "Refine", void 0);
 tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@scheme"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Scheme", void 0);
+tslib_1.__decorate([
     xml_js_mapper_1.XmlXPathSelector("@property"),
     tslib_1.__metadata("design:type", String)
 ], Metafield.prototype, "Property", void 0);

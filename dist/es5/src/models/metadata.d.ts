@@ -32,5 +32,6 @@ export declare class Metadata {
     Subject: Subject[];
     BelongsTo: BelongsTo;
     Duration: number;
+    MediaActiveClass: string;
     private _OnDeserialized();
 }

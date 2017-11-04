@@ -3,6 +3,7 @@ export declare class Metafield {
     Name: string;
     Content: string;
     Refine: string;
+    Scheme: string;
     Property: string;
     ID: string;
     Lang: string;

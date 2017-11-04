@@ -95,7 +95,7 @@ exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.
 }); };
 function EpubParsePromise(filePath) {
     return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var zip, err_3, publication, lcpl, lcplZipPath, lcplZipStream_, err_4, lcplZipStream, lcplZipData, err_5, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, err_6, encryptionXmlZipStream, encryptionXmlZipData, err_7, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, err_8, containerXmlZipStream, containerXmlZipData, err_9, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, err_10, opfZipStream, opfZipData, err_11, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, err_12, ncxZipStream, ncxZipData, err_13, ncxStr, ncxDoc;
+        var zip, err_3, publication, lcpl, lcplZipPath, lcplZipStream_, err_4, lcplZipStream, lcplZipData, err_5, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, err_6, encryptionXmlZipStream, encryptionXmlZipData, err_7, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, err_8, containerXmlZipStream, containerXmlZipData, err_9, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, err_10, opfZipStream, opfZipData, err_11, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, err_12, ncxZipStream, ncxZipData, err_13, ncxStr, ncxDoc, metasDuration_1, metasNarrator_1, metasActiveClass_1;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -327,6 +327,38 @@ function EpubParsePromise(filePath) {
                             opf.Metadata.Creator.forEach(function (cont) {
                                 addContributor(publication, rootfile, opf, cont, "aut");
                             });
+                        }
+                        if (opf.Metadata.Meta) {
+                            metasDuration_1 = [];
+                            metasNarrator_1 = [];
+                            metasActiveClass_1 = [];
+                            opf.Metadata.Meta.forEach(function (metaTag) {
+                                if (metaTag.Property === "media:duration") {
+                                    metasDuration_1.push(metaTag);
+                                }
+                                if (metaTag.Property === "media:narrator") {
+                                    metasNarrator_1.push(metaTag);
+                                }
+                                if (metaTag.Property === "media:active-class") {
+                                    metasActiveClass_1.push(metaTag);
+                                }
+                            });
+                            if (metasDuration_1.length) {
+                                publication.Metadata.Duration = media_overlay_1.timeStrToSeconds(metasDuration_1[0].Data);
+                            }
+                            if (metasNarrator_1.length) {
+                                if (!publication.Metadata.Narrator) {
+                                    publication.Metadata.Narrator = [];
+                                }
+                                metasNarrator_1.forEach(function (metaNarrator) {
+                                    var cont = new metadata_contributor_1.Contributor();
+                                    cont.Name = metaNarrator.Data;
+                                    publication.Metadata.Narrator.push(cont);
+                                });
+                            }
+                            if (metasActiveClass_1.length) {
+                                publication.Metadata.MediaActiveClass = metasActiveClass_1[0].Data;
+                            }
                         }
                     }
                     if (opf.Spine && opf.Spine.PageProgression) {
