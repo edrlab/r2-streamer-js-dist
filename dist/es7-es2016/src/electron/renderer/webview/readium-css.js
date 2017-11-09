@@ -273,6 +273,7 @@ function readiumCSSSet(messageJson) {
         toRemove.forEach((item) => {
             docElement.style.removeProperty(item);
         });
+        docElement.classList.remove("mdc-theme--dark");
     }
     else {
         let dark = false;

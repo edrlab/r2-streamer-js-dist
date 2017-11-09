@@ -132,7 +132,7 @@ const checkReadyPass = () => {
         }
     }
     win.addEventListener("resize", () => {
-        scrollToHash();
+        scrollToHashRaw(false);
     });
     setTimeout(() => {
         scrollToHashRaw(true);
@@ -175,11 +175,11 @@ function scrollIntoView(element) {
     if (!win.document.body) {
         return;
     }
-    let colIndex = element.offsetTop / win.document.body.scrollHeight;
-    colIndex = Math.floor(colIndex);
+    let colIndex = (element.offsetTop + (readium_css_1.isRTL() ? -20 : +20)) / win.document.body.scrollHeight;
+    colIndex = Math.ceil(colIndex);
     const isTwoPage = win.document.documentElement.offsetWidth > win.document.body.offsetWidth;
-    const spreadIndex = isTwoPage ? Math.floor(colIndex / 2) : colIndex;
-    const left = (spreadIndex * win.document.documentElement.offsetWidth);
+    const spreadIndex = isTwoPage ? Math.ceil(colIndex / 2) : colIndex;
+    const left = ((spreadIndex - 1) * win.document.documentElement.offsetWidth);
     win.document.body.scrollLeft = (readium_css_1.isRTL() ? -1 : 1) * left;
 }
 const scrollToHashRaw = (firstCall) => {
@@ -345,6 +345,7 @@ win.addEventListener("DOMContentLoaded", () => {
         const isPaged = win.document.documentElement.classList.contains("readium-paginated");
         if (isPaged) {
             setTimeout(() => {
+                _locationHashOverride = ev.target;
                 scrollIntoView(ev.target);
             }, 30);
         }
@@ -410,6 +411,9 @@ const processXY = debounce((x, y) => {
 const notifyReadingLocation = () => {
     if (!_locationHashOverride) {
         return;
+    }
+    if (readium_css_1.DEBUG_VISUALS) {
+        _locationHashOverride.classList.add("readium2-read-pos");
     }
     _locationHashOverrideCSSselector = cssselector_1.fullQualifiedSelector(_locationHashOverride, false);
     electron_1.ipcRenderer.sendToHost(events_1.R2_EVENT_READING_LOCATION, _locationHashOverrideCSSselector);

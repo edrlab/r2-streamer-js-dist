@@ -688,6 +688,9 @@ function createWebView() {
     wv.setAttribute("httpreferrer", publicationJsonUrl);
     wv.setAttribute("preload", "./webview/preload.js");
     wv.setAttribute("disableguestresize", "");
+    setTimeout(function () {
+        wv.removeAttribute("tabindex");
+    }, 500);
     wv.addEventListener("dom-ready", function () {
         wv.clearHistory();
     });
@@ -758,10 +761,23 @@ var adjustResize = function (webview) {
         });
     }
 };
-window.addEventListener("resize", debounce(function () {
+var onResizeDebounced = debounce(function () {
     adjustResize(_webview1);
     adjustResize(_webview2);
-}, 200));
+    setTimeout(function () {
+        unhideWebView(false);
+    }, 1000);
+}, 200);
+window.addEventListener("resize", function () {
+    var hidePanel = document.getElementById("reader_chrome_HIDE");
+    if (hidePanel.style.display !== "block") {
+        hidePanel.style.display = "block";
+        _viewHideInterval = setInterval(function () {
+            unhideWebView(true);
+        }, 5000);
+    }
+    onResizeDebounced();
+});
 function handleLink(href, previous, useGoto) {
     var prefix = publicationJsonUrl.replace("manifest.json", "");
     if (href.startsWith(prefix)) {
