@@ -1,9 +1,9 @@
 {
-  "short": "cffee4b",
-  "long": "cffee4bbcd2ade38cb32416e41d2c3f4fe8c4a9a",
-  "branch": "develop",
-  "date": "2017-12-10T17:02:48.000Z",
+  "short": "bc24a54",
+  "long": "bc24a54fec722e2462c5053079e7a9f6dce5ae92",
+  "branch": "feature/refactor-navigator",
+  "date": "2017-12-10T21:08:14.000Z",
   "dirty": true,
-  "urlHistory": "https://github.com/edrlab/r2-streamer-js/commits/cffee4bbcd2ade38cb32416e41d2c3f4fe8c4a9a",
-  "urlDiff": "https://github.com/edrlab/r2-streamer-js/compare/cffee4bbcd2ade38cb32416e41d2c3f4fe8c4a9a...develop"
+  "urlHistory": "https://github.com/edrlab/r2-streamer-js/commits/bc24a54fec722e2462c5053079e7a9f6dce5ae92",
+  "urlDiff": "https://github.com/edrlab/r2-streamer-js/compare/bc24a54fec722e2462c5053079e7a9f6dce5ae92...feature/refactor-navigator"
 }
