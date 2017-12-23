@@ -1,6 +1,6 @@
 /// <reference types="express" />
 import { Publication } from "r2-shared-js/dist/es6-es2015/src/models/publication";
-import { OPDSFeed } from "r2-shared-js/dist/es6-es2015/src/opds/opds2/opds2";
+import { OPDSFeed } from "r2-opds-js/dist/es6-es2015/src/opds/opds2/opds2";
 import * as express from "express";
 export interface IServerOptions {
     disableReaders?: boolean;

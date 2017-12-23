@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
 const transformer_1 = require("r2-shared-js/dist/es8-es2017/src/transform/transformer");
-const RangeUtils_1 = require("r2-shared-js/dist/es8-es2017/src/_utils/http/RangeUtils");
-const BufferUtils_1 = require("r2-shared-js/dist/es8-es2017/src/_utils/stream/BufferUtils");
+const RangeUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/RangeUtils");
+const BufferUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/stream/BufferUtils");
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");

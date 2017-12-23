@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var crypto = require("crypto");
-var opds2_link_1 = require("r2-shared-js/dist/es5/src/opds/opds2/opds2-link");
-var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
-var JsonUtils_1 = require("r2-shared-js/dist/es5/src/_utils/JsonUtils");
+var opds2_link_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-link");
+var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
+var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");

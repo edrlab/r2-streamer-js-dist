@@ -5,7 +5,7 @@ const querystring = require("querystring");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
-const UrlUtils_1 = require("r2-shared-js/dist/es6-es2015/src/_utils/http/UrlUtils");
+const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:server:pub");
 function serverPub(server, topRouter) {
