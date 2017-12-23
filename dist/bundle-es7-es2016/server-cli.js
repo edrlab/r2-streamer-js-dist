@@ -1,1450 +1,11 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-function sortObject(obj) {
-    if (obj instanceof Array) {
-        for (let i = 0; i < obj.length; i++) {
-            obj[i] = sortObject(obj[i]);
-        }
-        return obj;
-    }
-    else if (typeof obj !== "object") {
-        return obj;
-    }
-    const newObj = {};
-    Object.keys(obj).sort().forEach((key) => {
-        newObj[key] = sortObject(obj[key]);
-    });
-    return newObj;
-}
-exports.sortObject = sortObject;
-function traverseJsonObjects_(parent, keyInParent, obj, func) {
-    func(obj, parent, keyInParent);
-    if (obj instanceof Array) {
-        for (let index = 0; index < obj.length; index++) {
-            const item = obj[index];
-            if (typeof item !== "undefined") {
-                traverseJsonObjects_(obj, index, item, func);
-            }
-        }
-    }
-    else if (typeof obj === "object") {
-        Object.keys(obj).forEach((key) => {
-            if (obj.hasOwnProperty(key)) {
-                const item = obj[key];
-                if (typeof item !== "undefined") {
-                    traverseJsonObjects_(obj, key, item, func);
-                }
-            }
-        });
-    }
-}
-function traverseJsonObjects(obj, func) {
-    traverseJsonObjects_(undefined, undefined, obj, func);
-}
-exports.traverseJsonObjects = traverseJsonObjects;
-
-},{}],2:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-function parseRangeHeader(rangeHeader) {
-    let ranges = [];
-    if (!rangeHeader) {
-        return ranges;
-    }
-    let rHeader;
-    if (rangeHeader instanceof Array) {
-        rHeader = rangeHeader;
-    }
-    else {
-        rHeader = [rangeHeader];
-    }
-    rHeader.forEach((rh) => {
-        const arr = parseRangeHeader_(rh);
-        ranges = ranges.concat(arr);
-    });
-    return ranges;
-}
-exports.parseRangeHeader = parseRangeHeader;
-function parseRangeHeader_(rangeHeader) {
-    const ranges = [];
-    const iEqual = rangeHeader.indexOf("=");
-    if (iEqual <= 0) {
-        return ranges;
-    }
-    const rangesStr = rangeHeader.substr(iEqual + 1);
-    const rangeStrArray = rangesStr.split(",");
-    rangeStrArray.forEach((rangeStr) => {
-        const beginEndArray = rangeStr.split("-");
-        const beginStr = beginEndArray[0];
-        const endStr = beginEndArray[1];
-        let begin = -1;
-        if (beginStr && beginStr.length) {
-            begin = parseInt(beginStr, 10);
-        }
-        let end = -1;
-        if (endStr && endStr.length) {
-            end = parseInt(endStr, 10);
-        }
-        const rangeObj = { begin, end };
-        ranges.push(rangeObj);
-    });
-    return ranges;
-}
-function combineRanges(ranges) {
-    const orderedRanges = ranges
-        .map((range, index) => {
-        return {
-            begin: range.begin,
-            end: range.end,
-            index,
-        };
-    })
-        .sort((a, b) => {
-        return a.begin - b.begin;
-    });
-    let j = 0;
-    let i = 1;
-    for (j = 0, i = 1; i < orderedRanges.length; i++) {
-        const orderedRange = orderedRanges[i];
-        const currentRange = orderedRanges[j];
-        if (orderedRange.begin > currentRange.end + 1) {
-            orderedRanges[++j] = orderedRange;
-        }
-        else if (orderedRange.end > currentRange.end) {
-            currentRange.end = orderedRange.end;
-            currentRange.index = Math.min(currentRange.index, orderedRange.index);
-        }
-    }
-    orderedRanges.length = j + 1;
-    return orderedRanges
-        .sort((a, b) => {
-        return a.index - b.index;
-    })
-        .map((range) => {
-        return {
-            begin: range.begin,
-            end: range.end,
-        };
-    });
-}
-exports.combineRanges = combineRanges;
-
-},{}],3:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const path = require("path");
-const querystring = require("querystring");
-function isHTTP(urlOrPath) {
-    return urlOrPath.indexOf("http") === 0;
-}
-exports.isHTTP = isHTTP;
-function encodeURIComponent_RFC3986(str) {
-    return encodeURIComponent(str)
-        .replace(/[!'()*]/g, (c) => {
-        return "%" + c.charCodeAt(0).toString(16);
-    });
-}
-exports.encodeURIComponent_RFC3986 = encodeURIComponent_RFC3986;
-function encodeURIComponent_RFC5987(str) {
-    return encodeURIComponent(str).
-        replace(/['()]/g, querystring.escape).
-        replace(/\*/g, "%2A").
-        replace(/%(?:7C|60|5E)/g, querystring.unescape);
-}
-exports.encodeURIComponent_RFC5987 = encodeURIComponent_RFC5987;
-function ensureAbsolute(rootUrl, linkHref) {
-    let url = linkHref;
-    if (!isHTTP(url) && url.indexOf("data:") !== 0) {
-        if (url.indexOf("//") === 0) {
-            if (rootUrl.indexOf("https://") === 0) {
-                url = "https:" + url;
-            }
-            else {
-                url = "http:" + url;
-            }
-            return url;
-        }
-        if (url[0] === "/") {
-            const j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
-            const rootUrlOrigin = rootUrl.substr(0, j);
-            url = path.join(rootUrlOrigin, url);
-        }
-        else {
-            const i = rootUrl.indexOf("?");
-            let rootUrlWithoutQuery = rootUrl;
-            if (i >= 0) {
-                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
-            }
-            if (rootUrlWithoutQuery.substr(-1) === "/") {
-                url = path.join(rootUrlWithoutQuery, url);
-            }
-            else {
-                url = path.join(path.dirname(rootUrlWithoutQuery), url);
-            }
-        }
-        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
-    }
-    return url;
-}
-exports.ensureAbsolute = ensureAbsolute;
-
-},{"path":undefined,"querystring":undefined}],4:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const stream_1 = require("stream");
-class BufferReadableStream extends stream_1.Readable {
-    constructor(buffer) {
-        super();
-        this.buffer = buffer;
-        this.alreadyRead = 0;
-    }
-    _read(size) {
-        if (this.alreadyRead >= this.buffer.length) {
-            this.push(null);
-            return;
-        }
-        let chunk = this.alreadyRead ?
-            this.buffer.slice(this.alreadyRead) :
-            this.buffer;
-        if (size) {
-            let l = size;
-            if (size > chunk.length) {
-                l = chunk.length;
-            }
-            chunk = chunk.slice(0, l);
-        }
-        this.alreadyRead += chunk.length;
-        this.push(chunk);
-    }
-}
-exports.BufferReadableStream = BufferReadableStream;
-
-},{"stream":undefined}],5:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const BufferReadableStream_1 = require("./BufferReadableStream");
-function bufferToStream(buffer) {
-    return new BufferReadableStream_1.BufferReadableStream(buffer);
-}
-exports.bufferToStream = bufferToStream;
-function streamToBufferPromise_READABLE(readStream) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            const buffers = [];
-            readStream.on("error", reject);
-            readStream.on("readable", () => {
-                let chunk;
-                do {
-                    chunk = readStream.read();
-                    if (chunk) {
-                        buffers.push(chunk);
-                    }
-                } while (chunk);
-            });
-            readStream.on("end", () => {
-                resolve(Buffer.concat(buffers));
-            });
-        });
-    });
-}
-exports.streamToBufferPromise_READABLE = streamToBufferPromise_READABLE;
-function streamToBufferPromise(readStream) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        return new Promise((resolve, reject) => {
-            const buffers = [];
-            readStream.on("error", reject);
-            readStream.on("data", (data) => {
-                buffers.push(data);
-            });
-            readStream.on("end", () => {
-                resolve(Buffer.concat(buffers));
-            });
-        });
-    });
-}
-exports.streamToBufferPromise = streamToBufferPromise;
-
-},{"./BufferReadableStream":4,"tslib":554}],6:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const debug_ = require("debug");
-const stream_1 = require("stream");
-const debug = debug_("r2:RangeStream");
-class RangeStream extends stream_1.Transform {
-    constructor(streamBegin, streamEnd, streamLength) {
-        super();
-        this.streamBegin = streamBegin;
-        this.streamEnd = streamEnd;
-        this.streamLength = streamLength;
-        this.bytesReceived = 0;
-        this.finished = false;
-        this.closed = false;
-        this.on("end", () => {
-        });
-        this.on("finish", () => {
-        });
-    }
-    _flush(callback) {
-        callback();
-    }
-    _transform(chunk, _encoding, callback) {
-        this.bytesReceived += chunk.length;
-        if (this.finished) {
-            if (!this.closed) {
-                debug("???? CLOSING...");
-                this.closed = true;
-                this.push(null);
-            }
-            else {
-                debug("???? STILL PIPE CALLING _transform ??!");
-                this.end();
-            }
-        }
-        else {
-            if (this.bytesReceived > this.streamBegin) {
-                let chunkBegin = 0;
-                let chunkEnd = chunk.length - 1;
-                chunkBegin = this.streamBegin - (this.bytesReceived - chunk.length);
-                if (chunkBegin < 0) {
-                    chunkBegin = 0;
-                }
-                if (this.bytesReceived > this.streamEnd) {
-                    this.finished = true;
-                    chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
-                }
-                this.push(chunk.slice(chunkBegin, chunkEnd + 1));
-                if (this.finished) {
-                    this.closed = true;
-                    this.push(null);
-                    this.end();
-                }
-            }
-            else {
-            }
-        }
-        callback();
-    }
-}
-exports.RangeStream = RangeStream;
-
-},{"debug":267,"stream":undefined}],7:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class JsonDateConverter {
-    serialize(property) {
-        return property.toISOString();
-    }
-    deserialize(value) {
-        return new Date(value);
-    }
-    collapseArrayWithSingleItem() {
-        return false;
-    }
-}
-exports.JsonDateConverter = JsonDateConverter;
-
-},{}],8:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class JsonStringConverter {
-    serialize(property) {
-        return property;
-    }
-    deserialize(value) {
-        return value;
-    }
-    collapseArrayWithSingleItem() {
-        return true;
-    }
-}
-exports.JsonStringConverter = JsonStringConverter;
-
-},{}],9:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const property_definition_1 = require("./property-definition");
-class ObjectDefinition {
-    constructor() {
-        this.ctr = () => undefined;
-        this.beforeDeserialized = () => undefined;
-        this.onDeserialized = () => undefined;
-        this.properties = new Map();
-    }
-    getProperty(key) {
-        let property = this.properties.get(key);
-        if (!property) {
-            property = new property_definition_1.PropertyDefinition();
-            this.properties.set(key, property);
-        }
-        return property;
-    }
-}
-exports.ObjectDefinition = ObjectDefinition;
-exports.objectDefinitions = new Map();
-function getDefinition(objectType) {
-    let definition = exports.objectDefinitions.get(objectType);
-    if (!definition) {
-        definition = new ObjectDefinition();
-        exports.objectDefinitions.set(objectType, definition);
-    }
-    return definition;
-}
-exports.getDefinition = getDefinition;
-function getInheritanceChain(objectType) {
-    if (!objectType) {
-        return [];
-    }
-    const parent = Object.getPrototypeOf(objectType);
-    return [objectType.constructor].concat(getInheritanceChain(parent));
-}
-exports.getInheritanceChain = getInheritanceChain;
-function getChildObjectTypeDefinitions(parentObjectType) {
-    const childDefs = [];
-    exports.objectDefinitions.forEach((def, objectType) => {
-        const superObjectType = Object.getPrototypeOf(objectType.prototype).constructor;
-        if (superObjectType === parentObjectType) {
-            childDefs.push({ functionType: objectType, objectDefinition: def });
-        }
-    });
-    return childDefs;
-}
-function getTypedInheritanceChain(objectType, objectInstance) {
-    const parentDef = exports.objectDefinitions.get(objectType);
-    let childDefs = [];
-    if (objectInstance && parentDef && parentDef.discriminatorProperty) {
-        childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType));
-    }
-    let actualObjectType;
-    while (childDefs.length !== 0 && !actualObjectType) {
-        const ifo = childDefs.shift();
-        const objectType2 = ifo ? ifo.functionType : undefined;
-        const def = ifo ? ifo.objectDefinition : undefined;
-        if (def && def.hasOwnProperty("discriminatorValue")) {
-            if (objectInstance
-                && parentDef
-                && def.discriminatorValue === objectInstance[parentDef.discriminatorProperty]) {
-                if (def.hasOwnProperty("discriminatorProperty")) {
-                    return getTypedInheritanceChain(objectType2, objectInstance);
-                }
-                actualObjectType = objectType2;
-            }
-        }
-        else {
-            childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType2));
-        }
-    }
-    if (!actualObjectType) {
-        actualObjectType = objectType;
-    }
-    const inheritanceChain = new Set(getInheritanceChain(Object.create(actualObjectType.prototype)));
-    return Array.from(inheritanceChain).filter((t) => exports.objectDefinitions.has(t));
-}
-exports.getTypedInheritanceChain = getTypedInheritanceChain;
-
-},{"./property-definition":10}],10:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class PropertyDefinition {
-    constructor() {
-        this.array = false;
-        this.set = false;
-        this.readonly = false;
-        this.writeonly = false;
-    }
-}
-exports.PropertyDefinition = PropertyDefinition;
-
-},{}],11:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class BufferConverter {
-    constructor() {
-        this.encoding = "utf8";
-    }
-    serialize(property) {
-        return property.toString(this.encoding);
-    }
-    deserialize(value) {
-        return Buffer.from(value, this.encoding);
-    }
-    collapseArrayWithSingleItem() {
-        return false;
-    }
-}
-exports.BufferConverter = BufferConverter;
-
-},{}],12:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const buffer_converter_1 = require("./buffer-converter");
-const date_converter_1 = require("./date-converter");
-exports.propertyConverters = new Map();
-exports.propertyConverters.set(Buffer, new buffer_converter_1.BufferConverter());
-exports.propertyConverters.set(Date, new date_converter_1.DateConverter());
-
-},{"./buffer-converter":11,"./date-converter":13}],13:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class DateConverter {
-    serialize(property) {
-        return property.toISOString();
-    }
-    deserialize(value) {
-        return new Date(value);
-    }
-    collapseArrayWithSingleItem() {
-        return false;
-    }
-}
-exports.DateConverter = DateConverter;
-
-},{}],14:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-tslib_1.__exportStar(require("./converter"), exports);
-tslib_1.__exportStar(require("./buffer-converter"), exports);
-tslib_1.__exportStar(require("./date-converter"), exports);
-
-},{"./buffer-converter":11,"./converter":12,"./date-converter":13,"tslib":554}],15:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function BeforeDeserialized() {
-    return (target, key) => {
-        const definition = object_definition_1.getDefinition(target.constructor);
-        definition.beforeDeserialized = target[key];
-    };
-}
-exports.BeforeDeserialized = BeforeDeserialized;
-
-},{"../classes/object-definition":9}],16:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-tslib_1.__exportStar(require("./xml-object"), exports);
-tslib_1.__exportStar(require("./xml-xpathselector"), exports);
-tslib_1.__exportStar(require("./xml-type"), exports);
-tslib_1.__exportStar(require("./xml-item-type"), exports);
-tslib_1.__exportStar(require("./xml-converter"), exports);
-tslib_1.__exportStar(require("./xml-readonly"), exports);
-tslib_1.__exportStar(require("./xml-writeonly"), exports);
-tslib_1.__exportStar(require("./xml-discriminator-property"), exports);
-tslib_1.__exportStar(require("./xml-discriminator-value"), exports);
-tslib_1.__exportStar(require("./xml-constructor"), exports);
-tslib_1.__exportStar(require("./before-deserialized"), exports);
-tslib_1.__exportStar(require("./on-deserialized"), exports);
-
-},{"./before-deserialized":15,"./on-deserialized":17,"./xml-constructor":18,"./xml-converter":19,"./xml-discriminator-property":20,"./xml-discriminator-value":21,"./xml-item-type":22,"./xml-object":23,"./xml-readonly":24,"./xml-type":25,"./xml-writeonly":26,"./xml-xpathselector":27,"tslib":554}],17:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function OnDeserialized() {
-    return (target, key) => {
-        const definition = object_definition_1.getDefinition(target.constructor);
-        definition.onDeserialized = target[key];
-    };
-}
-exports.OnDeserialized = OnDeserialized;
-
-},{"../classes/object-definition":9}],18:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlConstructor() {
-    return (target, key) => {
-        const definition = object_definition_1.getDefinition(target.constructor);
-        definition.ctr = target[key];
-    };
-}
-exports.XmlConstructor = XmlConstructor;
-
-},{"../classes/object-definition":9}],19:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlConverter(converter) {
-    return (target, key) => {
-        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        if (typeof converter === "function") {
-            property.converter = new converter();
-        }
-        else {
-            property.converter = converter;
-        }
-    };
-}
-exports.XmlConverter = XmlConverter;
-
-},{"../classes/object-definition":9}],20:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlDiscriminatorProperty(property) {
-    return (objectType) => {
-        object_definition_1.getDefinition(objectType).discriminatorProperty = property;
-    };
-}
-exports.XmlDiscriminatorProperty = XmlDiscriminatorProperty;
-
-},{"../classes/object-definition":9}],21:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlDiscriminatorValue(value) {
-    return (objectType) => {
-        object_definition_1.getDefinition(objectType).discriminatorValue = value;
-    };
-}
-exports.XmlDiscriminatorValue = XmlDiscriminatorValue;
-
-},{"../classes/object-definition":9}],22:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlItemType(objectType) {
-    return (target, key) => {
-        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.objectType = objectType;
-    };
-}
-exports.XmlItemType = XmlItemType;
-
-},{"../classes/object-definition":9}],23:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlObject(namespaces) {
-    return (objectType) => {
-        const def = object_definition_1.getDefinition(objectType);
-        if (namespaces) {
-            def.namespaces = namespaces;
-        }
-        if (def.namespaces && def.properties) {
-            def.properties.forEach((propDef) => {
-                if (def.namespaces) {
-                    for (const prop in def.namespaces) {
-                        if (def.namespaces.hasOwnProperty(prop)) {
-                            if (!propDef.namespaces || !propDef.namespaces[prop]) {
-                                if (!propDef.namespaces) {
-                                    propDef.namespaces = {};
-                                }
-                                propDef.namespaces[prop] = def.namespaces[prop];
-                            }
-                        }
-                    }
-                    if (propDef.xpathSelectorParsed) {
-                        propDef.xpathSelectorParsed.forEach((xp) => {
-                            if (xp.namespacePrefix && !xp.namespaceUri) {
-                                xp.namespaceUri = propDef.namespaces ?
-                                    propDef.namespaces[xp.namespacePrefix] :
-                                    undefined;
-                            }
-                        });
-                    }
-                }
-            });
-        }
-    };
-}
-exports.XmlObject = XmlObject;
-
-},{"../classes/object-definition":9}],24:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlReadonly() {
-    return (target, key) => {
-        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.readonly = true;
-    };
-}
-exports.XmlReadonly = XmlReadonly;
-
-},{"../classes/object-definition":9}],25:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlType(objectType) {
-    return (target, key) => {
-        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.objectType = objectType;
-    };
-}
-exports.XmlType = XmlType;
-
-},{"../classes/object-definition":9}],26:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const object_definition_1 = require("../classes/object-definition");
-function XmlWriteonly() {
-    return (target, key) => {
-        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.writeonly = true;
-    };
-}
-exports.XmlWriteonly = XmlWriteonly;
-
-},{"../classes/object-definition":9}],27:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-require("reflect-metadata");
-const object_definition_1 = require("../classes/object-definition");
-function XmlXPathSelector(selector, namespaces) {
-    return (target, key) => {
-        const objectType = Reflect.getMetadata("design:type", target, key);
-        const objDef = object_definition_1.getDefinition(target.constructor);
-        const property = objDef.getProperty(key);
-        property.xpathSelector = selector;
-        if (namespaces) {
-            property.namespaces = namespaces;
-        }
-        property.array = objectType === Array;
-        property.set = objectType === Set;
-        if (!property.array && !property.set && !property.objectType) {
-            property.objectType = objectType;
-        }
-        if (property.xpathSelector.indexOf("|") < 0
-            && property.xpathSelector.indexOf(">") < 0
-            && property.xpathSelector.indexOf("*") < 0
-            && property.xpathSelector.indexOf("||") < 0
-            && property.xpathSelector.indexOf("[") < 0
-            && property.xpathSelector.indexOf("]") < 0) {
-            property.xpathSelectorParsed = [];
-            const items = property.xpathSelector.split("/");
-            items.forEach((item) => {
-                if (!item.length) {
-                    return;
-                }
-                const subitems = item.split(":");
-                const isAttribute = item[0] === "@";
-                const isText = item === "text()";
-                const localName = subitems.length > 1 ?
-                    subitems[1] :
-                    (isAttribute ? subitems[0].substr(1) : subitems[0]);
-                const namespacePrefix = subitems.length > 1 ?
-                    (isAttribute ? subitems[0].substr(1) : subitems[0]) :
-                    undefined;
-                const namespaceUri = namespacePrefix ?
-                    (namespaces ? namespaces[namespacePrefix] : undefined) :
-                    undefined;
-                const xItem = {
-                    isAttribute,
-                    isText,
-                    localName,
-                    namespacePrefix,
-                    namespaceUri,
-                };
-                property.xpathSelectorParsed.push(xItem);
-            });
-        }
-    };
-}
-exports.XmlXPathSelector = XmlXPathSelector;
-
-},{"../classes/object-definition":9,"reflect-metadata":464}],28:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-tslib_1.__exportStar(require("./xml"), exports);
-tslib_1.__exportStar(require("./decorators"), exports);
-tslib_1.__exportStar(require("./converters"), exports);
-
-},{"./converters":14,"./decorators":16,"./xml":30,"tslib":554}],29:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const xpath = require("xpath");
-const object_definition_1 = require("../classes/object-definition");
-const converter_1 = require("../converters/converter");
-function deserialize(objectInstance, objectType, options = { runConstructor: false }) {
-    return deserializeRootObject(objectInstance, objectType, options);
-}
-exports.deserialize = deserialize;
-function deserializeRootObject(objectInstance, objectType = Object, options) {
-    if (!object_definition_1.objectDefinitions.has(objectType)) {
-        return undefined;
-    }
-    const [objectType2, ...superTypes] = object_definition_1.getTypedInheritanceChain(objectType, objectInstance);
-    const output = Object.create(objectType2.prototype);
-    const definitions = [...superTypes.reverse(), objectType2]
-        .map((t) => object_definition_1.objectDefinitions.get(t))
-        .filter((t) => !!t);
-    definitions.forEach((d) => {
-        if (!d) {
-            return;
-        }
-        if (options.runConstructor) {
-            d.ctr.call(output);
-        }
-        d.beforeDeserialized.call(output);
-        d.properties.forEach((p, key) => {
-            if (!p.objectType) {
-                throw new Error(`Cannot deserialize property "${key}" without type!`);
-            }
-            if (p.readonly) {
-                return;
-            }
-            if (p.xpathSelectorParsed) {
-                const xpathMatched = [];
-                let currentNodes = [objectInstance];
-                p.xpathSelectorParsed.forEach((item, index) => {
-                    const nextCurrentNodes = [];
-                    currentNodes.forEach((currentNode) => {
-                        if (item.isText) {
-                            let textNode = currentNode.firstChild;
-                            if (currentNode.childNodes && currentNode.childNodes.length) {
-                                for (let i = 0; i < currentNode.childNodes.length; i++) {
-                                    const childNode = currentNode.childNodes.item(i);
-                                    if (childNode.nodeType === 3) {
-                                        textNode = childNode;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (textNode) {
-                                xpathMatched.push(textNode);
-                            }
-                        }
-                        else if (item.isAttribute) {
-                            if (currentNode.attributes) {
-                                const attr = item.namespaceUri ?
-                                    currentNode.attributes.getNamedItemNS(item.namespaceUri, item.localName) :
-                                    currentNode.attributes.getNamedItem(item.localName);
-                                if (attr) {
-                                    xpathMatched.push(attr);
-                                }
-                            }
-                        }
-                        else {
-                            if (currentNode.childNodes && currentNode.childNodes.length) {
-                                for (let i = 0; i < currentNode.childNodes.length; i++) {
-                                    const childNode = currentNode.childNodes.item(i);
-                                    if (childNode.nodeType !== 1) {
-                                        continue;
-                                    }
-                                    if (childNode.localName !== item.localName) {
-                                        continue;
-                                    }
-                                    if (item.namespaceUri && item.namespaceUri !== childNode.namespaceURI) {
-                                        continue;
-                                    }
-                                    nextCurrentNodes.push(childNode);
-                                }
-                            }
-                        }
-                    });
-                    currentNodes = nextCurrentNodes;
-                    if (index === p.xpathSelectorParsed.length - 1) {
-                        currentNodes.forEach((node) => {
-                            xpathMatched.push(node);
-                        });
-                    }
-                });
-                if (xpathMatched && xpathMatched.length) {
-                    if (p.array || p.set) {
-                        output[key] = [];
-                        xpathMatched.forEach((item) => {
-                            output[key].push(deserializeObject(item, p, options));
-                        });
-                        if (p.set) {
-                            output[key] = new Set(output[key]);
-                        }
-                        return;
-                    }
-                    output[key] = deserializeObject(xpathMatched[0], p, options);
-                }
-            }
-            else {
-                const select = xpath.useNamespaces(p.namespaces || {});
-                const xPathSelected = select(p.xpathSelector, objectInstance);
-                if (xPathSelected && xPathSelected.length) {
-                    const xpathMatched = [];
-                    if (!(xPathSelected instanceof Array)) {
-                        xpathMatched.push(xPathSelected);
-                    }
-                    else {
-                        xPathSelected.forEach((item) => {
-                            xpathMatched.push(item);
-                        });
-                    }
-                    if (p.array || p.set) {
-                        output[key] = [];
-                        xpathMatched.forEach((item) => {
-                            output[key].push(deserializeObject(item, p, options));
-                        });
-                        if (p.set) {
-                            output[key] = new Set(output[key]);
-                        }
-                        return;
-                    }
-                    output[key] = deserializeObject(xpathMatched[0], p, options);
-                }
-            }
-        });
-        d.onDeserialized.call(output);
-    });
-    return output;
-}
-function deserializeObject(objectInstance, definition, _options) {
-    const primitive = definition.objectType === String
-        || definition.objectType === Boolean
-        || definition.objectType === Number;
-    const value = objectInstance.nodeType === 3 ?
-        objectInstance.data :
-        (objectInstance.nodeType === 2 ?
-            objectInstance.value :
-            (objectInstance.nodeType === 1 ?
-                objectInstance.localName :
-                objectInstance.nodeValue));
-    const converter = definition.converter || converter_1.propertyConverters.get(definition.objectType);
-    if (converter) {
-        return converter.deserialize(value);
-    }
-    if (!primitive) {
-        const objDefinition = object_definition_1.objectDefinitions.get(definition.objectType);
-        if (objDefinition) {
-            return deserialize(objectInstance, definition.objectType);
-        }
-    }
-    return value;
-}
-
-},{"../classes/object-definition":9,"../converters/converter":12,"xpath":576}],30:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const deserialize_1 = require("./methods/deserialize");
-class XML {
-    static deserialize(objectInstance, objectType, options) {
-        if (objectInstance.nodeType === 9) {
-            objectInstance = objectInstance.documentElement;
-        }
-        return deserialize_1.deserialize(objectInstance, objectType, options);
-    }
-}
-exports.XML = XML;
-
-},{"./methods/deserialize":29}],31:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const RangeStream_1 = require("../stream/RangeStream");
-class Zip {
-    entryStreamRangePromise(entryPath, begin, end) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let streamAndLength;
-            try {
-                streamAndLength = yield this.entryStreamPromise(entryPath);
-            }
-            catch (err) {
-                console.log(err);
-                return Promise.reject(err);
-            }
-            streamAndLength = streamAndLength;
-            const b = begin < 0 ? 0 : begin;
-            const e = end < 0 ? (streamAndLength.length - 1) : end;
-            const stream = new RangeStream_1.RangeStream(b, e, streamAndLength.length);
-            streamAndLength.stream.pipe(stream);
-            const sal = {
-                length: streamAndLength.length,
-                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    return this.entryStreamRangePromise(entryPath, begin, end);
-                }),
-                stream,
-            };
-            return sal;
-        });
-    }
-}
-exports.Zip = Zip;
-
-},{"../stream/RangeStream":6,"tslib":554}],32:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const debug_ = require("debug");
-const StreamZip = require("node-stream-zip");
-const zip_1 = require("./zip");
-const debug = debug_("r2:zip1");
-class Zip1 extends zip_1.Zip {
-    constructor(filePath, zip) {
-        super();
-        this.filePath = filePath;
-        this.zip = zip;
-    }
-    static loadPromise(filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
-                const zip = new StreamZip({
-                    file: filePath,
-                    storeEntries: true,
-                });
-                zip.on("error", (err) => {
-                    debug("--ZIP error: " + filePath);
-                    debug(err);
-                    reject(err);
-                });
-                zip.on("entry", (_entry) => {
-                });
-                zip.on("extract", (entry, file) => {
-                    debug("--ZIP extract:");
-                    debug(entry.name);
-                    debug(file);
-                });
-                zip.on("ready", () => {
-                    resolve(new Zip1(filePath, zip));
-                });
-            });
-        });
-    }
-    freeDestroy() {
-        debug("freeDestroy: Zip1 -- " + this.filePath);
-        if (this.zip) {
-            this.zip.close();
-        }
-    }
-    entriesCount() {
-        return this.zip.entriesCount;
-    }
-    hasEntries() {
-        return this.entriesCount() > 0;
-    }
-    hasEntry(entryPath) {
-        return this.hasEntries()
-            && this.zip.entries()[entryPath];
-    }
-    forEachEntry(callback) {
-        if (!this.hasEntries()) {
-            return;
-        }
-        Object.keys(this.zip.entries()).forEach((entryName) => {
-            callback(entryName);
-        });
-    }
-    entryStreamPromise(entryPath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            if (!this.hasEntries() || !this.hasEntry(entryPath)) {
-                return Promise.reject("no such path in zip: " + entryPath);
-            }
-            return new Promise((resolve, reject) => {
-                this.zip.stream(entryPath, (err, stream) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    const entry = this.zip.entries()[entryPath];
-                    const streamAndLength = {
-                        length: entry.size,
-                        reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                            return this.entryStreamPromise(entryPath);
-                        }),
-                        stream,
-                    };
-                    resolve(streamAndLength);
-                });
-            });
-        });
-    }
-}
-exports.Zip1 = Zip1;
-
-},{"./zip":31,"debug":267,"node-stream-zip":445,"tslib":554}],33:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const debug_ = require("debug");
-const request = require("request");
-const requestPromise = require("request-promise-native");
-const yauzl = require("yauzl");
-const UrlUtils_1 = require("../http/UrlUtils");
-const BufferUtils_1 = require("../stream/BufferUtils");
-const zip_1 = require("./zip");
-const zip2RandomAccessReader_Http_1 = require("./zip2RandomAccessReader_Http");
-const debug = debug_("r2:zip2");
-class Zip2 extends zip_1.Zip {
-    constructor(filePath, zip) {
-        super();
-        this.filePath = filePath;
-        this.zip = zip;
-        this.entries = {};
-    }
-    static loadPromise(filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            if (UrlUtils_1.isHTTP(filePath)) {
-                return Zip2.loadPromiseHTTP(filePath);
-            }
-            return new Promise((resolve, reject) => {
-                yauzl.open(filePath, { lazyEntries: true, autoClose: false }, (err, zip) => {
-                    if (err) {
-                        debug("yauzl init ERROR");
-                        debug(err);
-                        reject(err);
-                        return;
-                    }
-                    const zip2 = new Zip2(filePath, zip);
-                    zip.on("error", (erro) => {
-                        debug("yauzl ERROR");
-                        debug(erro);
-                        reject(erro);
-                    });
-                    zip.readEntry();
-                    zip.on("entry", (entry) => {
-                        if (entry.fileName[entry.fileName.length - 1] === "/") {
-                        }
-                        else {
-                            zip2.addEntry(entry);
-                        }
-                        zip.readEntry();
-                    });
-                    zip.on("end", () => {
-                        debug("yauzl END");
-                        resolve(zip2);
-                    });
-                    zip.on("close", () => {
-                        debug("yauzl CLOSE");
-                    });
-                });
-            });
-        });
-    }
-    static loadPromiseHTTP(filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            const needsStreamingResponse = true;
-            return new Promise((resolve, reject) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                const failure = (err) => {
-                    debug(err);
-                    reject(err);
-                };
-                const success = (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
-                        failure("HTTP CODE " + res.statusCode);
-                        return;
-                    }
-                    debug(filePath);
-                    debug(res.headers);
-                    if (!res.headers["content-length"]) {
-                        reject("content-length not supported!");
-                        return;
-                    }
-                    const httpZipByteLength = parseInt(res.headers["content-length"], 10);
-                    debug(`Content-Length: ${httpZipByteLength}`);
-                    if (!res.headers["accept-ranges"]
-                        || res.headers["accept-ranges"] !== "bytes") {
-                        if (httpZipByteLength > (2 * 1024 * 1024)) {
-                            reject("accept-ranges not supported, file too big to download: " + httpZipByteLength);
-                            return;
-                        }
-                        debug("Downloading: " + filePath);
-                        const failure_ = (err) => {
-                            debug(err);
-                            reject(err);
-                        };
-                        const success_ = (ress) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                            if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
-                                failure_("HTTP CODE " + ress.statusCode);
-                                return;
-                            }
-                            let buffer;
-                            try {
-                                buffer = yield BufferUtils_1.streamToBufferPromise(ress);
-                            }
-                            catch (err) {
-                                debug(err);
-                                reject(err);
-                                return;
-                            }
-                            yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zip) => {
-                                if (err) {
-                                    debug("yauzl init ERROR");
-                                    debug(err);
-                                    reject(err);
-                                    return;
-                                }
-                                const zip2 = new Zip2(filePath, zip);
-                                zip.on("error", (erro) => {
-                                    debug("yauzl ERROR");
-                                    debug(erro);
-                                    reject(erro);
-                                });
-                                zip.readEntry();
-                                zip.on("entry", (entry) => {
-                                    if (entry.fileName[entry.fileName.length - 1] === "/") {
-                                    }
-                                    else {
-                                        zip2.addEntry(entry);
-                                    }
-                                    zip.readEntry();
-                                });
-                                zip.on("end", () => {
-                                    debug("yauzl END");
-                                    resolve(zip2);
-                                });
-                                zip.on("close", () => {
-                                    debug("yauzl CLOSE");
-                                });
-                            });
-                        });
-                        if (needsStreamingResponse) {
-                            request.get({
-                                headers: {},
-                                method: "GET",
-                                uri: filePath,
-                            })
-                                .on("response", success_)
-                                .on("error", failure_);
-                        }
-                        else {
-                            let ress;
-                            try {
-                                ress = yield requestPromise({
-                                    headers: {},
-                                    method: "GET",
-                                    resolveWithFullResponse: true,
-                                    uri: filePath,
-                                });
-                            }
-                            catch (err) {
-                                failure_(err);
-                                return;
-                            }
-                            yield success_(ress);
-                        }
-                        return;
-                    }
-                    const httpZipReader = new zip2RandomAccessReader_Http_1.HttpZipReader(filePath, httpZipByteLength);
-                    yauzl.fromRandomAccessReader(httpZipReader, httpZipByteLength, { lazyEntries: true, autoClose: false }, (err, zip) => {
-                        if (err) {
-                            debug("yauzl init ERROR");
-                            debug(err);
-                            reject(err);
-                            return;
-                        }
-                        zip.httpZipReader = httpZipReader;
-                        const zip2 = new Zip2(filePath, zip);
-                        zip.on("error", (erro) => {
-                            debug("yauzl ERROR");
-                            debug(erro);
-                            reject(erro);
-                        });
-                        zip.readEntry();
-                        zip.on("entry", (entry) => {
-                            if (entry.fileName[entry.fileName.length - 1] === "/") {
-                            }
-                            else {
-                                zip2.addEntry(entry);
-                            }
-                            zip.readEntry();
-                        });
-                        zip.on("end", () => {
-                            debug("yauzl END");
-                            resolve(zip2);
-                        });
-                        zip.on("close", () => {
-                            debug("yauzl CLOSE");
-                        });
-                    });
-                });
-                if (needsStreamingResponse) {
-                    request.get({
-                        headers: {},
-                        method: "HEAD",
-                        uri: filePath,
-                    })
-                        .on("response", success)
-                        .on("error", failure);
-                }
-                else {
-                    let res;
-                    try {
-                        res = yield requestPromise({
-                            headers: {},
-                            method: "HEAD",
-                            resolveWithFullResponse: true,
-                            uri: filePath,
-                        });
-                    }
-                    catch (err) {
-                        failure(err);
-                        return;
-                    }
-                    yield success(res);
-                }
-            }));
-        });
-    }
-    freeDestroy() {
-        debug("freeDestroy: Zip2 -- " + this.filePath);
-        if (this.zip) {
-            this.zip.close();
-        }
-    }
-    entriesCount() {
-        return this.zip.entryCount;
-    }
-    hasEntries() {
-        return this.entriesCount() > 0;
-    }
-    hasEntry(entryPath) {
-        return this.hasEntries() && this.entries[entryPath];
-    }
-    forEachEntry(callback) {
-        if (!this.hasEntries()) {
-            return;
-        }
-        Object.keys(this.entries).forEach((entryName) => {
-            callback(entryName);
-        });
-    }
-    entryStreamPromise(entryPath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            if (!this.hasEntries() || !this.hasEntry(entryPath)) {
-                return Promise.reject("no such path in zip: " + entryPath);
-            }
-            const entry = this.entries[entryPath];
-            return new Promise((resolve, reject) => {
-                this.zip.openReadStream(entry, (err, stream) => {
-                    if (err) {
-                        debug("yauzl openReadStream ERROR");
-                        debug(err);
-                        reject(err);
-                        return;
-                    }
-                    const streamAndLength = {
-                        length: entry.uncompressedSize,
-                        reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                            return this.entryStreamPromise(entryPath);
-                        }),
-                        stream,
-                    };
-                    resolve(streamAndLength);
-                });
-            });
-        });
-    }
-    addEntry(entry) {
-        this.entries[entry.fileName] = entry;
-    }
-}
-exports.Zip2 = Zip2;
-
-},{"../http/UrlUtils":3,"../stream/BufferUtils":5,"./zip":31,"./zip2RandomAccessReader_Http":34,"debug":267,"request":469,"request-promise-native":468,"tslib":554,"yauzl":577}],34:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const stream_1 = require("stream");
-const util = require("util");
-const debug_ = require("debug");
-const request = require("request");
-const requestPromise = require("request-promise-native");
-const yauzl = require("yauzl");
-const BufferUtils_1 = require("../stream/BufferUtils");
-const debug = debug_("r2:httpStream");
-class HttpZipReader {
-    constructor(url, byteLength) {
-        this.url = url;
-        this.byteLength = byteLength;
-        this.firstBuffer = undefined;
-        this.firstBufferStart = 0;
-        this.firstBufferEnd = 0;
-        yauzl.RandomAccessReader.call(this);
-    }
-    _readStreamForRange(start, end) {
-        if (this.firstBuffer && start >= this.firstBufferStart && end <= this.firstBufferEnd) {
-            const begin = start - this.firstBufferStart;
-            const stop = end - this.firstBufferStart;
-            return BufferUtils_1.bufferToStream(this.firstBuffer.slice(begin, stop));
-        }
-        const stream = new stream_1.PassThrough();
-        const lastByteIndex = end - 1;
-        const range = `${start}-${lastByteIndex}`;
-        const failure = (err) => {
-            debug(err);
-        };
-        const success = (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-            if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
-                failure("HTTP CODE " + res.statusCode);
-                return;
-            }
-            if (this.firstBuffer) {
-                res.pipe(stream);
-            }
-            else {
-                let buffer;
-                try {
-                    buffer = yield BufferUtils_1.streamToBufferPromise(res);
-                }
-                catch (err) {
-                    debug(err);
-                    stream.end();
-                    return;
-                }
-                this.firstBuffer = buffer;
-                this.firstBufferStart = start;
-                this.firstBufferEnd = end;
-                stream.write(buffer);
-                stream.end();
-            }
-        });
-        const needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers: { Range: `bytes=${range}` },
-                method: "GET",
-                uri: this.url,
-            })
-                .on("response", success)
-                .on("error", failure);
-        }
-        else {
-            (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                let res;
-                try {
-                    res = yield requestPromise({
-                        headers: { Range: `bytes=${range}` },
-                        method: "GET",
-                        resolveWithFullResponse: true,
-                        uri: this.url,
-                    });
-                }
-                catch (err) {
-                    failure(err);
-                    return;
-                }
-                yield success(res);
-            }))();
-        }
-        return stream;
-    }
-}
-exports.HttpZipReader = HttpZipReader;
-util.inherits(HttpZipReader, yauzl.RandomAccessReader);
-
-},{"../stream/BufferUtils":5,"debug":267,"request":469,"request-promise-native":468,"stream":undefined,"tslib":554,"util":undefined,"yauzl":577}],35:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const UrlUtils_1 = require("../http/UrlUtils");
-const zip1_1 = require("./zip1");
-const zip2_1 = require("./zip2");
-function zipLoadPromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        if (UrlUtils_1.isHTTP(filePath)) {
-            return zip2_1.Zip2.loadPromise(filePath);
-        }
-        return zip1_1.Zip1.loadPromise(filePath);
-    });
-}
-exports.zipLoadPromise = zipLoadPromise;
-
-},{"../http/UrlUtils":3,"./zip1":32,"./zip2":33,"tslib":554}],36:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const path = require("path");
-const transformer_1 = require("../transform/transformer");
-const RangeUtils_1 = require("../_utils/http/RangeUtils");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+const transformer_1 = require("r2-shared-js/dist/es7-es2016/src/transform/transformer");
+const RangeUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/RangeUtils");
+const BufferUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/stream/BufferUtils");
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");
@@ -1674,7 +235,7 @@ function serverAssets(server, routerPathBase64) {
 }
 exports.serverAssets = serverAssets;
 
-},{"../_utils/http/RangeUtils":2,"../_utils/stream/BufferUtils":5,"../transform/transformer":136,"debug":267,"express":283,"mime-types":429,"path":undefined,"tslib":554}],37:[function(require,module,exports){
+},{"debug":142,"express":158,"mime-types":303,"path":undefined,"r2-shared-js/dist/es7-es2016/src/_utils/http/RangeUtils":337,"r2-shared-js/dist/es7-es2016/src/_utils/stream/BufferUtils":340,"r2-shared-js/dist/es7-es2016/src/transform/transformer":460,"tslib":553}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
@@ -1682,8 +243,8 @@ const fs = require("fs");
 const path = require("path");
 const debug_ = require("debug");
 const filehound = require("filehound");
-const lcp_1 = require("../parser/epub/lcp");
-const init_globals_1 = require("../init-globals");
+const lcp_1 = require("r2-shared-js/dist/es7-es2016/src/parser/epub/lcp");
+const init_globals_1 = require("r2-shared-js/dist/es7-es2016/src/init-globals");
 const server_1 = require("./server");
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
@@ -1738,15 +299,15 @@ else {
     server.start(0);
 }
 
-},{"../init-globals":47,"../parser/epub/lcp":107,"./server":46,"debug":267,"filehound":308,"fs":undefined,"path":undefined,"tslib":554}],38:[function(require,module,exports){
+},{"./server":11,"debug":142,"filehound":183,"fs":undefined,"path":undefined,"r2-shared-js/dist/es7-es2016/src/init-globals":371,"r2-shared-js/dist/es7-es2016/src/parser/epub/lcp":431,"tslib":553}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const crypto = require("crypto");
 const path = require("path");
-const epub_1 = require("../parser/epub");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
-const JsonUtils_1 = require("../_utils/JsonUtils");
+const epub_1 = require("r2-shared-js/dist/es7-es2016/src/parser/epub");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
+const JsonUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
@@ -2003,15 +564,15 @@ function serverManifestJson(server, routerPathBase64) {
 }
 exports.serverManifestJson = serverManifestJson;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../parser/epub":87,"crypto":undefined,"css2json":264,"debug":267,"express":283,"json-markup":406,"path":undefined,"ta-json":541,"tslib":554}],39:[function(require,module,exports){
+},{"crypto":undefined,"css2json":139,"debug":142,"express":158,"json-markup":280,"path":undefined,"r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils":336,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es7-es2016/src/parser/epub":411,"ta-json":540,"tslib":553}],4:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const crypto = require("crypto");
 const path = require("path");
-const epub_1 = require("../parser/epub");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
-const JsonUtils_1 = require("../_utils/JsonUtils");
+const epub_1 = require("r2-shared-js/dist/es7-es2016/src/parser/epub");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
+const JsonUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
@@ -2160,15 +721,15 @@ function serverMediaOverlays(server, routerPathBase64) {
 }
 exports.serverMediaOverlays = serverMediaOverlays;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../parser/epub":87,"crypto":undefined,"css2json":264,"debug":267,"express":283,"json-markup":406,"path":undefined,"ta-json":541,"tslib":554}],40:[function(require,module,exports){
+},{"crypto":undefined,"css2json":139,"debug":142,"express":158,"json-markup":280,"path":undefined,"r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils":336,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es7-es2016/src/parser/epub":411,"ta-json":540,"tslib":553}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const opds_1 = require("../opds/opds1/opds");
-const opds_entry_1 = require("../opds/opds1/opds-entry");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+const opds_1 = require("r2-shared-js/dist/es7-es2016/src/opds/opds1/opds");
+const opds_entry_1 = require("r2-shared-js/dist/es7-es2016/src/opds/opds1/opds-entry");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
+const BufferUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/stream/BufferUtils");
+const xml_js_mapper_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/xml-js-mapper");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
@@ -2387,16 +948,16 @@ function serverOPDS(_server, topRouter) {
 }
 exports.serverOPDS = serverOPDS;
 
-},{"../_utils/http/UrlUtils":3,"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../opds/opds1/opds":68,"../opds/opds1/opds-entry":64,"./server-trailing-slash-redirect":44,"debug":267,"express":283,"morgan":434,"request":469,"request-promise-native":468,"tslib":554,"xmldom":573}],41:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"debug":142,"express":158,"morgan":308,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es7-es2016/src/_utils/stream/BufferUtils":340,"r2-shared-js/dist/es7-es2016/src/_utils/xml-js-mapper":363,"r2-shared-js/dist/es7-es2016/src/opds/opds1/opds":392,"r2-shared-js/dist/es7-es2016/src/opds/opds1/opds-entry":388,"request":468,"request-promise-native":467,"tslib":553,"xmldom":572}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const converter_1 = require("../opds/converter");
-const opds_1 = require("../opds/opds1/opds");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
-const JsonUtils_1 = require("../_utils/JsonUtils");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+const converter_1 = require("r2-shared-js/dist/es7-es2016/src/opds/converter");
+const opds_1 = require("r2-shared-js/dist/es7-es2016/src/opds/opds1/opds");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
+const JsonUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils");
+const BufferUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/stream/BufferUtils");
+const xml_js_mapper_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/xml-js-mapper");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
@@ -2584,13 +1145,13 @@ function serverOPDS12(_server, topRouter) {
 }
 exports.serverOPDS12 = serverOPDS12;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../opds/converter":61,"../opds/opds1/opds":68,"./server-trailing-slash-redirect":44,"css2json":264,"debug":267,"express":283,"json-markup":406,"morgan":434,"request":469,"request-promise-native":468,"ta-json":541,"tslib":554,"xmldom":573}],42:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"css2json":139,"debug":142,"express":158,"json-markup":280,"morgan":308,"r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils":336,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es7-es2016/src/_utils/stream/BufferUtils":340,"r2-shared-js/dist/es7-es2016/src/_utils/xml-js-mapper":363,"r2-shared-js/dist/es7-es2016/src/opds/converter":385,"r2-shared-js/dist/es7-es2016/src/opds/opds1/opds":392,"request":468,"request-promise-native":467,"ta-json":540,"tslib":553,"xmldom":572}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
-const opds2_link_1 = require("../opds/opds2/opds2-link");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
-const JsonUtils_1 = require("../_utils/JsonUtils");
+const opds2_link_1 = require("r2-shared-js/dist/es7-es2016/src/opds/opds2/opds2-link");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
+const JsonUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
@@ -2745,7 +1306,7 @@ function serverOPDS2(server, topRouter) {
 }
 exports.serverOPDS2 = serverOPDS2;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../opds/opds2/opds2-link":76,"./server-trailing-slash-redirect":44,"crypto":undefined,"css2json":264,"debug":267,"express":283,"json-markup":406,"ta-json":541}],43:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"crypto":undefined,"css2json":139,"debug":142,"express":158,"json-markup":280,"r2-shared-js/dist/es7-es2016/src/_utils/JsonUtils":336,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es7-es2016/src/opds/opds2/opds2-link":400,"ta-json":540}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
@@ -2753,7 +1314,7 @@ const querystring = require("querystring");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:server:pub");
 function serverPub(server, topRouter) {
@@ -2832,7 +1393,7 @@ function serverPub(server, topRouter) {
 }
 exports.serverPub = serverPub;
 
-},{"../_utils/http/UrlUtils":3,"./server-trailing-slash-redirect":44,"debug":267,"express":283,"morgan":434,"path":undefined,"querystring":undefined}],44:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"debug":142,"express":158,"morgan":308,"path":undefined,"querystring":undefined,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const debug_ = require("debug");
@@ -2856,7 +1417,7 @@ function trailingSlashRedirect(req, res, next) {
 }
 exports.trailingSlashRedirect = trailingSlashRedirect;
 
-},{"debug":267}],45:[function(require,module,exports){
+},{"debug":142}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const debug_ = require("debug");
@@ -2907,7 +1468,7 @@ function serverUrl(_server, topRouter) {
 }
 exports.serverUrl = serverUrl;
 
-},{"./server-trailing-slash-redirect":44,"debug":267,"express":283,"morgan":434}],46:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"debug":142,"express":158,"morgan":308}],11:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
@@ -2915,15 +1476,15 @@ const child_process = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const opds2_1 = require("../opds/opds2/opds2");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
+const opds2_1 = require("r2-shared-js/dist/es7-es2016/src/opds/opds2/opds2");
+const UrlUtils_1 = require("r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const tmp_1 = require("tmp");
-const publication_parser_1 = require("../parser/publication-parser");
+const publication_parser_1 = require("r2-shared-js/dist/es7-es2016/src/parser/publication-parser");
 const server_assets_1 = require("./server-assets");
 const server_manifestjson_1 = require("./server-manifestjson");
 const server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -3195,6217 +1756,7 @@ class Server {
 }
 exports.Server = Server;
 
-},{"../_utils/http/UrlUtils":3,"../opds/opds2/opds2":83,"../parser/publication-parser":132,"./server-assets":36,"./server-manifestjson":38,"./server-mediaoverlays":39,"./server-opds":40,"./server-opds1-2":41,"./server-opds2":42,"./server-pub":43,"./server-url":45,"child_process":undefined,"crypto":undefined,"css2json":264,"debug":267,"express":283,"fs":undefined,"json-markup":406,"path":undefined,"ta-json":541,"tmp":546,"tslib":554}],47:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const metadata_collection_1 = require("./models/metadata-collection");
-const metadata_collection_json_converter_1 = require("./models/metadata-collection-json-converter");
-const metadata_contributor_1 = require("./models/metadata-contributor");
-const metadata_contributor_json_converter_1 = require("./models/metadata-contributor-json-converter");
-const opds2_collection_1 = require("./opds/opds2/opds2-collection");
-const opds2_collection_json_converter_1 = require("./opds/opds2/opds2-collection-json-converter");
-const ta_json_date_converter_1 = require("./_utils/ta-json-date-converter");
-const xml_js_mapper_1 = require("./_utils/xml-js-mapper");
-const ta_json_1 = require("ta-json");
-function initGlobals() {
-    ta_json_1.propertyConverters.set(Buffer, new ta_json_1.BufferConverter());
-    ta_json_1.propertyConverters.set(Date, new ta_json_date_converter_1.JsonDateConverter());
-    ta_json_1.propertyConverters.set(metadata_contributor_1.Contributor, new metadata_contributor_json_converter_1.JsonContributorConverter());
-    ta_json_1.propertyConverters.set(metadata_collection_1.Collection, new metadata_collection_json_converter_1.JsonCollectionConverter());
-    ta_json_1.propertyConverters.set(opds2_collection_1.OPDSCollection, new opds2_collection_json_converter_1.JsonOPDSCollectionConverter());
-    xml_js_mapper_1.propertyConverters.set(Buffer, new xml_js_mapper_1.BufferConverter());
-    xml_js_mapper_1.propertyConverters.set(Date, new xml_js_mapper_1.DateConverter());
-}
-exports.initGlobals = initGlobals;
-
-},{"./_utils/ta-json-date-converter":7,"./_utils/xml-js-mapper":28,"./models/metadata-collection":51,"./models/metadata-collection-json-converter":50,"./models/metadata-contributor":53,"./models/metadata-contributor-json-converter":52,"./opds/opds2/opds2-collection":71,"./opds/opds2/opds2-collection-json-converter":70,"ta-json":541}],48:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-function timeStrToSeconds(timeStr) {
-    if (!timeStr) {
-        return 0;
-    }
-    let hours = 0;
-    let minutes = 0;
-    let seconds = 0;
-    try {
-        const iMin = timeStr.indexOf("min");
-        if (iMin > 0) {
-            const minsStr = timeStr.substr(0, iMin);
-            minutes = parseFloat(minsStr);
-        }
-        else {
-            const iMs = timeStr.indexOf("ms");
-            if (iMs > 0) {
-                const msStr = timeStr.substr(0, iMs);
-                const ms = parseFloat(msStr);
-                seconds = ms / 1000;
-            }
-            else {
-                const iS = timeStr.indexOf("s");
-                if (iS > 0) {
-                    const sStr = timeStr.substr(0, iS);
-                    seconds = parseFloat(sStr);
-                }
-                else {
-                    const iH = timeStr.indexOf("h");
-                    if (iH > 0) {
-                        const hStr = timeStr.substr(0, iH);
-                        hours = parseFloat(hStr);
-                    }
-                    else {
-                        const arr = timeStr.split(":");
-                        if (arr.length === 1) {
-                            seconds = parseFloat(arr[0]);
-                        }
-                        else if (arr.length === 2) {
-                            minutes = parseFloat(arr[0]);
-                            seconds = parseFloat(arr[1]);
-                        }
-                        else if (arr.length === 3) {
-                            hours = parseFloat(arr[0]);
-                            minutes = parseFloat(arr[1]);
-                            seconds = parseFloat(arr[2]);
-                        }
-                        else {
-                            console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR ??");
-                            console.log(timeStr);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    catch (err) {
-        console.log(err);
-        console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR!");
-        console.log(timeStr);
-        return 0;
-    }
-    return (hours * 3600) + (minutes * 60) + seconds;
-}
-exports.timeStrToSeconds = timeStrToSeconds;
-let MediaOverlayNode = MediaOverlayNode_1 = class MediaOverlayNode {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("text"),
-    tslib_1.__metadata("design:type", String)
-], MediaOverlayNode.prototype, "Text", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("audio"),
-    tslib_1.__metadata("design:type", String)
-], MediaOverlayNode.prototype, "Audio", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("role"),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], MediaOverlayNode.prototype, "Role", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("children"),
-    ta_json_1.JsonElementType(MediaOverlayNode_1),
-    tslib_1.__metadata("design:type", Array)
-], MediaOverlayNode.prototype, "Children", void 0);
-MediaOverlayNode = MediaOverlayNode_1 = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], MediaOverlayNode);
-exports.MediaOverlayNode = MediaOverlayNode;
-var MediaOverlayNode_1;
-
-},{"ta-json":541,"tslib":554}],49:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const metadata_collection_1 = require("./metadata-collection");
-let BelongsTo = class BelongsTo {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("series"),
-    ta_json_1.JsonElementType(metadata_collection_1.Collection),
-    tslib_1.__metadata("design:type", Array)
-], BelongsTo.prototype, "Series", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("collection"),
-    ta_json_1.JsonElementType(metadata_collection_1.Collection),
-    tslib_1.__metadata("design:type", Array)
-], BelongsTo.prototype, "Collection", void 0);
-BelongsTo = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], BelongsTo);
-exports.BelongsTo = BelongsTo;
-
-},{"./metadata-collection":51,"ta-json":541,"tslib":554}],50:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const ta_json_1 = require("ta-json");
-const metadata_collection_1 = require("./metadata-collection");
-class JsonCollectionConverter {
-    serialize(property) {
-        return ta_json_1.JSON.serialize(property);
-    }
-    deserialize(value) {
-        if (typeof value === "string") {
-            const c = new metadata_collection_1.Collection();
-            c.Name = value;
-            return c;
-        }
-        else {
-            return ta_json_1.JSON.deserialize(value, metadata_collection_1.Collection);
-        }
-    }
-    collapseArrayWithSingleItem() {
-        return true;
-    }
-}
-exports.JsonCollectionConverter = JsonCollectionConverter;
-
-},{"./metadata-collection":51,"ta-json":541}],51:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Collection = class Collection {
-    _OnDeserialized() {
-        if (!this.Name) {
-            console.log("Collection.Name is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", String)
-], Collection.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    tslib_1.__metadata("design:type", String)
-], Collection.prototype, "SortAs", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    tslib_1.__metadata("design:type", String)
-], Collection.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("position"),
-    tslib_1.__metadata("design:type", Number)
-], Collection.prototype, "Position", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], Collection.prototype, "_OnDeserialized", null);
-Collection = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Collection);
-exports.Collection = Collection;
-
-},{"ta-json":541,"tslib":554}],52:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const ta_json_1 = require("ta-json");
-const metadata_contributor_1 = require("./metadata-contributor");
-class JsonContributorConverter {
-    serialize(property) {
-        return ta_json_1.JSON.serialize(property);
-    }
-    deserialize(value) {
-        if (typeof value === "string") {
-            const c = new metadata_contributor_1.Contributor();
-            c.Name = value;
-            return c;
-        }
-        else {
-            return ta_json_1.JSON.deserialize(value, metadata_contributor_1.Contributor);
-        }
-    }
-    collapseArrayWithSingleItem() {
-        return true;
-    }
-}
-exports.JsonContributorConverter = JsonContributorConverter;
-
-},{"./metadata-contributor":53,"ta-json":541}],53:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Contributor = class Contributor {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", Object)
-], Contributor.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    tslib_1.__metadata("design:type", String)
-], Contributor.prototype, "SortAs", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    tslib_1.__metadata("design:type", String)
-], Contributor.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("role"),
-    tslib_1.__metadata("design:type", String)
-], Contributor.prototype, "Role", void 0);
-Contributor = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Contributor);
-exports.Contributor = Contributor;
-
-},{"ta-json":541,"tslib":554}],54:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Encrypted = class Encrypted {
-    constructor() {
-        this.DecryptedLengthBeforeInflate = -1;
-        this.CypherBlockPadding = -1;
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("scheme"),
-    tslib_1.__metadata("design:type", String)
-], Encrypted.prototype, "Scheme", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("profile"),
-    tslib_1.__metadata("design:type", String)
-], Encrypted.prototype, "Profile", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    tslib_1.__metadata("design:type", String)
-], Encrypted.prototype, "Algorithm", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("compression"),
-    tslib_1.__metadata("design:type", String)
-], Encrypted.prototype, "Compression", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("original-length"),
-    tslib_1.__metadata("design:type", Number)
-], Encrypted.prototype, "OriginalLength", void 0);
-Encrypted = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Encrypted);
-exports.Encrypted = Encrypted;
-
-},{"ta-json":541,"tslib":554}],55:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let MediaOverlay = class MediaOverlay {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("active-class"),
-    tslib_1.__metadata("design:type", String)
-], MediaOverlay.prototype, "ActiveClass", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("playback-active-class"),
-    tslib_1.__metadata("design:type", String)
-], MediaOverlay.prototype, "PlaybackActiveClass", void 0);
-MediaOverlay = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], MediaOverlay);
-exports.MediaOverlay = MediaOverlay;
-
-},{"ta-json":541,"tslib":554}],56:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const metadata_encrypted_1 = require("./metadata-encrypted");
-let Properties = class Properties {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("contains"),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], Properties.prototype, "Contains", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("layout"),
-    tslib_1.__metadata("design:type", String)
-], Properties.prototype, "Layout", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("media-overlay"),
-    tslib_1.__metadata("design:type", String)
-], Properties.prototype, "MediaOverlay", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("orientation"),
-    tslib_1.__metadata("design:type", String)
-], Properties.prototype, "Orientation", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("overflow"),
-    tslib_1.__metadata("design:type", String)
-], Properties.prototype, "Overflow", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("page"),
-    tslib_1.__metadata("design:type", String)
-], Properties.prototype, "Page", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("spread"),
-    tslib_1.__metadata("design:type", String)
-], Properties.prototype, "Spread", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("encrypted"),
-    tslib_1.__metadata("design:type", metadata_encrypted_1.Encrypted)
-], Properties.prototype, "Encrypted", void 0);
-Properties = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Properties);
-exports.Properties = Properties;
-
-},{"./metadata-encrypted":54,"ta-json":541,"tslib":554}],57:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Subject = class Subject {
-    _OnDeserialized() {
-        if (!this.Name) {
-            console.log("Subject.Name is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "SortAs", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("scheme"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Scheme", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("code"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Code", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], Subject.prototype, "_OnDeserialized", null);
-Subject = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Subject);
-exports.Subject = Subject;
-
-},{"ta-json":541,"tslib":554}],58:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const metadata_belongsto_1 = require("./metadata-belongsto");
-const metadata_contributor_1 = require("./metadata-contributor");
-const metadata_media_overlay_1 = require("./metadata-media-overlay");
-const metadata_properties_1 = require("./metadata-properties");
-const metadata_subject_1 = require("./metadata-subject");
-let Metadata = class Metadata {
-    _OnDeserialized() {
-        if (!this.Title) {
-            console.log("Metadata.Title is not set!");
-        }
-        if (!this.Identifier) {
-            console.log("Metadata.Identifier is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("@type"),
-    tslib_1.__metadata("design:type", String)
-], Metadata.prototype, "RDFType", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("title"),
-    tslib_1.__metadata("design:type", Object)
-], Metadata.prototype, "Title", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    tslib_1.__metadata("design:type", String)
-], Metadata.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("author"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Author", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("translator"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Translator", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("editor"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Editor", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("artist"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Artist", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("illustrator"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Illustrator", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("letterer"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Letterer", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("penciler"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Penciler", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("colorist"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Colorist", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("inker"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Inker", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("narrator"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Narrator", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("contributor"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Contributor", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("publisher"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Publisher", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("imprint"),
-    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Imprint", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("language"),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Language", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("modified"),
-    tslib_1.__metadata("design:type", Date)
-], Metadata.prototype, "Modified", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("published"),
-    tslib_1.__metadata("design:type", Date)
-], Metadata.prototype, "PublicationDate", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("description"),
-    tslib_1.__metadata("design:type", String)
-], Metadata.prototype, "Description", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("direction"),
-    tslib_1.__metadata("design:type", String)
-], Metadata.prototype, "Direction", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rendition"),
-    tslib_1.__metadata("design:type", metadata_properties_1.Properties)
-], Metadata.prototype, "Rendition", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("source"),
-    tslib_1.__metadata("design:type", String)
-], Metadata.prototype, "Source", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("epub-type"),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "EpubType", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rights"),
-    tslib_1.__metadata("design:type", String)
-], Metadata.prototype, "Rights", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("subject"),
-    ta_json_1.JsonElementType(metadata_subject_1.Subject),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Subject", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("belongs_to"),
-    tslib_1.__metadata("design:type", metadata_belongsto_1.BelongsTo)
-], Metadata.prototype, "BelongsTo", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("duration"),
-    tslib_1.__metadata("design:type", Number)
-], Metadata.prototype, "Duration", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("media-overlay"),
-    tslib_1.__metadata("design:type", metadata_media_overlay_1.MediaOverlay)
-], Metadata.prototype, "MediaOverlay", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], Metadata.prototype, "_OnDeserialized", null);
-Metadata = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Metadata);
-exports.Metadata = Metadata;
-
-},{"./metadata-belongsto":49,"./metadata-contributor":53,"./metadata-media-overlay":55,"./metadata-properties":56,"./metadata-subject":57,"ta-json":541,"tslib":554}],59:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
-const ta_json_1 = require("ta-json");
-const metadata_properties_1 = require("./metadata-properties");
-let Link = Link_1 = class Link {
-    AddRels(rels) {
-        rels.forEach((rel) => {
-            this.AddRel(rel);
-        });
-    }
-    AddRel(rel) {
-        if (this.HasRel(rel)) {
-            return;
-        }
-        if (!this.Rel) {
-            this.Rel = [rel];
-        }
-        else {
-            this.Rel.push(rel);
-        }
-    }
-    HasRel(rel) {
-        return this.Rel && this.Rel.indexOf(rel) >= 0;
-    }
-    _OnDeserialized() {
-        if (!this.Href) {
-            console.log("Link.Href is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("href"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Href", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("type"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "TypeLink", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("height"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "Height", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("width"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "Width", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("title"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Title", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("properties"),
-    tslib_1.__metadata("design:type", metadata_properties_1.Properties)
-], Link.prototype, "Properties", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("duration"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "Duration", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("bitrate"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "Bitrate", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("templated"),
-    tslib_1.__metadata("design:type", Boolean)
-], Link.prototype, "Templated", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("children"),
-    ta_json_1.JsonElementType(Link_1),
-    tslib_1.__metadata("design:type", Array)
-], Link.prototype, "Children", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rel"),
-    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], Link.prototype, "Rel", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], Link.prototype, "_OnDeserialized", null);
-Link = Link_1 = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Link);
-exports.Link = Link;
-var Link_1;
-
-},{"../_utils/ta-json-string-converter":8,"./metadata-properties":56,"ta-json":541,"tslib":554}],60:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
-const ta_json_1 = require("ta-json");
-const metadata_1 = require("./metadata");
-const publication_link_1 = require("./publication-link");
-let Publication = class Publication {
-    freeDestroy() {
-        console.log("freeDestroy: Publication");
-        if (this.Internal) {
-            const zipInternal = this.findFromInternal("zip");
-            if (zipInternal) {
-                const zip = zipInternal.Value;
-                zip.freeDestroy();
-            }
-        }
-    }
-    findFromInternal(key) {
-        if (this.Internal) {
-            const found = this.Internal.find((internal) => {
-                return internal.Name === key;
-            });
-            if (found) {
-                return found;
-            }
-        }
-        return undefined;
-    }
-    AddToInternal(key, value) {
-        const existing = this.findFromInternal(key);
-        if (existing) {
-            existing.Value = value;
-        }
-        else {
-            if (!this.Internal) {
-                this.Internal = [];
-            }
-            const internal = { Name: key, Value: value };
-            this.Internal.push(internal);
-        }
-    }
-    GetCover() {
-        return this.searchLinkByRel("cover");
-    }
-    GetNavDoc() {
-        return this.searchLinkByRel("contents");
-    }
-    searchLinkByRel(rel) {
-        if (this.Resources) {
-            const ll = this.Resources.find((link) => {
-                return link.HasRel(rel);
-            });
-            if (ll) {
-                return ll;
-            }
-        }
-        if (this.Spine) {
-            const ll = this.Spine.find((link) => {
-                return link.HasRel(rel);
-            });
-            if (ll) {
-                return ll;
-            }
-        }
-        if (this.Links) {
-            const ll = this.Links.find((link) => {
-                return link.HasRel(rel);
-            });
-            if (ll) {
-                return ll;
-            }
-        }
-        return undefined;
-    }
-    AddLink(typeLink, rel, url, templated) {
-        const link = new publication_link_1.Link();
-        link.AddRels(rel);
-        link.Href = url;
-        link.TypeLink = typeLink;
-        link.Templated = templated;
-        if (!this.Links) {
-            this.Links = [];
-        }
-        this.Links.push(link);
-    }
-    GetPreFetchResources() {
-        const links = [];
-        if (this.Resources) {
-            const mediaTypes = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
-            this.Resources.forEach((link) => {
-                mediaTypes.forEach((mediaType) => {
-                    if (link.TypeLink === mediaType) {
-                        links.push(link);
-                    }
-                });
-            });
-        }
-        return links;
-    }
-    _OnDeserialized() {
-        if (!this.Metadata) {
-            console.log("Publication.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("Publication.Links is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("@context"),
-    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "Context", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    tslib_1.__metadata("design:type", metadata_1.Metadata)
-], Publication.prototype, "Metadata", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "Links", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("spine"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "Spine", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("resources"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "Resources", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("toc"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "TOC", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("page-list"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "PageList", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("landmarks"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "Landmarks", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("loi"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "LOI", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("loa"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "LOA", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("lov"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "LOV", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("lot"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "LOT", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("images"),
-    ta_json_1.JsonElementType(publication_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Publication.prototype, "Images", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], Publication.prototype, "_OnDeserialized", null);
-Publication = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Publication);
-exports.Publication = Publication;
-
-},{"../_utils/ta-json-string-converter":8,"./metadata":58,"./publication-link":59,"ta-json":541,"tslib":554}],61:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const opds2_1 = require("./opds2/opds2");
-const opds2_belongsTo_1 = require("./opds2/opds2-belongsTo");
-const opds2_collection_1 = require("./opds2/opds2-collection");
-const opds2_contributor_1 = require("./opds2/opds2-contributor");
-const opds2_indirectAcquisition_1 = require("./opds2/opds2-indirectAcquisition");
-const opds2_link_1 = require("./opds2/opds2-link");
-const opds2_metadata_1 = require("./opds2/opds2-metadata");
-const opds2_price_1 = require("./opds2/opds2-price");
-const opds2_properties_1 = require("./opds2/opds2-properties");
-const opds2_publication_1 = require("./opds2/opds2-publication");
-const opds2_publicationMetadata_1 = require("./opds2/opds2-publicationMetadata");
-const opds2_subject_1 = require("./opds2/opds2-subject");
-function convertOpds1ToOpds2(feed) {
-    const opds2feed = new opds2_1.OPDSFeed();
-    opds2feed.Metadata = new opds2_metadata_1.OPDSMetadata();
-    opds2feed.Metadata.Title = feed.Title;
-    opds2feed.Metadata.Modified = feed.Updated;
-    if (feed.OpensearchTotalResults) {
-        opds2feed.Metadata.NumberOfItems = feed.OpensearchTotalResults;
-    }
-    if (feed.OpensearchItemsPerPage) {
-        opds2feed.Metadata.ItemsPerPage = feed.OpensearchItemsPerPage;
-    }
-    if (feed.Authors) {
-        feed.Authors.forEach((aut) => {
-            const cont = new opds2_contributor_1.OPDSContributor();
-            cont.Name = aut.Name;
-            cont.Identifier = aut.Uri;
-            if (!opds2feed.Metadata.Author) {
-                opds2feed.Metadata.Author = [];
-            }
-            opds2feed.Metadata.Author.push(cont);
-        });
-    }
-    if (feed.Entries) {
-        feed.Entries.forEach((entry) => {
-            let isAnNavigation = true;
-            const collLink = new opds2_link_1.OPDSLink();
-            if (entry.Links) {
-                entry.Links.forEach((l) => {
-                    if (l.HasRel("http://opds-spec.org/acquisition")) {
-                        isAnNavigation = false;
-                    }
-                    if (l.HasRel("collection") || l.HasRel("http://opds-spec.org/group")) {
-                        collLink.AddRel("collection");
-                        collLink.Href = l.Href;
-                        collLink.Title = l.Title;
-                    }
-                });
-            }
-            if (!isAnNavigation) {
-                const p = new opds2_publication_1.OPDSPublication();
-                p.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-                p.Metadata.Title = entry.Title;
-                if (entry.DcIdentifier) {
-                    p.Metadata.Identifier = entry.DcIdentifier;
-                }
-                else {
-                    p.Metadata.Identifier = entry.Id;
-                }
-                p.Metadata.Language = [entry.DcLanguage];
-                p.Metadata.Modified = entry.Updated;
-                p.Metadata.PublicationDate = entry.Published;
-                p.Metadata.Rights = entry.DcRights;
-                if (entry.Series) {
-                    entry.Series.forEach((s) => {
-                        const coll = new opds2_collection_1.OPDSCollection();
-                        coll.Name = s.Name;
-                        coll.Position = s.Position;
-                        const link = new opds2_link_1.OPDSLink();
-                        link.Href = s.Url;
-                        coll.Links = [];
-                        coll.Links.push(link);
-                        if (!p.Metadata.BelongsTo) {
-                            p.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
-                        }
-                        if (!p.Metadata.BelongsTo.Series) {
-                            p.Metadata.BelongsTo.Series = [];
-                        }
-                        p.Metadata.BelongsTo.Series.push(coll);
-                    });
-                }
-                if (entry.DcPublisher) {
-                    const c = new opds2_contributor_1.OPDSContributor();
-                    c.Name = entry.DcPublisher;
-                    if (!p.Metadata.Publisher) {
-                        p.Metadata.Publisher = [];
-                    }
-                    p.Metadata.Publisher.push(c);
-                }
-                if (entry.Categories) {
-                    entry.Categories.forEach((cat) => {
-                        const subj = new opds2_subject_1.OPDSSubject();
-                        subj.Code = cat.Term;
-                        subj.Name = cat.Label;
-                        subj.Scheme = cat.Scheme;
-                        if (!p.Metadata.Subject) {
-                            p.Metadata.Subject = [];
-                        }
-                        p.Metadata.Subject.push(subj);
-                    });
-                }
-                if (entry.Authors) {
-                    entry.Authors.forEach((aut) => {
-                        const cont = new opds2_contributor_1.OPDSContributor();
-                        cont.Name = aut.Name;
-                        cont.Identifier = aut.Uri;
-                        if (!p.Metadata.Author) {
-                            p.Metadata.Author = [];
-                        }
-                        p.Metadata.Author.push(cont);
-                    });
-                }
-                if (entry.Content) {
-                    p.Metadata.Description = entry.Content;
-                }
-                else if (entry.Summary) {
-                    p.Metadata.Description = entry.Summary;
-                }
-                if (entry.Links) {
-                    entry.Links.forEach((link) => {
-                        const l = new opds2_link_1.OPDSLink();
-                        l.Href = link.Href;
-                        l.TypeLink = link.Type;
-                        l.AddRel(link.Rel);
-                        l.Title = link.Title;
-                        if (link.OpdsIndirectAcquisitions && link.OpdsIndirectAcquisitions.length) {
-                            if (!l.Properties) {
-                                l.Properties = new opds2_properties_1.OPDSProperties();
-                            }
-                            link.OpdsIndirectAcquisitions.forEach((ia) => {
-                                const ind = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
-                                ind.TypeAcquisition = ia.OpdsIndirectAcquisitionType;
-                                if (ia.OpdsIndirectAcquisitions && ia.OpdsIndirectAcquisitions.length) {
-                                    ia.OpdsIndirectAcquisitions.forEach((iac) => {
-                                        const cia = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
-                                        cia.TypeAcquisition = iac.OpdsIndirectAcquisitionType;
-                                        if (!ind.Children) {
-                                            ind.Children = [];
-                                        }
-                                        ind.Children.push(cia);
-                                    });
-                                }
-                                if (!l.Properties.IndirectAcquisitions) {
-                                    l.Properties.IndirectAcquisitions = [];
-                                }
-                                l.Properties.IndirectAcquisitions.push(ind);
-                            });
-                        }
-                        if (link.OpdsPrice && link.OpdsPriceCurrencyCode) {
-                            if (!l.Properties) {
-                                l.Properties = new opds2_properties_1.OPDSProperties();
-                            }
-                            l.Properties.Price = new opds2_price_1.OPDSPrice();
-                            l.Properties.Price.Currency = link.OpdsPriceCurrencyCode;
-                            l.Properties.Price.Value = link.OpdsPrice;
-                        }
-                        if (link.HasRel("collection") || link.HasRel("http://opds-spec.org/group")) {
-                        }
-                        else if (link.HasRel("http://opds-spec.org/image") ||
-                            link.HasRel("http://opds-spec.org/image/thumbnail")) {
-                            if (!p.Images) {
-                                p.Images = [];
-                            }
-                            p.Images.push(l);
-                        }
-                        else {
-                            if (!p.Links) {
-                                p.Links = [];
-                            }
-                            p.Links.push(l);
-                        }
-                    });
-                }
-                if (collLink.Href) {
-                    opds2feed.AddPublicationInGroup(p, collLink);
-                }
-                else {
-                    if (!opds2feed.Publications) {
-                        opds2feed.Publications = [];
-                    }
-                    opds2feed.Publications.push(p);
-                }
-            }
-            else {
-                const linkNav = new opds2_link_1.OPDSLink();
-                linkNav.Title = entry.Title;
-                if (entry.Links && entry.Links[0]) {
-                    linkNav.AddRel(entry.Links[0].Rel);
-                    linkNav.TypeLink = entry.Links[0].Type;
-                    linkNav.Href = entry.Links[0].Href;
-                }
-                if (collLink.Href) {
-                    opds2feed.AddNavigationInGroup(linkNav, collLink);
-                }
-                else {
-                    if (!opds2feed.Navigation) {
-                        opds2feed.Navigation = [];
-                    }
-                    opds2feed.Navigation.push(linkNav);
-                }
-            }
-        });
-    }
-    if (feed.Links) {
-        feed.Links.forEach((l) => {
-            const linkFeed = new opds2_link_1.OPDSLink();
-            linkFeed.Href = l.Href;
-            linkFeed.AddRel(l.Rel);
-            linkFeed.TypeLink = l.Type;
-            linkFeed.Title = l.Title;
-            if (l.HasRel("http://opds-spec.org/facet")) {
-                linkFeed.Properties = new opds2_properties_1.OPDSProperties();
-                linkFeed.Properties.NumberOfItems = l.ThrCount;
-                opds2feed.AddFacet(linkFeed, l.FacetGroup);
-            }
-            else {
-                if (!opds2feed.Links) {
-                    opds2feed.Links = [];
-                }
-                opds2feed.Links.push(linkFeed);
-            }
-        });
-    }
-    return opds2feed;
-}
-exports.convertOpds1ToOpds2 = convertOpds1ToOpds2;
-
-},{"./opds2/opds2":83,"./opds2/opds2-belongsTo":69,"./opds2/opds2-collection":71,"./opds2/opds2-contributor":72,"./opds2/opds2-indirectAcquisition":75,"./opds2/opds2-link":76,"./opds2/opds2-metadata":77,"./opds2/opds2-price":78,"./opds2/opds2-properties":79,"./opds2/opds2-publication":80,"./opds2/opds2-publicationMetadata":81,"./opds2/opds2-subject":82}],62:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Author = class Author {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:name/text()"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "Name", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:uri/text()"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "Uri", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:email/text()"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "Email", void 0);
-Author = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Author);
-exports.Author = Author;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],63:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Category = class Category {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@term"),
-    tslib_1.__metadata("design:type", String)
-], Category.prototype, "Term", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@scheme"),
-    tslib_1.__metadata("design:type", String)
-], Category.prototype, "Scheme", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@label"),
-    tslib_1.__metadata("design:type", String)
-], Category.prototype, "Label", void 0);
-Category = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Category);
-exports.Category = Category;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],64:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const opds_author_1 = require("./opds-author");
-const opds_category_1 = require("./opds-category");
-const opds_link_1 = require("./opds-link");
-const opds_serie_1 = require("./opds-serie");
-let Entry = class Entry {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:ratingValue"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "SchemaRatingValue", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:additionalType"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "SchemaRatingAdditionalType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@schema:additionalType"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "SchemaAdditionalType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "Title", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:author"),
-    xml_js_mapper_1.XmlItemType(opds_author_1.Author),
-    tslib_1.__metadata("design:type", Array)
-], Entry.prototype, "Authors", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "Id", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:summary/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "Summary", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:summary/@type"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "SummaryType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:language/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcLanguage", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:extent/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcExtent", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:publisher/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcPublisher", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:rights/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcRights", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:issued/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcIssued", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcIdentifier", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/@xsi:type"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "DcIdentifierType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("bibframe:distribution/@bibframe:ProviderName"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "BibFrameDistributionProviderName", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:category"),
-    xml_js_mapper_1.XmlItemType(opds_category_1.Category),
-    tslib_1.__metadata("design:type", Array)
-], Entry.prototype, "Categories", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:content/text()"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "Content", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:content/@type"),
-    tslib_1.__metadata("design:type", String)
-], Entry.prototype, "ContentType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
-    tslib_1.__metadata("design:type", Date)
-], Entry.prototype, "Updated", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:published/text()"),
-    tslib_1.__metadata("design:type", Date)
-], Entry.prototype, "Published", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:link"),
-    xml_js_mapper_1.XmlItemType(opds_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], Entry.prototype, "Links", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("schema:Series"),
-    xml_js_mapper_1.XmlItemType(opds_serie_1.Serie),
-    tslib_1.__metadata("design:type", Array)
-], Entry.prototype, "Series", void 0);
-Entry = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Entry);
-exports.Entry = Entry;
-
-},{"../../_utils/xml-js-mapper":28,"./opds-author":62,"./opds-category":63,"./opds-link":66,"./opds-serie":67,"tslib":554}],65:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let IndirectAcquisition = IndirectAcquisition_1 = class IndirectAcquisition {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@type"),
-    tslib_1.__metadata("design:type", String)
-], IndirectAcquisition.prototype, "OpdsIndirectAcquisitionType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
-    xml_js_mapper_1.XmlItemType(IndirectAcquisition_1),
-    tslib_1.__metadata("design:type", Array)
-], IndirectAcquisition.prototype, "OpdsIndirectAcquisitions", void 0);
-IndirectAcquisition = IndirectAcquisition_1 = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], IndirectAcquisition);
-exports.IndirectAcquisition = IndirectAcquisition;
-var IndirectAcquisition_1;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],66:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
-let Link = class Link {
-    HasRel(rel) {
-        return this.Rel === rel;
-    }
-    SetRel(rel) {
-        this.Rel = rel;
-    }
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "OpdsPrice", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opds:price/@currencycode"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "OpdsPriceCurrencyCode", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
-    xml_js_mapper_1.XmlItemType(opds_indirectAcquisition_1.IndirectAcquisition),
-    tslib_1.__metadata("design:type", Array)
-], Link.prototype, "OpdsIndirectAcquisitions", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@type"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Type", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@thr:count"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "ThrCount", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@opds:facetGroup"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "FacetGroup", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@href"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Href", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@title"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Title", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@rel"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Rel", void 0);
-Link = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Link);
-exports.Link = Link;
-
-},{"../../_utils/xml-js-mapper":28,"./opds-indirectAcquisition":65,"tslib":554}],67:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Serie = class Serie {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@schema:name"),
-    tslib_1.__metadata("design:type", String)
-], Serie.prototype, "Name", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@schema:url"),
-    tslib_1.__metadata("design:type", String)
-], Serie.prototype, "Url", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@schema:position"),
-    tslib_1.__metadata("design:type", Number)
-], Serie.prototype, "Position", void 0);
-Serie = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Serie);
-exports.Serie = Serie;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],68:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const opds_author_1 = require("./opds-author");
-const opds_entry_1 = require("./opds-entry");
-const opds_link_1 = require("./opds-link");
-let OPDS = class OPDS {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opensearch:totalResults/text()"),
-    tslib_1.__metadata("design:type", Number)
-], OPDS.prototype, "OpensearchTotalResults", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opensearch:itemsPerPage/text()"),
-    tslib_1.__metadata("design:type", Number)
-], OPDS.prototype, "OpensearchItemsPerPage", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
-    tslib_1.__metadata("design:type", String)
-], OPDS.prototype, "Id", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
-    tslib_1.__metadata("design:type", String)
-], OPDS.prototype, "Title", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:subtitle/text()"),
-    tslib_1.__metadata("design:type", String)
-], OPDS.prototype, "SubTitle", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
-    tslib_1.__metadata("design:type", Date)
-], OPDS.prototype, "Updated", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:icon/text()"),
-    tslib_1.__metadata("design:type", String)
-], OPDS.prototype, "Icon", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:author"),
-    xml_js_mapper_1.XmlItemType(opds_author_1.Author),
-    tslib_1.__metadata("design:type", Array)
-], OPDS.prototype, "Authors", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-    tslib_1.__metadata("design:type", String)
-], OPDS.prototype, "Lang", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:link"),
-    xml_js_mapper_1.XmlItemType(opds_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], OPDS.prototype, "Links", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("atom:entry"),
-    xml_js_mapper_1.XmlItemType(opds_entry_1.Entry),
-    tslib_1.__metadata("design:type", Array)
-], OPDS.prototype, "Entries", void 0);
-OPDS = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        app: "http://www.w3.org/2007/app",
-        atom: "http://www.w3.org/2005/Atom",
-        bibframe: "http://bibframe.org/vocab/",
-        dcterms: "http://purl.org/dc/terms/",
-        odl: "http://opds-spec.org/odl",
-        opds: "http://opds-spec.org/2010/catalog",
-        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-        schema: "http://schema.org",
-        thr: "http://purl.org/syndication/thread/1.0",
-        xml: "http://www.w3.org/XML/1998/namespace",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], OPDS);
-exports.OPDS = OPDS;
-
-},{"../../_utils/xml-js-mapper":28,"./opds-author":62,"./opds-entry":64,"./opds-link":66,"tslib":554}],69:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_collection_1 = require("./opds2-collection");
-let OPDSBelongsTo = class OPDSBelongsTo {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("series"),
-    ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
-    tslib_1.__metadata("design:type", Array)
-], OPDSBelongsTo.prototype, "Series", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("collection"),
-    ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
-    tslib_1.__metadata("design:type", Array)
-], OPDSBelongsTo.prototype, "Collection", void 0);
-OPDSBelongsTo = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSBelongsTo);
-exports.OPDSBelongsTo = OPDSBelongsTo;
-
-},{"./opds2-collection":71,"ta-json":541,"tslib":554}],70:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const ta_json_1 = require("ta-json");
-const opds2_collection_1 = require("./opds2-collection");
-class JsonOPDSCollectionConverter {
-    serialize(property) {
-        return ta_json_1.JSON.serialize(property);
-    }
-    deserialize(value) {
-        if (typeof value === "string") {
-            const c = new opds2_collection_1.OPDSCollection();
-            c.Name = value;
-            return c;
-        }
-        else {
-            return ta_json_1.JSON.deserialize(value, opds2_collection_1.OPDSCollection);
-        }
-    }
-    collapseArrayWithSingleItem() {
-        return true;
-    }
-}
-exports.JsonOPDSCollectionConverter = JsonOPDSCollectionConverter;
-
-},{"./opds2-collection":71,"ta-json":541}],71:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_link_1 = require("./opds2-link");
-let OPDSCollection = class OPDSCollection {
-    _OnDeserialized() {
-        if (!this.Name) {
-            console.log("OPDSCollection.Name is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", String)
-], OPDSCollection.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    tslib_1.__metadata("design:type", String)
-], OPDSCollection.prototype, "SortAs", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    tslib_1.__metadata("design:type", String)
-], OPDSCollection.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("position"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSCollection.prototype, "Position", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSCollection.prototype, "Links", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSCollection.prototype, "_OnDeserialized", null);
-OPDSCollection = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSCollection);
-exports.OPDSCollection = OPDSCollection;
-
-},{"./opds2-link":76,"ta-json":541,"tslib":554}],72:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_link_1 = require("./opds2-link");
-let OPDSContributor = class OPDSContributor {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", Object)
-], OPDSContributor.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    tslib_1.__metadata("design:type", String)
-], OPDSContributor.prototype, "SortAs", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    tslib_1.__metadata("design:type", String)
-], OPDSContributor.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("role"),
-    tslib_1.__metadata("design:type", String)
-], OPDSContributor.prototype, "Role", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSContributor.prototype, "Links", void 0);
-OPDSContributor = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSContributor);
-exports.OPDSContributor = OPDSContributor;
-
-},{"./opds2-link":76,"ta-json":541,"tslib":554}],73:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_link_1 = require("./opds2-link");
-const opds2_metadata_1 = require("./opds2-metadata");
-let OPDSFacet = class OPDSFacet {
-    _OnDeserialized() {
-        if (!this.Metadata) {
-            console.log("OPDSFacet.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("OPDSFacet.Links is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
-], OPDSFacet.prototype, "Metadata", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFacet.prototype, "Links", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSFacet.prototype, "_OnDeserialized", null);
-OPDSFacet = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSFacet);
-exports.OPDSFacet = OPDSFacet;
-
-},{"./opds2-link":76,"./opds2-metadata":77,"ta-json":541,"tslib":554}],74:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_link_1 = require("./opds2-link");
-const opds2_metadata_1 = require("./opds2-metadata");
-const opds2_publication_1 = require("./opds2-publication");
-let OPDSGroup = class OPDSGroup {
-    _OnDeserialized() {
-        if (!this.Metadata) {
-            console.log("OPDSGroup.Metadata is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
-], OPDSGroup.prototype, "Metadata", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("publications"),
-    ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-    tslib_1.__metadata("design:type", Array)
-], OPDSGroup.prototype, "Publications", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSGroup.prototype, "Links", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("navigation"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSGroup.prototype, "Navigation", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSGroup.prototype, "_OnDeserialized", null);
-OPDSGroup = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSGroup);
-exports.OPDSGroup = OPDSGroup;
-
-},{"./opds2-link":76,"./opds2-metadata":77,"./opds2-publication":80,"ta-json":541,"tslib":554}],75:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = class OPDSIndirectAcquisition {
-    _OnDeserialized() {
-        if (!this.TypeAcquisition) {
-            console.log("OPDSIndirectAcquisition.TypeAcquisition is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("type"),
-    tslib_1.__metadata("design:type", String)
-], OPDSIndirectAcquisition.prototype, "TypeAcquisition", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("child"),
-    ta_json_1.JsonElementType(OPDSIndirectAcquisition_1),
-    tslib_1.__metadata("design:type", Array)
-], OPDSIndirectAcquisition.prototype, "Children", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSIndirectAcquisition.prototype, "_OnDeserialized", null);
-OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSIndirectAcquisition);
-exports.OPDSIndirectAcquisition = OPDSIndirectAcquisition;
-var OPDSIndirectAcquisition_1;
-
-},{"ta-json":541,"tslib":554}],76:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
-const ta_json_1 = require("ta-json");
-const opds2_properties_1 = require("./opds2-properties");
-let OPDSLink = OPDSLink_1 = class OPDSLink {
-    AddRels(rels) {
-        rels.forEach((rel) => {
-            this.AddRel(rel);
-        });
-    }
-    AddRel(rel) {
-        if (this.HasRel(rel)) {
-            return;
-        }
-        if (!this.Rel) {
-            this.Rel = [rel];
-        }
-        else {
-            this.Rel.push(rel);
-        }
-    }
-    HasRel(rel) {
-        return this.Rel && this.Rel.indexOf(rel) >= 0;
-    }
-    _OnDeserialized() {
-        if (!this.Href) {
-            console.log("Link.Href is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("href"),
-    tslib_1.__metadata("design:type", String)
-], OPDSLink.prototype, "Href", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("type"),
-    tslib_1.__metadata("design:type", String)
-], OPDSLink.prototype, "TypeLink", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("height"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSLink.prototype, "Height", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("width"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSLink.prototype, "Width", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("title"),
-    tslib_1.__metadata("design:type", String)
-], OPDSLink.prototype, "Title", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("properties"),
-    tslib_1.__metadata("design:type", opds2_properties_1.OPDSProperties)
-], OPDSLink.prototype, "Properties", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("duration"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSLink.prototype, "Duration", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("templated"),
-    tslib_1.__metadata("design:type", Boolean)
-], OPDSLink.prototype, "Templated", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("children"),
-    ta_json_1.JsonElementType(OPDSLink_1),
-    tslib_1.__metadata("design:type", Array)
-], OPDSLink.prototype, "Children", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("bitrate"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSLink.prototype, "Bitrate", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rel"),
-    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], OPDSLink.prototype, "Rel", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSLink.prototype, "_OnDeserialized", null);
-OPDSLink = OPDSLink_1 = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSLink);
-exports.OPDSLink = OPDSLink;
-var OPDSLink_1;
-
-},{"../../_utils/ta-json-string-converter":8,"./opds2-properties":79,"ta-json":541,"tslib":554}],77:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_contributor_1 = require("./opds2-contributor");
-let OPDSMetadata = class OPDSMetadata {
-    _OnDeserialized() {
-        if (!this.Title) {
-            console.log("OPDSMetadata.Title is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("author"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSMetadata.prototype, "Author", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("@type"),
-    tslib_1.__metadata("design:type", String)
-], OPDSMetadata.prototype, "RDFType", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("title"),
-    tslib_1.__metadata("design:type", String)
-], OPDSMetadata.prototype, "Title", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("numberOfItems"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSMetadata.prototype, "NumberOfItems", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("itemsPerPage"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSMetadata.prototype, "ItemsPerPage", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("currentPage"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSMetadata.prototype, "CurrentPage", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("modified"),
-    tslib_1.__metadata("design:type", Date)
-], OPDSMetadata.prototype, "Modified", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSMetadata.prototype, "_OnDeserialized", null);
-OPDSMetadata = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSMetadata);
-exports.OPDSMetadata = OPDSMetadata;
-
-},{"./opds2-contributor":72,"ta-json":541,"tslib":554}],78:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let OPDSPrice = class OPDSPrice {
-    _OnDeserialized() {
-        if (!this.Currency) {
-            console.log("OPDSPrice.Currency is not set!");
-        }
-        if (!this.Value) {
-            console.log("OPDSPrice.Value is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("currency"),
-    tslib_1.__metadata("design:type", String)
-], OPDSPrice.prototype, "Currency", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("value"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSPrice.prototype, "Value", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSPrice.prototype, "_OnDeserialized", null);
-OPDSPrice = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSPrice);
-exports.OPDSPrice = OPDSPrice;
-
-},{"ta-json":541,"tslib":554}],79:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_indirectAcquisition_1 = require("./opds2-indirectAcquisition");
-const opds2_price_1 = require("./opds2-price");
-let OPDSProperties = class OPDSProperties {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("numberOfItems"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSProperties.prototype, "NumberOfItems", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("price"),
-    tslib_1.__metadata("design:type", opds2_price_1.OPDSPrice)
-], OPDSProperties.prototype, "Price", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("indirectAcquisition"),
-    ta_json_1.JsonElementType(opds2_indirectAcquisition_1.OPDSIndirectAcquisition),
-    tslib_1.__metadata("design:type", Array)
-], OPDSProperties.prototype, "IndirectAcquisitions", void 0);
-OPDSProperties = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSProperties);
-exports.OPDSProperties = OPDSProperties;
-
-},{"./opds2-indirectAcquisition":75,"./opds2-price":78,"ta-json":541,"tslib":554}],80:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_belongsTo_1 = require("./opds2-belongsTo");
-const opds2_collection_1 = require("./opds2-collection");
-const opds2_contributor_1 = require("./opds2-contributor");
-const opds2_link_1 = require("./opds2-link");
-const opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
-let OPDSPublication = class OPDSPublication {
-    findFirstLinkByRel(rel) {
-        return this.Links ? this.Links.find((l) => {
-            return l.HasRel(rel);
-        }) : undefined;
-    }
-    AddImage(href, typeImage, height, width) {
-        const i = new opds2_link_1.OPDSLink();
-        i.Href = href;
-        i.TypeLink = typeImage;
-        if (height) {
-            i.Height = height;
-        }
-        if (width) {
-            i.Width = width;
-        }
-        if (!this.Images) {
-            this.Images = [];
-        }
-        this.Images.push(i);
-    }
-    AddLink(href, typeLink, rel, title) {
-        const l = new opds2_link_1.OPDSLink();
-        l.Href = href;
-        l.TypeLink = typeLink;
-        if (rel) {
-            l.AddRel(rel);
-        }
-        if (title) {
-            l.Title = title;
-        }
-        if (!this.Links) {
-            this.Links = [];
-        }
-        this.Links.push(l);
-    }
-    AddAuthor(name, identifier, sortAs, href, typeLink) {
-        const c = new opds2_contributor_1.OPDSContributor();
-        c.Name = name;
-        if (identifier) {
-            c.Identifier = identifier;
-        }
-        if (sortAs) {
-            c.SortAs = sortAs;
-        }
-        const l = new opds2_link_1.OPDSLink();
-        if (href) {
-            l.Href = href;
-        }
-        if (typeLink) {
-            l.TypeLink = typeLink;
-        }
-        if (href) {
-            c.Links = [];
-            c.Links.push(l);
-        }
-        if (!this.Metadata) {
-            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-        }
-        if (!this.Metadata.Author) {
-            this.Metadata.Author = [];
-        }
-        this.Metadata.Author.push(c);
-    }
-    AddSerie(name, position, href, typeLink) {
-        const c = new opds2_collection_1.OPDSCollection();
-        c.Name = name;
-        c.Position = position;
-        const l = new opds2_link_1.OPDSLink();
-        if (href) {
-            l.Href = href;
-        }
-        if (typeLink) {
-            l.TypeLink = typeLink;
-        }
-        if (href) {
-            c.Links = [];
-            c.Links.push(l);
-        }
-        if (!this.Metadata) {
-            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-        }
-        if (!this.Metadata.BelongsTo) {
-            this.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
-        }
-        if (!this.Metadata.BelongsTo.Series) {
-            this.Metadata.BelongsTo.Series = [];
-        }
-        this.Metadata.BelongsTo.Series.push(c);
-    }
-    AddPublisher(name, href, typeLink) {
-        const c = new opds2_contributor_1.OPDSContributor();
-        c.Name = name;
-        const l = new opds2_link_1.OPDSLink();
-        if (href) {
-            l.Href = href;
-        }
-        if (typeLink) {
-            l.TypeLink = typeLink;
-        }
-        if (href) {
-            c.Links = [];
-            c.Links.push(l);
-        }
-        if (!this.Metadata) {
-            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-        }
-        if (!this.Metadata.Publisher) {
-            this.Metadata.Publisher = [];
-        }
-        this.Metadata.Publisher.push(c);
-    }
-    _OnDeserialized() {
-        if (!this.Metadata) {
-            console.log("OPDSPublication.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("OPDSPublication.Links is not set!");
-        }
-        if (!this.Images) {
-            console.log("OPDSPublication.Images is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    tslib_1.__metadata("design:type", opds2_publicationMetadata_1.OPDSPublicationMetadata)
-], OPDSPublication.prototype, "Metadata", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublication.prototype, "Links", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("images"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublication.prototype, "Images", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSPublication.prototype, "_OnDeserialized", null);
-OPDSPublication = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSPublication);
-exports.OPDSPublication = OPDSPublication;
-
-},{"./opds2-belongsTo":69,"./opds2-collection":71,"./opds2-contributor":72,"./opds2-link":76,"./opds2-publicationMetadata":81,"ta-json":541,"tslib":554}],81:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const opds2_belongsTo_1 = require("./opds2-belongsTo");
-const opds2_contributor_1 = require("./opds2-contributor");
-const opds2_subject_1 = require("./opds2-subject");
-let OPDSPublicationMetadata = class OPDSPublicationMetadata {
-    _OnDeserialized() {
-        if (!this.Title) {
-            console.log("OPDSPublicationMetadata.Title is not set!");
-        }
-        if (!this.Identifier) {
-            console.log("OPDSPublicationMetadata.Identifier is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("@type"),
-    tslib_1.__metadata("design:type", String)
-], OPDSPublicationMetadata.prototype, "RDFType", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("title"),
-    tslib_1.__metadata("design:type", Object)
-], OPDSPublicationMetadata.prototype, "Title", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("identifier"),
-    tslib_1.__metadata("design:type", String)
-], OPDSPublicationMetadata.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("author"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Author", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("translator"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Translator", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("editor"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Editor", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("artist"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Artist", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("illustrator"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Illustrator", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("letterer"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Letterer", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("penciler"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Penciler", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("colorist"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Colorist", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("inker"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Inker", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("narrator"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Narrator", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("contributor"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "OPDSContributor", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("publisher"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Publisher", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("imprint"),
-    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Imprint", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("language"),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Language", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("modified"),
-    tslib_1.__metadata("design:type", Date)
-], OPDSPublicationMetadata.prototype, "Modified", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("published"),
-    tslib_1.__metadata("design:type", Date)
-], OPDSPublicationMetadata.prototype, "PublicationDate", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("description"),
-    tslib_1.__metadata("design:type", String)
-], OPDSPublicationMetadata.prototype, "Description", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("source"),
-    tslib_1.__metadata("design:type", String)
-], OPDSPublicationMetadata.prototype, "Source", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rights"),
-    tslib_1.__metadata("design:type", String)
-], OPDSPublicationMetadata.prototype, "Rights", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("subject"),
-    ta_json_1.JsonElementType(opds2_subject_1.OPDSSubject),
-    tslib_1.__metadata("design:type", Array)
-], OPDSPublicationMetadata.prototype, "Subject", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("belongs_to"),
-    tslib_1.__metadata("design:type", opds2_belongsTo_1.OPDSBelongsTo)
-], OPDSPublicationMetadata.prototype, "BelongsTo", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("duration"),
-    tslib_1.__metadata("design:type", Number)
-], OPDSPublicationMetadata.prototype, "Duration", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSPublicationMetadata.prototype, "_OnDeserialized", null);
-OPDSPublicationMetadata = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSPublicationMetadata);
-exports.OPDSPublicationMetadata = OPDSPublicationMetadata;
-
-},{"./opds2-belongsTo":69,"./opds2-contributor":72,"./opds2-subject":82,"ta-json":541,"tslib":554}],82:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let OPDSSubject = class OPDSSubject {
-    _OnDeserialized() {
-        if (!this.Name) {
-            console.log("OPDSSubject.Name is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", String)
-], OPDSSubject.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("sort_as"),
-    tslib_1.__metadata("design:type", String)
-], OPDSSubject.prototype, "SortAs", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("scheme"),
-    tslib_1.__metadata("design:type", String)
-], OPDSSubject.prototype, "Scheme", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("code"),
-    tslib_1.__metadata("design:type", String)
-], OPDSSubject.prototype, "Code", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSSubject.prototype, "_OnDeserialized", null);
-OPDSSubject = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSSubject);
-exports.OPDSSubject = OPDSSubject;
-
-},{"ta-json":541,"tslib":554}],83:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
-const ta_json_1 = require("ta-json");
-const opds2_facet_1 = require("./opds2-facet");
-const opds2_group_1 = require("./opds2-group");
-const opds2_link_1 = require("./opds2-link");
-const opds2_metadata_1 = require("./opds2-metadata");
-const opds2_publication_1 = require("./opds2-publication");
-let OPDSFeed = class OPDSFeed {
-    findFirstLinkByRel(rel) {
-        return this.Links ? this.Links.find((l) => {
-            return l.HasRel(rel);
-        }) : undefined;
-    }
-    AddLink(href, rel, typeLink, templated) {
-        const l = new opds2_link_1.OPDSLink();
-        l.Href = href;
-        l.AddRel(rel);
-        l.TypeLink = typeLink;
-        if (templated) {
-            l.Templated = true;
-        }
-        if (!this.Links) {
-            this.Links = [];
-        }
-        this.Links.push(l);
-    }
-    AddNavigation(title, href, rel, typeLink) {
-        const l = new opds2_link_1.OPDSLink();
-        l.Href = href;
-        l.TypeLink = typeLink;
-        l.AddRel(rel);
-        if (title) {
-            l.Title = title;
-        }
-        if (!this.Navigation) {
-            this.Navigation = [];
-        }
-        this.Navigation.push(l);
-    }
-    AddPagination(numberItems, itemsPerPage, currentPage, nextLink, prevLink, firstLink, lastLink) {
-        if (!this.Metadata) {
-            this.Metadata = new opds2_metadata_1.OPDSMetadata();
-        }
-        this.Metadata.CurrentPage = currentPage;
-        this.Metadata.ItemsPerPage = itemsPerPage;
-        this.Metadata.NumberOfItems = numberItems;
-        if (nextLink) {
-            this.AddLink(nextLink, "next", "application/opds+json", false);
-        }
-        if (prevLink) {
-            this.AddLink(prevLink, "previous", "application/opds+json", false);
-        }
-        if (firstLink) {
-            this.AddLink(firstLink, "first", "application/opds+json", false);
-        }
-        if (lastLink) {
-            this.AddLink(lastLink, "last", "application/opds+json", false);
-        }
-    }
-    AddFacet(link, group) {
-        if (this.Facets) {
-            const found = this.Facets.find((f) => {
-                if (f.Metadata && f.Metadata.Title === group) {
-                    if (!f.Links) {
-                        f.Links = [];
-                    }
-                    f.Links.push(link);
-                    return true;
-                }
-                return false;
-            });
-            if (found) {
-                return;
-            }
-        }
-        const facet = new opds2_facet_1.OPDSFacet();
-        facet.Metadata = new opds2_metadata_1.OPDSMetadata();
-        facet.Metadata.Title = group;
-        facet.Links = [];
-        facet.Links.push(link);
-        if (!this.Facets) {
-            this.Facets = [];
-        }
-        this.Facets.push(facet);
-    }
-    AddPublicationInGroup(publication, collLink) {
-        if (this.Groups) {
-            const found1 = this.Groups.find((g) => {
-                if (g.Links) {
-                    const found2 = g.Links.find((l) => {
-                        if (l.Href === collLink.Href) {
-                            if (!g.Publications) {
-                                g.Publications = [];
-                            }
-                            g.Publications.push(publication);
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (found2) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-            if (found1) {
-                return;
-            }
-        }
-        const group = new opds2_group_1.OPDSGroup();
-        group.Metadata = new opds2_metadata_1.OPDSMetadata();
-        group.Metadata.Title = collLink.Title;
-        group.Publications = [];
-        group.Publications.push(publication);
-        const linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.AddRel("self");
-        linkSelf.Title = collLink.Title;
-        linkSelf.Href = collLink.Href;
-        group.Links = [];
-        group.Links.push(linkSelf);
-        if (!this.Groups) {
-            this.Groups = [];
-        }
-        this.Groups.push(group);
-    }
-    AddNavigationInGroup(link, collLink) {
-        if (this.Groups) {
-            const found1 = this.Groups.find((g) => {
-                if (g.Links) {
-                    const found2 = g.Links.find((l) => {
-                        if (l.Href === collLink.Href) {
-                            if (!g.Navigation) {
-                                g.Navigation = [];
-                            }
-                            g.Navigation.push(link);
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (found2) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-            if (found1) {
-                return;
-            }
-        }
-        const group = new opds2_group_1.OPDSGroup();
-        group.Metadata = new opds2_metadata_1.OPDSMetadata();
-        group.Metadata.Title = collLink.Title;
-        group.Navigation = [];
-        group.Navigation.push(link);
-        const linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.AddRel("self");
-        linkSelf.Title = collLink.Title;
-        linkSelf.Href = collLink.Href;
-        group.Links = [];
-        group.Links.push(link);
-        if (!this.Groups) {
-            this.Groups = [];
-        }
-        this.Groups.push(group);
-    }
-    _OnDeserialized() {
-        if (!this.Metadata) {
-            console.log("OPDS2Feed.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("OPDS2Feed.Links is not set!");
-        }
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("@context"),
-    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFeed.prototype, "Context", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("metadata"),
-    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
-], OPDSFeed.prototype, "Metadata", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFeed.prototype, "Links", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("publications"),
-    ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFeed.prototype, "Publications", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("navigation"),
-    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFeed.prototype, "Navigation", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("facets"),
-    ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFeed.prototype, "Facets", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("groups"),
-    ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
-    tslib_1.__metadata("design:type", Array)
-], OPDSFeed.prototype, "Groups", void 0);
-tslib_1.__decorate([
-    ta_json_1.OnDeserialized(),
-    tslib_1.__metadata("design:type", Function),
-    tslib_1.__metadata("design:paramtypes", []),
-    tslib_1.__metadata("design:returntype", void 0)
-], OPDSFeed.prototype, "_OnDeserialized", null);
-OPDSFeed = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], OPDSFeed);
-exports.OPDSFeed = OPDSFeed;
-
-},{"../../_utils/ta-json-string-converter":8,"./opds2-facet":73,"./opds2-group":74,"./opds2-link":76,"./opds2-metadata":77,"./opds2-publication":80,"ta-json":541,"tslib":554}],84:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const path = require("path");
-const metadata_1 = require("../models/metadata");
-const metadata_contributor_1 = require("../models/metadata-contributor");
-const publication_1 = require("../models/publication");
-const publication_link_1 = require("../models/publication-link");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
-const zipFactory_1 = require("../_utils/zip/zipFactory");
-const mime = require("mime-types");
-const slugify = require("slugify");
-const xmldom = require("xmldom");
-const comicrack_1 = require("./comicrack/comicrack");
-const epub_1 = require("./epub");
-function CbzParsePromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        let zip;
-        try {
-            zip = yield zipFactory_1.zipLoadPromise(filePath);
-        }
-        catch (err) {
-            return Promise.reject(err);
-        }
-        if (!zip.hasEntries()) {
-            return Promise.reject("CBZ zip empty");
-        }
-        const publication = new publication_1.Publication();
-        publication.Context = ["http://readium.org/webpub/default.jsonld"];
-        publication.Metadata = new metadata_1.Metadata();
-        publication.Metadata.RDFType = "http://schema.org/ComicIssue";
-        publication.Metadata.Identifier = filePathToTitle(filePath);
-        publication.AddToInternal("type", "cbz");
-        publication.AddToInternal("zip", zip);
-        let comicInfoEntryName;
-        zip.forEachEntry((entryName) => {
-            const link = new publication_link_1.Link();
-            link.Href = entryName;
-            const mediaType = mime.lookup(entryName);
-            if (mediaType) {
-                link.TypeLink = mediaType;
-            }
-            else {
-                console.log("!!!!!! NO MEDIA TYPE?!");
-            }
-            if (link.TypeLink && link.TypeLink.startsWith("image/")) {
-                if (!publication.Spine) {
-                    publication.Spine = [];
-                }
-                publication.Spine.push(link);
-            }
-            else if (entryName.endsWith("ComicInfo.xml")) {
-                comicInfoEntryName = entryName;
-            }
-        });
-        if (!publication.Metadata.Title) {
-            publication.Metadata.Title = path.basename(filePath);
-        }
-        if (comicInfoEntryName) {
-            try {
-                const _b = yield comicRackMetadata(zip, comicInfoEntryName, publication);
-                console.log(_b);
-            }
-            catch (err) {
-                console.log(err);
-            }
-        }
-        return publication;
-    });
-}
-exports.CbzParsePromise = CbzParsePromise;
-const filePathToTitle = (filePath) => {
-    const fileName = path.basename(filePath);
-    return slugify(fileName, "_").replace(/[\.]/g, "_");
-};
-const comicRackMetadata = (zip, entryName, publication) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    let comicZipStream_;
-    try {
-        comicZipStream_ = yield zip.entryStreamPromise(entryName);
-    }
-    catch (err) {
-        console.log(err);
-        return;
-    }
-    const comicZipStream = comicZipStream_.stream;
-    let comicZipData;
-    try {
-        comicZipData = yield BufferUtils_1.streamToBufferPromise(comicZipStream);
-    }
-    catch (err) {
-        console.log(err);
-        return;
-    }
-    const comicXmlStr = comicZipData.toString("utf8");
-    const comicXmlDoc = new xmldom.DOMParser().parseFromString(comicXmlStr);
-    const comicMeta = xml_js_mapper_1.XML.deserialize(comicXmlDoc, comicrack_1.ComicInfo);
-    comicMeta.ZipPath = entryName;
-    if (!publication.Metadata) {
-        publication.Metadata = new metadata_1.Metadata();
-    }
-    if (comicMeta.Writer) {
-        const cont = new metadata_contributor_1.Contributor();
-        cont.Name = comicMeta.Writer;
-        if (!publication.Metadata.Author) {
-            publication.Metadata.Author = [];
-        }
-        publication.Metadata.Author.push(cont);
-    }
-    if (comicMeta.Penciller) {
-        const cont = new metadata_contributor_1.Contributor();
-        cont.Name = comicMeta.Writer;
-        if (!publication.Metadata.Penciler) {
-            publication.Metadata.Penciler = [];
-        }
-        publication.Metadata.Penciler.push(cont);
-    }
-    if (comicMeta.Colorist) {
-        const cont = new metadata_contributor_1.Contributor();
-        cont.Name = comicMeta.Writer;
-        if (!publication.Metadata.Colorist) {
-            publication.Metadata.Colorist = [];
-        }
-        publication.Metadata.Colorist.push(cont);
-    }
-    if (comicMeta.Inker) {
-        const cont = new metadata_contributor_1.Contributor();
-        cont.Name = comicMeta.Writer;
-        if (!publication.Metadata.Inker) {
-            publication.Metadata.Inker = [];
-        }
-        publication.Metadata.Inker.push(cont);
-    }
-    if (comicMeta.Title) {
-        publication.Metadata.Title = comicMeta.Title;
-    }
-    if (!publication.Metadata.Title) {
-        if (comicMeta.Series) {
-            let title = comicMeta.Series;
-            if (comicMeta.Number) {
-                title = title + " - " + comicMeta.Number;
-            }
-            publication.Metadata.Title = title;
-        }
-    }
-    if (comicMeta.Pages) {
-        for (const p of comicMeta.Pages) {
-            const l = new publication_link_1.Link();
-            if (p.Type === "FrontCover") {
-                l.AddRel("cover");
-                yield epub_1.addCoverDimensions(publication, l);
-            }
-            l.Href = publication.Spine[p.Image].Href;
-            if (p.ImageHeight) {
-                l.Height = p.ImageHeight;
-            }
-            if (p.ImageWidth) {
-                l.Width = p.ImageWidth;
-            }
-            if (p.Bookmark) {
-                l.Title = p.Bookmark;
-            }
-            if (!publication.TOC) {
-                publication.TOC = [];
-            }
-            publication.TOC.push(l);
-        }
-    }
-});
-
-},{"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../_utils/zip/zipFactory":35,"../models/metadata":58,"../models/metadata-contributor":53,"../models/publication":60,"../models/publication-link":59,"./comicrack/comicrack":86,"./epub":87,"mime-types":429,"path":undefined,"slugify":492,"tslib":554,"xmldom":573}],85:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Page = class Page {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Image"),
-    tslib_1.__metadata("design:type", Number)
-], Page.prototype, "Image", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Bookmark"),
-    tslib_1.__metadata("design:type", String)
-], Page.prototype, "Bookmark", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Type"),
-    tslib_1.__metadata("design:type", String)
-], Page.prototype, "Type", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@ImageSize"),
-    tslib_1.__metadata("design:type", Number)
-], Page.prototype, "ImageSize", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@ImageWidth"),
-    tslib_1.__metadata("design:type", Number)
-], Page.prototype, "ImageWidth", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@ImageHeight"),
-    tslib_1.__metadata("design:type", Number)
-], Page.prototype, "ImageHeight", void 0);
-Page = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        xsd: "http://www.w3.org/2001/XMLSchema",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], Page);
-exports.Page = Page;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],86:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const comicrack_page_1 = require("./comicrack-page");
-let ComicInfo = class ComicInfo {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Title"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Title", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Series"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Series", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Volume"),
-    tslib_1.__metadata("design:type", Number)
-], ComicInfo.prototype, "Volume", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Number"),
-    tslib_1.__metadata("design:type", Number)
-], ComicInfo.prototype, "Number", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Writer"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Writer", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Penciller"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Penciller", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Inker"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Inker", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Colorist"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Colorist", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ScanInformation"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "ScanInformation", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Summary"),
-    tslib_1.__metadata("design:type", String)
-], ComicInfo.prototype, "Summary", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Year"),
-    tslib_1.__metadata("design:type", Number)
-], ComicInfo.prototype, "Year", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("PageCount"),
-    tslib_1.__metadata("design:type", Number)
-], ComicInfo.prototype, "PageCount", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("Pages/Page"),
-    xml_js_mapper_1.XmlItemType(comicrack_page_1.Page),
-    tslib_1.__metadata("design:type", Array)
-], ComicInfo.prototype, "Pages", void 0);
-ComicInfo = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        xsd: "http://www.w3.org/2001/XMLSchema",
-        xsi: "http://www.w3.org/2001/XMLSchema-instance",
-    })
-], ComicInfo);
-exports.ComicInfo = ComicInfo;
-
-},{"../../_utils/xml-js-mapper":28,"./comicrack-page":85,"tslib":554}],87:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const path = require("path");
-const querystring = require("querystring");
-const media_overlay_1 = require("../models/media-overlay");
-const metadata_1 = require("../models/metadata");
-const metadata_belongsto_1 = require("../models/metadata-belongsto");
-const metadata_collection_1 = require("../models/metadata-collection");
-const metadata_contributor_1 = require("../models/metadata-contributor");
-const metadata_encrypted_1 = require("../models/metadata-encrypted");
-const metadata_media_overlay_1 = require("../models/metadata-media-overlay");
-const metadata_properties_1 = require("../models/metadata-properties");
-const metadata_subject_1 = require("../models/metadata-subject");
-const publication_1 = require("../models/publication");
-const publication_link_1 = require("../models/publication-link");
-const transformer_1 = require("../transform/transformer");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
-const zipFactory_1 = require("../_utils/zip/zipFactory");
-const debug_ = require("debug");
-const sizeOf = require("image-size");
-const moment = require("moment");
-const ta_json_1 = require("ta-json");
-const xmldom = require("xmldom");
-const xpath = require("xpath");
-const container_1 = require("./epub/container");
-const encryption_1 = require("./epub/encryption");
-const lcp_1 = require("./epub/lcp");
-const ncx_1 = require("./epub/ncx");
-const opf_1 = require("./epub/opf");
-const opf_author_1 = require("./epub/opf-author");
-const smil_1 = require("./epub/smil");
-const smil_seq_1 = require("./epub/smil-seq");
-const debug = debug_("r2:epub");
-const epub3 = "3.0";
-const epub301 = "3.0.1";
-const epub31 = "3.1";
-const autoMeta = "auto";
-const noneMeta = "none";
-const reflowableMeta = "reflowable";
-exports.mediaOverlayURLPath = "media-overlay.json";
-exports.mediaOverlayURLParam = "resource";
-exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    const zipInternal = publication.findFromInternal("zip");
-    if (zipInternal) {
-        const zip = zipInternal.Value;
-        if (zip.hasEntry(coverLink.Href)) {
-            let zipStream;
-            try {
-                zipStream = yield zip.entryStreamPromise(coverLink.Href);
-            }
-            catch (err) {
-                debug(coverLink.Href);
-                debug(coverLink.TypeLink);
-                debug(err);
-                return;
-            }
-            let zipData;
-            try {
-                zipData = yield BufferUtils_1.streamToBufferPromise(zipStream.stream);
-                const imageInfo = sizeOf(zipData);
-                if (imageInfo) {
-                    coverLink.Width = imageInfo.width;
-                    coverLink.Height = imageInfo.height;
-                    if (coverLink.TypeLink &&
-                        coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
-                            !== ("image/" + imageInfo.type)) {
-                        debug(`Wrong image type? ${coverLink.TypeLink} -- ${imageInfo.type}`);
-                    }
-                }
-            }
-            catch (err) {
-                debug(coverLink.Href);
-                debug(coverLink.TypeLink);
-                debug(err);
-            }
-        }
-    }
-});
-function EpubParsePromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        let zip;
-        try {
-            zip = yield zipFactory_1.zipLoadPromise(filePath);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        if (!zip.hasEntries()) {
-            return Promise.reject("EPUB zip empty");
-        }
-        const publication = new publication_1.Publication();
-        publication.Context = ["http://readium.org/webpub/default.jsonld"];
-        publication.Metadata = new metadata_1.Metadata();
-        publication.Metadata.RDFType = "http://schema.org/Book";
-        publication.Metadata.Modified = moment(Date.now()).toDate();
-        publication.AddToInternal("filename", path.basename(filePath));
-        publication.AddToInternal("type", "epub");
-        publication.AddToInternal("zip", zip);
-        let lcpl;
-        const lcplZipPath = "META-INF/license.lcpl";
-        if (zip.hasEntry(lcplZipPath)) {
-            let lcplZipStream_;
-            try {
-                lcplZipStream_ = yield zip.entryStreamPromise(lcplZipPath);
-            }
-            catch (err) {
-                debug(err);
-                return Promise.reject(err);
-            }
-            const lcplZipStream = lcplZipStream_.stream;
-            let lcplZipData;
-            try {
-                lcplZipData = yield BufferUtils_1.streamToBufferPromise(lcplZipStream);
-            }
-            catch (err) {
-                debug(err);
-                return Promise.reject(err);
-            }
-            const lcplStr = lcplZipData.toString("utf8");
-            const lcplJson = global.JSON.parse(lcplStr);
-            debug(lcplJson);
-            lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
-            lcpl.ZipPath = lcplZipPath;
-            lcpl.JsonSource = lcplStr;
-            lcpl.init();
-            publication.LCP = lcpl;
-            publication.AddLink("application/vnd.readium.lcp.license-1.0+json", ["license"], lcpl.ZipPath, false);
-        }
-        let encryption;
-        const encZipPath = "META-INF/encryption.xml";
-        if (zip.hasEntry(encZipPath)) {
-            let encryptionXmlZipStream_;
-            try {
-                encryptionXmlZipStream_ = yield zip.entryStreamPromise(encZipPath);
-            }
-            catch (err) {
-                debug(err);
-                return Promise.reject(err);
-            }
-            const encryptionXmlZipStream = encryptionXmlZipStream_.stream;
-            let encryptionXmlZipData;
-            try {
-                encryptionXmlZipData = yield BufferUtils_1.streamToBufferPromise(encryptionXmlZipStream);
-            }
-            catch (err) {
-                debug(err);
-                return Promise.reject(err);
-            }
-            const encryptionXmlStr = encryptionXmlZipData.toString("utf8");
-            const encryptionXmlDoc = new xmldom.DOMParser().parseFromString(encryptionXmlStr);
-            encryption = xml_js_mapper_1.XML.deserialize(encryptionXmlDoc, encryption_1.Encryption);
-            encryption.ZipPath = encZipPath;
-        }
-        const containerZipPath = "META-INF/container.xml";
-        let containerXmlZipStream_;
-        try {
-            containerXmlZipStream_ = yield zip.entryStreamPromise(containerZipPath);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        const containerXmlZipStream = containerXmlZipStream_.stream;
-        let containerXmlZipData;
-        try {
-            containerXmlZipData = yield BufferUtils_1.streamToBufferPromise(containerXmlZipStream);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        const containerXmlStr = containerXmlZipData.toString("utf8");
-        const containerXmlDoc = new xmldom.DOMParser().parseFromString(containerXmlStr);
-        const container = xml_js_mapper_1.XML.deserialize(containerXmlDoc, container_1.Container);
-        container.ZipPath = containerZipPath;
-        const rootfile = container.Rootfile[0];
-        let opfZipStream_;
-        try {
-            opfZipStream_ = yield zip.entryStreamPromise(rootfile.Path);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        const opfZipStream = opfZipStream_.stream;
-        let opfZipData;
-        try {
-            opfZipData = yield BufferUtils_1.streamToBufferPromise(opfZipStream);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        const opfStr = opfZipData.toString("utf8");
-        const opfDoc = new xmldom.DOMParser().parseFromString(opfStr);
-        const opf = xml_js_mapper_1.XML.deserialize(opfDoc, opf_1.OPF);
-        opf.ZipPath = rootfile.Path;
-        let ncx;
-        if (opf.Spine.Toc) {
-            const ncxManItem = opf.Manifest.find((manifestItem) => {
-                return manifestItem.ID === opf.Spine.Toc;
-            });
-            if (ncxManItem) {
-                const ncxFilePath = path.join(path.dirname(opf.ZipPath), ncxManItem.Href)
-                    .replace(/\\/g, "/");
-                let ncxZipStream_;
-                try {
-                    ncxZipStream_ = yield zip.entryStreamPromise(ncxFilePath);
-                }
-                catch (err) {
-                    debug(err);
-                    return Promise.reject(err);
-                }
-                const ncxZipStream = ncxZipStream_.stream;
-                let ncxZipData;
-                try {
-                    ncxZipData = yield BufferUtils_1.streamToBufferPromise(ncxZipStream);
-                }
-                catch (err) {
-                    debug(err);
-                    return Promise.reject(err);
-                }
-                const ncxStr = ncxZipData.toString("utf8");
-                const ncxDoc = new xmldom.DOMParser().parseFromString(ncxStr);
-                ncx = xml_js_mapper_1.XML.deserialize(ncxDoc, ncx_1.NCX);
-                ncx.ZipPath = ncxFilePath;
-            }
-        }
-        addTitle(publication, rootfile, opf);
-        addIdentifier(publication, rootfile, opf);
-        if (opf.Metadata) {
-            if (opf.Metadata.Language) {
-                publication.Metadata.Language = opf.Metadata.Language;
-            }
-            if (opf.Metadata.Rights && opf.Metadata.Rights.length) {
-                publication.Metadata.Rights = opf.Metadata.Rights.join(" ");
-            }
-            if (opf.Metadata.Description && opf.Metadata.Description.length) {
-                publication.Metadata.Description = opf.Metadata.Description[0];
-            }
-            if (opf.Metadata.Publisher && opf.Metadata.Publisher.length) {
-                publication.Metadata.Publisher = [];
-                opf.Metadata.Publisher.forEach((pub) => {
-                    const contrib = new metadata_contributor_1.Contributor();
-                    contrib.Name = pub;
-                    publication.Metadata.Publisher.push(contrib);
-                });
-            }
-            if (opf.Metadata.Source && opf.Metadata.Source.length) {
-                publication.Metadata.Source = opf.Metadata.Source[0];
-            }
-            if (opf.Metadata.Contributor && opf.Metadata.Contributor.length) {
-                opf.Metadata.Contributor.forEach((cont) => {
-                    addContributor(publication, rootfile, opf, cont, undefined);
-                });
-            }
-            if (opf.Metadata.Creator && opf.Metadata.Creator.length) {
-                opf.Metadata.Creator.forEach((cont) => {
-                    addContributor(publication, rootfile, opf, cont, "aut");
-                });
-            }
-            if (opf.Metadata.Meta) {
-                const metasDuration = [];
-                const metasNarrator = [];
-                const metasActiveClass = [];
-                const metasPlaybackActiveClass = [];
-                opf.Metadata.Meta.forEach((metaTag) => {
-                    if (metaTag.Property === "media:duration") {
-                        metasDuration.push(metaTag);
-                    }
-                    if (metaTag.Property === "media:narrator") {
-                        metasNarrator.push(metaTag);
-                    }
-                    if (metaTag.Property === "media:active-class") {
-                        metasActiveClass.push(metaTag);
-                    }
-                    if (metaTag.Property === "media:playback-active-class") {
-                        metasPlaybackActiveClass.push(metaTag);
-                    }
-                });
-                if (metasDuration.length) {
-                    publication.Metadata.Duration = media_overlay_1.timeStrToSeconds(metasDuration[0].Data);
-                }
-                if (metasNarrator.length) {
-                    if (!publication.Metadata.Narrator) {
-                        publication.Metadata.Narrator = [];
-                    }
-                    metasNarrator.forEach((metaNarrator) => {
-                        const cont = new metadata_contributor_1.Contributor();
-                        cont.Name = metaNarrator.Data;
-                        publication.Metadata.Narrator.push(cont);
-                    });
-                }
-                if (metasActiveClass.length) {
-                    if (!publication.Metadata.MediaOverlay) {
-                        publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
-                    }
-                    publication.Metadata.MediaOverlay.ActiveClass = metasActiveClass[0].Data;
-                }
-                if (metasPlaybackActiveClass.length) {
-                    if (!publication.Metadata.MediaOverlay) {
-                        publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
-                    }
-                    publication.Metadata.MediaOverlay.PlaybackActiveClass = metasPlaybackActiveClass[0].Data;
-                }
-            }
-        }
-        if (opf.Spine && opf.Spine.PageProgression) {
-            publication.Metadata.Direction = opf.Spine.PageProgression;
-        }
-        if (isEpub3OrMore(rootfile, opf)) {
-            findContributorInMeta(publication, rootfile, opf);
-        }
-        yield fillSpineAndResource(publication, rootfile, opf);
-        addRendition(publication, rootfile, opf);
-        yield addCoverRel(publication, rootfile, opf);
-        if (encryption) {
-            fillEncryptionInfo(publication, rootfile, opf, encryption, lcpl);
-        }
-        yield fillTOCFromNavDoc(publication, rootfile, opf, zip);
-        if (!publication.TOC || !publication.TOC.length) {
-            if (ncx) {
-                fillTOCFromNCX(publication, rootfile, opf, ncx);
-                fillPageListFromNCX(publication, rootfile, opf, ncx);
-            }
-            fillLandmarksFromGuide(publication, rootfile, opf);
-        }
-        fillCalibreSerieInfo(publication, rootfile, opf);
-        fillSubject(publication, rootfile, opf);
-        fillPublicationDate(publication, rootfile, opf);
-        yield fillMediaOverlay(publication, rootfile, opf, zip);
-        return publication;
-    });
-}
-exports.EpubParsePromise = EpubParsePromise;
-function getAllMediaOverlays(publication) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        const mos = [];
-        if (publication.Spine) {
-            for (const link of publication.Spine) {
-                if (link.MediaOverlays) {
-                    for (const mo of link.MediaOverlays) {
-                        try {
-                            yield fillMediaOverlayParse(publication, mo);
-                        }
-                        catch (err) {
-                            return Promise.reject(err);
-                        }
-                        mos.push(mo);
-                    }
-                }
-            }
-        }
-        return Promise.resolve(mos);
-    });
-}
-exports.getAllMediaOverlays = getAllMediaOverlays;
-function getMediaOverlay(publication, spineHref) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        const mos = [];
-        if (publication.Spine) {
-            for (const link of publication.Spine) {
-                if (link.MediaOverlays && link.Href.indexOf(spineHref) >= 0) {
-                    for (const mo of link.MediaOverlays) {
-                        try {
-                            yield fillMediaOverlayParse(publication, mo);
-                        }
-                        catch (err) {
-                            return Promise.reject(err);
-                        }
-                        mos.push(mo);
-                    }
-                }
-            }
-        }
-        return Promise.resolve(mos);
-    });
-}
-exports.getMediaOverlay = getMediaOverlay;
-const fillMediaOverlayParse = (publication, mo) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    if (mo.initialized) {
-        return;
-    }
-    let link;
-    if (publication.Resources) {
-        const relativePath = mo.SmilPathInZip;
-        if (publication.Resources) {
-            link = publication.Resources.find((l) => {
-                if (l.Href === relativePath) {
-                    return true;
-                }
-                return false;
-            });
-        }
-        if (!link) {
-            if (publication.Spine) {
-                link = publication.Spine.find((l) => {
-                    if (l.Href === relativePath) {
-                        return true;
-                    }
-                    return false;
-                });
-            }
-        }
-        if (!link) {
-            const err = "Asset not declared in publication spine/resources! " + relativePath;
-            debug(err);
-            return Promise.reject(err);
-        }
-    }
-    const zipInternal = publication.findFromInternal("zip");
-    if (!zipInternal) {
-        return;
-    }
-    const zip = zipInternal.Value;
-    let smilZipStream_;
-    try {
-        smilZipStream_ = yield zip.entryStreamPromise(mo.SmilPathInZip);
-    }
-    catch (err) {
-        debug(err);
-        return Promise.reject(err);
-    }
-    if (link && link.Properties && link.Properties.Encrypted) {
-        let decryptFail = false;
-        let transformedStream;
-        try {
-            transformedStream = yield transformer_1.Transformers.tryStream(publication, link, smilZipStream_, false, 0, 0);
-        }
-        catch (err) {
-            debug(err);
-            return Promise.reject(err);
-        }
-        if (transformedStream) {
-            smilZipStream_ = transformedStream;
-        }
-        else {
-            decryptFail = true;
-        }
-        if (decryptFail) {
-            const err = "Encryption scheme not supported.";
-            debug(err);
-            return Promise.reject(err);
-        }
-    }
-    const smilZipStream = smilZipStream_.stream;
-    let smilZipData;
-    try {
-        smilZipData = yield BufferUtils_1.streamToBufferPromise(smilZipStream);
-    }
-    catch (err) {
-        debug(err);
-        return Promise.reject(err);
-    }
-    const smilStr = smilZipData.toString("utf8");
-    const smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
-    const smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
-    smil.ZipPath = mo.SmilPathInZip;
-    mo.initialized = true;
-    debug("PARSED SMIL: " + mo.SmilPathInZip);
-    mo.Role = [];
-    mo.Role.push("section");
-    if (smil.Body) {
-        if (smil.Body.EpubType) {
-            smil.Body.EpubType.trim().split(" ").forEach((role) => {
-                if (!role.length) {
-                    return;
-                }
-                if (mo.Role.indexOf(role) < 0) {
-                    mo.Role.push(role);
-                }
-            });
-        }
-        if (smil.Body.TextRef) {
-            const zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
-                .replace(/\\/g, "/");
-            mo.Text = zipPath;
-        }
-        if (smil.Body.Children && smil.Body.Children.length) {
-            smil.Body.Children.forEach((seqChild) => {
-                if (!mo.Children) {
-                    mo.Children = [];
-                }
-                addSeqToMediaOverlay(smil, publication, mo, mo.Children, seqChild);
-            });
-        }
-    }
-    return;
-});
-const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    if (!publication.Resources) {
-        return;
-    }
-    for (const item of publication.Resources) {
-        if (item.TypeLink !== "application/smil+xml") {
-            continue;
-        }
-        if (!zip.hasEntry(item.Href)) {
-            continue;
-        }
-        const manItemsHtmlWithSmil = [];
-        opf.Manifest.forEach((manItemHtmlWithSmil) => {
-            if (manItemHtmlWithSmil.MediaOverlay) {
-                const manItemSmil = opf.Manifest.find((mi) => {
-                    if (mi.ID === manItemHtmlWithSmil.MediaOverlay) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (manItemSmil) {
-                    const smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
-                        .replace(/\\/g, "/");
-                    if (smilFilePath2 === item.Href) {
-                        manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
-                    }
-                }
-            }
-        });
-        const mo = new media_overlay_1.MediaOverlayNode();
-        mo.SmilPathInZip = item.Href;
-        mo.initialized = false;
-        manItemsHtmlWithSmil.forEach((manItemHtmlWithSmil) => {
-            const htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
-                .replace(/\\/g, "/");
-            const link = findLinKByHref(publication, rootfile, opf, htmlPathInZip);
-            if (link) {
-                if (!link.MediaOverlays) {
-                    link.MediaOverlays = [];
-                }
-                const alreadyExists = link.MediaOverlays.find((moo) => {
-                    if (item.Href === moo.SmilPathInZip) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (!alreadyExists) {
-                    link.MediaOverlays.push(mo);
-                }
-                if (!link.Properties) {
-                    link.Properties = new metadata_properties_1.Properties();
-                }
-                link.Properties.MediaOverlay = exports.mediaOverlayURLPath + "?" +
-                    exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
-            }
-        });
-        if (item.Properties && item.Properties.Encrypted) {
-            debug("ENCRYPTED SMIL MEDIA OVERLAY: " + item.Href);
-            continue;
-        }
-    }
-    return;
-});
-const addSeqToMediaOverlay = (smil, publication, rootMO, mo, seqChild) => {
-    const moc = new media_overlay_1.MediaOverlayNode();
-    moc.initialized = rootMO.initialized;
-    mo.push(moc);
-    if (seqChild instanceof smil_seq_1.Seq) {
-        moc.Role = [];
-        moc.Role.push("section");
-        const seq = seqChild;
-        if (seq.EpubType) {
-            seq.EpubType.trim().split(" ").forEach((role) => {
-                if (!role.length) {
-                    return;
-                }
-                if (moc.Role.indexOf(role) < 0) {
-                    moc.Role.push(role);
-                }
-            });
-        }
-        if (seq.TextRef) {
-            const zipPath = path.join(path.dirname(smil.ZipPath), seq.TextRef)
-                .replace(/\\/g, "/");
-            moc.Text = zipPath;
-        }
-        if (seq.Children && seq.Children.length) {
-            seq.Children.forEach((child) => {
-                if (!moc.Children) {
-                    moc.Children = [];
-                }
-                addSeqToMediaOverlay(smil, publication, rootMO, moc.Children, child);
-            });
-        }
-    }
-    else {
-        const par = seqChild;
-        if (par.EpubType) {
-            par.EpubType.trim().split(" ").forEach((role) => {
-                if (!role.length) {
-                    return;
-                }
-                if (!moc.Role) {
-                    moc.Role = [];
-                }
-                if (moc.Role.indexOf(role) < 0) {
-                    moc.Role.push(role);
-                }
-            });
-        }
-        if (par.Text && par.Text.Src) {
-            const zipPath = path.join(path.dirname(smil.ZipPath), par.Text.Src)
-                .replace(/\\/g, "/");
-            moc.Text = zipPath;
-        }
-        if (par.Audio && par.Audio.Src) {
-            const zipPath = path.join(path.dirname(smil.ZipPath), par.Audio.Src)
-                .replace(/\\/g, "/");
-            moc.Audio = zipPath;
-            moc.Audio += "#t=";
-            moc.Audio += par.Audio.ClipBegin ? media_overlay_1.timeStrToSeconds(par.Audio.ClipBegin) : "0";
-            if (par.Audio.ClipEnd) {
-                moc.Audio += ",";
-                moc.Audio += media_overlay_1.timeStrToSeconds(par.Audio.ClipEnd);
-            }
-        }
-    }
-};
-const fillPublicationDate = (publication, rootfile, opf) => {
-    if (opf.Metadata && opf.Metadata.Date && opf.Metadata.Date.length) {
-        if (isEpub3OrMore(rootfile, opf) && opf.Metadata.Date[0] && opf.Metadata.Date[0].Data) {
-            publication.Metadata.PublicationDate = moment(opf.Metadata.Date[0].Data).toDate();
-            return;
-        }
-        opf.Metadata.Date.forEach((date) => {
-            if (date.Data && date.Event && date.Event.indexOf("publication") >= 0) {
-                publication.Metadata.PublicationDate = moment(date.Data).toDate();
-            }
-        });
-    }
-};
-const findContributorInMeta = (publication, rootfile, opf) => {
-    if (opf.Metadata && opf.Metadata.Meta) {
-        opf.Metadata.Meta.forEach((meta) => {
-            if (meta.Property === "dcterms:creator" || meta.Property === "dcterms:contributor") {
-                const cont = new opf_author_1.Author();
-                cont.Data = meta.Data;
-                cont.ID = meta.ID;
-                addContributor(publication, rootfile, opf, cont, undefined);
-            }
-        });
-    }
-};
-const addContributor = (publication, rootfile, opf, cont, forcedRole) => {
-    const contributor = new metadata_contributor_1.Contributor();
-    let role;
-    if (isEpub3OrMore(rootfile, opf)) {
-        const meta = findMetaByRefineAndProperty(rootfile, opf, cont.ID, "role");
-        if (meta && meta.Property === "role") {
-            role = meta.Data;
-        }
-        if (!role && forcedRole) {
-            role = forcedRole;
-        }
-        const metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, cont.ID, "alternate-script");
-        if (metaAlt && metaAlt.length) {
-            contributor.Name = {};
-            if (publication.Metadata &&
-                publication.Metadata.Language &&
-                publication.Metadata.Language.length) {
-                contributor.Name[publication.Metadata.Language[0].toLowerCase()] = cont.Data;
-            }
-            metaAlt.forEach((m) => {
-                if (m.Lang) {
-                    contributor.Name[m.Lang] = m.Data;
-                }
-            });
-        }
-        else {
-            contributor.Name = cont.Data;
-        }
-    }
-    else {
-        contributor.Name = cont.Data;
-        role = cont.Role;
-        if (!role && forcedRole) {
-            role = forcedRole;
-        }
-    }
-    if (role) {
-        switch (role) {
-            case "aut": {
-                if (!publication.Metadata.Author) {
-                    publication.Metadata.Author = [];
-                }
-                publication.Metadata.Author.push(contributor);
-                break;
-            }
-            case "trl": {
-                if (!publication.Metadata.Translator) {
-                    publication.Metadata.Translator = [];
-                }
-                publication.Metadata.Translator.push(contributor);
-                break;
-            }
-            case "art": {
-                if (!publication.Metadata.Artist) {
-                    publication.Metadata.Artist = [];
-                }
-                publication.Metadata.Artist.push(contributor);
-                break;
-            }
-            case "edt": {
-                if (!publication.Metadata.Editor) {
-                    publication.Metadata.Editor = [];
-                }
-                publication.Metadata.Editor.push(contributor);
-                break;
-            }
-            case "ill": {
-                if (!publication.Metadata.Illustrator) {
-                    publication.Metadata.Illustrator = [];
-                }
-                publication.Metadata.Illustrator.push(contributor);
-                break;
-            }
-            case "ltr": {
-                if (!publication.Metadata.Letterer) {
-                    publication.Metadata.Letterer = [];
-                }
-                publication.Metadata.Letterer.push(contributor);
-                break;
-            }
-            case "pen": {
-                if (!publication.Metadata.Penciler) {
-                    publication.Metadata.Penciler = [];
-                }
-                publication.Metadata.Penciler.push(contributor);
-                break;
-            }
-            case "clr": {
-                if (!publication.Metadata.Colorist) {
-                    publication.Metadata.Colorist = [];
-                }
-                publication.Metadata.Colorist.push(contributor);
-                break;
-            }
-            case "ink": {
-                if (!publication.Metadata.Inker) {
-                    publication.Metadata.Inker = [];
-                }
-                publication.Metadata.Inker.push(contributor);
-                break;
-            }
-            case "nrt": {
-                if (!publication.Metadata.Narrator) {
-                    publication.Metadata.Narrator = [];
-                }
-                publication.Metadata.Narrator.push(contributor);
-                break;
-            }
-            case "pbl": {
-                if (!publication.Metadata.Publisher) {
-                    publication.Metadata.Publisher = [];
-                }
-                publication.Metadata.Publisher.push(contributor);
-                break;
-            }
-            default: {
-                contributor.Role = role;
-                if (!publication.Metadata.Contributor) {
-                    publication.Metadata.Contributor = [];
-                }
-                publication.Metadata.Contributor.push(contributor);
-            }
-        }
-    }
-};
-const addIdentifier = (publication, _rootfile, opf) => {
-    if (opf.Metadata && opf.Metadata.Identifier) {
-        if (opf.UniqueIdentifier && opf.Metadata.Identifier.length > 1) {
-            opf.Metadata.Identifier.forEach((iden) => {
-                if (iden.ID === opf.UniqueIdentifier) {
-                    publication.Metadata.Identifier = iden.Data;
-                }
-            });
-        }
-        else if (opf.Metadata.Identifier.length > 0) {
-            publication.Metadata.Identifier = opf.Metadata.Identifier[0].Data;
-        }
-    }
-};
-const addTitle = (publication, rootfile, opf) => {
-    if (isEpub3OrMore(rootfile, opf)) {
-        let mainTitle;
-        if (opf.Metadata &&
-            opf.Metadata.Title &&
-            opf.Metadata.Title.length) {
-            if (opf.Metadata.Meta) {
-                const tt = opf.Metadata.Title.find((title) => {
-                    const refineID = "#" + title.ID;
-                    const m = opf.Metadata.Meta.find((meta) => {
-                        if (meta.Data === "main" && meta.Refine === refineID) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (m) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (tt) {
-                    mainTitle = tt;
-                }
-            }
-            if (!mainTitle) {
-                mainTitle = opf.Metadata.Title[0];
-            }
-        }
-        if (mainTitle) {
-            const metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, mainTitle.ID, "alternate-script");
-            if (metaAlt && metaAlt.length) {
-                publication.Metadata.Title = {};
-                if (mainTitle.Lang) {
-                    publication.Metadata.Title[mainTitle.Lang.toLowerCase()] = mainTitle.Data;
-                }
-                metaAlt.forEach((m) => {
-                    if (m.Lang) {
-                        publication.Metadata.Title[m.Lang.toLowerCase()] = m.Data;
-                    }
-                });
-            }
-            else {
-                publication.Metadata.Title = mainTitle.Data;
-            }
-        }
-    }
-    else {
-        if (opf.Metadata &&
-            opf.Metadata.Title &&
-            opf.Metadata.Title.length) {
-            publication.Metadata.Title = opf.Metadata.Title[0].Data;
-        }
-    }
-};
-const addRelAndPropertiesToLink = (publication, link, linkEpub, rootfile, opf) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    if (linkEpub.Properties) {
-        yield addToLinkFromProperties(publication, link, linkEpub.Properties);
-    }
-    const spineProperties = findPropertiesInSpineForManifest(linkEpub, rootfile, opf);
-    if (spineProperties) {
-        yield addToLinkFromProperties(publication, link, spineProperties);
-    }
-});
-const addToLinkFromProperties = (publication, link, propertiesString) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    const properties = propertiesString.trim().split(" ");
-    const propertiesStruct = new metadata_properties_1.Properties();
-    for (const p of properties) {
-        switch (p) {
-            case "cover-image": {
-                link.AddRel("cover");
-                yield exports.addCoverDimensions(publication, link);
-                break;
-            }
-            case "nav": {
-                link.AddRel("contents");
-                break;
-            }
-            case "scripted": {
-                if (!propertiesStruct.Contains) {
-                    propertiesStruct.Contains = [];
-                }
-                propertiesStruct.Contains.push("js");
-                break;
-            }
-            case "mathml": {
-                if (!propertiesStruct.Contains) {
-                    propertiesStruct.Contains = [];
-                }
-                propertiesStruct.Contains.push("mathml");
-                break;
-            }
-            case "onix-record": {
-                if (!propertiesStruct.Contains) {
-                    propertiesStruct.Contains = [];
-                }
-                propertiesStruct.Contains.push("onix");
-                break;
-            }
-            case "svg": {
-                if (!propertiesStruct.Contains) {
-                    propertiesStruct.Contains = [];
-                }
-                propertiesStruct.Contains.push("svg");
-                break;
-            }
-            case "xmp-record": {
-                if (!propertiesStruct.Contains) {
-                    propertiesStruct.Contains = [];
-                }
-                propertiesStruct.Contains.push("xmp");
-                break;
-            }
-            case "remote-resources": {
-                if (!propertiesStruct.Contains) {
-                    propertiesStruct.Contains = [];
-                }
-                propertiesStruct.Contains.push("remote-resources");
-                break;
-            }
-            case "page-spread-left": {
-                propertiesStruct.Page = "left";
-                break;
-            }
-            case "page-spread-right": {
-                propertiesStruct.Page = "right";
-                break;
-            }
-            case "page-spread-center": {
-                propertiesStruct.Page = "center";
-                break;
-            }
-            case "rendition:spread-none": {
-                propertiesStruct.Spread = noneMeta;
-                break;
-            }
-            case "rendition:spread-auto": {
-                propertiesStruct.Spread = autoMeta;
-                break;
-            }
-            case "rendition:spread-landscape": {
-                propertiesStruct.Spread = "landscape";
-                break;
-            }
-            case "rendition:spread-portrait": {
-                propertiesStruct.Spread = "portrait";
-                break;
-            }
-            case "rendition:spread-both": {
-                propertiesStruct.Spread = "both";
-                break;
-            }
-            case "rendition:layout-reflowable": {
-                propertiesStruct.Layout = reflowableMeta;
-                break;
-            }
-            case "rendition:layout-pre-paginated": {
-                propertiesStruct.Layout = "fixed";
-                break;
-            }
-            case "rendition:orientation-auto": {
-                propertiesStruct.Orientation = "auto";
-                break;
-            }
-            case "rendition:orientation-landscape": {
-                propertiesStruct.Orientation = "landscape";
-                break;
-            }
-            case "rendition:orientation-portrait": {
-                propertiesStruct.Orientation = "portrait";
-                break;
-            }
-            case "rendition:flow-auto": {
-                propertiesStruct.Overflow = autoMeta;
-                break;
-            }
-            case "rendition:flow-paginated": {
-                propertiesStruct.Overflow = "paginated";
-                break;
-            }
-            case "rendition:flow-scrolled-continuous": {
-                propertiesStruct.Overflow = "scrolled-continuous";
-                break;
-            }
-            case "rendition:flow-scrolled-doc": {
-                propertiesStruct.Overflow = "scrolled";
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-        if (propertiesStruct.Layout ||
-            propertiesStruct.Orientation ||
-            propertiesStruct.Overflow ||
-            propertiesStruct.Page ||
-            propertiesStruct.Spread ||
-            (propertiesStruct.Contains && propertiesStruct.Contains.length)) {
-            link.Properties = propertiesStruct;
-        }
-    }
-});
-const addMediaOverlay = (link, linkEpub, rootfile, opf) => {
-    if (linkEpub.MediaOverlay) {
-        const meta = findMetaByRefineAndProperty(rootfile, opf, linkEpub.MediaOverlay, "media:duration");
-        if (meta) {
-            link.Duration = media_overlay_1.timeStrToSeconds(meta.Data);
-        }
-    }
-};
-const findInManifestByID = (publication, rootfile, opf, ID) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    if (opf.Manifest && opf.Manifest.length) {
-        const item = opf.Manifest.find((manItem) => {
-            if (manItem.ID === ID) {
-                return true;
-            }
-            return false;
-        });
-        if (item) {
-            const linkItem = new publication_link_1.Link();
-            linkItem.TypeLink = item.MediaType;
-            const zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
-                .replace(/\\/g, "/");
-            linkItem.Href = zipPath;
-            yield addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf);
-            addMediaOverlay(linkItem, item, rootfile, opf);
-            return linkItem;
-        }
-    }
-    return Promise.reject(`${ID} not found`);
-});
-const addRendition = (publication, _rootfile, opf) => {
-    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
-        const rendition = new metadata_properties_1.Properties();
-        opf.Metadata.Meta.forEach((meta) => {
-            switch (meta.Property) {
-                case "rendition:layout": {
-                    if (meta.Data === "pre-paginated") {
-                        rendition.Layout = "fixed";
-                    }
-                    else if (meta.Data === "reflowable") {
-                        rendition.Layout = "reflowable";
-                    }
-                    break;
-                }
-                case "rendition:orientation": {
-                    rendition.Orientation = meta.Data;
-                    break;
-                }
-                case "rendition:spread": {
-                    rendition.Spread = meta.Data;
-                    break;
-                }
-                case "rendition:flow": {
-                    rendition.Overflow = meta.Data;
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-        });
-        if (rendition.Layout || rendition.Orientation || rendition.Overflow || rendition.Page || rendition.Spread) {
-            publication.Metadata.Rendition = rendition;
-        }
-    }
-};
-const fillSpineAndResource = (publication, rootfile, opf) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    if (opf.Spine && opf.Spine.Items && opf.Spine.Items.length) {
-        for (const item of opf.Spine.Items) {
-            if (!item.Linear || item.Linear === "yes") {
-                let linkItem;
-                try {
-                    linkItem = yield findInManifestByID(publication, rootfile, opf, item.IDref);
-                }
-                catch (err) {
-                    debug(err);
-                    continue;
-                }
-                if (linkItem && linkItem.Href) {
-                    if (!publication.Spine) {
-                        publication.Spine = [];
-                    }
-                    publication.Spine.push(linkItem);
-                }
-            }
-        }
-    }
-    if (opf.Manifest && opf.Manifest.length) {
-        for (const item of opf.Manifest) {
-            const zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
-                .replace(/\\/g, "/");
-            const linkSpine = findInSpineByHref(publication, zipPath);
-            if (!linkSpine || !linkSpine.Href) {
-                const linkItem = new publication_link_1.Link();
-                linkItem.TypeLink = item.MediaType;
-                linkItem.Href = zipPath;
-                yield addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf);
-                addMediaOverlay(linkItem, item, rootfile, opf);
-                if (!publication.Resources) {
-                    publication.Resources = [];
-                }
-                publication.Resources.push(linkItem);
-            }
-        }
-    }
-});
-const fillEncryptionInfo = (publication, _rootfile, _opf, encryption, lcp) => {
-    encryption.EncryptedData.forEach((encInfo) => {
-        const encrypted = new metadata_encrypted_1.Encrypted();
-        encrypted.Algorithm = encInfo.EncryptionMethod.Algorithm;
-        if (lcp &&
-            encrypted.Algorithm !== "http://www.idpf.org/2008/embedding" &&
-            encrypted.Algorithm !== "http://ns.adobe.com/pdf/enc#RC") {
-            encrypted.Profile = lcp.Encryption.Profile;
-            encrypted.Scheme = "http://readium.org/2014/01/lcp";
-        }
-        if (encInfo.EncryptionProperties && encInfo.EncryptionProperties.length) {
-            encInfo.EncryptionProperties.forEach((prop) => {
-                if (prop.Compression) {
-                    if (prop.Compression.OriginalLength) {
-                        encrypted.OriginalLength = parseFloat(prop.Compression.OriginalLength);
-                    }
-                    if (prop.Compression.Method === "8") {
-                        encrypted.Compression = "deflate";
-                    }
-                    else {
-                        encrypted.Compression = "none";
-                    }
-                }
-            });
-        }
-        publication.Resources.forEach((l, _i, _arr) => {
-            const filePath = l.Href;
-            if (filePath === encInfo.CipherData.CipherReference.URI) {
-                if (!l.Properties) {
-                    l.Properties = new metadata_properties_1.Properties();
-                }
-                l.Properties.Encrypted = encrypted;
-            }
-        });
-        publication.Spine.forEach((l, _i, _arr) => {
-            const filePath = l.Href;
-            if (filePath === encInfo.CipherData.CipherReference.URI) {
-                if (!l.Properties) {
-                    l.Properties = new metadata_properties_1.Properties();
-                }
-                l.Properties.Encrypted = encrypted;
-            }
-        });
-    });
-};
-const fillPageListFromNCX = (publication, _rootfile, _opf, ncx) => {
-    if (ncx.PageList && ncx.PageList.PageTarget && ncx.PageList.PageTarget.length) {
-        ncx.PageList.PageTarget.forEach((pageTarget) => {
-            const link = new publication_link_1.Link();
-            const zipPath = path.join(path.dirname(ncx.ZipPath), pageTarget.Content.Src)
-                .replace(/\\/g, "/");
-            link.Href = zipPath;
-            link.Title = pageTarget.Text;
-            if (!publication.PageList) {
-                publication.PageList = [];
-            }
-            publication.PageList.push(link);
-        });
-    }
-};
-const fillTOCFromNCX = (publication, rootfile, opf, ncx) => {
-    if (ncx.Points && ncx.Points.length) {
-        ncx.Points.forEach((point) => {
-            if (!publication.TOC) {
-                publication.TOC = [];
-            }
-            fillTOCFromNavPoint(publication, rootfile, opf, ncx, point, publication.TOC);
-        });
-    }
-};
-const fillLandmarksFromGuide = (publication, _rootfile, opf) => {
-    if (opf.Guide && opf.Guide.length) {
-        opf.Guide.forEach((ref) => {
-            if (ref.Href) {
-                const link = new publication_link_1.Link();
-                const zipPath = path.join(path.dirname(opf.ZipPath), ref.Href)
-                    .replace(/\\/g, "/");
-                link.Href = zipPath;
-                link.Title = ref.Title;
-                if (!publication.Landmarks) {
-                    publication.Landmarks = [];
-                }
-                publication.Landmarks.push(link);
-            }
-        });
-    }
-};
-const fillTOCFromNavPoint = (publication, rootfile, opf, ncx, point, node) => {
-    const link = new publication_link_1.Link();
-    const zipPath = path.join(path.dirname(ncx.ZipPath), point.Content.Src)
-        .replace(/\\/g, "/");
-    link.Href = zipPath;
-    link.Title = point.Text;
-    if (point.Points && point.Points.length) {
-        point.Points.forEach((p) => {
-            if (!link.Children) {
-                link.Children = [];
-            }
-            fillTOCFromNavPoint(publication, rootfile, opf, ncx, p, link.Children);
-        });
-    }
-    node.push(link);
-};
-const fillSubject = (publication, _rootfile, opf) => {
-    if (opf.Metadata && opf.Metadata.Subject && opf.Metadata.Subject.length) {
-        opf.Metadata.Subject.forEach((s) => {
-            const sub = new metadata_subject_1.Subject();
-            sub.Name = s.Data;
-            sub.Code = s.Term;
-            sub.Scheme = s.Authority;
-            if (!publication.Metadata.Subject) {
-                publication.Metadata.Subject = [];
-            }
-            publication.Metadata.Subject.push(sub);
-        });
-    }
-};
-const fillCalibreSerieInfo = (publication, _rootfile, opf) => {
-    let serie;
-    let seriePosition;
-    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
-        opf.Metadata.Meta.forEach((m) => {
-            if (m.Name === "calibre:series") {
-                serie = m.Content;
-            }
-            if (m.Name === "calibre:series_index") {
-                seriePosition = parseFloat(m.Content);
-            }
-        });
-    }
-    if (serie) {
-        const collection = new metadata_collection_1.Collection();
-        collection.Name = serie;
-        if (seriePosition) {
-            collection.Position = seriePosition;
-        }
-        if (!publication.Metadata.BelongsTo) {
-            publication.Metadata.BelongsTo = new metadata_belongsto_1.BelongsTo();
-        }
-        if (!publication.Metadata.BelongsTo.Series) {
-            publication.Metadata.BelongsTo.Series = [];
-        }
-        publication.Metadata.BelongsTo.Series.push(collection);
-    }
-};
-const fillTOCFromNavDoc = (publication, _rootfile, _opf, zip) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    const navLink = publication.GetNavDoc();
-    if (!navLink) {
-        return;
-    }
-    const navDocFilePath = navLink.Href;
-    if (!zip.hasEntry(navDocFilePath)) {
-        return;
-    }
-    let navDocZipStream_;
-    try {
-        navDocZipStream_ = yield zip.entryStreamPromise(navDocFilePath);
-    }
-    catch (err) {
-        debug(err);
-        return Promise.reject(err);
-    }
-    const navDocZipStream = navDocZipStream_.stream;
-    let navDocZipData;
-    try {
-        navDocZipData = yield BufferUtils_1.streamToBufferPromise(navDocZipStream);
-    }
-    catch (err) {
-        debug(err);
-        return Promise.reject(err);
-    }
-    const navDocStr = navDocZipData.toString("utf8");
-    const navXmlDoc = new xmldom.DOMParser().parseFromString(navDocStr);
-    const select = xpath.useNamespaces({
-        epub: "http://www.idpf.org/2007/ops",
-        xhtml: "http://www.w3.org/1999/xhtml",
-    });
-    const navs = select("/xhtml:html/xhtml:body//xhtml:nav", navXmlDoc);
-    if (navs && navs.length) {
-        navs.forEach((navElement) => {
-            const typeNav = select("@epub:type", navElement);
-            if (typeNav && typeNav.length) {
-                const olElem = select("xhtml:ol", navElement);
-                const roles = typeNav[0].value;
-                const role = roles.trim().split(" ")[0];
-                switch (role) {
-                    case "toc": {
-                        publication.TOC = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.TOC, navLink.Href);
-                        break;
-                    }
-                    case "page-list": {
-                        publication.PageList = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.PageList, navLink.Href);
-                        break;
-                    }
-                    case "landmarks": {
-                        publication.Landmarks = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.Landmarks, navLink.Href);
-                        break;
-                    }
-                    case "lot": {
-                        publication.LOT = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.LOT, navLink.Href);
-                        break;
-                    }
-                    case "loa": {
-                        publication.LOA = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.LOA, navLink.Href);
-                        break;
-                    }
-                    case "loi": {
-                        publication.LOI = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.LOI, navLink.Href);
-                        break;
-                    }
-                    case "lov": {
-                        publication.LOV = [];
-                        fillTOCFromNavDocWithOL(select, olElem, publication.LOV, navLink.Href);
-                        break;
-                    }
-                    default: {
-                        break;
-                    }
-                }
-            }
-        });
-    }
-});
-const fillTOCFromNavDocWithOL = (select, olElems, node, navDocPath) => {
-    olElems.forEach((olElem) => {
-        const liElems = select("xhtml:li", olElem);
-        if (liElems && liElems.length) {
-            liElems.forEach((liElem) => {
-                const link = new publication_link_1.Link();
-                node.push(link);
-                const aElems = select("xhtml:a", liElem);
-                if (aElems && aElems.length > 0) {
-                    const aHref = select("@href", aElems[0]);
-                    if (aHref && aHref.length) {
-                        let val = aHref[0].value;
-                        if (val[0] === "#") {
-                            val = path.basename(navDocPath) + val;
-                        }
-                        const zipPath = path.join(path.dirname(navDocPath), val)
-                            .replace(/\\/g, "/");
-                        link.Href = zipPath;
-                    }
-                    let aText = aElems[0].textContent;
-                    if (aText && aText.length) {
-                        aText = aText.trim();
-                        aText = aText.replace(/\s\s+/g, " ");
-                        link.Title = aText;
-                    }
-                }
-                else {
-                    const liFirstChild = select("xhtml:*[1]", liElem);
-                    if (liFirstChild && liFirstChild.length && liFirstChild[0].textContent) {
-                        link.Title = liFirstChild[0].textContent.trim();
-                    }
-                }
-                const olElemsNext = select("xhtml:ol", liElem);
-                if (olElemsNext && olElemsNext.length) {
-                    if (!link.Children) {
-                        link.Children = [];
-                    }
-                    fillTOCFromNavDocWithOL(select, olElemsNext, link.Children, navDocPath);
-                }
-            });
-        }
-    });
-};
-const addCoverRel = (publication, rootfile, opf) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    let coverID;
-    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
-        opf.Metadata.Meta.find((meta) => {
-            if (meta.Name === "cover") {
-                coverID = meta.Content;
-                return true;
-            }
-            return false;
-        });
-    }
-    if (coverID) {
-        let manifestInfo;
-        try {
-            manifestInfo = yield findInManifestByID(publication, rootfile, opf, coverID);
-        }
-        catch (err) {
-            debug(err);
-            return;
-        }
-        if (manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length) {
-            const href = manifestInfo.Href;
-            const linky = publication.Resources.find((item, _i, _arr) => {
-                if (item.Href === href) {
-                    return true;
-                }
-                return false;
-            });
-            if (linky) {
-                linky.AddRel("cover");
-                yield exports.addCoverDimensions(publication, linky);
-            }
-        }
-    }
-});
-const findPropertiesInSpineForManifest = (linkEpub, _rootfile, opf) => {
-    if (opf.Spine && opf.Spine.Items && opf.Spine.Items.length) {
-        const it = opf.Spine.Items.find((item) => {
-            if (item.IDref === linkEpub.ID) {
-                return true;
-            }
-            return false;
-        });
-        if (it && it.Properties) {
-            return it.Properties;
-        }
-    }
-    return undefined;
-};
-const findInSpineByHref = (publication, href) => {
-    if (publication.Spine && publication.Spine.length) {
-        const ll = publication.Spine.find((l) => {
-            if (l.Href === href) {
-                return true;
-            }
-            return false;
-        });
-        if (ll) {
-            return ll;
-        }
-    }
-    return undefined;
-};
-const findMetaByRefineAndProperty = (rootfile, opf, ID, property) => {
-    const ret = findAllMetaByRefineAndProperty(rootfile, opf, ID, property);
-    if (ret.length) {
-        return ret[0];
-    }
-    return undefined;
-};
-const findAllMetaByRefineAndProperty = (_rootfile, opf, ID, property) => {
-    const metas = [];
-    const refineID = "#" + ID;
-    if (opf.Metadata && opf.Metadata.Meta) {
-        opf.Metadata.Meta.forEach((metaTag) => {
-            if (metaTag.Refine === refineID && metaTag.Property === property) {
-                metas.push(metaTag);
-            }
-        });
-    }
-    return metas;
-};
-const getEpubVersion = (rootfile, opf) => {
-    if (rootfile.Version) {
-        return rootfile.Version;
-    }
-    else if (opf.Version) {
-        return opf.Version;
-    }
-    return undefined;
-};
-const isEpub3OrMore = (rootfile, opf) => {
-    const version = getEpubVersion(rootfile, opf);
-    return (version === epub3 || version === epub301 || version === epub31);
-};
-const findLinKByHref = (publication, _rootfile, _opf, href) => {
-    if (publication.Spine && publication.Spine.length) {
-        const ll = publication.Spine.find((l) => {
-            const pathInZip = l.Href;
-            if (href === pathInZip) {
-                return true;
-            }
-            return false;
-        });
-        if (ll) {
-            return ll;
-        }
-    }
-    return undefined;
-};
-
-},{"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../_utils/zip/zipFactory":35,"../models/media-overlay":48,"../models/metadata":58,"../models/metadata-belongsto":49,"../models/metadata-collection":51,"../models/metadata-contributor":53,"../models/metadata-encrypted":54,"../models/metadata-media-overlay":55,"../models/metadata-properties":56,"../models/metadata-subject":57,"../models/publication":60,"../models/publication-link":59,"../transform/transformer":136,"./epub/container":89,"./epub/encryption":98,"./epub/lcp":107,"./epub/ncx":112,"./epub/opf":124,"./epub/opf-author":113,"./epub/smil":131,"./epub/smil-seq":129,"debug":267,"image-size":386,"moment":433,"path":undefined,"querystring":undefined,"ta-json":541,"tslib":554,"xmldom":573,"xpath":576}],88:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Rootfile = class Rootfile {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@full-path"),
-    tslib_1.__metadata("design:type", String)
-], Rootfile.prototype, "Path", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-type"),
-    tslib_1.__metadata("design:type", String)
-], Rootfile.prototype, "Type", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@version"),
-    tslib_1.__metadata("design:type", String)
-], Rootfile.prototype, "Version", void 0);
-Rootfile = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject()
-], Rootfile);
-exports.Rootfile = Rootfile;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],89:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const container_rootfile_1 = require("./container-rootfile");
-let Container = class Container {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("epub:rootfiles/epub:rootfile", {
-        epub: "urn:oasis:names:tc:opendocument:xmlns:container",
-        rendition: "http://www.idpf.org/2013/rendition",
-    }),
-    xml_js_mapper_1.XmlItemType(container_rootfile_1.Rootfile),
-    tslib_1.__metadata("design:type", Array)
-], Container.prototype, "Rootfile", void 0);
-Container = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dummyNS: "dummyURI",
-        epub: "wrong2",
-        rendition: "wrong1",
-    })
-], Container);
-exports.Container = Container;
-
-},{"../../_utils/xml-js-mapper":28,"./container-rootfile":88,"tslib":554}],90:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Compression = class Compression {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Method"),
-    tslib_1.__metadata("design:type", String)
-], Compression.prototype, "Method", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@OriginalLength"),
-    tslib_1.__metadata("design:type", String)
-], Compression.prototype, "OriginalLength", void 0);
-Compression = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], Compression);
-exports.Compression = Compression;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],91:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const encryption_cypherreference_1 = require("./encryption-cypherreference");
-let CipherData = class CipherData {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:CipherReference"),
-    tslib_1.__metadata("design:type", encryption_cypherreference_1.CipherReference)
-], CipherData.prototype, "CipherReference", void 0);
-CipherData = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], CipherData);
-exports.CipherData = CipherData;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-cypherreference":92,"tslib":554}],92:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let CipherReference = class CipherReference {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@URI"),
-    tslib_1.__metadata("design:type", String)
-], CipherReference.prototype, "URI", void 0);
-CipherReference = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], CipherReference);
-exports.CipherReference = CipherReference;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],93:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const encryption_cypherdata_1 = require("./encryption-cypherdata");
-const encryption_keyinfo_1 = require("./encryption-keyinfo");
-const encryption_method_1 = require("./encryption-method");
-const encryption_property_1 = require("./encryption-property");
-let EncryptedData = class EncryptedData {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:EncryptionMethod"),
-    tslib_1.__metadata("design:type", encryption_method_1.EncryptionMethod)
-], EncryptedData.prototype, "EncryptionMethod", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ds:KeyInfo"),
-    tslib_1.__metadata("design:type", encryption_keyinfo_1.KeyInfo)
-], EncryptedData.prototype, "KeyInfo", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:CipherData"),
-    tslib_1.__metadata("design:type", encryption_cypherdata_1.CipherData)
-], EncryptedData.prototype, "CipherData", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:EncryptionProperties/enc:EncryptionProperty"),
-    xml_js_mapper_1.XmlItemType(encryption_property_1.EncryptionProperty),
-    tslib_1.__metadata("design:type", Array)
-], EncryptedData.prototype, "EncryptionProperties", void 0);
-EncryptedData = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], EncryptedData);
-exports.EncryptedData = EncryptedData;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-cypherdata":91,"./encryption-keyinfo":94,"./encryption-method":95,"./encryption-property":96,"tslib":554}],94:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const encryption_retrievalmethod_1 = require("./encryption-retrievalmethod");
-let KeyInfo = class KeyInfo {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ds:RetrievalMethod"),
-    tslib_1.__metadata("design:type", encryption_retrievalmethod_1.RetrievalMethod)
-], KeyInfo.prototype, "RetrievalMethod", void 0);
-KeyInfo = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], KeyInfo);
-exports.KeyInfo = KeyInfo;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-retrievalmethod":97,"tslib":554}],95:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let EncryptionMethod = class EncryptionMethod {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Algorithm"),
-    tslib_1.__metadata("design:type", String)
-], EncryptionMethod.prototype, "Algorithm", void 0);
-EncryptionMethod = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], EncryptionMethod);
-exports.EncryptionMethod = EncryptionMethod;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],96:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const encryption_compression_1 = require("./encryption-compression");
-let EncryptionProperty = class EncryptionProperty {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ns:Compression"),
-    tslib_1.__metadata("design:type", encryption_compression_1.Compression)
-], EncryptionProperty.prototype, "Compression", void 0);
-EncryptionProperty = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], EncryptionProperty);
-exports.EncryptionProperty = EncryptionProperty;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-compression":90,"tslib":554}],97:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let RetrievalMethod = class RetrievalMethod {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@URI"),
-    tslib_1.__metadata("design:type", String)
-], RetrievalMethod.prototype, "URI", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@Type"),
-    tslib_1.__metadata("design:type", String)
-], RetrievalMethod.prototype, "Type", void 0);
-RetrievalMethod = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], RetrievalMethod);
-exports.RetrievalMethod = RetrievalMethod;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],98:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const encryption_data_1 = require("./encryption-data");
-let Encryption = class Encryption {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("enc:EncryptedData"),
-    xml_js_mapper_1.XmlItemType(encryption_data_1.EncryptedData),
-    tslib_1.__metadata("design:type", Array)
-], Encryption.prototype, "EncryptedData", void 0);
-Encryption = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ds: "http://www.w3.org/2000/09/xmldsig#",
-        enc: "http://www.w3.org/2001/04/xmlenc#",
-        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-        ns: "http://www.idpf.org/2016/encryption#compression",
-    })
-], Encryption);
-exports.Encryption = Encryption;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-data":93,"tslib":554}],99:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.LCPCertificateBasicProfile = `-----BEGIN CERTIFICATE-----
-MIIFZzCCA0+gAwIBAgIJAMWdQaWkExQEMA0GCSqGSIb3DQEBCwUAMGcxCzAJBgNV
-BAYTAkZSMQ4wDAYDVQQHEwVQYXJpczEPMA0GA1UEChMGRURSTGFiMRIwEAYDVQQL
-EwlMQ1AgVGVzdHMxIzAhBgNVBAMTGkVEUkxhYiBSZWFkaXVtIExDUCB0ZXN0IENB
-MB4XDTE2MDMyNDIyNTc1OVoXDTM4MDExODIyNTc1OVowZzELMAkGA1UEBhMCRlIx
-DjAMBgNVBAcTBVBhcmlzMQ8wDQYDVQQKEwZFRFJMYWIxEjAQBgNVBAsTCUxDUCBU
-ZXN0czEjMCEGA1UEAxMaRURSTGFiIFJlYWRpdW0gTENQIHRlc3QgQ0EwggIiMA0G
-CSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDfxfveCISAmGDhXcZj+q6cXD3zQDr/
-kRG4fnqBm1rxFN1nshI0ObSMNwcV98c3D2swewQ6qFa+4INRakrF4ObtPtiQ7Tti
-/qYWf41rez/8x5M+DFeca8SIuf4Wi2u310EoplQm4JX3Qnvax7I/ivl+BtSzDY1h
-4bkA9dPPrp/vGa8dh0rIYaclJ9UEW/i4jyQkry36BfGKboOMYZioqPJfOFIIiSTb
-0nvHERssaS2MobWACinRRwL7Mih4mUV/v9Vhry3jN+wfxMKA+J/zcsY6p9HVgIhE
-kmyDIH4/vw+mLMcUQ4YFQeIOKRBRLHYcLHOUQNNIDw2gJAK/G/rfOeW3zu/tYCpk
-hT8PWrhd4zM+TdegpeFkidnNSvYFlKrojWhJisty3HuD+BXQ6ArjikIj4dCYc2BM
-ZVUH50FEwl1ZpndQAySMCceOX8t6RX4jqbvhbyXjqR/Nr5SaN8G6gHemX/5LWdOa
-5D8dUwOGbQjR7igLQy+4UNefjvFp8Z5/No/vLD/3Ziwau+wFjcGXs9UdpqKgIzfW
-KAu77vPVb0vUvDczOU4HRx4bB3eAb4gI6meBYHKroogIpteDOfco48zhweiMGasz
-HwBU4rylW/seV/2l5IunsGNRSlVtT4z5xL7kn5fcYy5ZtStJrrOKZSJWaH+3Mvmb
-sgwPqlZYMNAoiwIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3
-DQEBCwUAA4ICAQCmMGGqjnIo0BgItLmKrXW8yFRncZdjLAS5fCRNO0C34vDrm9N/
-y1qhoITqQ+vKVeA+M/sWzTQihPz+pyWGfvjqxdagpepPERX0ZFENMJaP5Sc8R0bL
-y96Xxk7L/SnVvJ2jgRP/D7X6jQrLxQbDceFRPelE+KcrcfAQdTLO9VTJEIkr4j6L
-BMDjqMcXASo+/t5fAhz3rUlo1gvhgdX+E4iJSoPwimr0pmUWFS473eS8Jrgn5meG
-Pq5Kmf3Q+1hYlisIAzRARJXWJxBxeI+VLCF2c90m1MLXpET4tm2s8Ln9ePw4edGM
-crwbR4nTEN+aGbPyo0yhs+smQA28B1LRnnZRyj70wHii6PN9+qtbr1S41FzKnLvO
-EBU63KxOE+NiN4p8q/Gx2J+lDtNy4OKEjgNNpp9fpzEbcSdnNK1dmZTbdKFV/QqT
-DQ8paH3TWX0eel/LeBHyn5W6A6B0maLRKNN98jcbqDyx2RfkEcEqvlQgEThNKH/6
-2hfQ8BEAzFdevtenyjKbnHmJ861t/hAnvCbbxMrT0gzgK2+gnqTFJiON3s0SObsG
-ivPak5w5wtvreFvEHCntnhIocuqc9AOFoDdQo9idB25YUzwot0NNL6pShMNXNE6F
-Imaa1w7gBDc+DVRYAoJzHF+awCOgqEDEXu67GHgcrXpQ9Ts7Eq+wjNy9OQ==
------END CERTIFICATE-----`;
-exports.DUMMY_CRL = `-----BEGIN X509 CRL-----
-MIICrTCBljANBgkqhkiG9w0BAQQFADBnMQswCQYDVQQGEwJGUjEOMAwGA1UEBxMF
-UGFyaXMxDzANBgNVBAoTBkVEUkxhYjESMBAGA1UECxMJTENQIFRlc3RzMSMwIQYD
-VQQDExpFRFJMYWIgUmVhZGl1bSBMQ1AgdGVzdCBDQRcNMTcwOTI2MTM1NTE1WhcN
-MjcwOTI0MTM1NTE1WjANBgkqhkiG9w0BAQQFAAOCAgEA27f50xnlaKGUdqs6u6rD
-WsR75z+tZrH4J2aA5E9I/K5fNe20FftQZb6XNjVQTNvawoMW0q+Rh9dVjDnV5Cfw
-ptchu738ZQr8iCOLQHvIM6wqQj7XwMqvyNaaeGMZxfRMGlx7T9DOwvtWFCc5X0ik
-YGPPV19CFf1cas8x9Y3LE8GmCtX9eUrotWLKRggG+qRTCri/SlaoicfzqhViiGeL
-dW8RpG/Q6ox+tLHti3fxOgZarMgMbRmUa6OTh8pnxrfnrdtD2PbwACvaEMCpNCZR
-aSTMRmIxw8UUbUA/JxDIwyISGn3ZRgbFAglYzaX80rSQZr6e0bFlzHl1xZtZ0Raz
-GQWP9vvfH5ESp6FsD98g//VYigatoPz/EKU4cfP+1W/Zrr4jRSBFB37rxASXPBcx
-L8cerb9nnRbAEvIqxnR4e0ZkhMyqIrLUZ3Jva0fC30kdtp09/KJ22mXKBz85wUQa
-7ihiSz7pov0R9hpY93fvt++idHBECRNGOeBC4wRtGxpru8ZUa0/KFOD0HXHMQDwV
-cIa/72T0okStOqjIOcWflxl/eAvUXwtet9Ht3o9giSl6hAObAeleMJOB37Bq9ASf
-h4w7d5he8zqfsCGjaG1OVQNWVAGxQQViWVysfcJohny4PIVAc9KkjCFa/QrkNGjr
-kUiV/PFCwL66iiF666DrXLY=
------END X509 CRL-----`;
-
-},{}],100:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let ContentKey = class ContentKey {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("encrypted_value"),
-    tslib_1.__metadata("design:type", String)
-], ContentKey.prototype, "EncryptedValue", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    tslib_1.__metadata("design:type", String)
-], ContentKey.prototype, "Algorithm", void 0);
-ContentKey = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], ContentKey);
-exports.ContentKey = ContentKey;
-
-},{"ta-json":541,"tslib":554}],101:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-const lcp_contentkey_1 = require("./lcp-contentkey");
-const lcp_userkey_1 = require("./lcp-userkey");
-let Encryption = class Encryption {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("profile"),
-    tslib_1.__metadata("design:type", String)
-], Encryption.prototype, "Profile", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("content_key"),
-    tslib_1.__metadata("design:type", lcp_contentkey_1.ContentKey)
-], Encryption.prototype, "ContentKey", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("user_key"),
-    tslib_1.__metadata("design:type", lcp_userkey_1.UserKey)
-], Encryption.prototype, "UserKey", void 0);
-Encryption = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Encryption);
-exports.Encryption = Encryption;
-
-},{"./lcp-contentkey":100,"./lcp-userkey":106,"ta-json":541,"tslib":554}],102:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Link = class Link {
-    HasRel(rel) {
-        return this.Rel === rel;
-    }
-    SetRel(rel) {
-        this.Rel = rel;
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("length"),
-    tslib_1.__metadata("design:type", Number)
-], Link.prototype, "Length", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("href"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Href", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("title"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Title", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("type"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Type", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("templated"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Templated", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("profile"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Profile", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("hash"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Hash", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rel"),
-    tslib_1.__metadata("design:type", String)
-], Link.prototype, "Rel", void 0);
-Link = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Link);
-exports.Link = Link;
-
-},{"ta-json":541,"tslib":554}],103:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Rights = class Rights {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("print"),
-    tslib_1.__metadata("design:type", Number)
-], Rights.prototype, "Print", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("copy"),
-    tslib_1.__metadata("design:type", Number)
-], Rights.prototype, "Copy", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("start"),
-    tslib_1.__metadata("design:type", Date)
-], Rights.prototype, "Start", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("end"),
-    tslib_1.__metadata("design:type", Date)
-], Rights.prototype, "End", void 0);
-Rights = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Rights);
-exports.Rights = Rights;
-
-},{"ta-json":541,"tslib":554}],104:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let Signature = class Signature {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    tslib_1.__metadata("design:type", String)
-], Signature.prototype, "Algorithm", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("certificate"),
-    tslib_1.__metadata("design:type", String)
-], Signature.prototype, "Certificate", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("value"),
-    tslib_1.__metadata("design:type", String)
-], Signature.prototype, "Value", void 0);
-Signature = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], Signature);
-exports.Signature = Signature;
-
-},{"ta-json":541,"tslib":554}],105:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let User = class User {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("id"),
-    tslib_1.__metadata("design:type", String)
-], User.prototype, "ID", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("email"),
-    tslib_1.__metadata("design:type", String)
-], User.prototype, "Email", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("name"),
-    tslib_1.__metadata("design:type", String)
-], User.prototype, "Name", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("encrypted"),
-    ta_json_1.JsonElementType(String),
-    tslib_1.__metadata("design:type", Array)
-], User.prototype, "Encrypted", void 0);
-User = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], User);
-exports.User = User;
-
-},{"ta-json":541,"tslib":554}],106:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const ta_json_1 = require("ta-json");
-let UserKey = class UserKey {
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("text_hint"),
-    tslib_1.__metadata("design:type", String)
-], UserKey.prototype, "TextHint", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("algorithm"),
-    tslib_1.__metadata("design:type", String)
-], UserKey.prototype, "Algorithm", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("key_check"),
-    tslib_1.__metadata("design:type", String)
-], UserKey.prototype, "KeyCheck", void 0);
-UserKey = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], UserKey);
-exports.UserKey = UserKey;
-
-},{"ta-json":541,"tslib":554}],107:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const bind = require("bindings");
-const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
-const debug_ = require("debug");
-const ta_json_1 = require("ta-json");
-const lcp_certificate_1 = require("./lcp-certificate");
-const lcp_encryption_1 = require("./lcp-encryption");
-const lcp_link_1 = require("./lcp-link");
-const lcp_rights_1 = require("./lcp-rights");
-const lcp_signature_1 = require("./lcp-signature");
-const lcp_user_1 = require("./lcp-user");
-const AES_BLOCK_SIZE = 16;
-const debug = debug_("r2:publication:lcp");
-let LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP", "lcp.node");
-function setLcpNativePluginPath(filepath) {
-    LCP_NATIVE_PLUGIN_PATH = filepath;
-    debug(LCP_NATIVE_PLUGIN_PATH);
-    const exists = fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
-    debug("LCP NATIVE PLUGIN: " + (exists ? "OKAY" : "MISSING"));
-    return exists;
-}
-exports.setLcpNativePluginPath = setLcpNativePluginPath;
-let LCP = class LCP {
-    constructor() {
-        this._usesNativeNodePlugin = undefined;
-    }
-    isNativeNodePlugin() {
-        this.init();
-        return this._usesNativeNodePlugin;
-    }
-    isReady() {
-        if (this.isNativeNodePlugin()) {
-            return typeof this._lcpContext !== "undefined";
-        }
-        return typeof this.ContentKey !== "undefined";
-    }
-    init() {
-        if (typeof this._usesNativeNodePlugin !== "undefined") {
-            return;
-        }
-        this.ContentKey = undefined;
-        this._lcpContext = undefined;
-        if (fs.existsSync(LCP_NATIVE_PLUGIN_PATH)) {
-            debug("LCP _usesNativeNodePlugin");
-            const filePath = path.dirname(LCP_NATIVE_PLUGIN_PATH);
-            const fileName = path.basename(LCP_NATIVE_PLUGIN_PATH);
-            debug(filePath);
-            debug(fileName);
-            this._usesNativeNodePlugin = true;
-            this._lcpNative = bind({
-                bindings: fileName,
-                module_root: filePath,
-                try: [[
-                        "module_root",
-                        "bindings",
-                    ]],
-            });
-        }
-        else {
-            debug("LCP JS impl");
-            this._usesNativeNodePlugin = false;
-            this._lcpNative = undefined;
-        }
-    }
-    decrypt(encryptedContent) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            if (!this.isNativeNodePlugin()) {
-                return Promise.reject("direct decrypt buffer only for native plugin");
-            }
-            if (!this._lcpContext) {
-                return Promise.reject("LCP context not initialized (needs setUserPassphrase)");
-            }
-            return new Promise((resolve, reject) => {
-                this._lcpNative.decrypt(this._lcpContext, encryptedContent, (er, decryptedContent) => {
-                    if (er) {
-                        debug(er);
-                        reject(er);
-                        return;
-                    }
-                    const padding = decryptedContent[decryptedContent.length - 1];
-                    const buff = decryptedContent.slice(0, decryptedContent.length - padding);
-                    resolve(buff);
-                });
-            });
-        });
-    }
-    setUserPassphrase(pass) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            this.init();
-            this.userPassphraseHex = pass;
-            if (!this.userPassphraseHex) {
-                return false;
-            }
-            const check = (this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
-                || this.Encryption.Profile === "http://readium.org/lcp/profile-1.0")
-                && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
-                && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
-            if (!check) {
-                debug("Incorrect LCP fields.");
-                debug(this.Encryption.Profile);
-                debug(this.Encryption.ContentKey.Algorithm);
-                debug(this.Encryption.UserKey.Algorithm);
-                return false;
-            }
-            if (this._usesNativeNodePlugin) {
-                return new Promise((resolve, _reject) => {
-                    this._lcpNative.findOneValidPassphrase(this.JsonSource, [this.userPassphraseHex], (err, validHashedPassphrase) => {
-                        if (err) {
-                            debug(err);
-                            resolve(false);
-                        }
-                        else {
-                            this._lcpNative.createContext(this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, (erro, context) => {
-                                if (erro) {
-                                    debug(erro);
-                                    resolve(false);
-                                    return;
-                                }
-                                this._lcpContext = context;
-                                resolve(true);
-                            });
-                        }
-                    });
-                });
-            }
-            else {
-                const userKey = new Buffer(this.userPassphraseHex, "hex");
-                const keyCheck = new Buffer(this.Encryption.UserKey.KeyCheck, "base64");
-                const encryptedLicenseID = keyCheck;
-                const iv = encryptedLicenseID.slice(0, AES_BLOCK_SIZE);
-                const encrypted = encryptedLicenseID.slice(AES_BLOCK_SIZE);
-                const decrypteds = [];
-                const decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
-                decryptStream.setAutoPadding(false);
-                const buff1 = decryptStream.update(encrypted);
-                if (buff1) {
-                    decrypteds.push(buff1);
-                }
-                const buff2 = decryptStream.final();
-                if (buff2) {
-                    decrypteds.push(buff2);
-                }
-                const decrypted = Buffer.concat(decrypteds);
-                const nPaddingBytes = decrypted[decrypted.length - 1];
-                const size = encrypted.length - nPaddingBytes;
-                const decryptedOut = decrypted.slice(0, size).toString("utf8");
-                if (this.ID !== decryptedOut) {
-                    debug("Failed LCP ID check.");
-                    return false;
-                }
-                const encryptedContentKey = new Buffer(this.Encryption.ContentKey.EncryptedValue, "base64");
-                const iv2 = encryptedContentKey.slice(0, AES_BLOCK_SIZE);
-                const encrypted2 = encryptedContentKey.slice(AES_BLOCK_SIZE);
-                const decrypteds2 = [];
-                const decryptStream2 = crypto.createDecipheriv("aes-256-cbc", userKey, iv2);
-                decryptStream2.setAutoPadding(false);
-                const buff1_ = decryptStream2.update(encrypted2);
-                if (buff1_) {
-                    decrypteds2.push(buff1_);
-                }
-                const buff2_ = decryptStream2.final();
-                if (buff2_) {
-                    decrypteds2.push(buff2_);
-                }
-                const decrypted2 = Buffer.concat(decrypteds2);
-                const nPaddingBytes2 = decrypted2[decrypted2.length - 1];
-                const size2 = encrypted2.length - nPaddingBytes2;
-                this.ContentKey = decrypted2.slice(0, size2);
-            }
-            return true;
-        });
-    }
-};
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("id"),
-    tslib_1.__metadata("design:type", String)
-], LCP.prototype, "ID", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("provider"),
-    tslib_1.__metadata("design:type", String)
-], LCP.prototype, "Provider", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("issued"),
-    tslib_1.__metadata("design:type", Date)
-], LCP.prototype, "Issued", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("updated"),
-    tslib_1.__metadata("design:type", Date)
-], LCP.prototype, "Updated", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("encryption"),
-    tslib_1.__metadata("design:type", lcp_encryption_1.Encryption)
-], LCP.prototype, "Encryption", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("rights"),
-    tslib_1.__metadata("design:type", lcp_rights_1.Rights)
-], LCP.prototype, "Rights", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("user"),
-    tslib_1.__metadata("design:type", lcp_user_1.User)
-], LCP.prototype, "User", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("signature"),
-    tslib_1.__metadata("design:type", lcp_signature_1.Signature)
-], LCP.prototype, "Signature", void 0);
-tslib_1.__decorate([
-    ta_json_1.JsonProperty("links"),
-    ta_json_1.JsonElementType(lcp_link_1.Link),
-    tslib_1.__metadata("design:type", Array)
-], LCP.prototype, "Links", void 0);
-LCP = tslib_1.__decorate([
-    ta_json_1.JsonObject()
-], LCP);
-exports.LCP = LCP;
-
-},{"./lcp-certificate":99,"./lcp-encryption":101,"./lcp-link":102,"./lcp-rights":103,"./lcp-signature":104,"./lcp-user":105,"bindings":202,"crypto":undefined,"debug":267,"fs":undefined,"path":undefined,"ta-json":541,"tslib":554}],108:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Content = class Content {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@src"),
-    tslib_1.__metadata("design:type", String)
-], Content.prototype, "Src", void 0);
-Content = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-    })
-], Content);
-exports.Content = Content;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],109:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const ncx_content_1 = require("./ncx-content");
-let NavPoint = NavPoint_1 = class NavPoint {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navPoint"),
-    xml_js_mapper_1.XmlItemType(NavPoint_1),
-    tslib_1.__metadata("design:type", Array)
-], NavPoint.prototype, "Points", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
-    tslib_1.__metadata("design:type", String)
-], NavPoint.prototype, "Text", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:content"),
-    tslib_1.__metadata("design:type", ncx_content_1.Content)
-], NavPoint.prototype, "Content", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@playOrder"),
-    tslib_1.__metadata("design:type", Number)
-], NavPoint.prototype, "PlayerOrder", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], NavPoint.prototype, "ID", void 0);
-NavPoint = NavPoint_1 = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], NavPoint);
-exports.NavPoint = NavPoint;
-var NavPoint_1;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-content":108,"tslib":554}],110:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const ncx_pagetarget_1 = require("./ncx-pagetarget");
-let PageList = class PageList {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:pageTarget"),
-    xml_js_mapper_1.XmlItemType(ncx_pagetarget_1.PageTarget),
-    tslib_1.__metadata("design:type", Array)
-], PageList.prototype, "PageTarget", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@class"),
-    tslib_1.__metadata("design:type", String)
-], PageList.prototype, "Class", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], PageList.prototype, "ID", void 0);
-PageList = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], PageList);
-exports.PageList = PageList;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-pagetarget":111,"tslib":554}],111:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const ncx_content_1 = require("./ncx-content");
-let PageTarget = class PageTarget {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
-    tslib_1.__metadata("design:type", String)
-], PageTarget.prototype, "Text", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@value"),
-    tslib_1.__metadata("design:type", String)
-], PageTarget.prototype, "Value", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@type"),
-    tslib_1.__metadata("design:type", String)
-], PageTarget.prototype, "Type", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@playOrder"),
-    tslib_1.__metadata("design:type", Number)
-], PageTarget.prototype, "PlayOrder", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], PageTarget.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:content"),
-    tslib_1.__metadata("design:type", ncx_content_1.Content)
-], PageTarget.prototype, "Content", void 0);
-PageTarget = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], PageTarget);
-exports.PageTarget = PageTarget;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-content":108,"tslib":554}],112:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const ncx_navpoint_1 = require("./ncx-navpoint");
-const ncx_pagelist_1 = require("./ncx-pagelist");
-let NCX = class NCX {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:navMap/ncx:navPoint"),
-    xml_js_mapper_1.XmlItemType(ncx_navpoint_1.NavPoint),
-    tslib_1.__metadata("design:type", Array)
-], NCX.prototype, "Points", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("ncx:pageList"),
-    tslib_1.__metadata("design:type", ncx_pagelist_1.PageList)
-], NCX.prototype, "PageList", void 0);
-NCX = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        ncx: "http://www.daisy.org/z3986/2005/ncx/",
-    })
-], NCX);
-exports.NCX = NCX;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-navpoint":109,"./ncx-pagelist":110,"tslib":554}],113:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Author = class Author {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "Data", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@file-as"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "FileAs", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@role"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "Role", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], Author.prototype, "ID", void 0);
-Author = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Author);
-exports.Author = Author;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],114:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let MetaDate = class MetaDate {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    tslib_1.__metadata("design:type", String)
-], MetaDate.prototype, "Data", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@event"),
-    tslib_1.__metadata("design:type", String)
-], MetaDate.prototype, "Event", void 0);
-MetaDate = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], MetaDate);
-exports.MetaDate = MetaDate;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],115:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Identifier = class Identifier {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    tslib_1.__metadata("design:type", String)
-], Identifier.prototype, "Data", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], Identifier.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@scheme"),
-    tslib_1.__metadata("design:type", String)
-], Identifier.prototype, "Scheme", void 0);
-Identifier = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Identifier);
-exports.Identifier = Identifier;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],116:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Manifest = class Manifest {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], Manifest.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@href"),
-    tslib_1.__metadata("design:type", String)
-], Manifest.prototype, "Href", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-type"),
-    tslib_1.__metadata("design:type", String)
-], Manifest.prototype, "MediaType", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-fallback"),
-    tslib_1.__metadata("design:type", String)
-], Manifest.prototype, "Fallback", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@properties"),
-    tslib_1.__metadata("design:type", String)
-], Manifest.prototype, "Properties", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@media-overlay"),
-    tslib_1.__metadata("design:type", String)
-], Manifest.prototype, "MediaOverlay", void 0);
-Manifest = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Manifest);
-exports.Manifest = Manifest;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],117:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const opf_author_1 = require("./opf-author");
-const opf_date_1 = require("./opf-date");
-const opf_identifier_1 = require("./opf-identifier");
-const opf_metafield_1 = require("./opf-metafield");
-const opf_subject_1 = require("./opf-subject");
-const opf_title_1 = require("./opf-title");
-let Metadata = class Metadata {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:title"),
-    xml_js_mapper_1.XmlItemType(opf_title_1.Title),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Title", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:language/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Language", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:identifier"),
-    xml_js_mapper_1.XmlItemType(opf_identifier_1.Identifier),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Identifier", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:creator"),
-    xml_js_mapper_1.XmlItemType(opf_author_1.Author),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Creator", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:subject"),
-    xml_js_mapper_1.XmlItemType(opf_subject_1.Subject),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Subject", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:description/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Description", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:publisher/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Publisher", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:contributor"),
-    xml_js_mapper_1.XmlItemType(opf_author_1.Author),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Contributor", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:date"),
-    xml_js_mapper_1.XmlItemType(opf_date_1.MetaDate),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Date", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:type/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Type", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:format/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Format", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:source/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Source", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:relation/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Relation", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:coverage/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Coverage", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dc:rights/text()"),
-    xml_js_mapper_1.XmlItemType(String),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Rights", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:meta"),
-    xml_js_mapper_1.XmlItemType(opf_metafield_1.Metafield),
-    tslib_1.__metadata("design:type", Array)
-], Metadata.prototype, "Meta", void 0);
-Metadata = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Metadata);
-exports.Metadata = Metadata;
-
-},{"../../_utils/xml-js-mapper":28,"./opf-author":113,"./opf-date":114,"./opf-identifier":115,"./opf-metafield":118,"./opf-subject":122,"./opf-title":123,"tslib":554}],118:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Metafield = class Metafield {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Data", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@name"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Name", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@content"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Content", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@refines"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Refine", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@scheme"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Scheme", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@property"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Property", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-    tslib_1.__metadata("design:type", String)
-], Metafield.prototype, "Lang", void 0);
-Metafield = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Metafield);
-exports.Metafield = Metafield;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],119:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Reference = class Reference {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@href"),
-    tslib_1.__metadata("design:type", String)
-], Reference.prototype, "Href", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@title"),
-    tslib_1.__metadata("design:type", String)
-], Reference.prototype, "Title", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@type"),
-    tslib_1.__metadata("design:type", String)
-], Reference.prototype, "Type", void 0);
-Reference = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], Reference);
-exports.Reference = Reference;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],120:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const opf_spineitem_1 = require("./opf-spineitem");
-let Spine = class Spine {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], Spine.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@toc"),
-    tslib_1.__metadata("design:type", String)
-], Spine.prototype, "Toc", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@page-progression-direction"),
-    tslib_1.__metadata("design:type", String)
-], Spine.prototype, "PageProgression", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:itemref"),
-    xml_js_mapper_1.XmlItemType(opf_spineitem_1.SpineItem),
-    tslib_1.__metadata("design:type", Array)
-], Spine.prototype, "Items", void 0);
-Spine = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Spine);
-exports.Spine = Spine;
-
-},{"../../_utils/xml-js-mapper":28,"./opf-spineitem":121,"tslib":554}],121:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let SpineItem = class SpineItem {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@idref"),
-    tslib_1.__metadata("design:type", String)
-], SpineItem.prototype, "IDref", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@linear"),
-    tslib_1.__metadata("design:type", String)
-], SpineItem.prototype, "Linear", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], SpineItem.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@properties"),
-    tslib_1.__metadata("design:type", String)
-], SpineItem.prototype, "Properties", void 0);
-SpineItem = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], SpineItem);
-exports.SpineItem = SpineItem;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],122:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Subject = class Subject {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Data", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@term"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Term", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@authority"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Authority", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-    tslib_1.__metadata("design:type", String)
-], Subject.prototype, "Lang", void 0);
-Subject = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Subject);
-exports.Subject = Subject;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],123:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Title = class Title {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("text()"),
-    tslib_1.__metadata("design:type", String)
-], Title.prototype, "Data", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-    tslib_1.__metadata("design:type", String)
-], Title.prototype, "ID", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-    tslib_1.__metadata("design:type", String)
-], Title.prototype, "Lang", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@dir"),
-    tslib_1.__metadata("design:type", String)
-], Title.prototype, "Dir", void 0);
-Title = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-        xml: "http://www.w3.org/XML/1998/namespace",
-    })
-], Title);
-exports.Title = Title;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],124:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const opf_manifest_1 = require("./opf-manifest");
-const opf_metadata_1 = require("./opf-metadata");
-const opf_reference_1 = require("./opf-reference");
-const opf_spine_1 = require("./opf-spine");
-let OPF = class OPF {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:metadata"),
-    tslib_1.__metadata("design:type", opf_metadata_1.Metadata)
-], OPF.prototype, "Metadata", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:manifest/opf:item"),
-    xml_js_mapper_1.XmlItemType(opf_manifest_1.Manifest),
-    tslib_1.__metadata("design:type", Array)
-], OPF.prototype, "Manifest", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:spine"),
-    tslib_1.__metadata("design:type", opf_spine_1.Spine)
-], OPF.prototype, "Spine", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("opf:guide/opf:reference"),
-    xml_js_mapper_1.XmlItemType(opf_reference_1.Reference),
-    tslib_1.__metadata("design:type", Array)
-], OPF.prototype, "Guide", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@unique-identifier"),
-    tslib_1.__metadata("design:type", String)
-], OPF.prototype, "UniqueIdentifier", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@dir"),
-    tslib_1.__metadata("design:type", String)
-], OPF.prototype, "Dir", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@version"),
-    tslib_1.__metadata("design:type", String)
-], OPF.prototype, "Version", void 0);
-OPF = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        dc: "http://purl.org/dc/elements/1.1/",
-        opf: "http://www.idpf.org/2007/opf",
-    })
-], OPF);
-exports.OPF = OPF;
-
-},{"../../_utils/xml-js-mapper":28,"./opf-manifest":116,"./opf-metadata":117,"./opf-reference":119,"./opf-spine":120,"tslib":554}],125:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Audio = class Audio {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@src"),
-    tslib_1.__metadata("design:type", String)
-], Audio.prototype, "Src", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@clipBegin"),
-    tslib_1.__metadata("design:type", String)
-], Audio.prototype, "ClipBegin", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
-    tslib_1.__metadata("design:type", String)
-], Audio.prototype, "ClipEnd", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
-    tslib_1.__metadata("design:type", String)
-], Audio.prototype, "EpubType", void 0);
-Audio = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], Audio);
-exports.Audio = Audio;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],126:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const smil_seq_1 = require("./smil-seq");
-let Body = class Body extends smil_seq_1.Seq {
-    constructor() {
-        super(...arguments);
-        this.isBody = true;
-    }
-};
-Body = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], Body);
-exports.Body = Body;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-seq":129,"tslib":554}],127:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const smil_audio_1 = require("./smil-audio");
-const smil_seq_or_par_1 = require("./smil-seq-or-par");
-const smil_text_1 = require("./smil-text");
-let Par = class Par extends smil_seq_or_par_1.SeqOrPar {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:text"),
-    tslib_1.__metadata("design:type", smil_text_1.Text)
-], Par.prototype, "Text", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:audio"),
-    tslib_1.__metadata("design:type", smil_audio_1.Audio)
-], Par.prototype, "Audio", void 0);
-Par = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    }),
-    xml_js_mapper_1.XmlDiscriminatorValue("par")
-], Par);
-exports.Par = Par;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-audio":125,"./smil-seq-or-par":128,"./smil-text":130,"tslib":554}],128:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let SeqOrPar = class SeqOrPar {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
-    tslib_1.__metadata("design:type", String)
-], SeqOrPar.prototype, "EpubType", void 0);
-SeqOrPar = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    }),
-    xml_js_mapper_1.XmlDiscriminatorProperty("localName")
-], SeqOrPar);
-exports.SeqOrPar = SeqOrPar;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],129:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const smil_seq_or_par_1 = require("./smil-seq-or-par");
-let Seq = class Seq extends smil_seq_or_par_1.SeqOrPar {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:par|smil:seq"),
-    xml_js_mapper_1.XmlItemType(smil_seq_or_par_1.SeqOrPar),
-    tslib_1.__metadata("design:type", Array)
-], Seq.prototype, "Children", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@epub:textref"),
-    tslib_1.__metadata("design:type", String)
-], Seq.prototype, "TextRef", void 0);
-Seq = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    }),
-    xml_js_mapper_1.XmlDiscriminatorValue("seq")
-], Seq);
-exports.Seq = Seq;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-seq-or-par":128,"tslib":554}],130:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-let Text = class Text {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@src"),
-    tslib_1.__metadata("design:type", String)
-], Text.prototype, "Src", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
-    tslib_1.__metadata("design:type", String)
-], Text.prototype, "EpubType", void 0);
-Text = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], Text);
-exports.Text = Text;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],131:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-const smil_body_1 = require("./smil-body");
-const smil_par_1 = require("./smil-par");
-let SMIL = class SMIL {
-};
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("smil:body"),
-    tslib_1.__metadata("design:type", smil_body_1.Body)
-], SMIL.prototype, "Body", void 0);
-tslib_1.__decorate([
-    xml_js_mapper_1.XmlXPathSelector("dummy"),
-    tslib_1.__metadata("design:type", smil_par_1.Par)
-], SMIL.prototype, "Par", void 0);
-SMIL = tslib_1.__decorate([
-    xml_js_mapper_1.XmlObject({
-        epub: "http://www.idpf.org/2007/ops",
-        smil: "http://www.w3.org/ns/SMIL",
-    })
-], SMIL);
-exports.SMIL = SMIL;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-body":126,"./smil-par":127,"tslib":554}],132:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const path = require("path");
-const cbz_1 = require("./cbz");
-const epub_1 = require("./epub");
-function PublicationParsePromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        const fileName = path.basename(filePath);
-        const ext = path.extname(fileName).toLowerCase();
-        return /\.epub[3]?$/.test(ext) ?
-            epub_1.EpubParsePromise(filePath) :
-            cbz_1.CbzParsePromise(filePath);
-    });
-}
-exports.PublicationParsePromise = PublicationParsePromise;
-
-},{"./cbz":84,"./epub":87,"path":undefined,"tslib":554}],133:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const crypto = require("crypto");
-const zlib = require("zlib");
-const RangeStream_1 = require("../_utils/stream/RangeStream");
-const debug_ = require("debug");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-const debug = debug_("r2:transformer:lcp");
-const AES_BLOCK_SIZE = 16;
-const readStream = (s, n) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-    return new Promise((resolve, reject) => {
-        const onReadable = () => {
-            const b = s.read(n);
-            s.removeListener("readable", onReadable);
-            s.removeListener("error", reject);
-            resolve(b);
-        };
-        s.on("readable", onReadable);
-        s.on("error", reject);
-    });
-});
-class TransformerLCP {
-    supports(publication, link) {
-        if (!publication.LCP) {
-            return false;
-        }
-        if (!publication.LCP.isReady()) {
-            debug("LCP not ready!");
-            return false;
-        }
-        const check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
-            && (link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile" ||
-                link.Properties.Encrypted.Profile === "http://readium.org/lcp/profile-1.0")
-            && link.Properties.Encrypted.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
-        if (!check) {
-            debug("Incorrect resource LCP fields.");
-            debug(link.Properties.Encrypted.Scheme);
-            debug(link.Properties.Encrypted.Profile);
-            debug(link.Properties.Encrypted.Algorithm);
-            return false;
-        }
-        return true;
-    }
-    transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let plainTextSize = -1;
-            let nativelyDecryptedStream;
-            if (publication.LCP.isNativeNodePlugin()) {
-                debug("DECRYPT: " + link.Href);
-                let fullEncryptedBuffer;
-                try {
-                    fullEncryptedBuffer = yield BufferUtils_1.streamToBufferPromise(stream.stream);
-                }
-                catch (err) {
-                    debug(err);
-                    return Promise.reject("OUCH!");
-                }
-                let nativelyDecryptedBuffer;
-                try {
-                    nativelyDecryptedBuffer = yield publication.LCP.decrypt(fullEncryptedBuffer);
-                }
-                catch (err) {
-                    debug(err);
-                    return Promise.reject("OUCH!");
-                }
-                plainTextSize = nativelyDecryptedBuffer.length;
-                link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
-                if (link.Properties.Encrypted.OriginalLength &&
-                    link.Properties.Encrypted.Compression === "none" &&
-                    link.Properties.Encrypted.OriginalLength !== plainTextSize) {
-                    debug(`############### ` +
-                        `LCP transformStream() LENGTH NOT MATCH ` +
-                        `link.Properties.Encrypted.OriginalLength !== plainTextSize: ` +
-                        `${link.Properties.Encrypted.OriginalLength} !== ${plainTextSize}`);
-                }
-                nativelyDecryptedStream = BufferUtils_1.bufferToStream(nativelyDecryptedBuffer);
-            }
-            else {
-                let cryptoInfo;
-                let cypherBlockPadding = -1;
-                if (link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0) {
-                    plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
-                    cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
-                }
-                else {
-                    try {
-                        cryptoInfo = yield this.getDecryptedSizeStream(publication, link, stream);
-                    }
-                    catch (err) {
-                        debug(err);
-                        return Promise.reject(err);
-                    }
-                    plainTextSize = cryptoInfo.length;
-                    cypherBlockPadding = cryptoInfo.padding;
-                    link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
-                    link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
-                    try {
-                        stream = yield stream.reset();
-                    }
-                    catch (err) {
-                        debug(err);
-                        return Promise.reject(err);
-                    }
-                    if (link.Properties.Encrypted.OriginalLength &&
-                        link.Properties.Encrypted.Compression === "none" &&
-                        link.Properties.Encrypted.OriginalLength !== plainTextSize) {
-                        debug(`############### ` +
-                            `LCP transformStream() LENGTH NOT MATCH ` +
-                            `link.Properties.Encrypted.OriginalLength !== plainTextSize: ` +
-                            `${link.Properties.Encrypted.OriginalLength} !== ${plainTextSize}`);
-                    }
-                }
-            }
-            if (partialByteBegin < 0) {
-                partialByteBegin = 0;
-            }
-            if (partialByteEnd < 0) {
-                partialByteEnd = plainTextSize - 1;
-                if (link.Properties.Encrypted.OriginalLength) {
-                    partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
-                }
-            }
-            let destStream;
-            if (nativelyDecryptedStream) {
-                destStream = nativelyDecryptedStream;
-            }
-            else {
-                let rawDecryptStream;
-                let ivBuffer;
-                if (link.Properties.Encrypted.CypherBlockIV) {
-                    ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
-                    const cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
-                    stream.stream.pipe(cypherRangeStream);
-                    rawDecryptStream = cypherRangeStream;
-                }
-                else {
-                    try {
-                        ivBuffer = yield readStream(stream.stream, AES_BLOCK_SIZE);
-                    }
-                    catch (err) {
-                        debug(err);
-                        return Promise.reject(err);
-                    }
-                    link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
-                    stream.stream.resume();
-                    rawDecryptStream = stream.stream;
-                }
-                const decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
-                decryptStream.setAutoPadding(false);
-                rawDecryptStream.pipe(decryptStream);
-                destStream = decryptStream;
-                if (link.Properties.Encrypted.CypherBlockPadding) {
-                    const cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
-                    destStream.pipe(cypherUnpaddedStream);
-                    destStream = cypherUnpaddedStream;
-                }
-            }
-            if (link.Properties.Encrypted.Compression === "deflate") {
-                const inflateStream = zlib.createInflateRaw();
-                destStream.pipe(inflateStream);
-                destStream = inflateStream;
-            }
-            const l = link.Properties.Encrypted.OriginalLength ?
-                link.Properties.Encrypted.OriginalLength : plainTextSize;
-            if (isPartialByteRangeRequest) {
-                const rangeStream = new RangeStream_1.RangeStream(partialByteBegin, partialByteEnd, l);
-                destStream.pipe(rangeStream);
-                destStream = rangeStream;
-            }
-            const sal = {
-                length: l,
-                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    let resetedStream;
-                    try {
-                        resetedStream = yield stream.reset();
-                    }
-                    catch (err) {
-                        debug(err);
-                        return Promise.reject(err);
-                    }
-                    if (!resetedStream) {
-                        return Promise.reject("??");
-                    }
-                    return this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
-                }),
-                stream: destStream,
-            };
-            return Promise.resolve(sal);
-        });
-    }
-    getDecryptedSizeStream(publication, _link, stream) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
-                const TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
-                if (stream.length < TWO_AES_BLOCK_SIZE) {
-                    reject("crypto err");
-                    return;
-                }
-                const readPos = stream.length - TWO_AES_BLOCK_SIZE;
-                const cypherRangeStream = new RangeStream_1.RangeStream(readPos, readPos + TWO_AES_BLOCK_SIZE - 1, stream.length);
-                stream.stream.pipe(cypherRangeStream);
-                const decrypteds = [];
-                cypherRangeStream.on("readable", () => {
-                    const ivBuffer = cypherRangeStream.read(AES_BLOCK_SIZE);
-                    if (!ivBuffer) {
-                        return;
-                    }
-                    const encrypted = cypherRangeStream.read(AES_BLOCK_SIZE);
-                    const decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
-                    decryptStream.setAutoPadding(false);
-                    const buff1 = decryptStream.update(encrypted);
-                    if (buff1) {
-                        decrypteds.push(buff1);
-                    }
-                    const buff2 = decryptStream.final();
-                    if (buff2) {
-                        decrypteds.push(buff2);
-                    }
-                });
-                cypherRangeStream.on("end", () => {
-                    const decrypted = Buffer.concat(decrypteds);
-                    const nPaddingBytes = decrypted[AES_BLOCK_SIZE - 1];
-                    const size = stream.length - AES_BLOCK_SIZE - nPaddingBytes;
-                    const res = {
-                        length: size,
-                        padding: nPaddingBytes,
-                    };
-                    resolve(res);
-                });
-                cypherRangeStream.on("error", () => {
-                    reject("DECRYPT err");
-                });
-            });
-        });
-    }
-}
-exports.TransformerLCP = TransformerLCP;
-
-},{"../_utils/stream/BufferUtils":5,"../_utils/stream/RangeStream":6,"crypto":undefined,"debug":267,"tslib":554,"zlib":undefined}],134:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-class TransformerObfAdobe {
-    supports(_publication, link) {
-        return link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC";
-    }
-    transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let data;
-            try {
-                data = yield BufferUtils_1.streamToBufferPromise(stream.stream);
-            }
-            catch (err) {
-                return Promise.reject(err);
-            }
-            let buff;
-            try {
-                buff = yield this.transformBuffer(publication, link, data);
-            }
-            catch (err) {
-                return Promise.reject(err);
-            }
-            const sal = {
-                length: buff.length,
-                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    return Promise.resolve(sal);
-                }),
-                stream: BufferUtils_1.bufferToStream(buff),
-            };
-            return Promise.resolve(sal);
-        });
-    }
-    transformBuffer(publication, _link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let pubID = publication.Metadata.Identifier;
-            pubID = pubID.replace("urn:uuid:", "");
-            pubID = pubID.replace(/-/g, "");
-            pubID = pubID.replace(/\s/g, "");
-            const key = [];
-            for (let i = 0; i < 16; i++) {
-                const byteHex = pubID.substr(i * 2, 2);
-                const byteNumer = parseInt(byteHex, 16);
-                key.push(byteNumer);
-            }
-            const prefixLength = 1024;
-            const zipDataPrefix = data.slice(0, prefixLength);
-            for (let i = 0; i < prefixLength; i++) {
-                zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
-            }
-            const zipDataRemainder = data.slice(prefixLength);
-            return Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]));
-        });
-    }
-}
-exports.TransformerObfAdobe = TransformerObfAdobe;
-
-},{"../_utils/stream/BufferUtils":5,"tslib":554}],135:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const crypto = require("crypto");
-const BufferUtils_1 = require("../_utils/stream/BufferUtils");
-class TransformerObfIDPF {
-    supports(_publication, link) {
-        return link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding";
-    }
-    transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let data;
-            try {
-                data = yield BufferUtils_1.streamToBufferPromise(stream.stream);
-            }
-            catch (err) {
-                return Promise.reject(err);
-            }
-            let buff;
-            try {
-                buff = yield this.transformBuffer(publication, link, data);
-            }
-            catch (err) {
-                return Promise.reject(err);
-            }
-            const sal = {
-                length: buff.length,
-                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    return Promise.resolve(sal);
-                }),
-                stream: BufferUtils_1.bufferToStream(buff),
-            };
-            return Promise.resolve(sal);
-        });
-    }
-    transformBuffer(publication, _link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let pubID = publication.Metadata.Identifier;
-            pubID = pubID.replace(/\s/g, "");
-            const checkSum = crypto.createHash("sha1");
-            checkSum.update(pubID);
-            const key = checkSum.digest();
-            const prefixLength = 1040;
-            const zipDataPrefix = data.slice(0, prefixLength);
-            for (let i = 0; i < prefixLength; i++) {
-                zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
-            }
-            const zipDataRemainder = data.slice(prefixLength);
-            return Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]));
-        });
-    }
-}
-exports.TransformerObfIDPF = TransformerObfIDPF;
-
-},{"../_utils/stream/BufferUtils":5,"crypto":undefined,"tslib":554}],136:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const transformer_lcp_1 = require("./transformer-lcp");
-const transformer_obf_adobe_1 = require("./transformer-obf-adobe");
-const transformer_obf_idpf_1 = require("./transformer-obf-idpf");
-class Transformers {
-    constructor() {
-        this.transformers = [];
-    }
-    static instance() {
-        return Transformers._instance;
-    }
-    static tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            return Transformers.instance()._tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
-        });
-    }
-    add(transformer) {
-        if (this.transformers.indexOf(transformer) < 0) {
-            this.transformers.push(transformer);
-        }
-    }
-    _tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function* () {
-            let transformedData;
-            const transformer = this.transformers.find((t) => {
-                if (!t.supports(publication, link)) {
-                    return false;
-                }
-                transformedData = t.transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
-                if (transformedData) {
-                    return true;
-                }
-                return false;
-            });
-            if (transformer && transformedData) {
-                return transformedData;
-            }
-            return Promise.reject("transformers fail (stream)");
-        });
-    }
-}
-Transformers._instance = new Transformers();
-exports.Transformers = Transformers;
-Transformers.instance().add(new transformer_obf_adobe_1.TransformerObfAdobe());
-Transformers.instance().add(new transformer_obf_idpf_1.TransformerObfIDPF());
-Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
-
-},{"./transformer-lcp":133,"./transformer-obf-adobe":134,"./transformer-obf-idpf":135,"tslib":554}],137:[function(require,module,exports){
+},{"./server-assets":1,"./server-manifestjson":3,"./server-mediaoverlays":4,"./server-opds":5,"./server-opds1-2":6,"./server-opds2":7,"./server-pub":8,"./server-url":10,"child_process":undefined,"crypto":undefined,"css2json":139,"debug":142,"express":158,"fs":undefined,"json-markup":280,"path":undefined,"r2-shared-js/dist/es7-es2016/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es7-es2016/src/opds/opds2/opds2":407,"r2-shared-js/dist/es7-es2016/src/parser/publication-parser":456,"ta-json":540,"tmp":545,"tslib":553}],12:[function(require,module,exports){
 /*!
  * accepts
  * Copyright(c) 2014 Jonathan Ong
@@ -9645,7 +1996,7 @@ function validMime (type) {
   return typeof type === 'string'
 }
 
-},{"mime-types":429,"negotiator":440}],138:[function(require,module,exports){
+},{"mime-types":303,"negotiator":314}],13:[function(require,module,exports){
 'use strict';
 
 var KEYWORDS = [
@@ -9696,7 +2047,7 @@ module.exports = function (metaSchema, keywordsJsonPointers) {
   return metaSchema;
 };
 
-},{}],139:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var compileSchema = require('./compile')
@@ -10200,7 +2551,7 @@ function setLogger(self) {
 
 function noop() {}
 
-},{"./$data":138,"./cache":140,"./compile":145,"./compile/async":142,"./compile/error_classes":143,"./compile/formats":144,"./compile/resolve":146,"./compile/rules":147,"./compile/schema_obj":148,"./compile/util":150,"./keyword":174,"./patternGroups":175,"./refs/$data.json":176,"./refs/json-schema-draft-06.json":177,"co":254,"fast-json-stable-stringify":302}],140:[function(require,module,exports){
+},{"./$data":13,"./cache":15,"./compile":20,"./compile/async":17,"./compile/error_classes":18,"./compile/formats":19,"./compile/resolve":21,"./compile/rules":22,"./compile/schema_obj":23,"./compile/util":25,"./keyword":49,"./patternGroups":50,"./refs/$data.json":51,"./refs/json-schema-draft-06.json":52,"co":129,"fast-json-stable-stringify":177}],15:[function(require,module,exports){
 'use strict';
 
 
@@ -10228,7 +2579,7 @@ Cache.prototype.clear = function Cache_clear() {
   this._cache = {};
 };
 
-},{}],141:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 //all requires must be explicit because browserify won't work with dynamic requires
@@ -10261,7 +2612,7 @@ module.exports = {
   validate: require('../dotjs/validate')
 };
 
-},{"../dotjs/_limit":151,"../dotjs/_limitItems":152,"../dotjs/_limitLength":153,"../dotjs/_limitProperties":154,"../dotjs/allOf":155,"../dotjs/anyOf":156,"../dotjs/const":157,"../dotjs/contains":158,"../dotjs/dependencies":160,"../dotjs/enum":161,"../dotjs/format":162,"../dotjs/items":163,"../dotjs/multipleOf":164,"../dotjs/not":165,"../dotjs/oneOf":166,"../dotjs/pattern":167,"../dotjs/properties":168,"../dotjs/propertyNames":169,"../dotjs/ref":170,"../dotjs/required":171,"../dotjs/uniqueItems":172,"../dotjs/validate":173}],142:[function(require,module,exports){
+},{"../dotjs/_limit":26,"../dotjs/_limitItems":27,"../dotjs/_limitLength":28,"../dotjs/_limitProperties":29,"../dotjs/allOf":30,"../dotjs/anyOf":31,"../dotjs/const":32,"../dotjs/contains":33,"../dotjs/dependencies":35,"../dotjs/enum":36,"../dotjs/format":37,"../dotjs/items":38,"../dotjs/multipleOf":39,"../dotjs/not":40,"../dotjs/oneOf":41,"../dotjs/pattern":42,"../dotjs/properties":43,"../dotjs/propertyNames":44,"../dotjs/ref":45,"../dotjs/required":46,"../dotjs/uniqueItems":47,"../dotjs/validate":48}],17:[function(require,module,exports){
 'use strict';
 
 var MissingRefError = require('./error_classes').MissingRef;
@@ -10353,7 +2704,7 @@ function compileAsync(schema, meta, callback) {
   }
 }
 
-},{"./error_classes":143}],143:[function(require,module,exports){
+},{"./error_classes":18}],18:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve');
@@ -10389,7 +2740,7 @@ function errorSubclass(Subclass) {
   return Subclass;
 }
 
-},{"./resolve":146}],144:[function(require,module,exports){
+},{"./resolve":21}],19:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -10526,7 +2877,7 @@ function regex(str) {
   }
 }
 
-},{"./util":150}],145:[function(require,module,exports){
+},{"./util":25}],20:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve')
@@ -10908,7 +3259,7 @@ function vars(arr, statement) {
   return code;
 }
 
-},{"../dotjs/validate":173,"./error_classes":143,"./resolve":146,"./util":150,"co":254,"fast-deep-equal":301,"fast-json-stable-stringify":302}],146:[function(require,module,exports){
+},{"../dotjs/validate":48,"./error_classes":18,"./resolve":21,"./util":25,"co":129,"fast-deep-equal":176,"fast-json-stable-stringify":177}],21:[function(require,module,exports){
 'use strict';
 
 var url = require('url')
@@ -11181,7 +3532,7 @@ function resolveIds(schema) {
   return localRefs;
 }
 
-},{"./schema_obj":148,"./util":150,"fast-deep-equal":301,"json-schema-traverse":407,"url":undefined}],147:[function(require,module,exports){
+},{"./schema_obj":23,"./util":25,"fast-deep-equal":176,"json-schema-traverse":281,"url":undefined}],22:[function(require,module,exports){
 'use strict';
 
 var ruleModules = require('./_rules')
@@ -11241,7 +3592,7 @@ module.exports = function rules() {
   return RULES;
 };
 
-},{"./_rules":141,"./util":150}],148:[function(require,module,exports){
+},{"./_rules":16,"./util":25}],23:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -11252,7 +3603,7 @@ function SchemaObject(obj) {
   util.copy(obj, this);
 }
 
-},{"./util":150}],149:[function(require,module,exports){
+},{"./util":25}],24:[function(require,module,exports){
 'use strict';
 
 // https://mathiasbynens.be/notes/javascript-encoding
@@ -11274,7 +3625,7 @@ module.exports = function ucs2length(str) {
   return length;
 };
 
-},{}],150:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 'use strict';
 
 
@@ -11543,7 +3894,7 @@ function unescapeJsonPointer(str) {
   return str.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-},{"./ucs2length":149,"fast-deep-equal":301}],151:[function(require,module,exports){
+},{"./ucs2length":24,"fast-deep-equal":176}],26:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limit(it, $keyword, $ruleType) {
   var out = ' ';
@@ -11694,7 +4045,7 @@ module.exports = function generate__limit(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],152:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -11772,7 +4123,7 @@ module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],153:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   var out = ' ';
@@ -11855,7 +4206,7 @@ module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],154:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -11933,7 +4284,7 @@ module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],155:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 module.exports = function generate_allOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -11978,7 +4329,7 @@ module.exports = function generate_allOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],156:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 'use strict';
 module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12053,7 +4404,7 @@ module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],157:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 'use strict';
 module.exports = function generate_const(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12110,7 +4461,7 @@ module.exports = function generate_const(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],158:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 'use strict';
 module.exports = function generate_contains(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12193,7 +4544,7 @@ module.exports = function generate_contains(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],159:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 module.exports = function generate_custom(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12421,7 +4772,7 @@ module.exports = function generate_custom(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],160:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 'use strict';
 module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12590,7 +4941,7 @@ module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],161:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 'use strict';
 module.exports = function generate_enum(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12657,7 +5008,7 @@ module.exports = function generate_enum(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],162:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 module.exports = function generate_format(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12808,7 +5159,7 @@ module.exports = function generate_format(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],163:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 'use strict';
 module.exports = function generate_items(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12950,7 +5301,7 @@ module.exports = function generate_items(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],164:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13028,7 +5379,7 @@ module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],165:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 'use strict';
 module.exports = function generate_not(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13113,7 +5464,7 @@ module.exports = function generate_not(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],166:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 'use strict';
 module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13185,7 +5536,7 @@ module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],167:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 'use strict';
 module.exports = function generate_pattern(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13261,7 +5612,7 @@ module.exports = function generate_pattern(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],168:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 'use strict';
 module.exports = function generate_properties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13731,7 +6082,7 @@ module.exports = function generate_properties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],169:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 'use strict';
 module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13814,7 +6165,7 @@ module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],170:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 'use strict';
 module.exports = function generate_ref(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13939,7 +6290,7 @@ module.exports = function generate_ref(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],171:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 'use strict';
 module.exports = function generate_required(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14209,7 +6560,7 @@ module.exports = function generate_required(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],172:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 'use strict';
 module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14282,7 +6633,7 @@ module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],173:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 'use strict';
 module.exports = function generate_validate(it, $keyword, $ruleType) {
   var out = '';
@@ -14742,7 +7093,7 @@ module.exports = function generate_validate(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],174:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 'use strict';
 
 var IDENTIFIER = /^[a-z_$][a-z0-9_$-]*$/i;
@@ -14879,7 +7230,7 @@ function removeKeyword(keyword) {
   return this;
 }
 
-},{"./dotjs/custom":159}],175:[function(require,module,exports){
+},{"./dotjs/custom":34}],50:[function(require,module,exports){
 'use strict';
 
 var META_SCHEMA_ID = 'http://json-schema.org/draft-06/schema';
@@ -14917,7 +7268,7 @@ module.exports = function (ajv) {
   ajv.RULES.all.properties.implements.push('patternGroups');
 };
 
-},{}],176:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-06/schema#",
     "$id": "https://raw.githubusercontent.com/epoberezkin/ajv/master/lib/refs/$data.json#",
@@ -14936,7 +7287,7 @@ module.exports={
     "additionalProperties": false
 }
 
-},{}],177:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-06/schema#",
     "$id": "http://json-schema.org/draft-06/schema#",
@@ -15092,7 +7443,7 @@ module.exports={
     "default": {}
 }
 
-},{}],178:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 'use strict'
 
 /**
@@ -15158,7 +7509,7 @@ function arrayFlatten (array, depth) {
   return flattenWithDepth(array, [], depth)
 }
 
-},{}],179:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 
@@ -15173,7 +7524,7 @@ module.exports = {
 
 };
 
-},{}],180:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 var errors = require('./errors');
@@ -15202,7 +7553,7 @@ for (var e in errors) {
     module.exports[e] = errors[e];
 }
 
-},{"./errors":179,"./reader":181,"./types":182,"./writer":183}],181:[function(require,module,exports){
+},{"./errors":54,"./reader":56,"./types":57,"./writer":58}],56:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 var assert = require('assert');
@@ -15465,7 +7816,7 @@ Reader.prototype._readTag = function(tag) {
 
 module.exports = Reader;
 
-},{"./errors":179,"./types":182,"assert":undefined}],182:[function(require,module,exports){
+},{"./errors":54,"./types":57,"assert":undefined}],57:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 
@@ -15503,7 +7854,7 @@ module.exports = {
   Context: 128
 };
 
-},{}],183:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 var assert = require('assert');
@@ -15821,7 +8172,7 @@ Writer.prototype._ensure = function(len) {
 
 module.exports = Writer;
 
-},{"./errors":179,"./types":182,"assert":undefined}],184:[function(require,module,exports){
+},{"./errors":54,"./types":57,"assert":undefined}],59:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 // If you have no idea what ASN.1 or BER is, see this:
@@ -15843,7 +8194,7 @@ module.exports = {
 
 };
 
-},{"./ber/index":180}],185:[function(require,module,exports){
+},{"./ber/index":55}],60:[function(require,module,exports){
 // Copyright (c) 2012, Mark Cavage. All rights reserved.
 // Copyright 2015 Joyent, Inc.
 
@@ -16056,7 +8407,7 @@ function _setExports(ndebug) {
 
 module.exports = _setExports(process.env.NODE_NDEBUG);
 
-},{"assert":undefined,"stream":undefined,"util":undefined}],186:[function(require,module,exports){
+},{"assert":undefined,"stream":undefined,"util":undefined}],61:[function(require,module,exports){
 module.exports =
 {
   parallel      : require('./parallel.js'),
@@ -16064,7 +8415,7 @@ module.exports =
   serialOrdered : require('./serialOrdered.js')
 };
 
-},{"./parallel.js":193,"./serial.js":194,"./serialOrdered.js":195}],187:[function(require,module,exports){
+},{"./parallel.js":68,"./serial.js":69,"./serialOrdered.js":70}],62:[function(require,module,exports){
 // API
 module.exports = abort;
 
@@ -16095,7 +8446,7 @@ function clean(key)
   }
 }
 
-},{}],188:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 var defer = require('./defer.js');
 
 // API
@@ -16131,7 +8482,7 @@ function async(callback)
   };
 }
 
-},{"./defer.js":189}],189:[function(require,module,exports){
+},{"./defer.js":64}],64:[function(require,module,exports){
 module.exports = defer;
 
 /**
@@ -16159,7 +8510,7 @@ function defer(fn)
   }
 }
 
-},{}],190:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 var async = require('./async.js')
   , abort = require('./abort.js')
   ;
@@ -16236,7 +8587,7 @@ function runJob(iterator, key, item, callback)
   return aborter;
 }
 
-},{"./abort.js":187,"./async.js":188}],191:[function(require,module,exports){
+},{"./abort.js":62,"./async.js":63}],66:[function(require,module,exports){
 // API
 module.exports = state;
 
@@ -16275,7 +8626,7 @@ function state(list, sortMethod)
   return initState;
 }
 
-},{}],192:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 var abort = require('./abort.js')
   , async = require('./async.js')
   ;
@@ -16306,7 +8657,7 @@ function terminator(callback)
   async(callback)(null, this.results);
 }
 
-},{"./abort.js":187,"./async.js":188}],193:[function(require,module,exports){
+},{"./abort.js":62,"./async.js":63}],68:[function(require,module,exports){
 var iterate    = require('./lib/iterate.js')
   , initState  = require('./lib/state.js')
   , terminator = require('./lib/terminator.js')
@@ -16351,7 +8702,7 @@ function parallel(list, iterator, callback)
   return terminator.bind(state, callback);
 }
 
-},{"./lib/iterate.js":190,"./lib/state.js":191,"./lib/terminator.js":192}],194:[function(require,module,exports){
+},{"./lib/iterate.js":65,"./lib/state.js":66,"./lib/terminator.js":67}],69:[function(require,module,exports){
 var serialOrdered = require('./serialOrdered.js');
 
 // Public API
@@ -16370,7 +8721,7 @@ function serial(list, iterator, callback)
   return serialOrdered(list, iterator, null, callback);
 }
 
-},{"./serialOrdered.js":195}],195:[function(require,module,exports){
+},{"./serialOrdered.js":70}],70:[function(require,module,exports){
 var iterate    = require('./lib/iterate.js')
   , initState  = require('./lib/state.js')
   , terminator = require('./lib/terminator.js')
@@ -16447,7 +8798,7 @@ function descending(a, b)
   return -1 * ascending(a, b);
 }
 
-},{"./lib/iterate.js":190,"./lib/state.js":191,"./lib/terminator.js":192}],196:[function(require,module,exports){
+},{"./lib/iterate.js":65,"./lib/state.js":66,"./lib/terminator.js":67}],71:[function(require,module,exports){
 
 /*!
  *  Copyright 2010 LearnBoost <dev@learnboost.com>
@@ -16661,7 +9012,7 @@ function canonicalizeResource (resource) {
 }
 module.exports.canonicalizeResource = canonicalizeResource
 
-},{"crypto":undefined,"url":undefined}],197:[function(require,module,exports){
+},{"crypto":undefined,"url":undefined}],72:[function(require,module,exports){
 var aws4 = exports,
     url = require('url'),
     querystring = require('querystring'),
@@ -16995,7 +9346,7 @@ aws4.sign = function(request, credentials) {
   return new RequestSigner(request, credentials).sign()
 }
 
-},{"./lru":198,"crypto":undefined,"querystring":undefined,"url":undefined}],198:[function(require,module,exports){
+},{"./lru":73,"crypto":undefined,"querystring":undefined,"url":undefined}],73:[function(require,module,exports){
 module.exports = function(size) {
   return new LruCache(size)
 }
@@ -17093,7 +9444,7 @@ function DoublyLinkedNode(key, val) {
   this.next = null
 }
 
-},{}],199:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 'use strict';
 module.exports = balanced;
 function balanced(a, b, str) {
@@ -17154,7 +9505,7 @@ function range(a, b, str) {
   return result;
 }
 
-},{}],200:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 /*!
  * basic-auth
  * Copyright(c) 2013 TJ Holowaychuk
@@ -17289,7 +9640,7 @@ function Credentials (name, pass) {
   this.pass = pass
 }
 
-},{"safe-buffer":484}],201:[function(require,module,exports){
+},{"safe-buffer":483}],76:[function(require,module,exports){
 'use strict';
 
 var crypto_hash_sha512 = require('tweetnacl').lowlevel.crypto_hash;
@@ -17847,7 +10198,7 @@ module.exports = {
       pbkdf: bcrypt_pbkdf
 };
 
-},{"tweetnacl":556}],202:[function(require,module,exports){
+},{"tweetnacl":555}],77:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -18020,7 +10371,7 @@ exports.getRoot = function getRoot (file) {
   }
 }
 
-},{"fs":undefined,"path":undefined}],203:[function(require,module,exports){
+},{"fs":undefined,"path":undefined}],78:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 var SomePromiseArray = Promise._SomePromiseArray;
@@ -18043,7 +10394,7 @@ Promise.prototype.any = function () {
 
 };
 
-},{}],204:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 "use strict";
 var firstLineError;
 try {throw new Error(); } catch (e) {firstLineError = e;}
@@ -18206,7 +10557,7 @@ Async.prototype._reset = function () {
 module.exports = Async;
 module.exports.firstLineError = firstLineError;
 
-},{"./queue":228,"./schedule":231,"./util":238}],205:[function(require,module,exports){
+},{"./queue":103,"./schedule":106,"./util":113}],80:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL, tryConvertToPromise, debug) {
 var calledBind = false;
@@ -18275,7 +10626,7 @@ Promise.bind = function (thisArg, value) {
 };
 };
 
-},{}],206:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 "use strict";
 var old;
 if (typeof Promise !== "undefined") old = Promise;
@@ -18288,7 +10639,7 @@ var bluebird = require("./promise")();
 bluebird.noConflict = noConflict;
 module.exports = bluebird;
 
-},{"./promise":224}],207:[function(require,module,exports){
+},{"./promise":99}],82:[function(require,module,exports){
 "use strict";
 var cr = Object.create;
 if (cr) {
@@ -18413,7 +10764,7 @@ Promise.prototype.get = function (propertyName) {
 };
 };
 
-},{"./util":238}],208:[function(require,module,exports){
+},{"./util":113}],83:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, PromiseArray, apiRejection, debug) {
 var util = require("./util");
@@ -18544,7 +10895,7 @@ Promise.prototype._resultCancelled = function() {
 
 };
 
-},{"./util":238}],209:[function(require,module,exports){
+},{"./util":113}],84:[function(require,module,exports){
 "use strict";
 module.exports = function(NEXT_FILTER) {
 var util = require("./util");
@@ -18588,7 +10939,7 @@ function catchFilter(instances, cb, promise) {
 return catchFilter;
 };
 
-},{"./es5":215,"./util":238}],210:[function(require,module,exports){
+},{"./es5":90,"./util":113}],85:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 var longStackTraces = false;
@@ -18659,7 +11010,7 @@ Context.activateLongStackTraces = function() {
 return Context;
 };
 
-},{}],211:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, Context) {
 var getDomain = Promise._getDomain;
@@ -19580,7 +11931,7 @@ return {
 };
 };
 
-},{"./errors":214,"./util":238}],212:[function(require,module,exports){
+},{"./errors":89,"./util":113}],87:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 function returner() {
@@ -19628,7 +11979,7 @@ Promise.prototype.catchReturn = function (value) {
 };
 };
 
-},{}],213:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var PromiseReduce = Promise.reduce;
@@ -19660,7 +12011,7 @@ Promise.mapSeries = PromiseMapSeries;
 };
 
 
-},{}],214:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 "use strict";
 var es5 = require("./es5");
 var Objectfreeze = es5.freeze;
@@ -19778,7 +12129,7 @@ module.exports = {
     Warning: Warning
 };
 
-},{"./es5":215,"./util":238}],215:[function(require,module,exports){
+},{"./es5":90,"./util":113}],90:[function(require,module,exports){
 var isES5 = (function(){
     "use strict";
     return this === undefined;
@@ -19860,7 +12211,7 @@ if (isES5) {
     };
 }
 
-},{}],216:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var PromiseMap = Promise.map;
@@ -19874,7 +12225,7 @@ Promise.filter = function (promises, fn, options) {
 };
 };
 
-},{}],217:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, tryConvertToPromise, NEXT_FILTER) {
 var util = require("./util");
@@ -20022,7 +12373,7 @@ Promise.prototype.tapCatch = function (handlerOrPredicate) {
 return PassThroughHandlerContext;
 };
 
-},{"./catch_filter":209,"./util":238}],218:[function(require,module,exports){
+},{"./catch_filter":84,"./util":113}],93:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise,
                           apiRejection,
@@ -20247,7 +12598,7 @@ Promise.spawn = function (generatorFunction) {
 };
 };
 
-},{"./errors":214,"./util":238}],219:[function(require,module,exports){
+},{"./errors":89,"./util":113}],94:[function(require,module,exports){
 "use strict";
 module.exports =
 function(Promise, PromiseArray, tryConvertToPromise, INTERNAL, async,
@@ -20417,7 +12768,7 @@ Promise.join = function () {
 
 };
 
-},{"./util":238}],220:[function(require,module,exports){
+},{"./util":113}],95:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise,
                           PromiseArray,
@@ -20587,7 +12938,7 @@ Promise.map = function (promises, fn, options, _filter) {
 
 };
 
-},{"./util":238}],221:[function(require,module,exports){
+},{"./util":113}],96:[function(require,module,exports){
 "use strict";
 module.exports =
 function(Promise, INTERNAL, tryConvertToPromise, apiRejection, debug) {
@@ -20644,7 +12995,7 @@ Promise.prototype._resolveFromSyncValue = function (value) {
 };
 };
 
-},{"./util":238}],222:[function(require,module,exports){
+},{"./util":113}],97:[function(require,module,exports){
 "use strict";
 var util = require("./util");
 var maybeWrapAsError = util.maybeWrapAsError;
@@ -20697,7 +13048,7 @@ function nodebackForPromise(promise, multiArgs) {
 
 module.exports = nodebackForPromise;
 
-},{"./errors":214,"./es5":215,"./util":238}],223:[function(require,module,exports){
+},{"./errors":89,"./es5":90,"./util":113}],98:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 var util = require("./util");
@@ -20757,7 +13108,7 @@ Promise.prototype.asCallback = Promise.prototype.nodeify = function (nodeback,
 };
 };
 
-},{"./util":238}],224:[function(require,module,exports){
+},{"./util":113}],99:[function(require,module,exports){
 "use strict";
 module.exports = function() {
 var makeSelfResolutionError = function () {
@@ -21534,7 +13885,7 @@ require('./any.js')(Promise);
 
 };
 
-},{"./any.js":203,"./async":204,"./bind":205,"./call_get.js":207,"./cancel":208,"./catch_filter":209,"./context":210,"./debuggability":211,"./direct_resolve":212,"./each.js":213,"./errors":214,"./es5":215,"./filter.js":216,"./finally":217,"./generators.js":218,"./join":219,"./map.js":220,"./method":221,"./nodeback":222,"./nodeify.js":223,"./promise_array":225,"./promisify.js":226,"./props.js":227,"./race.js":229,"./reduce.js":230,"./settle.js":232,"./some.js":233,"./synchronous_inspection":234,"./thenables":235,"./timers.js":236,"./using.js":237,"./util":238}],225:[function(require,module,exports){
+},{"./any.js":78,"./async":79,"./bind":80,"./call_get.js":82,"./cancel":83,"./catch_filter":84,"./context":85,"./debuggability":86,"./direct_resolve":87,"./each.js":88,"./errors":89,"./es5":90,"./filter.js":91,"./finally":92,"./generators.js":93,"./join":94,"./map.js":95,"./method":96,"./nodeback":97,"./nodeify.js":98,"./promise_array":100,"./promisify.js":101,"./props.js":102,"./race.js":104,"./reduce.js":105,"./settle.js":107,"./some.js":108,"./synchronous_inspection":109,"./thenables":110,"./timers.js":111,"./using.js":112,"./util":113}],100:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL, tryConvertToPromise,
     apiRejection, Proxyable) {
@@ -21721,7 +14072,7 @@ PromiseArray.prototype.getActualLength = function (len) {
 return PromiseArray;
 };
 
-},{"./util":238}],226:[function(require,module,exports){
+},{"./util":113}],101:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var THIS = {};
@@ -22037,7 +14388,7 @@ Promise.promisifyAll = function (target, options) {
 };
 
 
-},{"./errors":214,"./nodeback":222,"./util":238}],227:[function(require,module,exports){
+},{"./errors":89,"./nodeback":97,"./util":113}],102:[function(require,module,exports){
 "use strict";
 module.exports = function(
     Promise, PromiseArray, tryConvertToPromise, apiRejection) {
@@ -22157,7 +14508,7 @@ Promise.props = function (promises) {
 };
 };
 
-},{"./es5":215,"./util":238}],228:[function(require,module,exports){
+},{"./es5":90,"./util":113}],103:[function(require,module,exports){
 "use strict";
 function arrayMove(src, srcIndex, dst, dstIndex, len) {
     for (var j = 0; j < len; ++j) {
@@ -22232,7 +14583,7 @@ Queue.prototype._resizeTo = function (capacity) {
 
 module.exports = Queue;
 
-},{}],229:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 "use strict";
 module.exports = function(
     Promise, INTERNAL, tryConvertToPromise, apiRejection) {
@@ -22283,7 +14634,7 @@ Promise.prototype.race = function () {
 
 };
 
-},{"./util":238}],230:[function(require,module,exports){
+},{"./util":113}],105:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise,
                           PromiseArray,
@@ -22457,7 +14808,7 @@ function gotValue(value) {
 }
 };
 
-},{"./util":238}],231:[function(require,module,exports){
+},{"./util":113}],106:[function(require,module,exports){
 "use strict";
 var util = require("./util");
 var schedule;
@@ -22520,7 +14871,7 @@ if (util.isNode && typeof MutationObserver === "undefined") {
 }
 module.exports = schedule;
 
-},{"./util":238}],232:[function(require,module,exports){
+},{"./util":113}],107:[function(require,module,exports){
 "use strict";
 module.exports =
     function(Promise, PromiseArray, debug) {
@@ -22565,7 +14916,7 @@ Promise.prototype.settle = function () {
 };
 };
 
-},{"./util":238}],233:[function(require,module,exports){
+},{"./util":113}],108:[function(require,module,exports){
 "use strict";
 module.exports =
 function(Promise, PromiseArray, apiRejection) {
@@ -22715,7 +15066,7 @@ Promise.prototype.some = function (howMany) {
 Promise._SomePromiseArray = SomePromiseArray;
 };
 
-},{"./errors":214,"./util":238}],234:[function(require,module,exports){
+},{"./errors":89,"./util":113}],109:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 function PromiseInspection(promise) {
@@ -22820,7 +15171,7 @@ Promise.prototype._reason = function() {
 Promise.PromiseInspection = PromiseInspection;
 };
 
-},{}],235:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var util = require("./util");
@@ -22908,7 +15259,7 @@ function doThenable(x, then, context) {
 return tryConvertToPromise;
 };
 
-},{"./util":238}],236:[function(require,module,exports){
+},{"./util":113}],111:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL, debug) {
 var util = require("./util");
@@ -23003,7 +15354,7 @@ Promise.prototype.timeout = function (ms, message) {
 
 };
 
-},{"./util":238}],237:[function(require,module,exports){
+},{"./util":113}],112:[function(require,module,exports){
 "use strict";
 module.exports = function (Promise, apiRejection, tryConvertToPromise,
     createContext, INTERNAL, debug) {
@@ -23231,7 +15582,7 @@ module.exports = function (Promise, apiRejection, tryConvertToPromise,
 
 };
 
-},{"./errors":214,"./util":238}],238:[function(require,module,exports){
+},{"./errors":89,"./util":113}],113:[function(require,module,exports){
 "use strict";
 var es5 = require("./es5");
 var canEvaluate = typeof navigator == "undefined";
@@ -23613,7 +15964,7 @@ if (ret.isNode) ret.toFastProperties(process);
 try {throw new Error(); } catch (e) {ret.lastLineError = e;}
 module.exports = ret;
 
-},{"./es5":215}],239:[function(require,module,exports){
+},{"./es5":90}],114:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -23772,7 +16123,7 @@ function loadParser (parserName) {
   return (parsers[parserName] = parser)
 }
 
-},{"./lib/types/json":241,"./lib/types/raw":242,"./lib/types/text":243,"./lib/types/urlencoded":244,"depd":270}],240:[function(require,module,exports){
+},{"./lib/types/json":116,"./lib/types/raw":117,"./lib/types/text":118,"./lib/types/urlencoded":119,"depd":145}],115:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -23955,7 +16306,7 @@ function contentstream (req, debug, inflate) {
   return stream
 }
 
-},{"http-errors":357,"iconv-lite":383,"on-finished":447,"raw-body":463,"zlib":undefined}],241:[function(require,module,exports){
+},{"http-errors":231,"iconv-lite":257,"on-finished":321,"raw-body":462,"zlib":undefined}],116:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014 Jonathan Ong
@@ -24189,7 +16540,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"content-type":258,"debug":247,"http-errors":357,"type-is":557}],242:[function(require,module,exports){
+},{"../read":115,"bytes":127,"content-type":133,"debug":122,"http-errors":231,"type-is":556}],117:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -24292,7 +16643,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"debug":247,"type-is":557}],243:[function(require,module,exports){
+},{"../read":115,"bytes":127,"debug":122,"type-is":556}],118:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -24415,7 +16766,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"content-type":258,"debug":247,"type-is":557}],244:[function(require,module,exports){
+},{"../read":115,"bytes":127,"content-type":133,"debug":122,"type-is":556}],119:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014 Jonathan Ong
@@ -24701,7 +17052,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"content-type":258,"debug":247,"depd":270,"http-errors":357,"qs":458,"querystring":undefined,"type-is":557}],245:[function(require,module,exports){
+},{"../read":115,"bytes":127,"content-type":133,"debug":122,"depd":145,"http-errors":231,"qs":332,"querystring":undefined,"type-is":556}],120:[function(require,module,exports){
 /**
  * This is the web browser implementation of `debug()`.
  *
@@ -24888,7 +17239,7 @@ function localstorage() {
   } catch (e) {}
 }
 
-},{"./debug":246}],246:[function(require,module,exports){
+},{"./debug":121}],121:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -25092,7 +17443,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":439}],247:[function(require,module,exports){
+},{"ms":313}],122:[function(require,module,exports){
 /**
  * Detect Electron renderer process, which is node, but we should
  * treat as a browser.
@@ -25104,7 +17455,7 @@ if (typeof process !== 'undefined' && process.type === 'renderer') {
   module.exports = require('./node.js');
 }
 
-},{"./browser.js":245,"./node.js":248}],248:[function(require,module,exports){
+},{"./browser.js":120,"./node.js":123}],123:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -25354,7 +17705,7 @@ function init (debug) {
 
 exports.enable(load());
 
-},{"./debug":246,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],249:[function(require,module,exports){
+},{"./debug":121,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],124:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -25789,7 +18140,7 @@ exports.badImplementation = function (message, data) {
     return err;
 };
 
-},{"hoek":356}],250:[function(require,module,exports){
+},{"hoek":230}],125:[function(require,module,exports){
 var concatMap = require('concat-map');
 var balanced = require('balanced-match');
 
@@ -25992,7 +18343,7 @@ function expand(str, isTop) {
 }
 
 
-},{"balanced-match":199,"concat-map":256}],251:[function(require,module,exports){
+},{"balanced-match":74,"concat-map":131}],126:[function(require,module,exports){
 var Buffer = require('buffer').Buffer;
 
 var CRC_TABLE = [
@@ -26105,7 +18456,7 @@ crc32.unsigned = function () {
 
 module.exports = crc32;
 
-},{"buffer":undefined}],252:[function(require,module,exports){
+},{"buffer":undefined}],127:[function(require,module,exports){
 /*!
  * bytes
  * Copyright(c) 2012-2014 TJ Holowaychuk
@@ -26266,7 +18617,7 @@ function parse(val) {
   return Math.floor(map[unit] * floatValue);
 }
 
-},{}],253:[function(require,module,exports){
+},{}],128:[function(require,module,exports){
 function Caseless (dict) {
   this.dict = dict || {}
 }
@@ -26335,7 +18686,7 @@ module.exports.httpify = function (resp, headers) {
   return c
 }
 
-},{}],254:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 
 /**
  * slice() reference.
@@ -26574,7 +18925,7 @@ function isObject(val) {
   return Object == val.constructor;
 }
 
-},{}],255:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 var util = require('util');
 var Stream = require('stream').Stream;
 var DelayedStream = require('delayed-stream');
@@ -26764,7 +19115,7 @@ CombinedStream.prototype._emitError = function(err) {
   this.emit('error', err);
 };
 
-},{"delayed-stream":269,"stream":undefined,"util":undefined}],256:[function(require,module,exports){
+},{"delayed-stream":144,"stream":undefined,"util":undefined}],131:[function(require,module,exports){
 module.exports = function (xs, fn) {
     var res = [];
     for (var i = 0; i < xs.length; i++) {
@@ -26779,7 +19130,7 @@ var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],257:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 /*!
  * content-disposition
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -27226,7 +19577,7 @@ function ContentDisposition (type, parameters) {
   this.parameters = parameters
 }
 
-},{"path":undefined}],258:[function(require,module,exports){
+},{"path":undefined}],133:[function(require,module,exports){
 /*!
  * content-type
  * Copyright(c) 2015 Douglas Christopher Wilson
@@ -27450,7 +19801,7 @@ function ContentType (type) {
   this.type = type
 }
 
-},{}],259:[function(require,module,exports){
+},{}],134:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -27503,7 +19854,7 @@ function sha1(str){
   return crypto.createHash('sha1').update(str).digest('hex');
 }
 
-},{"crypto":undefined}],260:[function(require,module,exports){
+},{"crypto":undefined}],135:[function(require,module,exports){
 /*!
  * cookie
  * Copyright(c) 2012-2014 Roman Shtylman
@@ -27700,7 +20051,7 @@ function tryDecode(str, decode) {
   }
 }
 
-},{}],261:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -27809,7 +20160,7 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-},{}],262:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -27899,7 +20250,7 @@ exports.fixedTimeComparison = function (a, b) {
     return (mismatch === 0);
 };
 
-},{"boom":263,"crypto":undefined}],263:[function(require,module,exports){
+},{"boom":138,"crypto":undefined}],138:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -28358,7 +20709,7 @@ exports.badImplementation = function (message, data) {
     return err;
 };
 
-},{"hoek":356}],264:[function(require,module,exports){
+},{"hoek":230}],139:[function(require,module,exports){
 // css2json transform CSS to JSON.
 //
 // css2json is a <a href="http://www.opensource.org/licenses/mit-license.php">open source</a>
@@ -28453,7 +20804,7 @@ module.exports = function(css) {
   return json;
 }
 
-},{}],265:[function(require,module,exports){
+},{}],140:[function(require,module,exports){
 /**
  * This is the web browser implementation of `debug()`.
  *
@@ -28650,7 +21001,7 @@ function localstorage() {
   } catch (e) {}
 }
 
-},{"./debug":266}],266:[function(require,module,exports){
+},{"./debug":141}],141:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -28877,7 +21228,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":439}],267:[function(require,module,exports){
+},{"ms":313}],142:[function(require,module,exports){
 /**
  * Detect Electron renderer process, which is node, but we should
  * treat as a browser.
@@ -28889,7 +21240,7 @@ if (typeof process === 'undefined' || process.type === 'renderer') {
   module.exports = require('./node.js');
 }
 
-},{"./browser.js":265,"./node.js":268}],268:[function(require,module,exports){
+},{"./browser.js":140,"./node.js":143}],143:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -29077,7 +21428,7 @@ function init (debug) {
 
 exports.enable(load());
 
-},{"./debug":266,"supports-color":521,"tty":undefined,"util":undefined}],269:[function(require,module,exports){
+},{"./debug":141,"supports-color":520,"tty":undefined,"util":undefined}],144:[function(require,module,exports){
 var Stream = require('stream').Stream;
 var util = require('util');
 
@@ -29186,7 +21537,7 @@ DelayedStream.prototype._checkIfMaxDataSizeExceeded = function() {
   this.emit('error', new Error(message));
 };
 
-},{"stream":undefined,"util":undefined}],270:[function(require,module,exports){
+},{"stream":undefined,"util":undefined}],145:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -29708,7 +22059,7 @@ function DeprecationError (namespace, message, stack) {
   return error
 }
 
-},{"./lib/compat":273,"path":undefined}],271:[function(require,module,exports){
+},{"./lib/compat":148,"path":undefined}],146:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -29813,7 +22164,7 @@ function getConstructorName (obj) {
   return (receiver.constructor && receiver.constructor.name) || null
 }
 
-},{}],272:[function(require,module,exports){
+},{}],147:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2015 Douglas Christopher Wilson
@@ -29837,7 +22188,7 @@ function eventListenerCount (emitter, type) {
   return emitter.listeners(type).length
 }
 
-},{}],273:[function(require,module,exports){
+},{}],148:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -29918,7 +22269,7 @@ function toString (obj) {
   return obj.toString()
 }
 
-},{"./callsite-tostring":271,"./event-listener-count":272,"events":undefined}],274:[function(require,module,exports){
+},{"./callsite-tostring":146,"./event-listener-count":147,"events":undefined}],149:[function(require,module,exports){
 /*!
  * destroy
  * Copyright(c) 2014 Jonathan Ong
@@ -29995,7 +22346,7 @@ function onOpenClose() {
   }
 }
 
-},{"fs":undefined,"stream":undefined}],275:[function(require,module,exports){
+},{"fs":undefined,"stream":undefined}],150:[function(require,module,exports){
 var crypto = require("crypto");
 var BigInteger = require("jsbn").BigInteger;
 var ECPointFp = require("./lib/ec.js").ECPointFp;
@@ -30054,7 +22405,7 @@ exports.ECKey = function(curve, key, isPublic)
 }
 
 
-},{"./lib/ec.js":276,"./lib/sec.js":277,"crypto":undefined,"jsbn":405}],276:[function(require,module,exports){
+},{"./lib/ec.js":151,"./lib/sec.js":152,"crypto":undefined,"jsbn":279}],151:[function(require,module,exports){
 // Basic Javascript Elliptic Curve implementation
 // Ported loosely from BouncyCastle's Java EC code
 // Only Fp curves implemented for now
@@ -30617,7 +22968,7 @@ var exports = {
 
 module.exports = exports
 
-},{"jsbn":405}],277:[function(require,module,exports){
+},{"jsbn":279}],152:[function(require,module,exports){
 // Named EC curves
 
 // Requires ec.js, jsbn.js, and jsbn2.js
@@ -30789,7 +23140,7 @@ module.exports = {
   "secp256r1":secp256r1
 }
 
-},{"./ec.js":276,"jsbn":405}],278:[function(require,module,exports){
+},{"./ec.js":151,"jsbn":279}],153:[function(require,module,exports){
 /*!
  * ee-first
  * Copyright(c) 2014 Jonathan Ong
@@ -30886,7 +23237,7 @@ function listener(event, done) {
   }
 }
 
-},{}],279:[function(require,module,exports){
+},{}],154:[function(require,module,exports){
 /*!
  * encodeurl
  * Copyright(c) 2016 Douglas Christopher Wilson
@@ -30948,7 +23299,7 @@ function encodeUrl (url) {
     .replace(ENCODE_CHARS_REGEXP, encodeURI)
 }
 
-},{}],280:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 'use strict';
 
 function createError(msg, code, props) {
@@ -30972,7 +23323,7 @@ function createError(msg, code, props) {
 
 module.exports = createError;
 
-},{}],281:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 /*!
  * escape-html
  * Copyright(c) 2012-2013 TJ Holowaychuk
@@ -31052,7 +23403,7 @@ function escapeHtml(string) {
     : html;
 }
 
-},{}],282:[function(require,module,exports){
+},{}],157:[function(require,module,exports){
 /*!
  * etag
  * Copyright(c) 2014-2016 Douglas Christopher Wilson
@@ -31185,7 +23536,7 @@ function stattag (stat) {
   return '"' + size + '-' + mtime + '"'
 }
 
-},{"crypto":undefined,"fs":undefined}],283:[function(require,module,exports){
+},{"crypto":undefined,"fs":undefined}],158:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -31198,7 +23549,7 @@ function stattag (stat) {
 
 module.exports = require('./lib/express');
 
-},{"./lib/express":285}],284:[function(require,module,exports){
+},{"./lib/express":160}],159:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -31844,7 +24195,7 @@ function tryRender(view, options, callback) {
   }
 }
 
-},{"./middleware/init":286,"./middleware/query":287,"./router":290,"./utils":293,"./view":294,"array-flatten":178,"debug":297,"depd":270,"finalhandler":313,"http":undefined,"methods":426,"path":undefined,"setprototypeof":491,"utils-merge":565}],285:[function(require,module,exports){
+},{"./middleware/init":161,"./middleware/query":162,"./router":165,"./utils":168,"./view":169,"array-flatten":53,"debug":172,"depd":145,"finalhandler":188,"http":undefined,"methods":300,"path":undefined,"setprototypeof":490,"utils-merge":564}],160:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -31958,7 +24309,7 @@ exports.urlencoded = bodyParser.urlencoded
   });
 });
 
-},{"./application":284,"./middleware/query":287,"./request":288,"./response":289,"./router":290,"./router/route":292,"body-parser":239,"events":undefined,"merge-descriptors":425,"serve-static":490}],286:[function(require,module,exports){
+},{"./application":159,"./middleware/query":162,"./request":163,"./response":164,"./router":165,"./router/route":167,"body-parser":114,"events":undefined,"merge-descriptors":299,"serve-static":489}],161:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32003,7 +24354,7 @@ exports.init = function(app){
 };
 
 
-},{"setprototypeof":491}],287:[function(require,module,exports){
+},{"setprototypeof":490}],162:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32052,7 +24403,7 @@ module.exports = function query(options) {
   };
 };
 
-},{"parseurl":450,"qs":458,"utils-merge":565}],288:[function(require,module,exports){
+},{"parseurl":324,"qs":332,"utils-merge":564}],163:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32575,7 +24926,7 @@ function defineGetter(obj, name, getter) {
   });
 }
 
-},{"accepts":137,"depd":270,"fresh":322,"http":undefined,"net":undefined,"parseurl":450,"proxy-addr":456,"range-parser":462,"type-is":557}],289:[function(require,module,exports){
+},{"accepts":12,"depd":145,"fresh":197,"http":undefined,"net":undefined,"parseurl":324,"proxy-addr":330,"range-parser":461,"type-is":556}],164:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -33714,7 +26065,7 @@ function stringify (value, replacer, spaces, escape) {
   return json
 }
 
-},{"./utils":293,"content-disposition":257,"cookie":260,"cookie-signature":259,"depd":270,"encodeurl":279,"escape-html":281,"http":undefined,"on-finished":447,"path":undefined,"safe-buffer":484,"send":485,"statuses":518,"utils-merge":565,"vary":571}],290:[function(require,module,exports){
+},{"./utils":168,"content-disposition":132,"cookie":135,"cookie-signature":134,"depd":145,"encodeurl":154,"escape-html":156,"http":undefined,"on-finished":321,"path":undefined,"safe-buffer":483,"send":484,"statuses":517,"utils-merge":564,"vary":570}],165:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -34378,7 +26729,7 @@ function wrap(old, fn) {
   };
 }
 
-},{"./layer":291,"./route":292,"array-flatten":178,"debug":297,"depd":270,"methods":426,"parseurl":450,"setprototypeof":491,"utils-merge":565}],291:[function(require,module,exports){
+},{"./layer":166,"./route":167,"array-flatten":53,"debug":172,"depd":145,"methods":300,"parseurl":324,"setprototypeof":490,"utils-merge":564}],166:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -34561,7 +26912,7 @@ function decode_param(val) {
   }
 }
 
-},{"debug":297,"path-to-regexp":451}],292:[function(require,module,exports){
+},{"debug":172,"path-to-regexp":325}],167:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -34779,7 +27130,7 @@ methods.forEach(function(method){
   };
 });
 
-},{"./layer":291,"array-flatten":178,"debug":297,"methods":426}],293:[function(require,module,exports){
+},{"./layer":166,"array-flatten":53,"debug":172,"methods":300}],168:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -35087,7 +27438,7 @@ function newObject() {
   return {};
 }
 
-},{"array-flatten":178,"content-disposition":257,"content-type":258,"depd":270,"etag":282,"proxy-addr":456,"qs":458,"querystring":undefined,"safe-buffer":484,"send":485}],294:[function(require,module,exports){
+},{"array-flatten":53,"content-disposition":132,"content-type":133,"depd":145,"etag":157,"proxy-addr":330,"qs":332,"querystring":undefined,"safe-buffer":483,"send":484}],169:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -35271,15 +27622,15 @@ function tryStat(path) {
   }
 }
 
-},{"debug":297,"fs":undefined,"path":undefined}],295:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":296,"dup":245}],296:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],297:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":295,"./node.js":298,"dup":247}],298:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":296,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],299:[function(require,module,exports){
+},{"debug":172,"fs":undefined,"path":undefined}],170:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":171,"dup":120}],171:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],172:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":170,"./node.js":173,"dup":122}],173:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":171,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],174:[function(require,module,exports){
 'use strict';
 
 var hasOwn = Object.prototype.hasOwnProperty;
@@ -35367,7 +27718,7 @@ module.exports = function extend() {
 	return target;
 };
 
-},{}],300:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 /*
  * extsprintf.js: extended POSIX-style sprintf
  */
@@ -35552,7 +27903,7 @@ function dumpException(ex)
 	return (ret);
 }
 
-},{"assert":undefined,"util":undefined}],301:[function(require,module,exports){
+},{"assert":undefined,"util":undefined}],176:[function(require,module,exports){
 'use strict';
 
 module.exports = function equal(a, b) {
@@ -35597,7 +27948,7 @@ module.exports = function equal(a, b) {
   return false;
 };
 
-},{}],302:[function(require,module,exports){
+},{}],177:[function(require,module,exports){
 'use strict';
 
 module.exports = function (data, opts) {
@@ -35658,7 +28009,7 @@ module.exports = function (data, opts) {
     })(data);
 };
 
-},{}],303:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 var fs = require('fs');
 var util = require('util');
 var stream = require('stream');
@@ -35937,10 +28288,10 @@ function createFromFd(fd, options) {
   return new FdSlicer(fd, options);
 }
 
-},{"events":undefined,"fs":undefined,"pend":452,"stream":undefined,"util":undefined}],304:[function(require,module,exports){
+},{"events":undefined,"fs":undefined,"pend":326,"stream":undefined,"util":undefined}],179:[function(require,module,exports){
 module.exports = require('./lib/file.js');
 
-},{"./lib/file.js":305}],305:[function(require,module,exports){
+},{"./lib/file.js":180}],180:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -36617,7 +28968,7 @@ var File = function () {
 }();
 
 module.exports.create = File.create;
-},{"./fsp":306,"./lock":307,"bluebird":206,"minimatch":432,"path":undefined}],306:[function(require,module,exports){
+},{"./fsp":181,"./lock":182,"bluebird":81,"minimatch":306,"path":undefined}],181:[function(require,module,exports){
 'use strict';
 
 var _fs = require('fs');
@@ -36631,7 +28982,7 @@ var _bluebird2 = _interopRequireDefault(_bluebird);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 module.exports = _bluebird2.default.promisifyAll(_fs2.default);
-},{"bluebird":206,"fs":undefined}],307:[function(require,module,exports){
+},{"bluebird":81,"fs":undefined}],182:[function(require,module,exports){
 'use strict';
 
 var _properLockfile = require('proper-lockfile');
@@ -36645,10 +28996,10 @@ var _bluebird2 = _interopRequireDefault(_bluebird);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 module.exports = _bluebird2.default.promisifyAll(_properLockfile2.default);
-},{"bluebird":206,"proper-lockfile":454}],308:[function(require,module,exports){
+},{"bluebird":81,"proper-lockfile":328}],183:[function(require,module,exports){
 module.exports = require('./lib/filehound').default;
 
-},{"./lib/filehound":310}],309:[function(require,module,exports){
+},{"./lib/filehound":185}],184:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36677,7 +29028,7 @@ function from(_arguments) {
 function fromFirst(_arguments) {
   return [_arguments[0]];
 }
-},{"lodash":423}],310:[function(require,module,exports){
+},{"lodash":297}],185:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37448,7 +29799,7 @@ var FileHound = function (_EventEmitter) {
 }(_events.EventEmitter);
 
 exports.default = FileHound;
-},{"./arrays":309,"./files":311,"./functions":312,"bluebird":206,"events":undefined,"file-js":304,"lodash":423,"path":undefined,"unit-compare":558}],311:[function(require,module,exports){
+},{"./arrays":184,"./files":186,"./functions":187,"bluebird":81,"events":undefined,"file-js":179,"lodash":297,"path":undefined,"unit-compare":557}],186:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37528,7 +29879,7 @@ function reducePaths(searchPaths) {
   var subDirs = findSubDirectories(searchPaths.sort());
   return searchPaths.filter(notSubDirectory(subDirs));
 }
-},{"lodash":423,"os":undefined,"path":undefined}],312:[function(require,module,exports){
+},{"lodash":297,"os":undefined,"path":undefined}],187:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37560,7 +29911,7 @@ function compose(args) {
     return match;
   };
 }
-},{"lodash":423}],313:[function(require,module,exports){
+},{"lodash":297}],188:[function(require,module,exports){
 /*!
  * finalhandler
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -37876,15 +30227,15 @@ function setHeaders (res, headers) {
   }
 }
 
-},{"debug":316,"encodeurl":279,"escape-html":281,"on-finished":447,"parseurl":450,"statuses":518,"unpipe":564}],314:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":315,"dup":245}],315:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],316:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":314,"./node.js":317,"dup":247}],317:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":315,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],318:[function(require,module,exports){
+},{"debug":191,"encodeurl":154,"escape-html":156,"on-finished":321,"parseurl":324,"statuses":517,"unpipe":563}],189:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":190,"dup":120}],190:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],191:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":189,"./node.js":192,"dup":122}],192:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":190,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],193:[function(require,module,exports){
 module.exports = ForeverAgent
 ForeverAgent.SSL = ForeverAgentSSL
 
@@ -38024,7 +30375,7 @@ function createConnectionSSL (port, host, options) {
   return tls.connect(options);
 }
 
-},{"http":undefined,"https":undefined,"net":undefined,"tls":undefined,"util":undefined}],319:[function(require,module,exports){
+},{"http":undefined,"https":undefined,"net":undefined,"tls":undefined,"util":undefined}],194:[function(require,module,exports){
 var CombinedStream = require('combined-stream');
 var util = require('util');
 var path = require('path');
@@ -38483,7 +30834,7 @@ FormData.prototype.toString = function () {
   return '[object FormData]';
 };
 
-},{"./populate.js":320,"asynckit":186,"combined-stream":255,"fs":undefined,"http":undefined,"https":undefined,"mime-types":429,"path":undefined,"url":undefined,"util":undefined}],320:[function(require,module,exports){
+},{"./populate.js":195,"asynckit":61,"combined-stream":130,"fs":undefined,"http":undefined,"https":undefined,"mime-types":303,"path":undefined,"url":undefined,"util":undefined}],195:[function(require,module,exports){
 // populates missing values
 module.exports = function(dst, src) {
 
@@ -38495,7 +30846,7 @@ module.exports = function(dst, src) {
   return dst;
 };
 
-},{}],321:[function(require,module,exports){
+},{}],196:[function(require,module,exports){
 /*!
  * forwarded
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -38573,7 +30924,7 @@ function parse (header) {
   return list
 }
 
-},{}],322:[function(require,module,exports){
+},{}],197:[function(require,module,exports){
 /*!
  * fresh
  * Copyright(c) 2012 TJ Holowaychuk
@@ -38712,7 +31063,7 @@ function parseTokenList (str) {
   return list
 }
 
-},{}],323:[function(require,module,exports){
+},{}],198:[function(require,module,exports){
 'use strict'
 
 var fs = require('fs')
@@ -38735,7 +31086,7 @@ function clone (obj) {
   return copy
 }
 
-},{"fs":undefined}],324:[function(require,module,exports){
+},{"fs":undefined}],199:[function(require,module,exports){
 var fs = require('fs')
 var polyfills = require('./polyfills.js')
 var legacy = require('./legacy-streams.js')
@@ -38999,7 +31350,7 @@ function retry () {
   }
 }
 
-},{"./fs.js":323,"./legacy-streams.js":325,"./polyfills.js":326,"assert":undefined,"fs":undefined,"util":undefined}],325:[function(require,module,exports){
+},{"./fs.js":198,"./legacy-streams.js":200,"./polyfills.js":201,"assert":undefined,"fs":undefined,"util":undefined}],200:[function(require,module,exports){
 var Stream = require('stream').Stream
 
 module.exports = legacy
@@ -39119,7 +31470,7 @@ function legacy (fs) {
   }
 }
 
-},{"stream":undefined}],326:[function(require,module,exports){
+},{"stream":undefined}],201:[function(require,module,exports){
 var fs = require('./fs.js')
 var constants = require('constants')
 
@@ -39451,7 +31802,7 @@ function chownErOk (er) {
   return false
 }
 
-},{"./fs.js":323,"constants":undefined}],327:[function(require,module,exports){
+},{"./fs.js":198,"constants":undefined}],202:[function(require,module,exports){
 module.exports={
   "$id": "afterRequest.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39483,7 +31834,7 @@ module.exports={
   }
 }
 
-},{}],328:[function(require,module,exports){
+},{}],203:[function(require,module,exports){
 module.exports={
   "$id": "beforeRequest.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39515,7 +31866,7 @@ module.exports={
   }
 }
 
-},{}],329:[function(require,module,exports){
+},{}],204:[function(require,module,exports){
 module.exports={
   "$id": "browser.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39537,7 +31888,7 @@ module.exports={
   }
 }
 
-},{}],330:[function(require,module,exports){
+},{}],205:[function(require,module,exports){
 module.exports={
   "$id": "cache.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39560,7 +31911,7 @@ module.exports={
   }
 }
 
-},{}],331:[function(require,module,exports){
+},{}],206:[function(require,module,exports){
 module.exports={
   "$id": "content.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39591,7 +31942,7 @@ module.exports={
   }
 }
 
-},{}],332:[function(require,module,exports){
+},{}],207:[function(require,module,exports){
 module.exports={
   "$id": "cookie.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39629,7 +31980,7 @@ module.exports={
   }
 }
 
-},{}],333:[function(require,module,exports){
+},{}],208:[function(require,module,exports){
 module.exports={
   "$id": "creator.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39651,7 +32002,7 @@ module.exports={
   }
 }
 
-},{}],334:[function(require,module,exports){
+},{}],209:[function(require,module,exports){
 module.exports={
   "$id": "entry.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39706,7 +32057,7 @@ module.exports={
   }
 }
 
-},{}],335:[function(require,module,exports){
+},{}],210:[function(require,module,exports){
 module.exports={
   "$id": "har.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39721,7 +32072,7 @@ module.exports={
   }
 }
 
-},{}],336:[function(require,module,exports){
+},{}],211:[function(require,module,exports){
 module.exports={
   "$id": "header.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39743,7 +32094,7 @@ module.exports={
   }
 }
 
-},{}],337:[function(require,module,exports){
+},{}],212:[function(require,module,exports){
 'use strict'
 
 module.exports = {
@@ -39767,7 +32118,7 @@ module.exports = {
   timings: require('./timings.json')
 }
 
-},{"./afterRequest.json":327,"./beforeRequest.json":328,"./browser.json":329,"./cache.json":330,"./content.json":331,"./cookie.json":332,"./creator.json":333,"./entry.json":334,"./har.json":335,"./header.json":336,"./log.json":338,"./page.json":339,"./pageTimings.json":340,"./postData.json":341,"./query.json":342,"./request.json":343,"./response.json":344,"./timings.json":345}],338:[function(require,module,exports){
+},{"./afterRequest.json":202,"./beforeRequest.json":203,"./browser.json":204,"./cache.json":205,"./content.json":206,"./cookie.json":207,"./creator.json":208,"./entry.json":209,"./har.json":210,"./header.json":211,"./log.json":213,"./page.json":214,"./pageTimings.json":215,"./postData.json":216,"./query.json":217,"./request.json":218,"./response.json":219,"./timings.json":220}],213:[function(require,module,exports){
 module.exports={
   "$id": "log.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39805,7 +32156,7 @@ module.exports={
   }
 }
 
-},{}],339:[function(require,module,exports){
+},{}],214:[function(require,module,exports){
 module.exports={
   "$id": "page.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39839,7 +32190,7 @@ module.exports={
   }
 }
 
-},{}],340:[function(require,module,exports){
+},{}],215:[function(require,module,exports){
 module.exports={
   "$id": "pageTimings.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39859,7 +32210,7 @@ module.exports={
   }
 }
 
-},{}],341:[function(require,module,exports){
+},{}],216:[function(require,module,exports){
 module.exports={
   "$id": "postData.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39904,7 +32255,7 @@ module.exports={
   }
 }
 
-},{}],342:[function(require,module,exports){
+},{}],217:[function(require,module,exports){
 module.exports={
   "$id": "query.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39926,7 +32277,7 @@ module.exports={
   }
 }
 
-},{}],343:[function(require,module,exports){
+},{}],218:[function(require,module,exports){
 module.exports={
   "$id": "request.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -39985,7 +32336,7 @@ module.exports={
   }
 }
 
-},{}],344:[function(require,module,exports){
+},{}],219:[function(require,module,exports){
 module.exports={
   "$id": "response.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40041,7 +32392,7 @@ module.exports={
   }
 }
 
-},{}],345:[function(require,module,exports){
+},{}],220:[function(require,module,exports){
 module.exports={
   "$id": "timings.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40085,7 +32436,7 @@ module.exports={
   }
 }
 
-},{}],346:[function(require,module,exports){
+},{}],221:[function(require,module,exports){
 function HARError (errors) {
   var message = 'validation failed'
 
@@ -40104,7 +32455,7 @@ HARError.prototype = Error.prototype
 
 module.exports = HARError
 
-},{}],347:[function(require,module,exports){
+},{}],222:[function(require,module,exports){
 var Ajv = require('ajv')
 var HARError = require('./error')
 var schemas = require('har-schema')
@@ -40201,19 +32552,7 @@ exports.timings = function (data) {
   return validate('timings', data)
 }
 
-},{"./error":346,"ajv":139,"har-schema":337}],348:[function(require,module,exports){
-'use strict';
-module.exports = function (flag, argv) {
-	argv = argv || process.argv;
-
-	var terminatorPos = argv.indexOf('--');
-	var prefix = /^-{1,2}/.test(flag) ? '' : '--';
-	var pos = argv.indexOf(prefix + flag);
-
-	return pos !== -1 && (terminatorPos === -1 ? true : pos < terminatorPos);
-};
-
-},{}],349:[function(require,module,exports){
+},{"./error":221,"ajv":14,"har-schema":212}],223:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -40609,7 +32948,7 @@ exports.message = function (host, port, message, options) {
 
 
 
-},{"./crypto":350,"./utils":353,"cryptiles":262,"hoek":356,"url":undefined}],350:[function(require,module,exports){
+},{"./crypto":224,"./utils":227,"cryptiles":137,"hoek":230,"url":undefined}],224:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -40739,7 +33078,7 @@ exports.timestampMessage = function (credentials, localtimeOffsetMsec) {
     return { ts: now, tsm };
 };
 
-},{"./utils":353,"crypto":undefined,"url":undefined}],351:[function(require,module,exports){
+},{"./utils":227,"crypto":undefined,"url":undefined}],225:[function(require,module,exports){
 'use strict';
 
 // Export sub-modules
@@ -40758,7 +33097,7 @@ exports.uri = {
 };
 
 
-},{"./client":349,"./crypto":350,"./server":352,"./utils":353,"boom":249,"sntp":493}],352:[function(require,module,exports){
+},{"./client":223,"./crypto":224,"./server":226,"./utils":227,"boom":124,"sntp":492}],226:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -41310,7 +33649,7 @@ internals.nonceFunc = function (key, nonce, ts, nonceCallback) {
     return nonceCallback();         // No validation
 };
 
-},{"./crypto":350,"./utils":353,"boom":249,"cryptiles":262,"hoek":356}],353:[function(require,module,exports){
+},{"./crypto":224,"./utils":227,"boom":124,"cryptiles":137,"hoek":230}],227:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -41498,7 +33837,7 @@ exports.unauthorized = function (message, attributes) {
 };
 
 
-},{"../package.json":354,"boom":249,"sntp":493}],354:[function(require,module,exports){
+},{"../package.json":228,"boom":124,"sntp":492}],228:[function(require,module,exports){
 module.exports={
   "_from": "hawk@~6.0.2",
   "_id": "hawk@6.0.2",
@@ -41578,7 +33917,7 @@ module.exports={
   "version": "6.0.2"
 }
 
-},{}],355:[function(require,module,exports){
+},{}],229:[function(require,module,exports){
 'use strict';
 
 // Declare internals
@@ -41748,7 +34087,7 @@ internals.safeCharCodes = (function () {
     return safe;
 }());
 
-},{}],356:[function(require,module,exports){
+},{}],230:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -42724,7 +35063,7 @@ exports.shallow = function (source) {
     return target;
 };
 
-},{"./escape":355,"crypto":undefined,"path":undefined,"util":undefined}],357:[function(require,module,exports){
+},{"./escape":229,"crypto":undefined,"path":undefined,"util":undefined}],231:[function(require,module,exports){
 /*!
  * http-errors
  * Copyright(c) 2014 Jonathan Ong
@@ -42986,7 +35325,7 @@ function toIdentifier (str) {
   }).join('').replace(/[^ _0-9a-z]/gi, '')
 }
 
-},{"depd":270,"inherits":400,"setprototypeof":358,"statuses":518}],358:[function(require,module,exports){
+},{"depd":145,"inherits":274,"setprototypeof":232,"statuses":517}],232:[function(require,module,exports){
 module.exports = Object.setPrototypeOf || ({__proto__:[]} instanceof Array ? setProtoOf : mixinProperties);
 
 function setProtoOf(obj, proto) {
@@ -43003,7 +35342,7 @@ function mixinProperties(obj, proto) {
 	return obj;
 }
 
-},{}],359:[function(require,module,exports){
+},{}],233:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var parser = require('./parser');
@@ -43034,7 +35373,7 @@ module.exports = {
   verifyHMAC: verify.verifyHMAC
 };
 
-},{"./parser":360,"./signer":361,"./utils":362,"./verify":363}],360:[function(require,module,exports){
+},{"./parser":234,"./signer":235,"./utils":236,"./verify":237}],234:[function(require,module,exports){
 // Copyright 2012 Joyent, Inc.  All rights reserved.
 
 var assert = require('assert-plus');
@@ -43351,7 +35690,7 @@ module.exports = {
 
 };
 
-},{"./utils":362,"assert-plus":185,"util":undefined}],361:[function(require,module,exports){
+},{"./utils":236,"assert-plus":60,"util":undefined}],235:[function(require,module,exports){
 // Copyright 2012 Joyent, Inc.  All rights reserved.
 
 var assert = require('assert-plus');
@@ -43754,7 +36093,7 @@ module.exports = {
 
 };
 
-},{"./utils":362,"assert-plus":185,"crypto":undefined,"http":undefined,"jsprim":410,"sshpk":511,"util":undefined}],362:[function(require,module,exports){
+},{"./utils":236,"assert-plus":60,"crypto":undefined,"http":undefined,"jsprim":284,"sshpk":510,"util":undefined}],236:[function(require,module,exports){
 // Copyright 2012 Joyent, Inc.  All rights reserved.
 
 var assert = require('assert-plus');
@@ -43868,7 +36207,7 @@ module.exports = {
   }
 };
 
-},{"assert-plus":185,"sshpk":511,"util":undefined}],363:[function(require,module,exports){
+},{"assert-plus":60,"sshpk":510,"util":undefined}],237:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var assert = require('assert-plus');
@@ -43958,7 +36297,7 @@ module.exports = {
   }
 };
 
-},{"./utils":362,"assert-plus":185,"crypto":undefined,"sshpk":511}],364:[function(require,module,exports){
+},{"./utils":236,"assert-plus":60,"crypto":undefined,"sshpk":510}],238:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -44515,7 +36854,7 @@ function findIdx(table, val) {
 }
 
 
-},{"buffer":undefined}],365:[function(require,module,exports){
+},{"buffer":undefined}],239:[function(require,module,exports){
 "use strict";
 
 // Description of supported double byte encodings and aliases.
@@ -44693,7 +37032,7 @@ module.exports = {
     'xxbig5': 'big5hkscs',
 };
 
-},{"./tables/big5-added.json":371,"./tables/cp936.json":372,"./tables/cp949.json":373,"./tables/cp950.json":374,"./tables/eucjp.json":375,"./tables/gb18030-ranges.json":376,"./tables/gbk-added.json":377,"./tables/shiftjis.json":378}],366:[function(require,module,exports){
+},{"./tables/big5-added.json":245,"./tables/cp936.json":246,"./tables/cp949.json":247,"./tables/cp950.json":248,"./tables/eucjp.json":249,"./tables/gb18030-ranges.json":250,"./tables/gbk-added.json":251,"./tables/shiftjis.json":252}],240:[function(require,module,exports){
 "use strict";
 
 // Update this array if you add/rename/remove files in this directory.
@@ -44717,7 +37056,7 @@ for (var i = 0; i < modules.length; i++) {
             exports[enc] = module[enc];
 }
 
-},{"./dbcs-codec":364,"./dbcs-data":365,"./internal":367,"./sbcs-codec":368,"./sbcs-data":370,"./sbcs-data-generated":369,"./utf16":379,"./utf7":380}],367:[function(require,module,exports){
+},{"./dbcs-codec":238,"./dbcs-data":239,"./internal":241,"./sbcs-codec":242,"./sbcs-data":244,"./sbcs-data-generated":243,"./utf16":253,"./utf7":254}],241:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -44907,7 +37246,7 @@ InternalDecoderCesu8.prototype.end = function() {
     return res;
 }
 
-},{"buffer":undefined,"string_decoder":undefined}],368:[function(require,module,exports){
+},{"buffer":undefined,"string_decoder":undefined}],242:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -44982,7 +37321,7 @@ SBCSDecoder.prototype.write = function(buf) {
 SBCSDecoder.prototype.end = function() {
 }
 
-},{"buffer":undefined}],369:[function(require,module,exports){
+},{"buffer":undefined}],243:[function(require,module,exports){
 "use strict";
 
 // Generated data for sbcs codec. Don't edit manually. Regenerate using generation/gen-sbcs.js script.
@@ -45434,7 +37773,7 @@ module.exports = {
     "chars": "���������������������������������กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู����฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛����"
   }
 }
-},{}],370:[function(require,module,exports){
+},{}],244:[function(require,module,exports){
 "use strict";
 
 // Manually added data to be used by sbcs codec in addition to generated one.
@@ -45605,7 +37944,7 @@ module.exports = {
 };
 
 
-},{}],371:[function(require,module,exports){
+},{}],245:[function(require,module,exports){
 module.exports=[
 ["8740","䏰䰲䘃䖦䕸𧉧䵷䖳𧲱䳢𧳅㮕䜶䝄䱇䱀𤊿𣘗𧍒𦺋𧃒䱗𪍑䝏䗚䲅𧱬䴇䪤䚡𦬣爥𥩔𡩣𣸆𣽡晍囻"],
 ["8767","綕夝𨮹㷴霴𧯯寛𡵞媤㘥𩺰嫑宷峼杮薓𩥅瑡璝㡵𡵓𣚞𦀡㻬"],
@@ -45729,7 +38068,7 @@ module.exports=[
 ["fea1","𤅟𤩹𨮏孆𨰃𡢞瓈𡦈甎瓩甞𨻙𡩋寗𨺬鎅畍畊畧畮𤾂㼄𤴓疎瑝疞疴瘂瘬癑癏癯癶𦏵皐臯㟸𦤑𦤎皡皥皷盌𦾟葢𥂝𥅽𡸜眞眦着撯𥈠睘𣊬瞯𨥤𨥨𡛁矴砉𡍶𤨒棊碯磇磓隥礮𥗠磗礴碱𧘌辸袄𨬫𦂃𢘜禆褀椂禀𥡗禝𧬹礼禩渪𧄦㺨秆𩄍秔"]
 ]
 
-},{}],372:[function(require,module,exports){
+},{}],246:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127,"€"],
 ["8140","丂丄丅丆丏丒丗丟丠両丣並丩丮丯丱丳丵丷丼乀乁乂乄乆乊乑乕乗乚乛乢乣乤乥乧乨乪",5,"乲乴",9,"乿",6,"亇亊"],
@@ -45785,7 +38124,7 @@ module.exports=[
 ["9a40","欯欰欱欳欴欵欶欸欻欼欽欿歀歁歂歄歅歈歊歋歍",11,"歚",7,"歨歩歫",13,"歺歽歾歿殀殅殈"],
 ["9a80","殌殎殏殐殑殔殕殗殘殙殜",4,"殢",7,"殫",7,"殶殸",6,"毀毃毄毆",4,"毌毎毐毑毘毚毜",4,"毢",7,"毬毭毮毰毱毲毴毶毷毸毺毻毼毾",6,"氈",4,"氎氒気氜氝氞氠氣氥氫氬氭氱氳氶氷氹氺氻氼氾氿汃汄汅汈汋",4,"汑汒汓汖汘"],
 ["9b40","汙汚汢汣汥汦汧汫",4,"汱汳汵汷汸決汻汼汿沀沄沇沊沋沍沎沑沒沕沖沗沘沚沜沝沞沠沢沨沬沯沰沴沵沶沷沺泀況泂泃泆泇泈泋泍泎泏泑泒泘"],
-["9b80","泙泚泜泝泟泤泦泧泩泬泭泲泴泹泿洀洂洃洅洆洈洉洊洍洏洐洑洓洔洕洖洘洜洝洟",5,"洦洨洩洬洭洯洰洴洶洷洸洺洿浀浂浄浉浌浐浕浖浗浘浛浝浟浡浢浤浥浧���浫浬浭浰浱浲浳浵浶浹浺浻浽",4,"涃涄涆涇涊涋涍涏涐涒涖",4,"涜涢涥涬涭涰涱涳涴涶涷涹",5,"淁淂淃淈淉淊"],
+["9b80","泙泚泜泝泟泤泦泧泩泬泭泲泴泹泿洀洂洃洅洆洈洉洊洍洏洐洑洓洔洕洖洘洜洝洟",5,"洦洨洩洬洭洯洰洴洶洷洸洺洿浀浂浄浉浌浐浕浖浗浘浛浝浟浡浢浤浥浧浨浫浬浭浰浱浲浳浵浶浹浺浻浽",4,"涃涄涆涇涊涋涍涏涐涒涖",4,"涜涢涥涬涭涰涱涳涴涶涷涹",5,"淁淂淃淈淉淊"],
 ["9c40","淍淎淏淐淒淓淔淕淗淚淛淜淟淢淣淥淧淨淩淪淭淯淰淲淴淵淶淸淺淽",7,"渆渇済渉渋渏渒渓渕渘渙減渜渞渟渢渦渧渨渪測渮渰渱渳渵"],
 ["9c80","渶渷渹渻",7,"湅",7,"湏湐湑湒湕湗湙湚湜湝湞湠",10,"湬湭湯",14,"満溁溂溄溇溈溊",4,"溑",6,"溙溚溛溝溞溠溡溣溤溦溨溩溫溬溭溮溰溳溵溸溹溼溾溿滀滃滄滅滆滈滉滊滌滍滎滐滒滖滘滙滛滜滝滣滧滪",5],
 ["9d40","滰滱滲滳滵滶滷滸滺",7,"漃漄漅漇漈漊",4,"漐漑漒漖",9,"漡漢漣漥漦漧漨漬漮漰漲漴漵漷",6,"漿潀潁潂"],
@@ -45995,7 +38334,7 @@ module.exports=[
 ["fe40","兀嗀﨎﨏﨑﨓﨔礼﨟蘒﨡﨣﨤﨧﨨﨩"]
 ]
 
-},{}],373:[function(require,module,exports){
+},{}],247:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127],
 ["8141","갂갃갅갆갋",4,"갘갞갟갡갢갣갥",6,"갮갲갳갴"],
@@ -46237,7 +38576,7 @@ module.exports=[
 ["dca1","碧蘗闢霹便卞弁變辨辯邊別瞥鱉鼈丙倂兵屛幷昞昺柄棅炳甁病秉竝輧餠騈保堡報寶普步洑湺潽珤甫菩補褓譜輔伏僕匐卜宓復服福腹茯蔔複覆輹輻馥鰒本乶俸奉封峯峰捧棒烽熢琫縫蓬蜂逢鋒鳳不付俯傅剖副否咐埠夫婦"],
 ["dda1","孚孵富府復扶敷斧浮溥父符簿缶腐腑膚艀芙莩訃負賦賻赴趺部釜阜附駙鳧北分吩噴墳奔奮忿憤扮昐汾焚盆粉糞紛芬賁雰不佛弗彿拂崩朋棚硼繃鵬丕備匕匪卑妃婢庇悲憊扉批斐枇榧比毖毗毘沸泌琵痺砒碑秕秘粃緋翡肥"],
 ["dea1","脾臂菲蜚裨誹譬費鄙非飛鼻嚬嬪彬斌檳殯浜濱瀕牝玭貧賓頻憑氷聘騁乍事些仕伺似使俟僿史司唆嗣四士奢娑寫寺射巳師徙思捨斜斯柶査梭死沙泗渣瀉獅砂社祀祠私篩紗絲肆舍莎蓑蛇裟詐詞謝賜赦辭邪飼駟麝削數朔索"],
-["dfa1","傘刪山散汕珊産疝算蒜酸霰乷撒殺煞薩三參杉森渗芟蔘衫揷澁鈒颯上傷像償商喪嘗孀尙峠���床庠廂想桑橡湘爽牀狀相祥箱翔裳觴詳象賞霜塞璽賽嗇塞穡索色牲生甥省笙墅壻嶼序庶徐恕抒捿敍暑曙書栖棲犀瑞筮絮緖署"],
+["dfa1","傘刪山散汕珊産疝算蒜酸霰乷撒殺煞薩三參杉森渗芟蔘衫揷澁鈒颯上傷像償商喪嘗孀尙峠常床庠廂想桑橡湘爽牀狀相祥箱翔裳觴詳象賞霜塞璽賽嗇塞穡索色牲生甥省笙墅壻嶼序庶徐恕抒捿敍暑曙書栖棲犀瑞筮絮緖署"],
 ["e0a1","胥舒薯西誓逝鋤黍鼠夕奭席惜昔晳析汐淅潟石碩蓆釋錫仙僊先善嬋宣扇敾旋渲煽琁瑄璇璿癬禪線繕羨腺膳船蘚蟬詵跣選銑鐥饍鮮卨屑楔泄洩渫舌薛褻設說雪齧剡暹殲纖蟾贍閃陝攝涉燮葉城姓宬性惺成星晟猩珹盛省筬"],
 ["e1a1","聖聲腥誠醒世勢歲洗稅笹細說貰召嘯塑宵小少巢所掃搔昭梳沼消溯瀟炤燒甦疏疎瘙笑篠簫素紹蔬蕭蘇訴逍遡邵銷韶騷俗屬束涑粟續謖贖速孫巽損蓀遜飡率宋悚松淞訟誦送頌刷殺灑碎鎖衰釗修受嗽囚垂壽嫂守岫峀帥愁"],
 ["e2a1","戍手授搜收數樹殊水洙漱燧狩獸琇璲瘦睡秀穗竪粹綏綬繡羞脩茱蒐蓚藪袖誰讐輸遂邃酬銖銹隋隧隨雖需須首髓鬚叔塾夙孰宿淑潚熟琡璹肅菽巡徇循恂旬栒楯橓殉洵淳珣盾瞬筍純脣舜荀蓴蕣詢諄醇錞順馴戌術述鉥崇崧"],
@@ -46270,7 +38609,7 @@ module.exports=[
 ["fda1","爻肴酵驍侯候厚后吼喉嗅帿後朽煦珝逅勛勳塤壎焄熏燻薰訓暈薨喧暄煊萱卉喙毁彙徽揮暉煇諱輝麾休携烋畦虧恤譎鷸兇凶匈洶胸黑昕欣炘痕吃屹紇訖欠欽歆吸恰洽翕興僖凞喜噫囍姬嬉希憙憘戱晞曦熙熹熺犧禧稀羲詰"]
 ]
 
-},{}],374:[function(require,module,exports){
+},{}],248:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127],
 ["a140","　，、。．‧；：？！︰…‥﹐﹑﹒·﹔﹕﹖﹗｜–︱—︳╴︴﹏（）︵︶｛｝︷︸〔〕︹︺【】︻︼《》︽︾〈〉︿﹀「」﹁﹂『』﹃﹄﹙﹚"],
@@ -46387,7 +38726,7 @@ module.exports=[
 ["daa1","琚琡琭琱琤琣琝琩琠琲瓻甯畯畬痧痚痡痦痝痟痤痗皕皒盚睆睇睄睍睅睊睎睋睌矞矬硠硤硥硜硭硱硪确硰硩硨硞硢祴祳祲祰稂稊稃稌稄窙竦竤筊笻筄筈筌筎筀筘筅粢粞粨粡絘絯絣絓絖絧絪絏絭絜絫絒絔絩絑絟絎缾缿罥"],
 ["db40","罦羢羠羡翗聑聏聐胾胔腃腊腒腏腇脽腍脺臦臮臷臸臹舄舼舽舿艵茻菏菹萣菀菨萒菧菤菼菶萐菆菈菫菣莿萁菝菥菘菿菡菋菎菖菵菉萉萏菞萑萆菂菳"],
 ["dba1","菕菺菇菑菪萓菃菬菮菄菻菗菢萛菛菾蛘蛢蛦蛓蛣蛚蛪蛝蛫蛜蛬蛩蛗蛨蛑衈衖衕袺裗袹袸裀袾袶袼袷袽袲褁裉覕覘覗觝觚觛詎詍訹詙詀詗詘詄詅詒詈詑詊詌詏豟貁貀貺貾貰貹貵趄趀趉跘跓跍跇跖跜跏跕跙跈跗跅軯軷軺"],
-["dc40","軹軦軮軥軵軧軨軶軫軱軬軴軩逭逴逯鄆鄬鄄郿郼鄈郹郻鄁鄀鄇鄅鄃酡酤酟酢酠鈁鈊鈥鈃鈚鈦鈏鈌鈀鈒釿釽鈆鈄鈧鈂鈜鈤鈙鈗鈅鈖镻閍閌閐隇陾隈"],
+["dc40","軹軦軮軥軵軧軨軶軫軱軬軴軩逭逴逯鄆鄬鄄郿郼鄈郹郻鄁鄀鄇鄅鄃酡酤酟酢酠鈁鈊鈥鈃鈚鈦鈏鈌鈀鈒釿釽��鈄鈧鈂鈜鈤鈙鈗鈅鈖镻閍閌閐隇陾隈"],
 ["dca1","隉隃隀雂雈雃雱雰靬靰靮頇颩飫鳦黹亃亄亶傽傿僆傮僄僊傴僈僂傰僁傺傱僋僉傶傸凗剺剸剻剼嗃嗛嗌嗐嗋嗊嗝嗀嗔嗄嗩喿嗒喍嗏嗕嗢嗖嗈嗲嗍嗙嗂圔塓塨塤塏塍塉塯塕塎塝塙塥塛堽塣塱壼嫇嫄嫋媺媸媱媵媰媿嫈媻嫆"],
 ["dd40","媷嫀嫊媴媶嫍媹媐寖寘寙尟尳嵱嵣嵊嵥嵲嵬嵞嵨嵧嵢巰幏幎幊幍幋廅廌廆廋廇彀徯徭惷慉慊愫慅愶愲愮慆愯慏愩慀戠酨戣戥戤揅揱揫搐搒搉搠搤"],
 ["dda1","搳摃搟搕搘搹搷搢搣搌搦搰搨摁搵搯搊搚摀搥搧搋揧搛搮搡搎敯斒旓暆暌暕暐暋暊暙暔晸朠楦楟椸楎楢楱椿楅楪椹楂楗楙楺楈楉椵楬椳椽楥棰楸椴楩楀楯楄楶楘楁楴楌椻楋椷楜楏楑椲楒椯楻椼歆歅歃歂歈歁殛嗀毻毼"],
@@ -46449,7 +38788,7 @@ module.exports=[
 ["f9a1","龤灨灥糷虪蠾蠽蠿讞貜躩軉靋顳顴飌饡馫驤驦驧鬤鸕鸗齈戇欞爧虌躨钂钀钁驩驨鬮鸙爩虋讟钃鱹麷癵驫鱺鸝灩灪麤齾齉龘碁銹裏墻恒粧嫺╔╦╗╠╬╣╚╩╝╒╤╕╞╪╡╘╧╛╓╥╖╟╫╢╙╨╜║═╭╮╰╯▓"]
 ]
 
-},{}],375:[function(require,module,exports){
+},{}],249:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127],
 ["8ea1","｡",62],
@@ -46517,7 +38856,7 @@ module.exports=[
 ["d9a1","戞戡截戮戰戲戳扁扎扞扣扛扠扨扼抂抉找抒抓抖拔抃抔拗拑抻拏拿拆擔拈拜拌拊拂拇抛拉挌拮拱挧挂挈拯拵捐挾捍搜捏掖掎掀掫捶掣掏掉掟掵捫捩掾揩揀揆揣揉插揶揄搖搴搆搓搦搶攝搗搨搏摧摯摶摎攪撕撓撥撩撈撼"],
 ["daa1","據擒擅擇撻擘擂擱擧舉擠擡抬擣擯攬擶擴擲擺攀擽攘攜攅攤攣攫攴攵攷收攸畋效敖敕敍敘敞敝敲數斂斃變斛斟斫斷旃旆旁旄旌旒旛旙无旡旱杲昊昃旻杳昵昶昴昜晏晄晉晁晞晝晤晧晨晟晢晰暃暈暎暉暄暘暝曁暹曉暾暼"],
 ["dba1","曄暸曖曚曠昿曦曩曰曵曷朏朖朞朦朧霸朮朿朶杁朸朷杆杞杠杙杣杤枉杰枩杼杪枌枋枦枡枅枷柯枴柬枳柩枸柤柞柝柢柮枹柎柆柧檜栞框栩桀桍栲桎梳栫桙档桷桿梟梏梭梔條梛梃檮梹桴梵梠梺椏梍桾椁棊椈棘椢椦棡椌棍"],
-["dca1","棔棧棕椶椒椄棗棣椥棹棠棯椨椪椚椣椡棆楹楷楜楸楫楔楾楮椹楴椽楙椰楡楞楝榁楪榲榮槐榿槁���榾槎寨槊槝榻槃榧樮榑榠榜榕榴槞槨樂樛槿權槹槲槧樅榱樞槭樔槫樊樒櫁樣樓橄樌橲樶橸橇橢橙橦橈樸樢檐檍檠檄檢檣"],
+["dca1","棔棧棕椶椒椄棗棣椥棹棠棯椨椪椚椣椡棆楹楷楜楸楫楔楾楮椹楴椽楙椰楡楞楝榁楪榲榮槐榿槁槓榾槎寨槊槝榻槃榧樮榑榠榜榕榴槞槨樂樛槿權槹槲槧樅榱樞槭樔槫樊樒櫁樣樓橄樌橲樶橸橇橢橙橦橈樸樢檐檍檠檄檢檣"],
 ["dda1","檗蘗檻櫃櫂檸檳檬櫞櫑櫟檪櫚櫪櫻欅蘖櫺欒欖鬱欟欸欷盜欹飮歇歃歉歐歙歔歛歟歡歸歹歿殀殄殃殍殘殕殞殤殪殫殯殲殱殳殷殼毆毋毓毟毬毫毳毯麾氈氓气氛氤氣汞汕汢汪沂沍沚沁沛汾汨汳沒沐泄泱泓沽泗泅泝沮沱沾"],
 ["dea1","沺泛泯泙泪洟衍洶洫洽洸洙洵洳洒洌浣涓浤浚浹浙涎涕濤涅淹渕渊涵淇淦涸淆淬淞淌淨淒淅淺淙淤淕淪淮渭湮渮渙湲湟渾渣湫渫湶湍渟湃渺湎渤滿渝游溂溪溘滉溷滓溽溯滄溲滔滕溏溥滂溟潁漑灌滬滸滾漿滲漱滯漲滌"],
 ["dfa1","漾漓滷澆潺潸澁澀潯潛濳潭澂潼潘澎澑濂潦澳澣澡澤澹濆澪濟濕濬濔濘濱濮濛瀉瀋濺瀑瀁瀏濾瀛瀚潴瀝瀘瀟瀰瀾瀲灑灣炙炒炯烱炬炸炳炮烟烋烝烙焉烽焜焙煥煕熈煦煢煌煖煬熏燻熄熕熨熬燗熹熾燒燉燔燎燠燬燧燵燼"],
@@ -46633,9 +38972,9 @@ module.exports=[
 ["8feda1","黸黿鼂鼃鼉鼏鼐鼑鼒鼔鼖鼗鼙鼚鼛鼟鼢鼦鼪鼫鼯鼱鼲鼴鼷鼹鼺鼼鼽鼿齁齃",4,"齓齕齖齗齘齚齝齞齨齩齭",4,"齳齵齺齽龏龐龑龒龔龖龗龞龡龢龣龥"]
 ]
 
-},{}],376:[function(require,module,exports){
+},{}],250:[function(require,module,exports){
 module.exports={"uChars":[128,165,169,178,184,216,226,235,238,244,248,251,253,258,276,284,300,325,329,334,364,463,465,467,469,471,473,475,477,506,594,610,712,716,730,930,938,962,970,1026,1104,1106,8209,8215,8218,8222,8231,8241,8244,8246,8252,8365,8452,8454,8458,8471,8482,8556,8570,8596,8602,8713,8720,8722,8726,8731,8737,8740,8742,8748,8751,8760,8766,8777,8781,8787,8802,8808,8816,8854,8858,8870,8896,8979,9322,9372,9548,9588,9616,9622,9634,9652,9662,9672,9676,9680,9702,9735,9738,9793,9795,11906,11909,11913,11917,11928,11944,11947,11951,11956,11960,11964,11979,12284,12292,12312,12319,12330,12351,12436,12447,12535,12543,12586,12842,12850,12964,13200,13215,13218,13253,13263,13267,13270,13384,13428,13727,13839,13851,14617,14703,14801,14816,14964,15183,15471,15585,16471,16736,17208,17325,17330,17374,17623,17997,18018,18212,18218,18301,18318,18760,18811,18814,18820,18823,18844,18848,18872,19576,19620,19738,19887,40870,59244,59336,59367,59413,59417,59423,59431,59437,59443,59452,59460,59478,59493,63789,63866,63894,63976,63986,64016,64018,64021,64025,64034,64037,64042,65074,65093,65107,65112,65127,65132,65375,65510,65536],"gbChars":[0,36,38,45,50,81,89,95,96,100,103,104,105,109,126,133,148,172,175,179,208,306,307,308,309,310,311,312,313,341,428,443,544,545,558,741,742,749,750,805,819,820,7922,7924,7925,7927,7934,7943,7944,7945,7950,8062,8148,8149,8152,8164,8174,8236,8240,8262,8264,8374,8380,8381,8384,8388,8390,8392,8393,8394,8396,8401,8406,8416,8419,8424,8437,8439,8445,8482,8485,8496,8521,8603,8936,8946,9046,9050,9063,9066,9076,9092,9100,9108,9111,9113,9131,9162,9164,9218,9219,11329,11331,11334,11336,11346,11361,11363,11366,11370,11372,11375,11389,11682,11686,11687,11692,11694,11714,11716,11723,11725,11730,11736,11982,11989,12102,12336,12348,12350,12384,12393,12395,12397,12510,12553,12851,12962,12973,13738,13823,13919,13933,14080,14298,14585,14698,15583,15847,16318,16434,16438,16481,16729,17102,17122,17315,17320,17402,17418,17859,17909,17911,17915,17916,17936,17939,17961,18664,18703,18814,18962,19043,33469,33470,33471,33484,33485,33490,33497,33501,33505,33513,33520,33536,33550,37845,37921,37948,38029,38038,38064,38065,38066,38069,38075,38076,38078,39108,39109,39113,39114,39115,39116,39265,39394,189000]}
-},{}],377:[function(require,module,exports){
+},{}],251:[function(require,module,exports){
 module.exports=[
 ["a140","",62],
 ["a180","",32],
@@ -46692,7 +39031,7 @@ module.exports=[
 ["fe80","䜣䜩䝼䞍⻊䥇䥺䥽䦂䦃䦅䦆䦟䦛䦷䦶䲣䲟䲠䲡䱷䲢䴓",6,"䶮",93]
 ]
 
-},{}],378:[function(require,module,exports){
+},{}],252:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",128],
 ["a1","｡",62],
@@ -46819,7 +39158,7 @@ module.exports=[
 ["fc40","髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑"]
 ]
 
-},{}],379:[function(require,module,exports){
+},{}],253:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -46998,7 +39337,7 @@ function detectEncoding(buf, defaultEncoding) {
 
 
 
-},{"buffer":undefined}],380:[function(require,module,exports){
+},{"buffer":undefined}],254:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -47290,7 +39629,7 @@ Utf7IMAPDecoder.prototype.end = function() {
 
 
 
-},{"buffer":undefined}],381:[function(require,module,exports){
+},{"buffer":undefined}],255:[function(require,module,exports){
 "use strict";
 
 var BOMChar = '\uFEFF';
@@ -47344,7 +39683,7 @@ StripBOMWrapper.prototype.end = function() {
 }
 
 
-},{}],382:[function(require,module,exports){
+},{}],256:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -47561,7 +39900,7 @@ module.exports = function (iconv) {
     }
 }
 
-},{"buffer":undefined,"stream":undefined}],383:[function(require,module,exports){
+},{"buffer":undefined,"stream":undefined}],257:[function(require,module,exports){
 "use strict";
 
 // Some environments don't have global Buffer (e.g. React Native).
@@ -47711,7 +40050,7 @@ if ("Ā" != "\u0100") {
     console.error("iconv-lite warning: javascript files use encoding different from utf-8. See https://github.com/ashtuchkin/iconv-lite/wiki/Javascript-source-file-encodings for more info.");
 }
 
-},{"../encodings":366,"./bom-handling":381,"./extend-node":382,"./streams":384,"buffer":undefined}],384:[function(require,module,exports){
+},{"../encodings":240,"./bom-handling":255,"./extend-node":256,"./streams":258,"buffer":undefined}],258:[function(require,module,exports){
 "use strict";
 
 var Buffer = require("buffer").Buffer,
@@ -47834,7 +40173,7 @@ IconvLiteDecoderStream.prototype.collect = function(cb) {
 }
 
 
-},{"buffer":undefined,"stream":undefined}],385:[function(require,module,exports){
+},{"buffer":undefined,"stream":undefined}],259:[function(require,module,exports){
 'use strict';
 
 var typeHandlers = require('./types');
@@ -47849,7 +40188,7 @@ module.exports = function (buffer, filepath) {
   }
 };
 
-},{"./types":388}],386:[function(require,module,exports){
+},{"./types":262}],260:[function(require,module,exports){
 'use strict';
 
 var fs = require('fs');
@@ -47977,7 +40316,7 @@ module.exports = function (input, callback) {
 
 module.exports.types = Object.keys(typeHandlers);
 
-},{"./detector":385,"./types":388,"fs":undefined,"path":undefined}],387:[function(require,module,exports){
+},{"./detector":259,"./types":262,"fs":undefined,"path":undefined}],261:[function(require,module,exports){
 'use strict';
 
 // Abstract reading multi-byte unsigned integers
@@ -47990,7 +40329,7 @@ function readUInt (buffer, bits, offset, isBigEndian) {
 
 module.exports = readUInt;
 
-},{}],388:[function(require,module,exports){
+},{}],262:[function(require,module,exports){
 'use strict';
 
 // load all available handlers for browserify support
@@ -48010,7 +40349,7 @@ var typeHandlers = {
 
 module.exports = typeHandlers;
 
-},{"./types/bmp":389,"./types/cur":390,"./types/dds":391,"./types/gif":392,"./types/ico":393,"./types/jpg":394,"./types/png":395,"./types/psd":396,"./types/svg":397,"./types/tiff":398,"./types/webp":399}],389:[function(require,module,exports){
+},{"./types/bmp":263,"./types/cur":264,"./types/dds":265,"./types/gif":266,"./types/ico":267,"./types/jpg":268,"./types/png":269,"./types/psd":270,"./types/svg":271,"./types/tiff":272,"./types/webp":273}],263:[function(require,module,exports){
 'use strict';
 
 function isBMP (buffer) {
@@ -48029,7 +40368,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],390:[function(require,module,exports){
+},{}],264:[function(require,module,exports){
 'use strict';
 
 var TYPE_CURSOR = 2;
@@ -48048,7 +40387,7 @@ module.exports = {
   'calculate': require('./ico').calculate
 };
 
-},{"./ico":393}],391:[function(require,module,exports){
+},{"./ico":267}],265:[function(require,module,exports){
 'use strict';
 
 function isDDS(buffer){
@@ -48068,7 +40407,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],392:[function(require,module,exports){
+},{}],266:[function(require,module,exports){
 'use strict';
 
 var gifRegexp = /^GIF8[79]a/;
@@ -48089,7 +40428,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],393:[function(require,module,exports){
+},{}],267:[function(require,module,exports){
 'use strict';
 
 var TYPE_ICON = 1;
@@ -48172,7 +40511,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],394:[function(require,module,exports){
+},{}],268:[function(require,module,exports){
 'use strict';
 
 // NOTE: we only support baseline and progressive JPGs here
@@ -48236,7 +40575,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],395:[function(require,module,exports){
+},{}],269:[function(require,module,exports){
 'use strict';
 
 var pngSignature = 'PNG\r\n\x1a\n';
@@ -48276,7 +40615,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],396:[function(require,module,exports){
+},{}],270:[function(require,module,exports){
 'use strict';
 
 function isPSD (buffer) {
@@ -48295,7 +40634,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],397:[function(require,module,exports){
+},{}],271:[function(require,module,exports){
 'use strict';
 
 var svgReg = /<svg[^>]+[^>]*>/;
@@ -48375,7 +40714,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],398:[function(require,module,exports){
+},{}],272:[function(require,module,exports){
 'use strict';
 
 // based on http://www.compix.com/fileformattif.htm
@@ -48495,7 +40834,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{"../readUInt":387,"fs":undefined}],399:[function(require,module,exports){
+},{"../readUInt":261,"fs":undefined}],273:[function(require,module,exports){
 'use strict';
 
 // based on https://developers.google.com/speed/webp/docs/riff_container
@@ -48566,7 +40905,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],400:[function(require,module,exports){
+},{}],274:[function(require,module,exports){
 try {
   var util = require('util');
   if (typeof util.inherits !== 'function') throw '';
@@ -48575,7 +40914,7 @@ try {
   module.exports = require('./inherits_browser.js');
 }
 
-},{"./inherits_browser.js":401,"util":undefined}],401:[function(require,module,exports){
+},{"./inherits_browser.js":275,"util":undefined}],275:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -48600,7 +40939,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],402:[function(require,module,exports){
+},{}],276:[function(require,module,exports){
 (function() {
   var expandIPv6, ipaddr, ipv4Part, ipv4Regexes, ipv6Part, ipv6Regexes, matchCIDR, root, zoneIndex;
 
@@ -49280,7 +41619,7 @@ if (typeof Object.create === 'function') {
 
 }).call(this);
 
-},{}],403:[function(require,module,exports){
+},{}],277:[function(require,module,exports){
 module.exports      = isTypedArray
 isTypedArray.strict = isStrictTypedArray
 isTypedArray.loose  = isLooseTypedArray
@@ -49323,7 +41662,7 @@ function isLooseTypedArray(arr) {
   return names[toString.call(arr)]
 }
 
-},{}],404:[function(require,module,exports){
+},{}],278:[function(require,module,exports){
 var stream = require('stream')
 
 
@@ -49352,7 +41691,7 @@ module.exports.isReadable = isReadable
 module.exports.isWritable = isWritable
 module.exports.isDuplex   = isDuplex
 
-},{"stream":undefined}],405:[function(require,module,exports){
+},{"stream":undefined}],279:[function(require,module,exports){
 (function(){
 
     // Copyright (c) 2005  Tom Wu
@@ -50711,7 +43050,7 @@ module.exports.isDuplex   = isDuplex
 
 }).call(this);
 
-},{}],406:[function(require,module,exports){
+},{}],280:[function(require,module,exports){
 'use strict'
 
 var INDENT = '    '
@@ -50809,7 +43148,7 @@ module.exports = function (doc, styleFile) {
   return '<div ' + style('json-markup') + '>' + visit(doc) + '</div>'
 }
 
-},{}],407:[function(require,module,exports){
+},{}],281:[function(require,module,exports){
 'use strict';
 
 var traverse = module.exports = function (schema, opts, cb) {
@@ -50892,7 +43231,7 @@ function escapeJsonPtr(str) {
   return str.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
-},{}],408:[function(require,module,exports){
+},{}],282:[function(require,module,exports){
 /**
  * JSONSchema Validator - Validates JavaScript objects using JSON Schemas
  *	(http://www.json.com/json-schema-proposal/)
@@ -51167,7 +43506,7 @@ exports.mustBeValid = function(result){
 return exports;
 }));
 
-},{}],409:[function(require,module,exports){
+},{}],283:[function(require,module,exports){
 exports = module.exports = stringify
 exports.getSerialize = serializer
 
@@ -51196,7 +43535,7 @@ function serializer(replacer, cycleReplacer) {
   }
 }
 
-},{}],410:[function(require,module,exports){
+},{}],284:[function(require,module,exports){
 /*
  * lib/jsprim.js: utilities for primitive JavaScript types
  */
@@ -51933,7 +44272,7 @@ function mergeObjects(provided, overrides, defaults)
 	return (rv);
 }
 
-},{"assert-plus":185,"extsprintf":300,"json-schema":408,"util":undefined,"verror":572}],411:[function(require,module,exports){
+},{"assert-plus":60,"extsprintf":175,"json-schema":282,"util":undefined,"verror":571}],285:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -51941,7 +44280,7 @@ var Symbol = root.Symbol;
 
 module.exports = Symbol;
 
-},{"./_root":416}],412:[function(require,module,exports){
+},{"./_root":290}],286:[function(require,module,exports){
 var Symbol = require('./_Symbol'),
     getRawTag = require('./_getRawTag'),
     objectToString = require('./_objectToString');
@@ -51971,13 +44310,13 @@ function baseGetTag(value) {
 
 module.exports = baseGetTag;
 
-},{"./_Symbol":411,"./_getRawTag":414,"./_objectToString":415}],413:[function(require,module,exports){
+},{"./_Symbol":285,"./_getRawTag":288,"./_objectToString":289}],287:[function(require,module,exports){
 /** Detect free variable `global` from Node.js. */
 var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
 
 module.exports = freeGlobal;
 
-},{}],414:[function(require,module,exports){
+},{}],288:[function(require,module,exports){
 var Symbol = require('./_Symbol');
 
 /** Used for built-in method references. */
@@ -52025,7 +44364,7 @@ function getRawTag(value) {
 
 module.exports = getRawTag;
 
-},{"./_Symbol":411}],415:[function(require,module,exports){
+},{"./_Symbol":285}],289:[function(require,module,exports){
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -52049,7 +44388,7 @@ function objectToString(value) {
 
 module.exports = objectToString;
 
-},{}],416:[function(require,module,exports){
+},{}],290:[function(require,module,exports){
 var freeGlobal = require('./_freeGlobal');
 
 /** Detect free variable `self`. */
@@ -52060,7 +44399,7 @@ var root = freeGlobal || freeSelf || Function('return this')();
 
 module.exports = root;
 
-},{"./_freeGlobal":413}],417:[function(require,module,exports){
+},{"./_freeGlobal":287}],291:[function(require,module,exports){
 /**
  * Checks if `value` is classified as an `Array` object.
  *
@@ -52088,7 +44427,7 @@ var isArray = Array.isArray;
 
 module.exports = isArray;
 
-},{}],418:[function(require,module,exports){
+},{}],292:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isObject = require('./isObject');
 
@@ -52127,7 +44466,7 @@ function isFunction(value) {
 
 module.exports = isFunction;
 
-},{"./_baseGetTag":412,"./isObject":419}],419:[function(require,module,exports){
+},{"./_baseGetTag":286,"./isObject":293}],293:[function(require,module,exports){
 /**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
@@ -52160,7 +44499,7 @@ function isObject(value) {
 
 module.exports = isObject;
 
-},{}],420:[function(require,module,exports){
+},{}],294:[function(require,module,exports){
 /**
  * Checks if `value` is object-like. A value is object-like if it's not `null`
  * and has a `typeof` result of "object".
@@ -52191,7 +44530,7 @@ function isObjectLike(value) {
 
 module.exports = isObjectLike;
 
-},{}],421:[function(require,module,exports){
+},{}],295:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isArray = require('./isArray'),
     isObjectLike = require('./isObjectLike');
@@ -52223,7 +44562,7 @@ function isString(value) {
 
 module.exports = isString;
 
-},{"./_baseGetTag":412,"./isArray":417,"./isObjectLike":420}],422:[function(require,module,exports){
+},{"./_baseGetTag":286,"./isArray":291,"./isObjectLike":294}],296:[function(require,module,exports){
 /**
  * Checks if `value` is `undefined`.
  *
@@ -52247,7 +44586,7 @@ function isUndefined(value) {
 
 module.exports = isUndefined;
 
-},{}],423:[function(require,module,exports){
+},{}],297:[function(require,module,exports){
 /**
  * @license
  * Lodash <https://lodash.com/>
@@ -69333,7 +61672,7 @@ module.exports = isUndefined;
   }
 }.call(this));
 
-},{}],424:[function(require,module,exports){
+},{}],298:[function(require,module,exports){
 /*!
  * media-typer
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -69605,7 +61944,7 @@ function splitType(string) {
   return obj
 }
 
-},{}],425:[function(require,module,exports){
+},{}],299:[function(require,module,exports){
 /*!
  * merge-descriptors
  * Copyright(c) 2014 Jonathan Ong
@@ -69667,7 +62006,7 @@ function merge(dest, src, redefine) {
   return dest
 }
 
-},{}],426:[function(require,module,exports){
+},{}],300:[function(require,module,exports){
 /*!
  * methods
  * Copyright(c) 2013-2014 TJ Holowaychuk
@@ -69738,7 +62077,7 @@ function getBasicNodeMethods() {
   ];
 }
 
-},{"http":undefined}],427:[function(require,module,exports){
+},{"http":undefined}],301:[function(require,module,exports){
 module.exports={
   "application/1d-interleaved-parityfec": {
     "source": "iana"
@@ -76706,7 +69045,7 @@ module.exports={
   }
 }
 
-},{}],428:[function(require,module,exports){
+},{}],302:[function(require,module,exports){
 /*!
  * mime-db
  * Copyright(c) 2014 Jonathan Ong
@@ -76719,7 +69058,7 @@ module.exports={
 
 module.exports = require('./db.json')
 
-},{"./db.json":427}],429:[function(require,module,exports){
+},{"./db.json":301}],303:[function(require,module,exports){
 /*!
  * mime-types
  * Copyright(c) 2014 Jonathan Ong
@@ -76909,7 +69248,7 @@ function populateMaps (extensions, types) {
   })
 }
 
-},{"mime-db":428,"path":undefined}],430:[function(require,module,exports){
+},{"mime-db":302,"path":undefined}],304:[function(require,module,exports){
 var path = require('path');
 var fs = require('fs');
 
@@ -77019,10 +69358,10 @@ mime.charsets = {
 
 module.exports = mime;
 
-},{"./types.json":431,"fs":undefined,"path":undefined}],431:[function(require,module,exports){
+},{"./types.json":305,"fs":undefined,"path":undefined}],305:[function(require,module,exports){
 module.exports={"application/andrew-inset":["ez"],"application/applixware":["aw"],"application/atom+xml":["atom"],"application/atomcat+xml":["atomcat"],"application/atomsvc+xml":["atomsvc"],"application/bdoc":["bdoc"],"application/ccxml+xml":["ccxml"],"application/cdmi-capability":["cdmia"],"application/cdmi-container":["cdmic"],"application/cdmi-domain":["cdmid"],"application/cdmi-object":["cdmio"],"application/cdmi-queue":["cdmiq"],"application/cu-seeme":["cu"],"application/dash+xml":["mpd"],"application/davmount+xml":["davmount"],"application/docbook+xml":["dbk"],"application/dssc+der":["dssc"],"application/dssc+xml":["xdssc"],"application/ecmascript":["ecma"],"application/emma+xml":["emma"],"application/epub+zip":["epub"],"application/exi":["exi"],"application/font-tdpfr":["pfr"],"application/font-woff":["woff"],"application/font-woff2":["woff2"],"application/geo+json":["geojson"],"application/gml+xml":["gml"],"application/gpx+xml":["gpx"],"application/gxf":["gxf"],"application/gzip":["gz"],"application/hyperstudio":["stk"],"application/inkml+xml":["ink","inkml"],"application/ipfix":["ipfix"],"application/java-archive":["jar","war","ear"],"application/java-serialized-object":["ser"],"application/java-vm":["class"],"application/javascript":["js","mjs"],"application/json":["json","map"],"application/json5":["json5"],"application/jsonml+json":["jsonml"],"application/ld+json":["jsonld"],"application/lost+xml":["lostxml"],"application/mac-binhex40":["hqx"],"application/mac-compactpro":["cpt"],"application/mads+xml":["mads"],"application/manifest+json":["webmanifest"],"application/marc":["mrc"],"application/marcxml+xml":["mrcx"],"application/mathematica":["ma","nb","mb"],"application/mathml+xml":["mathml"],"application/mbox":["mbox"],"application/mediaservercontrol+xml":["mscml"],"application/metalink+xml":["metalink"],"application/metalink4+xml":["meta4"],"application/mets+xml":["mets"],"application/mods+xml":["mods"],"application/mp21":["m21","mp21"],"application/mp4":["mp4s","m4p"],"application/msword":["doc","dot"],"application/mxf":["mxf"],"application/octet-stream":["bin","dms","lrf","mar","so","dist","distz","pkg","bpk","dump","elc","deploy","exe","dll","deb","dmg","iso","img","msi","msp","msm","buffer"],"application/oda":["oda"],"application/oebps-package+xml":["opf"],"application/ogg":["ogx"],"application/omdoc+xml":["omdoc"],"application/onenote":["onetoc","onetoc2","onetmp","onepkg"],"application/oxps":["oxps"],"application/patch-ops-error+xml":["xer"],"application/pdf":["pdf"],"application/pgp-encrypted":["pgp"],"application/pgp-signature":["asc","sig"],"application/pics-rules":["prf"],"application/pkcs10":["p10"],"application/pkcs7-mime":["p7m","p7c"],"application/pkcs7-signature":["p7s"],"application/pkcs8":["p8"],"application/pkix-attr-cert":["ac"],"application/pkix-cert":["cer"],"application/pkix-crl":["crl"],"application/pkix-pkipath":["pkipath"],"application/pkixcmp":["pki"],"application/pls+xml":["pls"],"application/postscript":["ai","eps","ps"],"application/prs.cww":["cww"],"application/pskc+xml":["pskcxml"],"application/rdf+xml":["rdf"],"application/reginfo+xml":["rif"],"application/relax-ng-compact-syntax":["rnc"],"application/resource-lists+xml":["rl"],"application/resource-lists-diff+xml":["rld"],"application/rls-services+xml":["rs"],"application/rpki-ghostbusters":["gbr"],"application/rpki-manifest":["mft"],"application/rpki-roa":["roa"],"application/rsd+xml":["rsd"],"application/rss+xml":["rss"],"application/rtf":["rtf"],"application/sbml+xml":["sbml"],"application/scvp-cv-request":["scq"],"application/scvp-cv-response":["scs"],"application/scvp-vp-request":["spq"],"application/scvp-vp-response":["spp"],"application/sdp":["sdp"],"application/set-payment-initiation":["setpay"],"application/set-registration-initiation":["setreg"],"application/shf+xml":["shf"],"application/smil+xml":["smi","smil"],"application/sparql-query":["rq"],"application/sparql-results+xml":["srx"],"application/srgs":["gram"],"application/srgs+xml":["grxml"],"application/sru+xml":["sru"],"application/ssdl+xml":["ssdl"],"application/ssml+xml":["ssml"],"application/tei+xml":["tei","teicorpus"],"application/thraud+xml":["tfi"],"application/timestamped-data":["tsd"],"application/vnd.3gpp.pic-bw-large":["plb"],"application/vnd.3gpp.pic-bw-small":["psb"],"application/vnd.3gpp.pic-bw-var":["pvb"],"application/vnd.3gpp2.tcap":["tcap"],"application/vnd.3m.post-it-notes":["pwn"],"application/vnd.accpac.simply.aso":["aso"],"application/vnd.accpac.simply.imp":["imp"],"application/vnd.acucobol":["acu"],"application/vnd.acucorp":["atc","acutc"],"application/vnd.adobe.air-application-installer-package+zip":["air"],"application/vnd.adobe.formscentral.fcdt":["fcdt"],"application/vnd.adobe.fxp":["fxp","fxpl"],"application/vnd.adobe.xdp+xml":["xdp"],"application/vnd.adobe.xfdf":["xfdf"],"application/vnd.ahead.space":["ahead"],"application/vnd.airzip.filesecure.azf":["azf"],"application/vnd.airzip.filesecure.azs":["azs"],"application/vnd.amazon.ebook":["azw"],"application/vnd.americandynamics.acc":["acc"],"application/vnd.amiga.ami":["ami"],"application/vnd.android.package-archive":["apk"],"application/vnd.anser-web-certificate-issue-initiation":["cii"],"application/vnd.anser-web-funds-transfer-initiation":["fti"],"application/vnd.antix.game-component":["atx"],"application/vnd.apple.installer+xml":["mpkg"],"application/vnd.apple.mpegurl":["m3u8"],"application/vnd.apple.pkpass":["pkpass"],"application/vnd.aristanetworks.swi":["swi"],"application/vnd.astraea-software.iota":["iota"],"application/vnd.audiograph":["aep"],"application/vnd.blueice.multipass":["mpm"],"application/vnd.bmi":["bmi"],"application/vnd.businessobjects":["rep"],"application/vnd.chemdraw+xml":["cdxml"],"application/vnd.chipnuts.karaoke-mmd":["mmd"],"application/vnd.cinderella":["cdy"],"application/vnd.claymore":["cla"],"application/vnd.cloanto.rp9":["rp9"],"application/vnd.clonk.c4group":["c4g","c4d","c4f","c4p","c4u"],"application/vnd.cluetrust.cartomobile-config":["c11amc"],"application/vnd.cluetrust.cartomobile-config-pkg":["c11amz"],"application/vnd.commonspace":["csp"],"application/vnd.contact.cmsg":["cdbcmsg"],"application/vnd.cosmocaller":["cmc"],"application/vnd.crick.clicker":["clkx"],"application/vnd.crick.clicker.keyboard":["clkk"],"application/vnd.crick.clicker.palette":["clkp"],"application/vnd.crick.clicker.template":["clkt"],"application/vnd.crick.clicker.wordbank":["clkw"],"application/vnd.criticaltools.wbs+xml":["wbs"],"application/vnd.ctc-posml":["pml"],"application/vnd.cups-ppd":["ppd"],"application/vnd.curl.car":["car"],"application/vnd.curl.pcurl":["pcurl"],"application/vnd.dart":["dart"],"application/vnd.data-vision.rdz":["rdz"],"application/vnd.dece.data":["uvf","uvvf","uvd","uvvd"],"application/vnd.dece.ttml+xml":["uvt","uvvt"],"application/vnd.dece.unspecified":["uvx","uvvx"],"application/vnd.dece.zip":["uvz","uvvz"],"application/vnd.denovo.fcselayout-link":["fe_launch"],"application/vnd.dna":["dna"],"application/vnd.dolby.mlp":["mlp"],"application/vnd.dpgraph":["dpg"],"application/vnd.dreamfactory":["dfac"],"application/vnd.ds-keypoint":["kpxx"],"application/vnd.dvb.ait":["ait"],"application/vnd.dvb.service":["svc"],"application/vnd.dynageo":["geo"],"application/vnd.ecowin.chart":["mag"],"application/vnd.enliven":["nml"],"application/vnd.epson.esf":["esf"],"application/vnd.epson.msf":["msf"],"application/vnd.epson.quickanime":["qam"],"application/vnd.epson.salt":["slt"],"application/vnd.epson.ssf":["ssf"],"application/vnd.eszigno3+xml":["es3","et3"],"application/vnd.ezpix-album":["ez2"],"application/vnd.ezpix-package":["ez3"],"application/vnd.fdf":["fdf"],"application/vnd.fdsn.mseed":["mseed"],"application/vnd.fdsn.seed":["seed","dataless"],"application/vnd.flographit":["gph"],"application/vnd.fluxtime.clip":["ftc"],"application/vnd.framemaker":["fm","frame","maker","book"],"application/vnd.frogans.fnc":["fnc"],"application/vnd.frogans.ltf":["ltf"],"application/vnd.fsc.weblaunch":["fsc"],"application/vnd.fujitsu.oasys":["oas"],"application/vnd.fujitsu.oasys2":["oa2"],"application/vnd.fujitsu.oasys3":["oa3"],"application/vnd.fujitsu.oasysgp":["fg5"],"application/vnd.fujitsu.oasysprs":["bh2"],"application/vnd.fujixerox.ddd":["ddd"],"application/vnd.fujixerox.docuworks":["xdw"],"application/vnd.fujixerox.docuworks.binder":["xbd"],"application/vnd.fuzzysheet":["fzs"],"application/vnd.genomatix.tuxedo":["txd"],"application/vnd.geogebra.file":["ggb"],"application/vnd.geogebra.tool":["ggt"],"application/vnd.geometry-explorer":["gex","gre"],"application/vnd.geonext":["gxt"],"application/vnd.geoplan":["g2w"],"application/vnd.geospace":["g3w"],"application/vnd.gmx":["gmx"],"application/vnd.google-apps.document":["gdoc"],"application/vnd.google-apps.presentation":["gslides"],"application/vnd.google-apps.spreadsheet":["gsheet"],"application/vnd.google-earth.kml+xml":["kml"],"application/vnd.google-earth.kmz":["kmz"],"application/vnd.grafeq":["gqf","gqs"],"application/vnd.groove-account":["gac"],"application/vnd.groove-help":["ghf"],"application/vnd.groove-identity-message":["gim"],"application/vnd.groove-injector":["grv"],"application/vnd.groove-tool-message":["gtm"],"application/vnd.groove-tool-template":["tpl"],"application/vnd.groove-vcard":["vcg"],"application/vnd.hal+xml":["hal"],"application/vnd.handheld-entertainment+xml":["zmm"],"application/vnd.hbci":["hbci"],"application/vnd.hhe.lesson-player":["les"],"application/vnd.hp-hpgl":["hpgl"],"application/vnd.hp-hpid":["hpid"],"application/vnd.hp-hps":["hps"],"application/vnd.hp-jlyt":["jlt"],"application/vnd.hp-pcl":["pcl"],"application/vnd.hp-pclxl":["pclxl"],"application/vnd.hydrostatix.sof-data":["sfd-hdstx"],"application/vnd.ibm.minipay":["mpy"],"application/vnd.ibm.modcap":["afp","listafp","list3820"],"application/vnd.ibm.rights-management":["irm"],"application/vnd.ibm.secure-container":["sc"],"application/vnd.iccprofile":["icc","icm"],"application/vnd.igloader":["igl"],"application/vnd.immervision-ivp":["ivp"],"application/vnd.immervision-ivu":["ivu"],"application/vnd.insors.igm":["igm"],"application/vnd.intercon.formnet":["xpw","xpx"],"application/vnd.intergeo":["i2g"],"application/vnd.intu.qbo":["qbo"],"application/vnd.intu.qfx":["qfx"],"application/vnd.ipunplugged.rcprofile":["rcprofile"],"application/vnd.irepository.package+xml":["irp"],"application/vnd.is-xpr":["xpr"],"application/vnd.isac.fcs":["fcs"],"application/vnd.jam":["jam"],"application/vnd.jcp.javame.midlet-rms":["rms"],"application/vnd.jisp":["jisp"],"application/vnd.joost.joda-archive":["joda"],"application/vnd.kahootz":["ktz","ktr"],"application/vnd.kde.karbon":["karbon"],"application/vnd.kde.kchart":["chrt"],"application/vnd.kde.kformula":["kfo"],"application/vnd.kde.kivio":["flw"],"application/vnd.kde.kontour":["kon"],"application/vnd.kde.kpresenter":["kpr","kpt"],"application/vnd.kde.kspread":["ksp"],"application/vnd.kde.kword":["kwd","kwt"],"application/vnd.kenameaapp":["htke"],"application/vnd.kidspiration":["kia"],"application/vnd.kinar":["kne","knp"],"application/vnd.koan":["skp","skd","skt","skm"],"application/vnd.kodak-descriptor":["sse"],"application/vnd.las.las+xml":["lasxml"],"application/vnd.llamagraphics.life-balance.desktop":["lbd"],"application/vnd.llamagraphics.life-balance.exchange+xml":["lbe"],"application/vnd.lotus-1-2-3":["123"],"application/vnd.lotus-approach":["apr"],"application/vnd.lotus-freelance":["pre"],"application/vnd.lotus-notes":["nsf"],"application/vnd.lotus-organizer":["org"],"application/vnd.lotus-screencam":["scm"],"application/vnd.lotus-wordpro":["lwp"],"application/vnd.macports.portpkg":["portpkg"],"application/vnd.mcd":["mcd"],"application/vnd.medcalcdata":["mc1"],"application/vnd.mediastation.cdkey":["cdkey"],"application/vnd.mfer":["mwf"],"application/vnd.mfmp":["mfm"],"application/vnd.micrografx.flo":["flo"],"application/vnd.micrografx.igx":["igx"],"application/vnd.mif":["mif"],"application/vnd.mobius.daf":["daf"],"application/vnd.mobius.dis":["dis"],"application/vnd.mobius.mbk":["mbk"],"application/vnd.mobius.mqy":["mqy"],"application/vnd.mobius.msl":["msl"],"application/vnd.mobius.plc":["plc"],"application/vnd.mobius.txf":["txf"],"application/vnd.mophun.application":["mpn"],"application/vnd.mophun.certificate":["mpc"],"application/vnd.mozilla.xul+xml":["xul"],"application/vnd.ms-artgalry":["cil"],"application/vnd.ms-cab-compressed":["cab"],"application/vnd.ms-excel":["xls","xlm","xla","xlc","xlt","xlw"],"application/vnd.ms-excel.addin.macroenabled.12":["xlam"],"application/vnd.ms-excel.sheet.binary.macroenabled.12":["xlsb"],"application/vnd.ms-excel.sheet.macroenabled.12":["xlsm"],"application/vnd.ms-excel.template.macroenabled.12":["xltm"],"application/vnd.ms-fontobject":["eot"],"application/vnd.ms-htmlhelp":["chm"],"application/vnd.ms-ims":["ims"],"application/vnd.ms-lrm":["lrm"],"application/vnd.ms-officetheme":["thmx"],"application/vnd.ms-outlook":["msg"],"application/vnd.ms-pki.seccat":["cat"],"application/vnd.ms-pki.stl":["stl"],"application/vnd.ms-powerpoint":["ppt","pps","pot"],"application/vnd.ms-powerpoint.addin.macroenabled.12":["ppam"],"application/vnd.ms-powerpoint.presentation.macroenabled.12":["pptm"],"application/vnd.ms-powerpoint.slide.macroenabled.12":["sldm"],"application/vnd.ms-powerpoint.slideshow.macroenabled.12":["ppsm"],"application/vnd.ms-powerpoint.template.macroenabled.12":["potm"],"application/vnd.ms-project":["mpp","mpt"],"application/vnd.ms-word.document.macroenabled.12":["docm"],"application/vnd.ms-word.template.macroenabled.12":["dotm"],"application/vnd.ms-works":["wps","wks","wcm","wdb"],"application/vnd.ms-wpl":["wpl"],"application/vnd.ms-xpsdocument":["xps"],"application/vnd.mseq":["mseq"],"application/vnd.musician":["mus"],"application/vnd.muvee.style":["msty"],"application/vnd.mynfc":["taglet"],"application/vnd.neurolanguage.nlu":["nlu"],"application/vnd.nitf":["ntf","nitf"],"application/vnd.noblenet-directory":["nnd"],"application/vnd.noblenet-sealer":["nns"],"application/vnd.noblenet-web":["nnw"],"application/vnd.nokia.n-gage.data":["ngdat"],"application/vnd.nokia.n-gage.symbian.install":["n-gage"],"application/vnd.nokia.radio-preset":["rpst"],"application/vnd.nokia.radio-presets":["rpss"],"application/vnd.novadigm.edm":["edm"],"application/vnd.novadigm.edx":["edx"],"application/vnd.novadigm.ext":["ext"],"application/vnd.oasis.opendocument.chart":["odc"],"application/vnd.oasis.opendocument.chart-template":["otc"],"application/vnd.oasis.opendocument.database":["odb"],"application/vnd.oasis.opendocument.formula":["odf"],"application/vnd.oasis.opendocument.formula-template":["odft"],"application/vnd.oasis.opendocument.graphics":["odg"],"application/vnd.oasis.opendocument.graphics-template":["otg"],"application/vnd.oasis.opendocument.image":["odi"],"application/vnd.oasis.opendocument.image-template":["oti"],"application/vnd.oasis.opendocument.presentation":["odp"],"application/vnd.oasis.opendocument.presentation-template":["otp"],"application/vnd.oasis.opendocument.spreadsheet":["ods"],"application/vnd.oasis.opendocument.spreadsheet-template":["ots"],"application/vnd.oasis.opendocument.text":["odt"],"application/vnd.oasis.opendocument.text-master":["odm"],"application/vnd.oasis.opendocument.text-template":["ott"],"application/vnd.oasis.opendocument.text-web":["oth"],"application/vnd.olpc-sugar":["xo"],"application/vnd.oma.dd2+xml":["dd2"],"application/vnd.openofficeorg.extension":["oxt"],"application/vnd.openxmlformats-officedocument.presentationml.presentation":["pptx"],"application/vnd.openxmlformats-officedocument.presentationml.slide":["sldx"],"application/vnd.openxmlformats-officedocument.presentationml.slideshow":["ppsx"],"application/vnd.openxmlformats-officedocument.presentationml.template":["potx"],"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":["xlsx"],"application/vnd.openxmlformats-officedocument.spreadsheetml.template":["xltx"],"application/vnd.openxmlformats-officedocument.wordprocessingml.document":["docx"],"application/vnd.openxmlformats-officedocument.wordprocessingml.template":["dotx"],"application/vnd.osgeo.mapguide.package":["mgp"],"application/vnd.osgi.dp":["dp"],"application/vnd.osgi.subsystem":["esa"],"application/vnd.palm":["pdb","pqa","oprc"],"application/vnd.pawaafile":["paw"],"application/vnd.pg.format":["str"],"application/vnd.pg.osasli":["ei6"],"application/vnd.picsel":["efif"],"application/vnd.pmi.widget":["wg"],"application/vnd.pocketlearn":["plf"],"application/vnd.powerbuilder6":["pbd"],"application/vnd.previewsystems.box":["box"],"application/vnd.proteus.magazine":["mgz"],"application/vnd.publishare-delta-tree":["qps"],"application/vnd.pvi.ptid1":["ptid"],"application/vnd.quark.quarkxpress":["qxd","qxt","qwd","qwt","qxl","qxb"],"application/vnd.realvnc.bed":["bed"],"application/vnd.recordare.musicxml":["mxl"],"application/vnd.recordare.musicxml+xml":["musicxml"],"application/vnd.rig.cryptonote":["cryptonote"],"application/vnd.rim.cod":["cod"],"application/vnd.rn-realmedia":["rm"],"application/vnd.rn-realmedia-vbr":["rmvb"],"application/vnd.route66.link66+xml":["link66"],"application/vnd.sailingtracker.track":["st"],"application/vnd.seemail":["see"],"application/vnd.sema":["sema"],"application/vnd.semd":["semd"],"application/vnd.semf":["semf"],"application/vnd.shana.informed.formdata":["ifm"],"application/vnd.shana.informed.formtemplate":["itp"],"application/vnd.shana.informed.interchange":["iif"],"application/vnd.shana.informed.package":["ipk"],"application/vnd.simtech-mindmapper":["twd","twds"],"application/vnd.smaf":["mmf"],"application/vnd.smart.teacher":["teacher"],"application/vnd.solent.sdkm+xml":["sdkm","sdkd"],"application/vnd.spotfire.dxp":["dxp"],"application/vnd.spotfire.sfs":["sfs"],"application/vnd.stardivision.calc":["sdc"],"application/vnd.stardivision.draw":["sda"],"application/vnd.stardivision.impress":["sdd"],"application/vnd.stardivision.math":["smf"],"application/vnd.stardivision.writer":["sdw","vor"],"application/vnd.stardivision.writer-global":["sgl"],"application/vnd.stepmania.package":["smzip"],"application/vnd.stepmania.stepchart":["sm"],"application/vnd.sun.wadl+xml":["wadl"],"application/vnd.sun.xml.calc":["sxc"],"application/vnd.sun.xml.calc.template":["stc"],"application/vnd.sun.xml.draw":["sxd"],"application/vnd.sun.xml.draw.template":["std"],"application/vnd.sun.xml.impress":["sxi"],"application/vnd.sun.xml.impress.template":["sti"],"application/vnd.sun.xml.math":["sxm"],"application/vnd.sun.xml.writer":["sxw"],"application/vnd.sun.xml.writer.global":["sxg"],"application/vnd.sun.xml.writer.template":["stw"],"application/vnd.sus-calendar":["sus","susp"],"application/vnd.svd":["svd"],"application/vnd.symbian.install":["sis","sisx"],"application/vnd.syncml+xml":["xsm"],"application/vnd.syncml.dm+wbxml":["bdm"],"application/vnd.syncml.dm+xml":["xdm"],"application/vnd.tao.intent-module-archive":["tao"],"application/vnd.tcpdump.pcap":["pcap","cap","dmp"],"application/vnd.tmobile-livetv":["tmo"],"application/vnd.trid.tpt":["tpt"],"application/vnd.triscape.mxs":["mxs"],"application/vnd.trueapp":["tra"],"application/vnd.ufdl":["ufd","ufdl"],"application/vnd.uiq.theme":["utz"],"application/vnd.umajin":["umj"],"application/vnd.unity":["unityweb"],"application/vnd.uoml+xml":["uoml"],"application/vnd.vcx":["vcx"],"application/vnd.visio":["vsd","vst","vss","vsw"],"application/vnd.visionary":["vis"],"application/vnd.vsf":["vsf"],"application/vnd.wap.wbxml":["wbxml"],"application/vnd.wap.wmlc":["wmlc"],"application/vnd.wap.wmlscriptc":["wmlsc"],"application/vnd.webturbo":["wtb"],"application/vnd.wolfram.player":["nbp"],"application/vnd.wordperfect":["wpd"],"application/vnd.wqd":["wqd"],"application/vnd.wt.stf":["stf"],"application/vnd.xara":["xar"],"application/vnd.xfdl":["xfdl"],"application/vnd.yamaha.hv-dic":["hvd"],"application/vnd.yamaha.hv-script":["hvs"],"application/vnd.yamaha.hv-voice":["hvp"],"application/vnd.yamaha.openscoreformat":["osf"],"application/vnd.yamaha.openscoreformat.osfpvg+xml":["osfpvg"],"application/vnd.yamaha.smaf-audio":["saf"],"application/vnd.yamaha.smaf-phrase":["spf"],"application/vnd.yellowriver-custom-menu":["cmp"],"application/vnd.zul":["zir","zirz"],"application/vnd.zzazz.deck+xml":["zaz"],"application/voicexml+xml":["vxml"],"application/widget":["wgt"],"application/winhlp":["hlp"],"application/wsdl+xml":["wsdl"],"application/wspolicy+xml":["wspolicy"],"application/x-7z-compressed":["7z"],"application/x-abiword":["abw"],"application/x-ace-compressed":["ace"],"application/x-apple-diskimage":["dmg"],"application/x-arj":["arj"],"application/x-authorware-bin":["aab","x32","u32","vox"],"application/x-authorware-map":["aam"],"application/x-authorware-seg":["aas"],"application/x-bcpio":["bcpio"],"application/x-bdoc":["bdoc"],"application/x-bittorrent":["torrent"],"application/x-blorb":["blb","blorb"],"application/x-bzip":["bz"],"application/x-bzip2":["bz2","boz"],"application/x-cbr":["cbr","cba","cbt","cbz","cb7"],"application/x-cdlink":["vcd"],"application/x-cfs-compressed":["cfs"],"application/x-chat":["chat"],"application/x-chess-pgn":["pgn"],"application/x-chrome-extension":["crx"],"application/x-cocoa":["cco"],"application/x-conference":["nsc"],"application/x-cpio":["cpio"],"application/x-csh":["csh"],"application/x-debian-package":["deb","udeb"],"application/x-dgc-compressed":["dgc"],"application/x-director":["dir","dcr","dxr","cst","cct","cxt","w3d","fgd","swa"],"application/x-doom":["wad"],"application/x-dtbncx+xml":["ncx"],"application/x-dtbook+xml":["dtb"],"application/x-dtbresource+xml":["res"],"application/x-dvi":["dvi"],"application/x-envoy":["evy"],"application/x-eva":["eva"],"application/x-font-bdf":["bdf"],"application/x-font-ghostscript":["gsf"],"application/x-font-linux-psf":["psf"],"application/x-font-otf":["otf"],"application/x-font-pcf":["pcf"],"application/x-font-snf":["snf"],"application/x-font-ttf":["ttf","ttc"],"application/x-font-type1":["pfa","pfb","pfm","afm"],"application/x-freearc":["arc"],"application/x-futuresplash":["spl"],"application/x-gca-compressed":["gca"],"application/x-glulx":["ulx"],"application/x-gnumeric":["gnumeric"],"application/x-gramps-xml":["gramps"],"application/x-gtar":["gtar"],"application/x-hdf":["hdf"],"application/x-httpd-php":["php"],"application/x-install-instructions":["install"],"application/x-iso9660-image":["iso"],"application/x-java-archive-diff":["jardiff"],"application/x-java-jnlp-file":["jnlp"],"application/x-latex":["latex"],"application/x-lua-bytecode":["luac"],"application/x-lzh-compressed":["lzh","lha"],"application/x-makeself":["run"],"application/x-mie":["mie"],"application/x-mobipocket-ebook":["prc","mobi"],"application/x-ms-application":["application"],"application/x-ms-shortcut":["lnk"],"application/x-ms-wmd":["wmd"],"application/x-ms-wmz":["wmz"],"application/x-ms-xbap":["xbap"],"application/x-msaccess":["mdb"],"application/x-msbinder":["obd"],"application/x-mscardfile":["crd"],"application/x-msclip":["clp"],"application/x-msdos-program":["exe"],"application/x-msdownload":["exe","dll","com","bat","msi"],"application/x-msmediaview":["mvb","m13","m14"],"application/x-msmetafile":["wmf","wmz","emf","emz"],"application/x-msmoney":["mny"],"application/x-mspublisher":["pub"],"application/x-msschedule":["scd"],"application/x-msterminal":["trm"],"application/x-mswrite":["wri"],"application/x-netcdf":["nc","cdf"],"application/x-ns-proxy-autoconfig":["pac"],"application/x-nzb":["nzb"],"application/x-perl":["pl","pm"],"application/x-pilot":["prc","pdb"],"application/x-pkcs12":["p12","pfx"],"application/x-pkcs7-certificates":["p7b","spc"],"application/x-pkcs7-certreqresp":["p7r"],"application/x-rar-compressed":["rar"],"application/x-redhat-package-manager":["rpm"],"application/x-research-info-systems":["ris"],"application/x-sea":["sea"],"application/x-sh":["sh"],"application/x-shar":["shar"],"application/x-shockwave-flash":["swf"],"application/x-silverlight-app":["xap"],"application/x-sql":["sql"],"application/x-stuffit":["sit"],"application/x-stuffitx":["sitx"],"application/x-subrip":["srt"],"application/x-sv4cpio":["sv4cpio"],"application/x-sv4crc":["sv4crc"],"application/x-t3vm-image":["t3"],"application/x-tads":["gam"],"application/x-tar":["tar"],"application/x-tcl":["tcl","tk"],"application/x-tex":["tex"],"application/x-tex-tfm":["tfm"],"application/x-texinfo":["texinfo","texi"],"application/x-tgif":["obj"],"application/x-ustar":["ustar"],"application/x-virtualbox-hdd":["hdd"],"application/x-virtualbox-ova":["ova"],"application/x-virtualbox-ovf":["ovf"],"application/x-virtualbox-vbox":["vbox"],"application/x-virtualbox-vbox-extpack":["vbox-extpack"],"application/x-virtualbox-vdi":["vdi"],"application/x-virtualbox-vhd":["vhd"],"application/x-virtualbox-vmdk":["vmdk"],"application/x-wais-source":["src"],"application/x-web-app-manifest+json":["webapp"],"application/x-x509-ca-cert":["der","crt","pem"],"application/x-xfig":["fig"],"application/x-xliff+xml":["xlf"],"application/x-xpinstall":["xpi"],"application/x-xz":["xz"],"application/x-zmachine":["z1","z2","z3","z4","z5","z6","z7","z8"],"application/xaml+xml":["xaml"],"application/xcap-diff+xml":["xdf"],"application/xenc+xml":["xenc"],"application/xhtml+xml":["xhtml","xht"],"application/xml":["xml","xsl","xsd","rng"],"application/xml-dtd":["dtd"],"application/xop+xml":["xop"],"application/xproc+xml":["xpl"],"application/xslt+xml":["xslt"],"application/xspf+xml":["xspf"],"application/xv+xml":["mxml","xhvml","xvml","xvm"],"application/yang":["yang"],"application/yin+xml":["yin"],"application/zip":["zip"],"audio/3gpp":["3gpp"],"audio/adpcm":["adp"],"audio/basic":["au","snd"],"audio/midi":["mid","midi","kar","rmi"],"audio/mp3":["mp3"],"audio/mp4":["m4a","mp4a"],"audio/mpeg":["mpga","mp2","mp2a","mp3","m2a","m3a"],"audio/ogg":["oga","ogg","spx"],"audio/s3m":["s3m"],"audio/silk":["sil"],"audio/vnd.dece.audio":["uva","uvva"],"audio/vnd.digital-winds":["eol"],"audio/vnd.dra":["dra"],"audio/vnd.dts":["dts"],"audio/vnd.dts.hd":["dtshd"],"audio/vnd.lucent.voice":["lvp"],"audio/vnd.ms-playready.media.pya":["pya"],"audio/vnd.nuera.ecelp4800":["ecelp4800"],"audio/vnd.nuera.ecelp7470":["ecelp7470"],"audio/vnd.nuera.ecelp9600":["ecelp9600"],"audio/vnd.rip":["rip"],"audio/wav":["wav"],"audio/wave":["wav"],"audio/webm":["weba"],"audio/x-aac":["aac"],"audio/x-aiff":["aif","aiff","aifc"],"audio/x-caf":["caf"],"audio/x-flac":["flac"],"audio/x-m4a":["m4a"],"audio/x-matroska":["mka"],"audio/x-mpegurl":["m3u"],"audio/x-ms-wax":["wax"],"audio/x-ms-wma":["wma"],"audio/x-pn-realaudio":["ram","ra"],"audio/x-pn-realaudio-plugin":["rmp"],"audio/x-realaudio":["ra"],"audio/x-wav":["wav"],"audio/xm":["xm"],"chemical/x-cdx":["cdx"],"chemical/x-cif":["cif"],"chemical/x-cmdf":["cmdf"],"chemical/x-cml":["cml"],"chemical/x-csml":["csml"],"chemical/x-xyz":["xyz"],"font/otf":["otf"],"image/apng":["apng"],"image/bmp":["bmp"],"image/cgm":["cgm"],"image/g3fax":["g3"],"image/gif":["gif"],"image/ief":["ief"],"image/jpeg":["jpeg","jpg","jpe"],"image/ktx":["ktx"],"image/png":["png"],"image/prs.btif":["btif"],"image/sgi":["sgi"],"image/svg+xml":["svg","svgz"],"image/tiff":["tiff","tif"],"image/vnd.adobe.photoshop":["psd"],"image/vnd.dece.graphic":["uvi","uvvi","uvg","uvvg"],"image/vnd.djvu":["djvu","djv"],"image/vnd.dvb.subtitle":["sub"],"image/vnd.dwg":["dwg"],"image/vnd.dxf":["dxf"],"image/vnd.fastbidsheet":["fbs"],"image/vnd.fpx":["fpx"],"image/vnd.fst":["fst"],"image/vnd.fujixerox.edmics-mmr":["mmr"],"image/vnd.fujixerox.edmics-rlc":["rlc"],"image/vnd.ms-modi":["mdi"],"image/vnd.ms-photo":["wdp"],"image/vnd.net-fpx":["npx"],"image/vnd.wap.wbmp":["wbmp"],"image/vnd.xiff":["xif"],"image/webp":["webp"],"image/x-3ds":["3ds"],"image/x-cmu-raster":["ras"],"image/x-cmx":["cmx"],"image/x-freehand":["fh","fhc","fh4","fh5","fh7"],"image/x-icon":["ico"],"image/x-jng":["jng"],"image/x-mrsid-image":["sid"],"image/x-ms-bmp":["bmp"],"image/x-pcx":["pcx"],"image/x-pict":["pic","pct"],"image/x-portable-anymap":["pnm"],"image/x-portable-bitmap":["pbm"],"image/x-portable-graymap":["pgm"],"image/x-portable-pixmap":["ppm"],"image/x-rgb":["rgb"],"image/x-tga":["tga"],"image/x-xbitmap":["xbm"],"image/x-xpixmap":["xpm"],"image/x-xwindowdump":["xwd"],"message/rfc822":["eml","mime"],"model/gltf+json":["gltf"],"model/gltf-binary":["glb"],"model/iges":["igs","iges"],"model/mesh":["msh","mesh","silo"],"model/vnd.collada+xml":["dae"],"model/vnd.dwf":["dwf"],"model/vnd.gdl":["gdl"],"model/vnd.gtw":["gtw"],"model/vnd.mts":["mts"],"model/vnd.vtu":["vtu"],"model/vrml":["wrl","vrml"],"model/x3d+binary":["x3db","x3dbz"],"model/x3d+vrml":["x3dv","x3dvz"],"model/x3d+xml":["x3d","x3dz"],"text/cache-manifest":["appcache","manifest"],"text/calendar":["ics","ifb"],"text/coffeescript":["coffee","litcoffee"],"text/css":["css"],"text/csv":["csv"],"text/hjson":["hjson"],"text/html":["html","htm","shtml"],"text/jade":["jade"],"text/jsx":["jsx"],"text/less":["less"],"text/markdown":["markdown","md"],"text/mathml":["mml"],"text/n3":["n3"],"text/plain":["txt","text","conf","def","list","log","in","ini"],"text/prs.lines.tag":["dsc"],"text/richtext":["rtx"],"text/rtf":["rtf"],"text/sgml":["sgml","sgm"],"text/slim":["slim","slm"],"text/stylus":["stylus","styl"],"text/tab-separated-values":["tsv"],"text/troff":["t","tr","roff","man","me","ms"],"text/turtle":["ttl"],"text/uri-list":["uri","uris","urls"],"text/vcard":["vcard"],"text/vnd.curl":["curl"],"text/vnd.curl.dcurl":["dcurl"],"text/vnd.curl.mcurl":["mcurl"],"text/vnd.curl.scurl":["scurl"],"text/vnd.dvb.subtitle":["sub"],"text/vnd.fly":["fly"],"text/vnd.fmi.flexstor":["flx"],"text/vnd.graphviz":["gv"],"text/vnd.in3d.3dml":["3dml"],"text/vnd.in3d.spot":["spot"],"text/vnd.sun.j2me.app-descriptor":["jad"],"text/vnd.wap.wml":["wml"],"text/vnd.wap.wmlscript":["wmls"],"text/vtt":["vtt"],"text/x-asm":["s","asm"],"text/x-c":["c","cc","cxx","cpp","h","hh","dic"],"text/x-component":["htc"],"text/x-fortran":["f","for","f77","f90"],"text/x-handlebars-template":["hbs"],"text/x-java-source":["java"],"text/x-lua":["lua"],"text/x-markdown":["mkd"],"text/x-nfo":["nfo"],"text/x-opml":["opml"],"text/x-org":["org"],"text/x-pascal":["p","pas"],"text/x-processing":["pde"],"text/x-sass":["sass"],"text/x-scss":["scss"],"text/x-setext":["etx"],"text/x-sfv":["sfv"],"text/x-suse-ymp":["ymp"],"text/x-uuencode":["uu"],"text/x-vcalendar":["vcs"],"text/x-vcard":["vcf"],"text/xml":["xml"],"text/yaml":["yaml","yml"],"video/3gpp":["3gp","3gpp"],"video/3gpp2":["3g2"],"video/h261":["h261"],"video/h263":["h263"],"video/h264":["h264"],"video/jpeg":["jpgv"],"video/jpm":["jpm","jpgm"],"video/mj2":["mj2","mjp2"],"video/mp2t":["ts"],"video/mp4":["mp4","mp4v","mpg4"],"video/mpeg":["mpeg","mpg","mpe","m1v","m2v"],"video/ogg":["ogv"],"video/quicktime":["qt","mov"],"video/vnd.dece.hd":["uvh","uvvh"],"video/vnd.dece.mobile":["uvm","uvvm"],"video/vnd.dece.pd":["uvp","uvvp"],"video/vnd.dece.sd":["uvs","uvvs"],"video/vnd.dece.video":["uvv","uvvv"],"video/vnd.dvb.file":["dvb"],"video/vnd.fvt":["fvt"],"video/vnd.mpegurl":["mxu","m4u"],"video/vnd.ms-playready.media.pyv":["pyv"],"video/vnd.uvvu.mp4":["uvu","uvvu"],"video/vnd.vivo":["viv"],"video/webm":["webm"],"video/x-f4v":["f4v"],"video/x-fli":["fli"],"video/x-flv":["flv"],"video/x-m4v":["m4v"],"video/x-matroska":["mkv","mk3d","mks"],"video/x-mng":["mng"],"video/x-ms-asf":["asf","asx"],"video/x-ms-vob":["vob"],"video/x-ms-wm":["wm"],"video/x-ms-wmv":["wmv"],"video/x-ms-wmx":["wmx"],"video/x-ms-wvx":["wvx"],"video/x-msvideo":["avi"],"video/x-sgi-movie":["movie"],"video/x-smv":["smv"],"x-conference/x-cooltalk":["ice"]}
 
-},{}],432:[function(require,module,exports){
+},{}],306:[function(require,module,exports){
 module.exports = minimatch
 minimatch.Minimatch = Minimatch
 
@@ -77947,7 +70286,7 @@ function regExpEscape (s) {
   return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 }
 
-},{"brace-expansion":250,"path":undefined}],433:[function(require,module,exports){
+},{"brace-expansion":125,"path":undefined}],307:[function(require,module,exports){
 //! moment.js
 //! version : 2.20.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
@@ -82484,7 +74823,7 @@ return hooks;
 
 })));
 
-},{}],434:[function(require,module,exports){
+},{}],308:[function(require,module,exports){
 /*!
  * morgan
  * Copyright(c) 2010 Sencha Inc.
@@ -83008,15 +75347,15 @@ function token (name, fn) {
   return this
 }
 
-},{"basic-auth":200,"debug":437,"depd":270,"on-finished":447,"on-headers":448}],435:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":436,"dup":245}],436:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],437:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":435,"./node.js":438,"dup":247}],438:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":436,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],439:[function(require,module,exports){
+},{"basic-auth":75,"debug":311,"depd":145,"on-finished":321,"on-headers":322}],309:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":310,"dup":120}],310:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],311:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":309,"./node.js":312,"dup":122}],312:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":310,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],313:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -83170,7 +75509,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],440:[function(require,module,exports){
+},{}],314:[function(require,module,exports){
 /*!
  * negotiator
  * Copyright(c) 2012 Federico Romero
@@ -83296,7 +75635,7 @@ function loadModule(moduleName) {
   return module;
 }
 
-},{"./lib/charset":441,"./lib/encoding":442,"./lib/language":443,"./lib/mediaType":444}],441:[function(require,module,exports){
+},{"./lib/charset":315,"./lib/encoding":316,"./lib/language":317,"./lib/mediaType":318}],315:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -83467,7 +75806,7 @@ function isQuality(spec) {
   return spec.q > 0;
 }
 
-},{}],442:[function(require,module,exports){
+},{}],316:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -83653,7 +75992,7 @@ function isQuality(spec) {
   return spec.q > 0;
 }
 
-},{}],443:[function(require,module,exports){
+},{}],317:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -83834,7 +76173,7 @@ function isQuality(spec) {
   return spec.q > 0;
 }
 
-},{}],444:[function(require,module,exports){
+},{}],318:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -84130,7 +76469,7 @@ function splitParameters(str) {
   return parameters;
 }
 
-},{}],445:[function(require,module,exports){
+},{}],319:[function(require,module,exports){
 /**
  * @license node-stream-zip | (c) 2015 Antelle | https://github.com/antelle/node-stream-zip/blob/master/MIT-LICENSE.txt
  * Portions copyright https://github.com/cthackers/adm-zip | https://raw.githubusercontent.com/cthackers/adm-zip/master/MIT-LICENSE.txt
@@ -85143,7 +77482,7 @@ module.exports = StreamZip;
 
 // endregion
 
-},{"events":undefined,"fs":undefined,"path":undefined,"stream":undefined,"util":undefined,"zlib":undefined}],446:[function(require,module,exports){
+},{"events":undefined,"fs":undefined,"path":undefined,"stream":undefined,"util":undefined,"zlib":undefined}],320:[function(require,module,exports){
 var crypto = require('crypto')
   , qs = require('querystring')
   ;
@@ -85281,7 +77620,7 @@ exports.rfc3986 = rfc3986
 exports.generateBase = generateBase
 
 
-},{"crypto":undefined,"querystring":undefined}],447:[function(require,module,exports){
+},{"crypto":undefined,"querystring":undefined}],321:[function(require,module,exports){
 /*!
  * on-finished
  * Copyright(c) 2013 Jonathan Ong
@@ -85479,7 +77818,7 @@ function patchAssignSocket(res, callback) {
   }
 }
 
-},{"ee-first":278}],448:[function(require,module,exports){
+},{"ee-first":153}],322:[function(require,module,exports){
 /*!
  * on-headers
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -85574,7 +77913,7 @@ function setWriteHeadHeaders(statusCode) {
   return args
 }
 
-},{}],449:[function(require,module,exports){
+},{}],323:[function(require,module,exports){
 'use strict';
 var isWindows = process.platform === 'win32';
 var trailingSlashRe = isWindows ? /[^:]\\$/ : /.\/$/;
@@ -85601,7 +77940,7 @@ module.exports = function () {
 	return path;
 };
 
-},{}],450:[function(require,module,exports){
+},{}],324:[function(require,module,exports){
 /*!
  * parseurl
  * Copyright(c) 2014 Jonathan Ong
@@ -85757,7 +78096,7 @@ function fresh (url, parsedUrl) {
     parsedUrl._raw === url
 }
 
-},{"url":undefined}],451:[function(require,module,exports){
+},{"url":undefined}],325:[function(require,module,exports){
 /**
  * Expose `pathtoRegexp`.
  */
@@ -85888,7 +78227,7 @@ function pathtoRegexp(path, keys, options) {
   return new RegExp(path, flags);
 };
 
-},{}],452:[function(require,module,exports){
+},{}],326:[function(require,module,exports){
 module.exports = Pend;
 
 function Pend() {
@@ -85945,7 +78284,7 @@ function pendGo(self, fn) {
   fn(pendHold(self));
 }
 
-},{}],453:[function(require,module,exports){
+},{}],327:[function(require,module,exports){
 // Generated by CoffeeScript 1.12.2
 (function() {
   var getNanoSeconds, hrtime, loadTime, moduleLoadTime, nodeLoadTime, upTime;
@@ -85983,7 +78322,7 @@ function pendGo(self, fn) {
 
 
 
-},{}],454:[function(require,module,exports){
+},{}],328:[function(require,module,exports){
 'use strict';
 
 var fs = require('graceful-fs');
@@ -86364,7 +78703,7 @@ module.exports.unlockSync = unlockSync;
 module.exports.check = check;
 module.exports.checkSync = checkSync;
 
-},{"./lib/syncFs":455,"err-code":280,"extend":299,"graceful-fs":324,"path":undefined,"retry":481}],455:[function(require,module,exports){
+},{"./lib/syncFs":329,"err-code":155,"extend":174,"graceful-fs":199,"path":undefined,"retry":480}],329:[function(require,module,exports){
 'use strict';
 
 function makeSync(fs, name) {
@@ -86407,7 +78746,7 @@ function syncFs(fs) {
 
 module.exports = syncFs;
 
-},{}],456:[function(require,module,exports){
+},{}],330:[function(require,module,exports){
 /*!
  * proxy-addr
  * Copyright(c) 2014-2016 Douglas Christopher Wilson
@@ -86736,7 +79075,7 @@ function trustSingle (subnet) {
   }
 }
 
-},{"forwarded":321,"ipaddr.js":402}],457:[function(require,module,exports){
+},{"forwarded":196,"ipaddr.js":276}],331:[function(require,module,exports){
 'use strict';
 
 var replace = String.prototype.replace;
@@ -86756,7 +79095,7 @@ module.exports = {
     RFC3986: 'RFC3986'
 };
 
-},{}],458:[function(require,module,exports){
+},{}],332:[function(require,module,exports){
 'use strict';
 
 var stringify = require('./stringify');
@@ -86769,7 +79108,7 @@ module.exports = {
     stringify: stringify
 };
 
-},{"./formats":457,"./parse":459,"./stringify":460}],459:[function(require,module,exports){
+},{"./formats":331,"./parse":333,"./stringify":334}],333:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -86945,7 +79284,7 @@ module.exports = function (str, opts) {
     return utils.compact(obj);
 };
 
-},{"./utils":461}],460:[function(require,module,exports){
+},{"./utils":335}],334:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -87157,7 +79496,7 @@ module.exports = function (object, opts) {
     return joined.length > 0 ? prefix + joined : '';
 };
 
-},{"./formats":457,"./utils":461}],461:[function(require,module,exports){
+},{"./formats":331,"./utils":335}],335:[function(require,module,exports){
 'use strict';
 
 var has = Object.prototype.hasOwnProperty;
@@ -87361,7 +79700,7656 @@ exports.isBuffer = function isBuffer(obj) {
     return !!(obj.constructor && obj.constructor.isBuffer && obj.constructor.isBuffer(obj));
 };
 
-},{}],462:[function(require,module,exports){
+},{}],336:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function sortObject(obj) {
+    if (obj instanceof Array) {
+        for (let i = 0; i < obj.length; i++) {
+            obj[i] = sortObject(obj[i]);
+        }
+        return obj;
+    }
+    else if (typeof obj !== "object") {
+        return obj;
+    }
+    const newObj = {};
+    Object.keys(obj).sort().forEach((key) => {
+        newObj[key] = sortObject(obj[key]);
+    });
+    return newObj;
+}
+exports.sortObject = sortObject;
+function traverseJsonObjects_(parent, keyInParent, obj, func) {
+    func(obj, parent, keyInParent);
+    if (obj instanceof Array) {
+        for (let index = 0; index < obj.length; index++) {
+            const item = obj[index];
+            if (typeof item !== "undefined") {
+                traverseJsonObjects_(obj, index, item, func);
+            }
+        }
+    }
+    else if (typeof obj === "object") {
+        Object.keys(obj).forEach((key) => {
+            if (obj.hasOwnProperty(key)) {
+                const item = obj[key];
+                if (typeof item !== "undefined") {
+                    traverseJsonObjects_(obj, key, item, func);
+                }
+            }
+        });
+    }
+}
+function traverseJsonObjects(obj, func) {
+    traverseJsonObjects_(undefined, undefined, obj, func);
+}
+exports.traverseJsonObjects = traverseJsonObjects;
+
+},{}],337:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function parseRangeHeader(rangeHeader) {
+    let ranges = [];
+    if (!rangeHeader) {
+        return ranges;
+    }
+    let rHeader;
+    if (rangeHeader instanceof Array) {
+        rHeader = rangeHeader;
+    }
+    else {
+        rHeader = [rangeHeader];
+    }
+    rHeader.forEach((rh) => {
+        const arr = parseRangeHeader_(rh);
+        ranges = ranges.concat(arr);
+    });
+    return ranges;
+}
+exports.parseRangeHeader = parseRangeHeader;
+function parseRangeHeader_(rangeHeader) {
+    const ranges = [];
+    const iEqual = rangeHeader.indexOf("=");
+    if (iEqual <= 0) {
+        return ranges;
+    }
+    const rangesStr = rangeHeader.substr(iEqual + 1);
+    const rangeStrArray = rangesStr.split(",");
+    rangeStrArray.forEach((rangeStr) => {
+        const beginEndArray = rangeStr.split("-");
+        const beginStr = beginEndArray[0];
+        const endStr = beginEndArray[1];
+        let begin = -1;
+        if (beginStr && beginStr.length) {
+            begin = parseInt(beginStr, 10);
+        }
+        let end = -1;
+        if (endStr && endStr.length) {
+            end = parseInt(endStr, 10);
+        }
+        const rangeObj = { begin, end };
+        ranges.push(rangeObj);
+    });
+    return ranges;
+}
+function combineRanges(ranges) {
+    const orderedRanges = ranges
+        .map((range, index) => {
+        return {
+            begin: range.begin,
+            end: range.end,
+            index,
+        };
+    })
+        .sort((a, b) => {
+        return a.begin - b.begin;
+    });
+    let j = 0;
+    let i = 1;
+    for (j = 0, i = 1; i < orderedRanges.length; i++) {
+        const orderedRange = orderedRanges[i];
+        const currentRange = orderedRanges[j];
+        if (orderedRange.begin > currentRange.end + 1) {
+            orderedRanges[++j] = orderedRange;
+        }
+        else if (orderedRange.end > currentRange.end) {
+            currentRange.end = orderedRange.end;
+            currentRange.index = Math.min(currentRange.index, orderedRange.index);
+        }
+    }
+    orderedRanges.length = j + 1;
+    return orderedRanges
+        .sort((a, b) => {
+        return a.index - b.index;
+    })
+        .map((range) => {
+        return {
+            begin: range.begin,
+            end: range.end,
+        };
+    });
+}
+exports.combineRanges = combineRanges;
+
+},{}],338:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
+const querystring = require("querystring");
+function isHTTP(urlOrPath) {
+    return urlOrPath.indexOf("http") === 0;
+}
+exports.isHTTP = isHTTP;
+function encodeURIComponent_RFC3986(str) {
+    return encodeURIComponent(str)
+        .replace(/[!'()*]/g, (c) => {
+        return "%" + c.charCodeAt(0).toString(16);
+    });
+}
+exports.encodeURIComponent_RFC3986 = encodeURIComponent_RFC3986;
+function encodeURIComponent_RFC5987(str) {
+    return encodeURIComponent(str).
+        replace(/['()]/g, querystring.escape).
+        replace(/\*/g, "%2A").
+        replace(/%(?:7C|60|5E)/g, querystring.unescape);
+}
+exports.encodeURIComponent_RFC5987 = encodeURIComponent_RFC5987;
+function ensureAbsolute(rootUrl, linkHref) {
+    let url = linkHref;
+    if (!isHTTP(url) && url.indexOf("data:") !== 0) {
+        if (url.indexOf("//") === 0) {
+            if (rootUrl.indexOf("https://") === 0) {
+                url = "https:" + url;
+            }
+            else {
+                url = "http:" + url;
+            }
+            return url;
+        }
+        if (url[0] === "/") {
+            const j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
+            const rootUrlOrigin = rootUrl.substr(0, j);
+            url = path.join(rootUrlOrigin, url);
+        }
+        else {
+            const i = rootUrl.indexOf("?");
+            let rootUrlWithoutQuery = rootUrl;
+            if (i >= 0) {
+                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
+            }
+            if (rootUrlWithoutQuery.substr(-1) === "/") {
+                url = path.join(rootUrlWithoutQuery, url);
+            }
+            else {
+                url = path.join(path.dirname(rootUrlWithoutQuery), url);
+            }
+        }
+        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
+    }
+    return url;
+}
+exports.ensureAbsolute = ensureAbsolute;
+
+},{"path":undefined,"querystring":undefined}],339:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const stream_1 = require("stream");
+class BufferReadableStream extends stream_1.Readable {
+    constructor(buffer) {
+        super();
+        this.buffer = buffer;
+        this.alreadyRead = 0;
+    }
+    _read(size) {
+        if (this.alreadyRead >= this.buffer.length) {
+            this.push(null);
+            return;
+        }
+        let chunk = this.alreadyRead ?
+            this.buffer.slice(this.alreadyRead) :
+            this.buffer;
+        if (size) {
+            let l = size;
+            if (size > chunk.length) {
+                l = chunk.length;
+            }
+            chunk = chunk.slice(0, l);
+        }
+        this.alreadyRead += chunk.length;
+        this.push(chunk);
+    }
+}
+exports.BufferReadableStream = BufferReadableStream;
+
+},{"stream":undefined}],340:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const BufferReadableStream_1 = require("./BufferReadableStream");
+function bufferToStream(buffer) {
+    return new BufferReadableStream_1.BufferReadableStream(buffer);
+}
+exports.bufferToStream = bufferToStream;
+function streamToBufferPromise_READABLE(readStream) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve, reject) => {
+            const buffers = [];
+            readStream.on("error", reject);
+            readStream.on("readable", () => {
+                let chunk;
+                do {
+                    chunk = readStream.read();
+                    if (chunk) {
+                        buffers.push(chunk);
+                    }
+                } while (chunk);
+            });
+            readStream.on("end", () => {
+                resolve(Buffer.concat(buffers));
+            });
+        });
+    });
+}
+exports.streamToBufferPromise_READABLE = streamToBufferPromise_READABLE;
+function streamToBufferPromise(readStream) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        return new Promise((resolve, reject) => {
+            const buffers = [];
+            readStream.on("error", reject);
+            readStream.on("data", (data) => {
+                buffers.push(data);
+            });
+            readStream.on("end", () => {
+                resolve(Buffer.concat(buffers));
+            });
+        });
+    });
+}
+exports.streamToBufferPromise = streamToBufferPromise;
+
+},{"./BufferReadableStream":339,"tslib":553}],341:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const debug_ = require("debug");
+const stream_1 = require("stream");
+const debug = debug_("r2:RangeStream");
+class RangeStream extends stream_1.Transform {
+    constructor(streamBegin, streamEnd, streamLength) {
+        super();
+        this.streamBegin = streamBegin;
+        this.streamEnd = streamEnd;
+        this.streamLength = streamLength;
+        this.bytesReceived = 0;
+        this.finished = false;
+        this.closed = false;
+        this.on("end", () => {
+        });
+        this.on("finish", () => {
+        });
+    }
+    _flush(callback) {
+        callback();
+    }
+    _transform(chunk, _encoding, callback) {
+        this.bytesReceived += chunk.length;
+        if (this.finished) {
+            if (!this.closed) {
+                debug("???? CLOSING...");
+                this.closed = true;
+                this.push(null);
+            }
+            else {
+                debug("???? STILL PIPE CALLING _transform ??!");
+                this.end();
+            }
+        }
+        else {
+            if (this.bytesReceived > this.streamBegin) {
+                let chunkBegin = 0;
+                let chunkEnd = chunk.length - 1;
+                chunkBegin = this.streamBegin - (this.bytesReceived - chunk.length);
+                if (chunkBegin < 0) {
+                    chunkBegin = 0;
+                }
+                if (this.bytesReceived > this.streamEnd) {
+                    this.finished = true;
+                    chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
+                }
+                this.push(chunk.slice(chunkBegin, chunkEnd + 1));
+                if (this.finished) {
+                    this.closed = true;
+                    this.push(null);
+                    this.end();
+                }
+            }
+            else {
+            }
+        }
+        callback();
+    }
+}
+exports.RangeStream = RangeStream;
+
+},{"debug":142,"stream":undefined}],342:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class JsonDateConverter {
+    serialize(property) {
+        return property.toISOString();
+    }
+    deserialize(value) {
+        return new Date(value);
+    }
+    collapseArrayWithSingleItem() {
+        return false;
+    }
+}
+exports.JsonDateConverter = JsonDateConverter;
+
+},{}],343:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class JsonStringConverter {
+    serialize(property) {
+        return property;
+    }
+    deserialize(value) {
+        return value;
+    }
+    collapseArrayWithSingleItem() {
+        return true;
+    }
+}
+exports.JsonStringConverter = JsonStringConverter;
+
+},{}],344:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const property_definition_1 = require("./property-definition");
+class ObjectDefinition {
+    constructor() {
+        this.ctr = () => undefined;
+        this.beforeDeserialized = () => undefined;
+        this.onDeserialized = () => undefined;
+        this.properties = new Map();
+    }
+    getProperty(key) {
+        let property = this.properties.get(key);
+        if (!property) {
+            property = new property_definition_1.PropertyDefinition();
+            this.properties.set(key, property);
+        }
+        return property;
+    }
+}
+exports.ObjectDefinition = ObjectDefinition;
+exports.objectDefinitions = new Map();
+function getDefinition(objectType) {
+    let definition = exports.objectDefinitions.get(objectType);
+    if (!definition) {
+        definition = new ObjectDefinition();
+        exports.objectDefinitions.set(objectType, definition);
+    }
+    return definition;
+}
+exports.getDefinition = getDefinition;
+function getInheritanceChain(objectType) {
+    if (!objectType) {
+        return [];
+    }
+    const parent = Object.getPrototypeOf(objectType);
+    return [objectType.constructor].concat(getInheritanceChain(parent));
+}
+exports.getInheritanceChain = getInheritanceChain;
+function getChildObjectTypeDefinitions(parentObjectType) {
+    const childDefs = [];
+    exports.objectDefinitions.forEach((def, objectType) => {
+        const superObjectType = Object.getPrototypeOf(objectType.prototype).constructor;
+        if (superObjectType === parentObjectType) {
+            childDefs.push({ functionType: objectType, objectDefinition: def });
+        }
+    });
+    return childDefs;
+}
+function getTypedInheritanceChain(objectType, objectInstance) {
+    const parentDef = exports.objectDefinitions.get(objectType);
+    let childDefs = [];
+    if (objectInstance && parentDef && parentDef.discriminatorProperty) {
+        childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType));
+    }
+    let actualObjectType;
+    while (childDefs.length !== 0 && !actualObjectType) {
+        const ifo = childDefs.shift();
+        const objectType2 = ifo ? ifo.functionType : undefined;
+        const def = ifo ? ifo.objectDefinition : undefined;
+        if (def && def.hasOwnProperty("discriminatorValue")) {
+            if (objectInstance
+                && parentDef
+                && def.discriminatorValue === objectInstance[parentDef.discriminatorProperty]) {
+                if (def.hasOwnProperty("discriminatorProperty")) {
+                    return getTypedInheritanceChain(objectType2, objectInstance);
+                }
+                actualObjectType = objectType2;
+            }
+        }
+        else {
+            childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType2));
+        }
+    }
+    if (!actualObjectType) {
+        actualObjectType = objectType;
+    }
+    const inheritanceChain = new Set(getInheritanceChain(Object.create(actualObjectType.prototype)));
+    return Array.from(inheritanceChain).filter((t) => exports.objectDefinitions.has(t));
+}
+exports.getTypedInheritanceChain = getTypedInheritanceChain;
+
+},{"./property-definition":345}],345:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class PropertyDefinition {
+    constructor() {
+        this.array = false;
+        this.set = false;
+        this.readonly = false;
+        this.writeonly = false;
+    }
+}
+exports.PropertyDefinition = PropertyDefinition;
+
+},{}],346:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class BufferConverter {
+    constructor() {
+        this.encoding = "utf8";
+    }
+    serialize(property) {
+        return property.toString(this.encoding);
+    }
+    deserialize(value) {
+        return Buffer.from(value, this.encoding);
+    }
+    collapseArrayWithSingleItem() {
+        return false;
+    }
+}
+exports.BufferConverter = BufferConverter;
+
+},{}],347:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const buffer_converter_1 = require("./buffer-converter");
+const date_converter_1 = require("./date-converter");
+exports.propertyConverters = new Map();
+exports.propertyConverters.set(Buffer, new buffer_converter_1.BufferConverter());
+exports.propertyConverters.set(Date, new date_converter_1.DateConverter());
+
+},{"./buffer-converter":346,"./date-converter":348}],348:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class DateConverter {
+    serialize(property) {
+        return property.toISOString();
+    }
+    deserialize(value) {
+        return new Date(value);
+    }
+    collapseArrayWithSingleItem() {
+        return false;
+    }
+}
+exports.DateConverter = DateConverter;
+
+},{}],349:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+tslib_1.__exportStar(require("./converter"), exports);
+tslib_1.__exportStar(require("./buffer-converter"), exports);
+tslib_1.__exportStar(require("./date-converter"), exports);
+
+},{"./buffer-converter":346,"./converter":347,"./date-converter":348,"tslib":553}],350:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function BeforeDeserialized() {
+    return (target, key) => {
+        const definition = object_definition_1.getDefinition(target.constructor);
+        definition.beforeDeserialized = target[key];
+    };
+}
+exports.BeforeDeserialized = BeforeDeserialized;
+
+},{"../classes/object-definition":344}],351:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+tslib_1.__exportStar(require("./xml-object"), exports);
+tslib_1.__exportStar(require("./xml-xpathselector"), exports);
+tslib_1.__exportStar(require("./xml-type"), exports);
+tslib_1.__exportStar(require("./xml-item-type"), exports);
+tslib_1.__exportStar(require("./xml-converter"), exports);
+tslib_1.__exportStar(require("./xml-readonly"), exports);
+tslib_1.__exportStar(require("./xml-writeonly"), exports);
+tslib_1.__exportStar(require("./xml-discriminator-property"), exports);
+tslib_1.__exportStar(require("./xml-discriminator-value"), exports);
+tslib_1.__exportStar(require("./xml-constructor"), exports);
+tslib_1.__exportStar(require("./before-deserialized"), exports);
+tslib_1.__exportStar(require("./on-deserialized"), exports);
+
+},{"./before-deserialized":350,"./on-deserialized":352,"./xml-constructor":353,"./xml-converter":354,"./xml-discriminator-property":355,"./xml-discriminator-value":356,"./xml-item-type":357,"./xml-object":358,"./xml-readonly":359,"./xml-type":360,"./xml-writeonly":361,"./xml-xpathselector":362,"tslib":553}],352:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function OnDeserialized() {
+    return (target, key) => {
+        const definition = object_definition_1.getDefinition(target.constructor);
+        definition.onDeserialized = target[key];
+    };
+}
+exports.OnDeserialized = OnDeserialized;
+
+},{"../classes/object-definition":344}],353:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlConstructor() {
+    return (target, key) => {
+        const definition = object_definition_1.getDefinition(target.constructor);
+        definition.ctr = target[key];
+    };
+}
+exports.XmlConstructor = XmlConstructor;
+
+},{"../classes/object-definition":344}],354:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlConverter(converter) {
+    return (target, key) => {
+        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        if (typeof converter === "function") {
+            property.converter = new converter();
+        }
+        else {
+            property.converter = converter;
+        }
+    };
+}
+exports.XmlConverter = XmlConverter;
+
+},{"../classes/object-definition":344}],355:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlDiscriminatorProperty(property) {
+    return (objectType) => {
+        object_definition_1.getDefinition(objectType).discriminatorProperty = property;
+    };
+}
+exports.XmlDiscriminatorProperty = XmlDiscriminatorProperty;
+
+},{"../classes/object-definition":344}],356:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlDiscriminatorValue(value) {
+    return (objectType) => {
+        object_definition_1.getDefinition(objectType).discriminatorValue = value;
+    };
+}
+exports.XmlDiscriminatorValue = XmlDiscriminatorValue;
+
+},{"../classes/object-definition":344}],357:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlItemType(objectType) {
+    return (target, key) => {
+        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.objectType = objectType;
+    };
+}
+exports.XmlItemType = XmlItemType;
+
+},{"../classes/object-definition":344}],358:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlObject(namespaces) {
+    return (objectType) => {
+        const def = object_definition_1.getDefinition(objectType);
+        if (namespaces) {
+            def.namespaces = namespaces;
+        }
+        if (def.namespaces && def.properties) {
+            def.properties.forEach((propDef) => {
+                if (def.namespaces) {
+                    for (const prop in def.namespaces) {
+                        if (def.namespaces.hasOwnProperty(prop)) {
+                            if (!propDef.namespaces || !propDef.namespaces[prop]) {
+                                if (!propDef.namespaces) {
+                                    propDef.namespaces = {};
+                                }
+                                propDef.namespaces[prop] = def.namespaces[prop];
+                            }
+                        }
+                    }
+                    if (propDef.xpathSelectorParsed) {
+                        propDef.xpathSelectorParsed.forEach((xp) => {
+                            if (xp.namespacePrefix && !xp.namespaceUri) {
+                                xp.namespaceUri = propDef.namespaces ?
+                                    propDef.namespaces[xp.namespacePrefix] :
+                                    undefined;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    };
+}
+exports.XmlObject = XmlObject;
+
+},{"../classes/object-definition":344}],359:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlReadonly() {
+    return (target, key) => {
+        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.readonly = true;
+    };
+}
+exports.XmlReadonly = XmlReadonly;
+
+},{"../classes/object-definition":344}],360:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlType(objectType) {
+    return (target, key) => {
+        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.objectType = objectType;
+    };
+}
+exports.XmlType = XmlType;
+
+},{"../classes/object-definition":344}],361:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const object_definition_1 = require("../classes/object-definition");
+function XmlWriteonly() {
+    return (target, key) => {
+        const property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.writeonly = true;
+    };
+}
+exports.XmlWriteonly = XmlWriteonly;
+
+},{"../classes/object-definition":344}],362:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+require("reflect-metadata");
+const object_definition_1 = require("../classes/object-definition");
+function XmlXPathSelector(selector, namespaces) {
+    return (target, key) => {
+        const objectType = Reflect.getMetadata("design:type", target, key);
+        const objDef = object_definition_1.getDefinition(target.constructor);
+        const property = objDef.getProperty(key);
+        property.xpathSelector = selector;
+        if (namespaces) {
+            property.namespaces = namespaces;
+        }
+        property.array = objectType === Array;
+        property.set = objectType === Set;
+        if (!property.array && !property.set && !property.objectType) {
+            property.objectType = objectType;
+        }
+        if (property.xpathSelector.indexOf("|") < 0
+            && property.xpathSelector.indexOf(">") < 0
+            && property.xpathSelector.indexOf("*") < 0
+            && property.xpathSelector.indexOf("||") < 0
+            && property.xpathSelector.indexOf("[") < 0
+            && property.xpathSelector.indexOf("]") < 0) {
+            property.xpathSelectorParsed = [];
+            const items = property.xpathSelector.split("/");
+            items.forEach((item) => {
+                if (!item.length) {
+                    return;
+                }
+                const subitems = item.split(":");
+                const isAttribute = item[0] === "@";
+                const isText = item === "text()";
+                const localName = subitems.length > 1 ?
+                    subitems[1] :
+                    (isAttribute ? subitems[0].substr(1) : subitems[0]);
+                const namespacePrefix = subitems.length > 1 ?
+                    (isAttribute ? subitems[0].substr(1) : subitems[0]) :
+                    undefined;
+                const namespaceUri = namespacePrefix ?
+                    (namespaces ? namespaces[namespacePrefix] : undefined) :
+                    undefined;
+                const xItem = {
+                    isAttribute,
+                    isText,
+                    localName,
+                    namespacePrefix,
+                    namespaceUri,
+                };
+                property.xpathSelectorParsed.push(xItem);
+            });
+        }
+    };
+}
+exports.XmlXPathSelector = XmlXPathSelector;
+
+},{"../classes/object-definition":344,"reflect-metadata":463}],363:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+tslib_1.__exportStar(require("./xml"), exports);
+tslib_1.__exportStar(require("./decorators"), exports);
+tslib_1.__exportStar(require("./converters"), exports);
+
+},{"./converters":349,"./decorators":351,"./xml":365,"tslib":553}],364:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const xpath = require("xpath");
+const object_definition_1 = require("../classes/object-definition");
+const converter_1 = require("../converters/converter");
+function deserialize(objectInstance, objectType, options = { runConstructor: false }) {
+    return deserializeRootObject(objectInstance, objectType, options);
+}
+exports.deserialize = deserialize;
+function deserializeRootObject(objectInstance, objectType = Object, options) {
+    if (!object_definition_1.objectDefinitions.has(objectType)) {
+        return undefined;
+    }
+    const [objectType2, ...superTypes] = object_definition_1.getTypedInheritanceChain(objectType, objectInstance);
+    const output = Object.create(objectType2.prototype);
+    const definitions = [...superTypes.reverse(), objectType2]
+        .map((t) => object_definition_1.objectDefinitions.get(t))
+        .filter((t) => !!t);
+    definitions.forEach((d) => {
+        if (!d) {
+            return;
+        }
+        if (options.runConstructor) {
+            d.ctr.call(output);
+        }
+        d.beforeDeserialized.call(output);
+        d.properties.forEach((p, key) => {
+            if (!p.objectType) {
+                throw new Error(`Cannot deserialize property "${key}" without type!`);
+            }
+            if (p.readonly) {
+                return;
+            }
+            if (p.xpathSelectorParsed) {
+                const xpathMatched = [];
+                let currentNodes = [objectInstance];
+                p.xpathSelectorParsed.forEach((item, index) => {
+                    const nextCurrentNodes = [];
+                    currentNodes.forEach((currentNode) => {
+                        if (item.isText) {
+                            let textNode = currentNode.firstChild;
+                            if (currentNode.childNodes && currentNode.childNodes.length) {
+                                for (let i = 0; i < currentNode.childNodes.length; i++) {
+                                    const childNode = currentNode.childNodes.item(i);
+                                    if (childNode.nodeType === 3) {
+                                        textNode = childNode;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (textNode) {
+                                xpathMatched.push(textNode);
+                            }
+                        }
+                        else if (item.isAttribute) {
+                            if (currentNode.attributes) {
+                                const attr = item.namespaceUri ?
+                                    currentNode.attributes.getNamedItemNS(item.namespaceUri, item.localName) :
+                                    currentNode.attributes.getNamedItem(item.localName);
+                                if (attr) {
+                                    xpathMatched.push(attr);
+                                }
+                            }
+                        }
+                        else {
+                            if (currentNode.childNodes && currentNode.childNodes.length) {
+                                for (let i = 0; i < currentNode.childNodes.length; i++) {
+                                    const childNode = currentNode.childNodes.item(i);
+                                    if (childNode.nodeType !== 1) {
+                                        continue;
+                                    }
+                                    if (childNode.localName !== item.localName) {
+                                        continue;
+                                    }
+                                    if (item.namespaceUri && item.namespaceUri !== childNode.namespaceURI) {
+                                        continue;
+                                    }
+                                    nextCurrentNodes.push(childNode);
+                                }
+                            }
+                        }
+                    });
+                    currentNodes = nextCurrentNodes;
+                    if (index === p.xpathSelectorParsed.length - 1) {
+                        currentNodes.forEach((node) => {
+                            xpathMatched.push(node);
+                        });
+                    }
+                });
+                if (xpathMatched && xpathMatched.length) {
+                    if (p.array || p.set) {
+                        output[key] = [];
+                        xpathMatched.forEach((item) => {
+                            output[key].push(deserializeObject(item, p, options));
+                        });
+                        if (p.set) {
+                            output[key] = new Set(output[key]);
+                        }
+                        return;
+                    }
+                    output[key] = deserializeObject(xpathMatched[0], p, options);
+                }
+            }
+            else {
+                const select = xpath.useNamespaces(p.namespaces || {});
+                const xPathSelected = select(p.xpathSelector, objectInstance);
+                if (xPathSelected && xPathSelected.length) {
+                    const xpathMatched = [];
+                    if (!(xPathSelected instanceof Array)) {
+                        xpathMatched.push(xPathSelected);
+                    }
+                    else {
+                        xPathSelected.forEach((item) => {
+                            xpathMatched.push(item);
+                        });
+                    }
+                    if (p.array || p.set) {
+                        output[key] = [];
+                        xpathMatched.forEach((item) => {
+                            output[key].push(deserializeObject(item, p, options));
+                        });
+                        if (p.set) {
+                            output[key] = new Set(output[key]);
+                        }
+                        return;
+                    }
+                    output[key] = deserializeObject(xpathMatched[0], p, options);
+                }
+            }
+        });
+        d.onDeserialized.call(output);
+    });
+    return output;
+}
+function deserializeObject(objectInstance, definition, _options) {
+    const primitive = definition.objectType === String
+        || definition.objectType === Boolean
+        || definition.objectType === Number;
+    const value = objectInstance.nodeType === 3 ?
+        objectInstance.data :
+        (objectInstance.nodeType === 2 ?
+            objectInstance.value :
+            (objectInstance.nodeType === 1 ?
+                objectInstance.localName :
+                objectInstance.nodeValue));
+    const converter = definition.converter || converter_1.propertyConverters.get(definition.objectType);
+    if (converter) {
+        return converter.deserialize(value);
+    }
+    if (!primitive) {
+        const objDefinition = object_definition_1.objectDefinitions.get(definition.objectType);
+        if (objDefinition) {
+            return deserialize(objectInstance, definition.objectType);
+        }
+    }
+    return value;
+}
+
+},{"../classes/object-definition":344,"../converters/converter":347,"xpath":575}],365:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const deserialize_1 = require("./methods/deserialize");
+class XML {
+    static deserialize(objectInstance, objectType, options) {
+        if (objectInstance.nodeType === 9) {
+            objectInstance = objectInstance.documentElement;
+        }
+        return deserialize_1.deserialize(objectInstance, objectType, options);
+    }
+}
+exports.XML = XML;
+
+},{"./methods/deserialize":364}],366:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const RangeStream_1 = require("../stream/RangeStream");
+class Zip {
+    entryStreamRangePromise(entryPath, begin, end) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let streamAndLength;
+            try {
+                streamAndLength = yield this.entryStreamPromise(entryPath);
+            }
+            catch (err) {
+                console.log(err);
+                return Promise.reject(err);
+            }
+            streamAndLength = streamAndLength;
+            const b = begin < 0 ? 0 : begin;
+            const e = end < 0 ? (streamAndLength.length - 1) : end;
+            const stream = new RangeStream_1.RangeStream(b, e, streamAndLength.length);
+            streamAndLength.stream.pipe(stream);
+            const sal = {
+                length: streamAndLength.length,
+                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    return this.entryStreamRangePromise(entryPath, begin, end);
+                }),
+                stream,
+            };
+            return sal;
+        });
+    }
+}
+exports.Zip = Zip;
+
+},{"../stream/RangeStream":341,"tslib":553}],367:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const debug_ = require("debug");
+const StreamZip = require("node-stream-zip");
+const zip_1 = require("./zip");
+const debug = debug_("r2:zip1");
+class Zip1 extends zip_1.Zip {
+    constructor(filePath, zip) {
+        super();
+        this.filePath = filePath;
+        this.zip = zip;
+    }
+    static loadPromise(filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                const zip = new StreamZip({
+                    file: filePath,
+                    storeEntries: true,
+                });
+                zip.on("error", (err) => {
+                    debug("--ZIP error: " + filePath);
+                    debug(err);
+                    reject(err);
+                });
+                zip.on("entry", (_entry) => {
+                });
+                zip.on("extract", (entry, file) => {
+                    debug("--ZIP extract:");
+                    debug(entry.name);
+                    debug(file);
+                });
+                zip.on("ready", () => {
+                    resolve(new Zip1(filePath, zip));
+                });
+            });
+        });
+    }
+    freeDestroy() {
+        debug("freeDestroy: Zip1 -- " + this.filePath);
+        if (this.zip) {
+            this.zip.close();
+        }
+    }
+    entriesCount() {
+        return this.zip.entriesCount;
+    }
+    hasEntries() {
+        return this.entriesCount() > 0;
+    }
+    hasEntry(entryPath) {
+        return this.hasEntries()
+            && this.zip.entries()[entryPath];
+    }
+    forEachEntry(callback) {
+        if (!this.hasEntries()) {
+            return;
+        }
+        Object.keys(this.zip.entries()).forEach((entryName) => {
+            callback(entryName);
+        });
+    }
+    entryStreamPromise(entryPath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (!this.hasEntries() || !this.hasEntry(entryPath)) {
+                return Promise.reject("no such path in zip: " + entryPath);
+            }
+            return new Promise((resolve, reject) => {
+                this.zip.stream(entryPath, (err, stream) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    const entry = this.zip.entries()[entryPath];
+                    const streamAndLength = {
+                        length: entry.size,
+                        reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                            return this.entryStreamPromise(entryPath);
+                        }),
+                        stream,
+                    };
+                    resolve(streamAndLength);
+                });
+            });
+        });
+    }
+}
+exports.Zip1 = Zip1;
+
+},{"./zip":366,"debug":142,"node-stream-zip":319,"tslib":553}],368:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const debug_ = require("debug");
+const request = require("request");
+const requestPromise = require("request-promise-native");
+const yauzl = require("yauzl");
+const UrlUtils_1 = require("../http/UrlUtils");
+const BufferUtils_1 = require("../stream/BufferUtils");
+const zip_1 = require("./zip");
+const zip2RandomAccessReader_Http_1 = require("./zip2RandomAccessReader_Http");
+const debug = debug_("r2:zip2");
+class Zip2 extends zip_1.Zip {
+    constructor(filePath, zip) {
+        super();
+        this.filePath = filePath;
+        this.zip = zip;
+        this.entries = {};
+    }
+    static loadPromise(filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (UrlUtils_1.isHTTP(filePath)) {
+                return Zip2.loadPromiseHTTP(filePath);
+            }
+            return new Promise((resolve, reject) => {
+                yauzl.open(filePath, { lazyEntries: true, autoClose: false }, (err, zip) => {
+                    if (err) {
+                        debug("yauzl init ERROR");
+                        debug(err);
+                        reject(err);
+                        return;
+                    }
+                    const zip2 = new Zip2(filePath, zip);
+                    zip.on("error", (erro) => {
+                        debug("yauzl ERROR");
+                        debug(erro);
+                        reject(erro);
+                    });
+                    zip.readEntry();
+                    zip.on("entry", (entry) => {
+                        if (entry.fileName[entry.fileName.length - 1] === "/") {
+                        }
+                        else {
+                            zip2.addEntry(entry);
+                        }
+                        zip.readEntry();
+                    });
+                    zip.on("end", () => {
+                        debug("yauzl END");
+                        resolve(zip2);
+                    });
+                    zip.on("close", () => {
+                        debug("yauzl CLOSE");
+                    });
+                });
+            });
+        });
+    }
+    static loadPromiseHTTP(filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const needsStreamingResponse = true;
+            return new Promise((resolve, reject) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                const failure = (err) => {
+                    debug(err);
+                    reject(err);
+                };
+                const success = (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                        failure("HTTP CODE " + res.statusCode);
+                        return;
+                    }
+                    debug(filePath);
+                    debug(res.headers);
+                    if (!res.headers["content-length"]) {
+                        reject("content-length not supported!");
+                        return;
+                    }
+                    const httpZipByteLength = parseInt(res.headers["content-length"], 10);
+                    debug(`Content-Length: ${httpZipByteLength}`);
+                    if (!res.headers["accept-ranges"]
+                        || res.headers["accept-ranges"] !== "bytes") {
+                        if (httpZipByteLength > (2 * 1024 * 1024)) {
+                            reject("accept-ranges not supported, file too big to download: " + httpZipByteLength);
+                            return;
+                        }
+                        debug("Downloading: " + filePath);
+                        const failure_ = (err) => {
+                            debug(err);
+                            reject(err);
+                        };
+                        const success_ = (ress) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                            if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
+                                failure_("HTTP CODE " + ress.statusCode);
+                                return;
+                            }
+                            let buffer;
+                            try {
+                                buffer = yield BufferUtils_1.streamToBufferPromise(ress);
+                            }
+                            catch (err) {
+                                debug(err);
+                                reject(err);
+                                return;
+                            }
+                            yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zip) => {
+                                if (err) {
+                                    debug("yauzl init ERROR");
+                                    debug(err);
+                                    reject(err);
+                                    return;
+                                }
+                                const zip2 = new Zip2(filePath, zip);
+                                zip.on("error", (erro) => {
+                                    debug("yauzl ERROR");
+                                    debug(erro);
+                                    reject(erro);
+                                });
+                                zip.readEntry();
+                                zip.on("entry", (entry) => {
+                                    if (entry.fileName[entry.fileName.length - 1] === "/") {
+                                    }
+                                    else {
+                                        zip2.addEntry(entry);
+                                    }
+                                    zip.readEntry();
+                                });
+                                zip.on("end", () => {
+                                    debug("yauzl END");
+                                    resolve(zip2);
+                                });
+                                zip.on("close", () => {
+                                    debug("yauzl CLOSE");
+                                });
+                            });
+                        });
+                        if (needsStreamingResponse) {
+                            request.get({
+                                headers: {},
+                                method: "GET",
+                                uri: filePath,
+                            })
+                                .on("response", success_)
+                                .on("error", failure_);
+                        }
+                        else {
+                            let ress;
+                            try {
+                                ress = yield requestPromise({
+                                    headers: {},
+                                    method: "GET",
+                                    resolveWithFullResponse: true,
+                                    uri: filePath,
+                                });
+                            }
+                            catch (err) {
+                                failure_(err);
+                                return;
+                            }
+                            yield success_(ress);
+                        }
+                        return;
+                    }
+                    const httpZipReader = new zip2RandomAccessReader_Http_1.HttpZipReader(filePath, httpZipByteLength);
+                    yauzl.fromRandomAccessReader(httpZipReader, httpZipByteLength, { lazyEntries: true, autoClose: false }, (err, zip) => {
+                        if (err) {
+                            debug("yauzl init ERROR");
+                            debug(err);
+                            reject(err);
+                            return;
+                        }
+                        zip.httpZipReader = httpZipReader;
+                        const zip2 = new Zip2(filePath, zip);
+                        zip.on("error", (erro) => {
+                            debug("yauzl ERROR");
+                            debug(erro);
+                            reject(erro);
+                        });
+                        zip.readEntry();
+                        zip.on("entry", (entry) => {
+                            if (entry.fileName[entry.fileName.length - 1] === "/") {
+                            }
+                            else {
+                                zip2.addEntry(entry);
+                            }
+                            zip.readEntry();
+                        });
+                        zip.on("end", () => {
+                            debug("yauzl END");
+                            resolve(zip2);
+                        });
+                        zip.on("close", () => {
+                            debug("yauzl CLOSE");
+                        });
+                    });
+                });
+                if (needsStreamingResponse) {
+                    request.get({
+                        headers: {},
+                        method: "HEAD",
+                        uri: filePath,
+                    })
+                        .on("response", success)
+                        .on("error", failure);
+                }
+                else {
+                    let res;
+                    try {
+                        res = yield requestPromise({
+                            headers: {},
+                            method: "HEAD",
+                            resolveWithFullResponse: true,
+                            uri: filePath,
+                        });
+                    }
+                    catch (err) {
+                        failure(err);
+                        return;
+                    }
+                    yield success(res);
+                }
+            }));
+        });
+    }
+    freeDestroy() {
+        debug("freeDestroy: Zip2 -- " + this.filePath);
+        if (this.zip) {
+            this.zip.close();
+        }
+    }
+    entriesCount() {
+        return this.zip.entryCount;
+    }
+    hasEntries() {
+        return this.entriesCount() > 0;
+    }
+    hasEntry(entryPath) {
+        return this.hasEntries() && this.entries[entryPath];
+    }
+    forEachEntry(callback) {
+        if (!this.hasEntries()) {
+            return;
+        }
+        Object.keys(this.entries).forEach((entryName) => {
+            callback(entryName);
+        });
+    }
+    entryStreamPromise(entryPath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (!this.hasEntries() || !this.hasEntry(entryPath)) {
+                return Promise.reject("no such path in zip: " + entryPath);
+            }
+            const entry = this.entries[entryPath];
+            return new Promise((resolve, reject) => {
+                this.zip.openReadStream(entry, (err, stream) => {
+                    if (err) {
+                        debug("yauzl openReadStream ERROR");
+                        debug(err);
+                        reject(err);
+                        return;
+                    }
+                    const streamAndLength = {
+                        length: entry.uncompressedSize,
+                        reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                            return this.entryStreamPromise(entryPath);
+                        }),
+                        stream,
+                    };
+                    resolve(streamAndLength);
+                });
+            });
+        });
+    }
+    addEntry(entry) {
+        this.entries[entry.fileName] = entry;
+    }
+}
+exports.Zip2 = Zip2;
+
+},{"../http/UrlUtils":338,"../stream/BufferUtils":340,"./zip":366,"./zip2RandomAccessReader_Http":369,"debug":142,"request":468,"request-promise-native":467,"tslib":553,"yauzl":576}],369:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const stream_1 = require("stream");
+const util = require("util");
+const debug_ = require("debug");
+const request = require("request");
+const requestPromise = require("request-promise-native");
+const yauzl = require("yauzl");
+const BufferUtils_1 = require("../stream/BufferUtils");
+const debug = debug_("r2:httpStream");
+class HttpZipReader {
+    constructor(url, byteLength) {
+        this.url = url;
+        this.byteLength = byteLength;
+        this.firstBuffer = undefined;
+        this.firstBufferStart = 0;
+        this.firstBufferEnd = 0;
+        yauzl.RandomAccessReader.call(this);
+    }
+    _readStreamForRange(start, end) {
+        if (this.firstBuffer && start >= this.firstBufferStart && end <= this.firstBufferEnd) {
+            const begin = start - this.firstBufferStart;
+            const stop = end - this.firstBufferStart;
+            return BufferUtils_1.bufferToStream(this.firstBuffer.slice(begin, stop));
+        }
+        const stream = new stream_1.PassThrough();
+        const lastByteIndex = end - 1;
+        const range = `${start}-${lastByteIndex}`;
+        const failure = (err) => {
+            debug(err);
+        };
+        const success = (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                failure("HTTP CODE " + res.statusCode);
+                return;
+            }
+            if (this.firstBuffer) {
+                res.pipe(stream);
+            }
+            else {
+                let buffer;
+                try {
+                    buffer = yield BufferUtils_1.streamToBufferPromise(res);
+                }
+                catch (err) {
+                    debug(err);
+                    stream.end();
+                    return;
+                }
+                this.firstBuffer = buffer;
+                this.firstBufferStart = start;
+                this.firstBufferEnd = end;
+                stream.write(buffer);
+                stream.end();
+            }
+        });
+        const needsStreamingResponse = true;
+        if (needsStreamingResponse) {
+            request.get({
+                headers: { Range: `bytes=${range}` },
+                method: "GET",
+                uri: this.url,
+            })
+                .on("response", success)
+                .on("error", failure);
+        }
+        else {
+            (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                let res;
+                try {
+                    res = yield requestPromise({
+                        headers: { Range: `bytes=${range}` },
+                        method: "GET",
+                        resolveWithFullResponse: true,
+                        uri: this.url,
+                    });
+                }
+                catch (err) {
+                    failure(err);
+                    return;
+                }
+                yield success(res);
+            }))();
+        }
+        return stream;
+    }
+}
+exports.HttpZipReader = HttpZipReader;
+util.inherits(HttpZipReader, yauzl.RandomAccessReader);
+
+},{"../stream/BufferUtils":340,"debug":142,"request":468,"request-promise-native":467,"stream":undefined,"tslib":553,"util":undefined,"yauzl":576}],370:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const UrlUtils_1 = require("../http/UrlUtils");
+const zip1_1 = require("./zip1");
+const zip2_1 = require("./zip2");
+function zipLoadPromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        if (UrlUtils_1.isHTTP(filePath)) {
+            return zip2_1.Zip2.loadPromise(filePath);
+        }
+        return zip1_1.Zip1.loadPromise(filePath);
+    });
+}
+exports.zipLoadPromise = zipLoadPromise;
+
+},{"../http/UrlUtils":338,"./zip1":367,"./zip2":368,"tslib":553}],371:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const metadata_collection_1 = require("./models/metadata-collection");
+const metadata_collection_json_converter_1 = require("./models/metadata-collection-json-converter");
+const metadata_contributor_1 = require("./models/metadata-contributor");
+const metadata_contributor_json_converter_1 = require("./models/metadata-contributor-json-converter");
+const opds2_collection_1 = require("./opds/opds2/opds2-collection");
+const opds2_collection_json_converter_1 = require("./opds/opds2/opds2-collection-json-converter");
+const ta_json_date_converter_1 = require("./_utils/ta-json-date-converter");
+const xml_js_mapper_1 = require("./_utils/xml-js-mapper");
+const ta_json_1 = require("ta-json");
+function initGlobals() {
+    ta_json_1.propertyConverters.set(Buffer, new ta_json_1.BufferConverter());
+    ta_json_1.propertyConverters.set(Date, new ta_json_date_converter_1.JsonDateConverter());
+    ta_json_1.propertyConverters.set(metadata_contributor_1.Contributor, new metadata_contributor_json_converter_1.JsonContributorConverter());
+    ta_json_1.propertyConverters.set(metadata_collection_1.Collection, new metadata_collection_json_converter_1.JsonCollectionConverter());
+    ta_json_1.propertyConverters.set(opds2_collection_1.OPDSCollection, new opds2_collection_json_converter_1.JsonOPDSCollectionConverter());
+    xml_js_mapper_1.propertyConverters.set(Buffer, new xml_js_mapper_1.BufferConverter());
+    xml_js_mapper_1.propertyConverters.set(Date, new xml_js_mapper_1.DateConverter());
+}
+exports.initGlobals = initGlobals;
+
+},{"./_utils/ta-json-date-converter":342,"./_utils/xml-js-mapper":363,"./models/metadata-collection":375,"./models/metadata-collection-json-converter":374,"./models/metadata-contributor":377,"./models/metadata-contributor-json-converter":376,"./opds/opds2/opds2-collection":395,"./opds/opds2/opds2-collection-json-converter":394,"ta-json":540}],372:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+function timeStrToSeconds(timeStr) {
+    if (!timeStr) {
+        return 0;
+    }
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+    try {
+        const iMin = timeStr.indexOf("min");
+        if (iMin > 0) {
+            const minsStr = timeStr.substr(0, iMin);
+            minutes = parseFloat(minsStr);
+        }
+        else {
+            const iMs = timeStr.indexOf("ms");
+            if (iMs > 0) {
+                const msStr = timeStr.substr(0, iMs);
+                const ms = parseFloat(msStr);
+                seconds = ms / 1000;
+            }
+            else {
+                const iS = timeStr.indexOf("s");
+                if (iS > 0) {
+                    const sStr = timeStr.substr(0, iS);
+                    seconds = parseFloat(sStr);
+                }
+                else {
+                    const iH = timeStr.indexOf("h");
+                    if (iH > 0) {
+                        const hStr = timeStr.substr(0, iH);
+                        hours = parseFloat(hStr);
+                    }
+                    else {
+                        const arr = timeStr.split(":");
+                        if (arr.length === 1) {
+                            seconds = parseFloat(arr[0]);
+                        }
+                        else if (arr.length === 2) {
+                            minutes = parseFloat(arr[0]);
+                            seconds = parseFloat(arr[1]);
+                        }
+                        else if (arr.length === 3) {
+                            hours = parseFloat(arr[0]);
+                            minutes = parseFloat(arr[1]);
+                            seconds = parseFloat(arr[2]);
+                        }
+                        else {
+                            console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR ??");
+                            console.log(timeStr);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR!");
+        console.log(timeStr);
+        return 0;
+    }
+    return (hours * 3600) + (minutes * 60) + seconds;
+}
+exports.timeStrToSeconds = timeStrToSeconds;
+let MediaOverlayNode = MediaOverlayNode_1 = class MediaOverlayNode {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("text"),
+    tslib_1.__metadata("design:type", String)
+], MediaOverlayNode.prototype, "Text", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("audio"),
+    tslib_1.__metadata("design:type", String)
+], MediaOverlayNode.prototype, "Audio", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("role"),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], MediaOverlayNode.prototype, "Role", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("children"),
+    ta_json_1.JsonElementType(MediaOverlayNode_1),
+    tslib_1.__metadata("design:type", Array)
+], MediaOverlayNode.prototype, "Children", void 0);
+MediaOverlayNode = MediaOverlayNode_1 = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], MediaOverlayNode);
+exports.MediaOverlayNode = MediaOverlayNode;
+var MediaOverlayNode_1;
+
+},{"ta-json":540,"tslib":553}],373:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const metadata_collection_1 = require("./metadata-collection");
+let BelongsTo = class BelongsTo {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("series"),
+    ta_json_1.JsonElementType(metadata_collection_1.Collection),
+    tslib_1.__metadata("design:type", Array)
+], BelongsTo.prototype, "Series", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("collection"),
+    ta_json_1.JsonElementType(metadata_collection_1.Collection),
+    tslib_1.__metadata("design:type", Array)
+], BelongsTo.prototype, "Collection", void 0);
+BelongsTo = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], BelongsTo);
+exports.BelongsTo = BelongsTo;
+
+},{"./metadata-collection":375,"ta-json":540,"tslib":553}],374:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ta_json_1 = require("ta-json");
+const metadata_collection_1 = require("./metadata-collection");
+class JsonCollectionConverter {
+    serialize(property) {
+        return ta_json_1.JSON.serialize(property);
+    }
+    deserialize(value) {
+        if (typeof value === "string") {
+            const c = new metadata_collection_1.Collection();
+            c.Name = value;
+            return c;
+        }
+        else {
+            return ta_json_1.JSON.deserialize(value, metadata_collection_1.Collection);
+        }
+    }
+    collapseArrayWithSingleItem() {
+        return true;
+    }
+}
+exports.JsonCollectionConverter = JsonCollectionConverter;
+
+},{"./metadata-collection":375,"ta-json":540}],375:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Collection = class Collection {
+    _OnDeserialized() {
+        if (!this.Name) {
+            console.log("Collection.Name is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", String)
+], Collection.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("sort_as"),
+    tslib_1.__metadata("design:type", String)
+], Collection.prototype, "SortAs", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("identifier"),
+    tslib_1.__metadata("design:type", String)
+], Collection.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("position"),
+    tslib_1.__metadata("design:type", Number)
+], Collection.prototype, "Position", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], Collection.prototype, "_OnDeserialized", null);
+Collection = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Collection);
+exports.Collection = Collection;
+
+},{"ta-json":540,"tslib":553}],376:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ta_json_1 = require("ta-json");
+const metadata_contributor_1 = require("./metadata-contributor");
+class JsonContributorConverter {
+    serialize(property) {
+        return ta_json_1.JSON.serialize(property);
+    }
+    deserialize(value) {
+        if (typeof value === "string") {
+            const c = new metadata_contributor_1.Contributor();
+            c.Name = value;
+            return c;
+        }
+        else {
+            return ta_json_1.JSON.deserialize(value, metadata_contributor_1.Contributor);
+        }
+    }
+    collapseArrayWithSingleItem() {
+        return true;
+    }
+}
+exports.JsonContributorConverter = JsonContributorConverter;
+
+},{"./metadata-contributor":377,"ta-json":540}],377:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Contributor = class Contributor {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", Object)
+], Contributor.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("sort_as"),
+    tslib_1.__metadata("design:type", String)
+], Contributor.prototype, "SortAs", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("identifier"),
+    tslib_1.__metadata("design:type", String)
+], Contributor.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("role"),
+    tslib_1.__metadata("design:type", String)
+], Contributor.prototype, "Role", void 0);
+Contributor = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Contributor);
+exports.Contributor = Contributor;
+
+},{"ta-json":540,"tslib":553}],378:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Encrypted = class Encrypted {
+    constructor() {
+        this.DecryptedLengthBeforeInflate = -1;
+        this.CypherBlockPadding = -1;
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("scheme"),
+    tslib_1.__metadata("design:type", String)
+], Encrypted.prototype, "Scheme", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("profile"),
+    tslib_1.__metadata("design:type", String)
+], Encrypted.prototype, "Profile", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("algorithm"),
+    tslib_1.__metadata("design:type", String)
+], Encrypted.prototype, "Algorithm", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("compression"),
+    tslib_1.__metadata("design:type", String)
+], Encrypted.prototype, "Compression", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("original-length"),
+    tslib_1.__metadata("design:type", Number)
+], Encrypted.prototype, "OriginalLength", void 0);
+Encrypted = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Encrypted);
+exports.Encrypted = Encrypted;
+
+},{"ta-json":540,"tslib":553}],379:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let MediaOverlay = class MediaOverlay {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("active-class"),
+    tslib_1.__metadata("design:type", String)
+], MediaOverlay.prototype, "ActiveClass", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("playback-active-class"),
+    tslib_1.__metadata("design:type", String)
+], MediaOverlay.prototype, "PlaybackActiveClass", void 0);
+MediaOverlay = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], MediaOverlay);
+exports.MediaOverlay = MediaOverlay;
+
+},{"ta-json":540,"tslib":553}],380:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const metadata_encrypted_1 = require("./metadata-encrypted");
+let Properties = class Properties {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("contains"),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], Properties.prototype, "Contains", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("layout"),
+    tslib_1.__metadata("design:type", String)
+], Properties.prototype, "Layout", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("media-overlay"),
+    tslib_1.__metadata("design:type", String)
+], Properties.prototype, "MediaOverlay", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("orientation"),
+    tslib_1.__metadata("design:type", String)
+], Properties.prototype, "Orientation", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("overflow"),
+    tslib_1.__metadata("design:type", String)
+], Properties.prototype, "Overflow", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("page"),
+    tslib_1.__metadata("design:type", String)
+], Properties.prototype, "Page", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("spread"),
+    tslib_1.__metadata("design:type", String)
+], Properties.prototype, "Spread", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("encrypted"),
+    tslib_1.__metadata("design:type", metadata_encrypted_1.Encrypted)
+], Properties.prototype, "Encrypted", void 0);
+Properties = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Properties);
+exports.Properties = Properties;
+
+},{"./metadata-encrypted":378,"ta-json":540,"tslib":553}],381:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Subject = class Subject {
+    _OnDeserialized() {
+        if (!this.Name) {
+            console.log("Subject.Name is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("sort_as"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "SortAs", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("scheme"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Scheme", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("code"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Code", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], Subject.prototype, "_OnDeserialized", null);
+Subject = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Subject);
+exports.Subject = Subject;
+
+},{"ta-json":540,"tslib":553}],382:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const metadata_belongsto_1 = require("./metadata-belongsto");
+const metadata_contributor_1 = require("./metadata-contributor");
+const metadata_media_overlay_1 = require("./metadata-media-overlay");
+const metadata_properties_1 = require("./metadata-properties");
+const metadata_subject_1 = require("./metadata-subject");
+let Metadata = class Metadata {
+    _OnDeserialized() {
+        if (!this.Title) {
+            console.log("Metadata.Title is not set!");
+        }
+        if (!this.Identifier) {
+            console.log("Metadata.Identifier is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("@type"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "RDFType", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("title"),
+    tslib_1.__metadata("design:type", Object)
+], Metadata.prototype, "Title", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("identifier"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("author"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Author", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("translator"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Translator", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("editor"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Editor", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("artist"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Artist", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("illustrator"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Illustrator", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("letterer"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Letterer", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("penciler"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Penciler", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("colorist"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Colorist", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("inker"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Inker", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("narrator"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Narrator", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("contributor"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Contributor", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("publisher"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Publisher", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("imprint"),
+    ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Imprint", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("language"),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Language", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("modified"),
+    tslib_1.__metadata("design:type", Date)
+], Metadata.prototype, "Modified", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("published"),
+    tslib_1.__metadata("design:type", Date)
+], Metadata.prototype, "PublicationDate", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("description"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "Description", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("direction"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "Direction", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rendition"),
+    tslib_1.__metadata("design:type", metadata_properties_1.Properties)
+], Metadata.prototype, "Rendition", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("source"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "Source", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("epub-type"),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "EpubType", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rights"),
+    tslib_1.__metadata("design:type", String)
+], Metadata.prototype, "Rights", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("subject"),
+    ta_json_1.JsonElementType(metadata_subject_1.Subject),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Subject", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("belongs_to"),
+    tslib_1.__metadata("design:type", metadata_belongsto_1.BelongsTo)
+], Metadata.prototype, "BelongsTo", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("duration"),
+    tslib_1.__metadata("design:type", Number)
+], Metadata.prototype, "Duration", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("media-overlay"),
+    tslib_1.__metadata("design:type", metadata_media_overlay_1.MediaOverlay)
+], Metadata.prototype, "MediaOverlay", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], Metadata.prototype, "_OnDeserialized", null);
+Metadata = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Metadata);
+exports.Metadata = Metadata;
+
+},{"./metadata-belongsto":373,"./metadata-contributor":377,"./metadata-media-overlay":379,"./metadata-properties":380,"./metadata-subject":381,"ta-json":540,"tslib":553}],383:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
+const ta_json_1 = require("ta-json");
+const metadata_properties_1 = require("./metadata-properties");
+let Link = Link_1 = class Link {
+    AddRels(rels) {
+        rels.forEach((rel) => {
+            this.AddRel(rel);
+        });
+    }
+    AddRel(rel) {
+        if (this.HasRel(rel)) {
+            return;
+        }
+        if (!this.Rel) {
+            this.Rel = [rel];
+        }
+        else {
+            this.Rel.push(rel);
+        }
+    }
+    HasRel(rel) {
+        return this.Rel && this.Rel.indexOf(rel) >= 0;
+    }
+    _OnDeserialized() {
+        if (!this.Href) {
+            console.log("Link.Href is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("href"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Href", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("type"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "TypeLink", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("height"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "Height", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("width"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "Width", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("title"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Title", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("properties"),
+    tslib_1.__metadata("design:type", metadata_properties_1.Properties)
+], Link.prototype, "Properties", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("duration"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "Duration", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("bitrate"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "Bitrate", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("templated"),
+    tslib_1.__metadata("design:type", Boolean)
+], Link.prototype, "Templated", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("children"),
+    ta_json_1.JsonElementType(Link_1),
+    tslib_1.__metadata("design:type", Array)
+], Link.prototype, "Children", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rel"),
+    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], Link.prototype, "Rel", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], Link.prototype, "_OnDeserialized", null);
+Link = Link_1 = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Link);
+exports.Link = Link;
+var Link_1;
+
+},{"../_utils/ta-json-string-converter":343,"./metadata-properties":380,"ta-json":540,"tslib":553}],384:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
+const ta_json_1 = require("ta-json");
+const metadata_1 = require("./metadata");
+const publication_link_1 = require("./publication-link");
+let Publication = class Publication {
+    freeDestroy() {
+        console.log("freeDestroy: Publication");
+        if (this.Internal) {
+            const zipInternal = this.findFromInternal("zip");
+            if (zipInternal) {
+                const zip = zipInternal.Value;
+                zip.freeDestroy();
+            }
+        }
+    }
+    findFromInternal(key) {
+        if (this.Internal) {
+            const found = this.Internal.find((internal) => {
+                return internal.Name === key;
+            });
+            if (found) {
+                return found;
+            }
+        }
+        return undefined;
+    }
+    AddToInternal(key, value) {
+        const existing = this.findFromInternal(key);
+        if (existing) {
+            existing.Value = value;
+        }
+        else {
+            if (!this.Internal) {
+                this.Internal = [];
+            }
+            const internal = { Name: key, Value: value };
+            this.Internal.push(internal);
+        }
+    }
+    GetCover() {
+        return this.searchLinkByRel("cover");
+    }
+    GetNavDoc() {
+        return this.searchLinkByRel("contents");
+    }
+    searchLinkByRel(rel) {
+        if (this.Resources) {
+            const ll = this.Resources.find((link) => {
+                return link.HasRel(rel);
+            });
+            if (ll) {
+                return ll;
+            }
+        }
+        if (this.Spine) {
+            const ll = this.Spine.find((link) => {
+                return link.HasRel(rel);
+            });
+            if (ll) {
+                return ll;
+            }
+        }
+        if (this.Links) {
+            const ll = this.Links.find((link) => {
+                return link.HasRel(rel);
+            });
+            if (ll) {
+                return ll;
+            }
+        }
+        return undefined;
+    }
+    AddLink(typeLink, rel, url, templated) {
+        const link = new publication_link_1.Link();
+        link.AddRels(rel);
+        link.Href = url;
+        link.TypeLink = typeLink;
+        link.Templated = templated;
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(link);
+    }
+    GetPreFetchResources() {
+        const links = [];
+        if (this.Resources) {
+            const mediaTypes = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
+            this.Resources.forEach((link) => {
+                mediaTypes.forEach((mediaType) => {
+                    if (link.TypeLink === mediaType) {
+                        links.push(link);
+                    }
+                });
+            });
+        }
+        return links;
+    }
+    _OnDeserialized() {
+        if (!this.Metadata) {
+            console.log("Publication.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("Publication.Links is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("@context"),
+    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "Context", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("metadata"),
+    tslib_1.__metadata("design:type", metadata_1.Metadata)
+], Publication.prototype, "Metadata", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "Links", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("spine"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "Spine", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("resources"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "Resources", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("toc"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "TOC", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("page-list"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "PageList", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("landmarks"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "Landmarks", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("loi"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "LOI", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("loa"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "LOA", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("lov"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "LOV", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("lot"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "LOT", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("images"),
+    ta_json_1.JsonElementType(publication_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Publication.prototype, "Images", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], Publication.prototype, "_OnDeserialized", null);
+Publication = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Publication);
+exports.Publication = Publication;
+
+},{"../_utils/ta-json-string-converter":343,"./metadata":382,"./publication-link":383,"ta-json":540,"tslib":553}],385:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const opds2_1 = require("./opds2/opds2");
+const opds2_belongsTo_1 = require("./opds2/opds2-belongsTo");
+const opds2_collection_1 = require("./opds2/opds2-collection");
+const opds2_contributor_1 = require("./opds2/opds2-contributor");
+const opds2_indirectAcquisition_1 = require("./opds2/opds2-indirectAcquisition");
+const opds2_link_1 = require("./opds2/opds2-link");
+const opds2_metadata_1 = require("./opds2/opds2-metadata");
+const opds2_price_1 = require("./opds2/opds2-price");
+const opds2_properties_1 = require("./opds2/opds2-properties");
+const opds2_publication_1 = require("./opds2/opds2-publication");
+const opds2_publicationMetadata_1 = require("./opds2/opds2-publicationMetadata");
+const opds2_subject_1 = require("./opds2/opds2-subject");
+function convertOpds1ToOpds2(feed) {
+    const opds2feed = new opds2_1.OPDSFeed();
+    opds2feed.Metadata = new opds2_metadata_1.OPDSMetadata();
+    opds2feed.Metadata.Title = feed.Title;
+    opds2feed.Metadata.Modified = feed.Updated;
+    if (feed.OpensearchTotalResults) {
+        opds2feed.Metadata.NumberOfItems = feed.OpensearchTotalResults;
+    }
+    if (feed.OpensearchItemsPerPage) {
+        opds2feed.Metadata.ItemsPerPage = feed.OpensearchItemsPerPage;
+    }
+    if (feed.Authors) {
+        feed.Authors.forEach((aut) => {
+            const cont = new opds2_contributor_1.OPDSContributor();
+            cont.Name = aut.Name;
+            cont.Identifier = aut.Uri;
+            if (!opds2feed.Metadata.Author) {
+                opds2feed.Metadata.Author = [];
+            }
+            opds2feed.Metadata.Author.push(cont);
+        });
+    }
+    if (feed.Entries) {
+        feed.Entries.forEach((entry) => {
+            let isAnNavigation = true;
+            const collLink = new opds2_link_1.OPDSLink();
+            if (entry.Links) {
+                entry.Links.forEach((l) => {
+                    if (l.HasRel("http://opds-spec.org/acquisition")) {
+                        isAnNavigation = false;
+                    }
+                    if (l.HasRel("collection") || l.HasRel("http://opds-spec.org/group")) {
+                        collLink.AddRel("collection");
+                        collLink.Href = l.Href;
+                        collLink.Title = l.Title;
+                    }
+                });
+            }
+            if (!isAnNavigation) {
+                const p = new opds2_publication_1.OPDSPublication();
+                p.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+                p.Metadata.Title = entry.Title;
+                if (entry.DcIdentifier) {
+                    p.Metadata.Identifier = entry.DcIdentifier;
+                }
+                else {
+                    p.Metadata.Identifier = entry.Id;
+                }
+                p.Metadata.Language = [entry.DcLanguage];
+                p.Metadata.Modified = entry.Updated;
+                p.Metadata.PublicationDate = entry.Published;
+                p.Metadata.Rights = entry.DcRights;
+                if (entry.Series) {
+                    entry.Series.forEach((s) => {
+                        const coll = new opds2_collection_1.OPDSCollection();
+                        coll.Name = s.Name;
+                        coll.Position = s.Position;
+                        const link = new opds2_link_1.OPDSLink();
+                        link.Href = s.Url;
+                        coll.Links = [];
+                        coll.Links.push(link);
+                        if (!p.Metadata.BelongsTo) {
+                            p.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+                        }
+                        if (!p.Metadata.BelongsTo.Series) {
+                            p.Metadata.BelongsTo.Series = [];
+                        }
+                        p.Metadata.BelongsTo.Series.push(coll);
+                    });
+                }
+                if (entry.DcPublisher) {
+                    const c = new opds2_contributor_1.OPDSContributor();
+                    c.Name = entry.DcPublisher;
+                    if (!p.Metadata.Publisher) {
+                        p.Metadata.Publisher = [];
+                    }
+                    p.Metadata.Publisher.push(c);
+                }
+                if (entry.Categories) {
+                    entry.Categories.forEach((cat) => {
+                        const subj = new opds2_subject_1.OPDSSubject();
+                        subj.Code = cat.Term;
+                        subj.Name = cat.Label;
+                        subj.Scheme = cat.Scheme;
+                        if (!p.Metadata.Subject) {
+                            p.Metadata.Subject = [];
+                        }
+                        p.Metadata.Subject.push(subj);
+                    });
+                }
+                if (entry.Authors) {
+                    entry.Authors.forEach((aut) => {
+                        const cont = new opds2_contributor_1.OPDSContributor();
+                        cont.Name = aut.Name;
+                        cont.Identifier = aut.Uri;
+                        if (!p.Metadata.Author) {
+                            p.Metadata.Author = [];
+                        }
+                        p.Metadata.Author.push(cont);
+                    });
+                }
+                if (entry.Content) {
+                    p.Metadata.Description = entry.Content;
+                }
+                else if (entry.Summary) {
+                    p.Metadata.Description = entry.Summary;
+                }
+                if (entry.Links) {
+                    entry.Links.forEach((link) => {
+                        const l = new opds2_link_1.OPDSLink();
+                        l.Href = link.Href;
+                        l.TypeLink = link.Type;
+                        l.AddRel(link.Rel);
+                        l.Title = link.Title;
+                        if (link.OpdsIndirectAcquisitions && link.OpdsIndirectAcquisitions.length) {
+                            if (!l.Properties) {
+                                l.Properties = new opds2_properties_1.OPDSProperties();
+                            }
+                            link.OpdsIndirectAcquisitions.forEach((ia) => {
+                                const ind = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
+                                ind.TypeAcquisition = ia.OpdsIndirectAcquisitionType;
+                                if (ia.OpdsIndirectAcquisitions && ia.OpdsIndirectAcquisitions.length) {
+                                    ia.OpdsIndirectAcquisitions.forEach((iac) => {
+                                        const cia = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
+                                        cia.TypeAcquisition = iac.OpdsIndirectAcquisitionType;
+                                        if (!ind.Children) {
+                                            ind.Children = [];
+                                        }
+                                        ind.Children.push(cia);
+                                    });
+                                }
+                                if (!l.Properties.IndirectAcquisitions) {
+                                    l.Properties.IndirectAcquisitions = [];
+                                }
+                                l.Properties.IndirectAcquisitions.push(ind);
+                            });
+                        }
+                        if (link.OpdsPrice && link.OpdsPriceCurrencyCode) {
+                            if (!l.Properties) {
+                                l.Properties = new opds2_properties_1.OPDSProperties();
+                            }
+                            l.Properties.Price = new opds2_price_1.OPDSPrice();
+                            l.Properties.Price.Currency = link.OpdsPriceCurrencyCode;
+                            l.Properties.Price.Value = link.OpdsPrice;
+                        }
+                        if (link.HasRel("collection") || link.HasRel("http://opds-spec.org/group")) {
+                        }
+                        else if (link.HasRel("http://opds-spec.org/image") ||
+                            link.HasRel("http://opds-spec.org/image/thumbnail")) {
+                            if (!p.Images) {
+                                p.Images = [];
+                            }
+                            p.Images.push(l);
+                        }
+                        else {
+                            if (!p.Links) {
+                                p.Links = [];
+                            }
+                            p.Links.push(l);
+                        }
+                    });
+                }
+                if (collLink.Href) {
+                    opds2feed.AddPublicationInGroup(p, collLink);
+                }
+                else {
+                    if (!opds2feed.Publications) {
+                        opds2feed.Publications = [];
+                    }
+                    opds2feed.Publications.push(p);
+                }
+            }
+            else {
+                const linkNav = new opds2_link_1.OPDSLink();
+                linkNav.Title = entry.Title;
+                if (entry.Links && entry.Links[0]) {
+                    linkNav.AddRel(entry.Links[0].Rel);
+                    linkNav.TypeLink = entry.Links[0].Type;
+                    linkNav.Href = entry.Links[0].Href;
+                }
+                if (collLink.Href) {
+                    opds2feed.AddNavigationInGroup(linkNav, collLink);
+                }
+                else {
+                    if (!opds2feed.Navigation) {
+                        opds2feed.Navigation = [];
+                    }
+                    opds2feed.Navigation.push(linkNav);
+                }
+            }
+        });
+    }
+    if (feed.Links) {
+        feed.Links.forEach((l) => {
+            const linkFeed = new opds2_link_1.OPDSLink();
+            linkFeed.Href = l.Href;
+            linkFeed.AddRel(l.Rel);
+            linkFeed.TypeLink = l.Type;
+            linkFeed.Title = l.Title;
+            if (l.HasRel("http://opds-spec.org/facet")) {
+                linkFeed.Properties = new opds2_properties_1.OPDSProperties();
+                linkFeed.Properties.NumberOfItems = l.ThrCount;
+                opds2feed.AddFacet(linkFeed, l.FacetGroup);
+            }
+            else {
+                if (!opds2feed.Links) {
+                    opds2feed.Links = [];
+                }
+                opds2feed.Links.push(linkFeed);
+            }
+        });
+    }
+    return opds2feed;
+}
+exports.convertOpds1ToOpds2 = convertOpds1ToOpds2;
+
+},{"./opds2/opds2":407,"./opds2/opds2-belongsTo":393,"./opds2/opds2-collection":395,"./opds2/opds2-contributor":396,"./opds2/opds2-indirectAcquisition":399,"./opds2/opds2-link":400,"./opds2/opds2-metadata":401,"./opds2/opds2-price":402,"./opds2/opds2-properties":403,"./opds2/opds2-publication":404,"./opds2/opds2-publicationMetadata":405,"./opds2/opds2-subject":406}],386:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Author = class Author {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:name/text()"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "Name", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:uri/text()"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "Uri", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:email/text()"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "Email", void 0);
+Author = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], Author);
+exports.Author = Author;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],387:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Category = class Category {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@term"),
+    tslib_1.__metadata("design:type", String)
+], Category.prototype, "Term", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@scheme"),
+    tslib_1.__metadata("design:type", String)
+], Category.prototype, "Scheme", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@label"),
+    tslib_1.__metadata("design:type", String)
+], Category.prototype, "Label", void 0);
+Category = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], Category);
+exports.Category = Category;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],388:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opds_author_1 = require("./opds-author");
+const opds_category_1 = require("./opds-category");
+const opds_link_1 = require("./opds-link");
+const opds_serie_1 = require("./opds-serie");
+let Entry = class Entry {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:ratingValue"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "SchemaRatingValue", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:additionalType"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "SchemaRatingAdditionalType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@schema:additionalType"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "SchemaAdditionalType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "Title", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:author"),
+    xml_js_mapper_1.XmlItemType(opds_author_1.Author),
+    tslib_1.__metadata("design:type", Array)
+], Entry.prototype, "Authors", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "Id", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:summary/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "Summary", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:summary/@type"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "SummaryType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:language/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcLanguage", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:extent/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcExtent", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:publisher/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcPublisher", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:rights/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcRights", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:issued/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcIssued", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcIdentifier", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/@xsi:type"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "DcIdentifierType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("bibframe:distribution/@bibframe:ProviderName"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "BibFrameDistributionProviderName", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:category"),
+    xml_js_mapper_1.XmlItemType(opds_category_1.Category),
+    tslib_1.__metadata("design:type", Array)
+], Entry.prototype, "Categories", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:content/text()"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "Content", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:content/@type"),
+    tslib_1.__metadata("design:type", String)
+], Entry.prototype, "ContentType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
+    tslib_1.__metadata("design:type", Date)
+], Entry.prototype, "Updated", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:published/text()"),
+    tslib_1.__metadata("design:type", Date)
+], Entry.prototype, "Published", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:link"),
+    xml_js_mapper_1.XmlItemType(opds_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], Entry.prototype, "Links", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("schema:Series"),
+    xml_js_mapper_1.XmlItemType(opds_serie_1.Serie),
+    tslib_1.__metadata("design:type", Array)
+], Entry.prototype, "Series", void 0);
+Entry = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], Entry);
+exports.Entry = Entry;
+
+},{"../../_utils/xml-js-mapper":363,"./opds-author":386,"./opds-category":387,"./opds-link":390,"./opds-serie":391,"tslib":553}],389:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let IndirectAcquisition = IndirectAcquisition_1 = class IndirectAcquisition {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@type"),
+    tslib_1.__metadata("design:type", String)
+], IndirectAcquisition.prototype, "OpdsIndirectAcquisitionType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
+    xml_js_mapper_1.XmlItemType(IndirectAcquisition_1),
+    tslib_1.__metadata("design:type", Array)
+], IndirectAcquisition.prototype, "OpdsIndirectAcquisitions", void 0);
+IndirectAcquisition = IndirectAcquisition_1 = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], IndirectAcquisition);
+exports.IndirectAcquisition = IndirectAcquisition;
+var IndirectAcquisition_1;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],390:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
+let Link = class Link {
+    HasRel(rel) {
+        return this.Rel === rel;
+    }
+    SetRel(rel) {
+        this.Rel = rel;
+    }
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "OpdsPrice", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opds:price/@currencycode"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "OpdsPriceCurrencyCode", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
+    xml_js_mapper_1.XmlItemType(opds_indirectAcquisition_1.IndirectAcquisition),
+    tslib_1.__metadata("design:type", Array)
+], Link.prototype, "OpdsIndirectAcquisitions", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@type"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Type", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@thr:count"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "ThrCount", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@opds:facetGroup"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "FacetGroup", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@href"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Href", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@title"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Title", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@rel"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Rel", void 0);
+Link = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], Link);
+exports.Link = Link;
+
+},{"../../_utils/xml-js-mapper":363,"./opds-indirectAcquisition":389,"tslib":553}],391:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Serie = class Serie {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@schema:name"),
+    tslib_1.__metadata("design:type", String)
+], Serie.prototype, "Name", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@schema:url"),
+    tslib_1.__metadata("design:type", String)
+], Serie.prototype, "Url", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@schema:position"),
+    tslib_1.__metadata("design:type", Number)
+], Serie.prototype, "Position", void 0);
+Serie = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], Serie);
+exports.Serie = Serie;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],392:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opds_author_1 = require("./opds-author");
+const opds_entry_1 = require("./opds-entry");
+const opds_link_1 = require("./opds-link");
+let OPDS = class OPDS {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opensearch:totalResults/text()"),
+    tslib_1.__metadata("design:type", Number)
+], OPDS.prototype, "OpensearchTotalResults", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opensearch:itemsPerPage/text()"),
+    tslib_1.__metadata("design:type", Number)
+], OPDS.prototype, "OpensearchItemsPerPage", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
+    tslib_1.__metadata("design:type", String)
+], OPDS.prototype, "Id", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
+    tslib_1.__metadata("design:type", String)
+], OPDS.prototype, "Title", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:subtitle/text()"),
+    tslib_1.__metadata("design:type", String)
+], OPDS.prototype, "SubTitle", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
+    tslib_1.__metadata("design:type", Date)
+], OPDS.prototype, "Updated", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:icon/text()"),
+    tslib_1.__metadata("design:type", String)
+], OPDS.prototype, "Icon", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:author"),
+    xml_js_mapper_1.XmlItemType(opds_author_1.Author),
+    tslib_1.__metadata("design:type", Array)
+], OPDS.prototype, "Authors", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+    tslib_1.__metadata("design:type", String)
+], OPDS.prototype, "Lang", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:link"),
+    xml_js_mapper_1.XmlItemType(opds_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], OPDS.prototype, "Links", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("atom:entry"),
+    xml_js_mapper_1.XmlItemType(opds_entry_1.Entry),
+    tslib_1.__metadata("design:type", Array)
+], OPDS.prototype, "Entries", void 0);
+OPDS = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        app: "http://www.w3.org/2007/app",
+        atom: "http://www.w3.org/2005/Atom",
+        bibframe: "http://bibframe.org/vocab/",
+        dcterms: "http://purl.org/dc/terms/",
+        odl: "http://opds-spec.org/odl",
+        opds: "http://opds-spec.org/2010/catalog",
+        opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+        relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+        schema: "http://schema.org",
+        thr: "http://purl.org/syndication/thread/1.0",
+        xml: "http://www.w3.org/XML/1998/namespace",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], OPDS);
+exports.OPDS = OPDS;
+
+},{"../../_utils/xml-js-mapper":363,"./opds-author":386,"./opds-entry":388,"./opds-link":390,"tslib":553}],393:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_collection_1 = require("./opds2-collection");
+let OPDSBelongsTo = class OPDSBelongsTo {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("series"),
+    ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
+    tslib_1.__metadata("design:type", Array)
+], OPDSBelongsTo.prototype, "Series", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("collection"),
+    ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
+    tslib_1.__metadata("design:type", Array)
+], OPDSBelongsTo.prototype, "Collection", void 0);
+OPDSBelongsTo = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSBelongsTo);
+exports.OPDSBelongsTo = OPDSBelongsTo;
+
+},{"./opds2-collection":395,"ta-json":540,"tslib":553}],394:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ta_json_1 = require("ta-json");
+const opds2_collection_1 = require("./opds2-collection");
+class JsonOPDSCollectionConverter {
+    serialize(property) {
+        return ta_json_1.JSON.serialize(property);
+    }
+    deserialize(value) {
+        if (typeof value === "string") {
+            const c = new opds2_collection_1.OPDSCollection();
+            c.Name = value;
+            return c;
+        }
+        else {
+            return ta_json_1.JSON.deserialize(value, opds2_collection_1.OPDSCollection);
+        }
+    }
+    collapseArrayWithSingleItem() {
+        return true;
+    }
+}
+exports.JsonOPDSCollectionConverter = JsonOPDSCollectionConverter;
+
+},{"./opds2-collection":395,"ta-json":540}],395:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_link_1 = require("./opds2-link");
+let OPDSCollection = class OPDSCollection {
+    _OnDeserialized() {
+        if (!this.Name) {
+            console.log("OPDSCollection.Name is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", String)
+], OPDSCollection.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("sort_as"),
+    tslib_1.__metadata("design:type", String)
+], OPDSCollection.prototype, "SortAs", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("identifier"),
+    tslib_1.__metadata("design:type", String)
+], OPDSCollection.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("position"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSCollection.prototype, "Position", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSCollection.prototype, "Links", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSCollection.prototype, "_OnDeserialized", null);
+OPDSCollection = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSCollection);
+exports.OPDSCollection = OPDSCollection;
+
+},{"./opds2-link":400,"ta-json":540,"tslib":553}],396:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_link_1 = require("./opds2-link");
+let OPDSContributor = class OPDSContributor {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", Object)
+], OPDSContributor.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("sort_as"),
+    tslib_1.__metadata("design:type", String)
+], OPDSContributor.prototype, "SortAs", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("identifier"),
+    tslib_1.__metadata("design:type", String)
+], OPDSContributor.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("role"),
+    tslib_1.__metadata("design:type", String)
+], OPDSContributor.prototype, "Role", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSContributor.prototype, "Links", void 0);
+OPDSContributor = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSContributor);
+exports.OPDSContributor = OPDSContributor;
+
+},{"./opds2-link":400,"ta-json":540,"tslib":553}],397:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_link_1 = require("./opds2-link");
+const opds2_metadata_1 = require("./opds2-metadata");
+let OPDSFacet = class OPDSFacet {
+    _OnDeserialized() {
+        if (!this.Metadata) {
+            console.log("OPDSFacet.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("OPDSFacet.Links is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("metadata"),
+    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
+], OPDSFacet.prototype, "Metadata", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFacet.prototype, "Links", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSFacet.prototype, "_OnDeserialized", null);
+OPDSFacet = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSFacet);
+exports.OPDSFacet = OPDSFacet;
+
+},{"./opds2-link":400,"./opds2-metadata":401,"ta-json":540,"tslib":553}],398:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_link_1 = require("./opds2-link");
+const opds2_metadata_1 = require("./opds2-metadata");
+const opds2_publication_1 = require("./opds2-publication");
+let OPDSGroup = class OPDSGroup {
+    _OnDeserialized() {
+        if (!this.Metadata) {
+            console.log("OPDSGroup.Metadata is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("metadata"),
+    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
+], OPDSGroup.prototype, "Metadata", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("publications"),
+    ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
+    tslib_1.__metadata("design:type", Array)
+], OPDSGroup.prototype, "Publications", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSGroup.prototype, "Links", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("navigation"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSGroup.prototype, "Navigation", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSGroup.prototype, "_OnDeserialized", null);
+OPDSGroup = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSGroup);
+exports.OPDSGroup = OPDSGroup;
+
+},{"./opds2-link":400,"./opds2-metadata":401,"./opds2-publication":404,"ta-json":540,"tslib":553}],399:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = class OPDSIndirectAcquisition {
+    _OnDeserialized() {
+        if (!this.TypeAcquisition) {
+            console.log("OPDSIndirectAcquisition.TypeAcquisition is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("type"),
+    tslib_1.__metadata("design:type", String)
+], OPDSIndirectAcquisition.prototype, "TypeAcquisition", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("child"),
+    ta_json_1.JsonElementType(OPDSIndirectAcquisition_1),
+    tslib_1.__metadata("design:type", Array)
+], OPDSIndirectAcquisition.prototype, "Children", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSIndirectAcquisition.prototype, "_OnDeserialized", null);
+OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSIndirectAcquisition);
+exports.OPDSIndirectAcquisition = OPDSIndirectAcquisition;
+var OPDSIndirectAcquisition_1;
+
+},{"ta-json":540,"tslib":553}],400:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
+const ta_json_1 = require("ta-json");
+const opds2_properties_1 = require("./opds2-properties");
+let OPDSLink = OPDSLink_1 = class OPDSLink {
+    AddRels(rels) {
+        rels.forEach((rel) => {
+            this.AddRel(rel);
+        });
+    }
+    AddRel(rel) {
+        if (this.HasRel(rel)) {
+            return;
+        }
+        if (!this.Rel) {
+            this.Rel = [rel];
+        }
+        else {
+            this.Rel.push(rel);
+        }
+    }
+    HasRel(rel) {
+        return this.Rel && this.Rel.indexOf(rel) >= 0;
+    }
+    _OnDeserialized() {
+        if (!this.Href) {
+            console.log("Link.Href is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("href"),
+    tslib_1.__metadata("design:type", String)
+], OPDSLink.prototype, "Href", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("type"),
+    tslib_1.__metadata("design:type", String)
+], OPDSLink.prototype, "TypeLink", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("height"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSLink.prototype, "Height", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("width"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSLink.prototype, "Width", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("title"),
+    tslib_1.__metadata("design:type", String)
+], OPDSLink.prototype, "Title", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("properties"),
+    tslib_1.__metadata("design:type", opds2_properties_1.OPDSProperties)
+], OPDSLink.prototype, "Properties", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("duration"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSLink.prototype, "Duration", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("templated"),
+    tslib_1.__metadata("design:type", Boolean)
+], OPDSLink.prototype, "Templated", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("children"),
+    ta_json_1.JsonElementType(OPDSLink_1),
+    tslib_1.__metadata("design:type", Array)
+], OPDSLink.prototype, "Children", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("bitrate"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSLink.prototype, "Bitrate", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rel"),
+    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], OPDSLink.prototype, "Rel", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSLink.prototype, "_OnDeserialized", null);
+OPDSLink = OPDSLink_1 = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSLink);
+exports.OPDSLink = OPDSLink;
+var OPDSLink_1;
+
+},{"../../_utils/ta-json-string-converter":343,"./opds2-properties":403,"ta-json":540,"tslib":553}],401:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_contributor_1 = require("./opds2-contributor");
+let OPDSMetadata = class OPDSMetadata {
+    _OnDeserialized() {
+        if (!this.Title) {
+            console.log("OPDSMetadata.Title is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("author"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSMetadata.prototype, "Author", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("@type"),
+    tslib_1.__metadata("design:type", String)
+], OPDSMetadata.prototype, "RDFType", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("title"),
+    tslib_1.__metadata("design:type", String)
+], OPDSMetadata.prototype, "Title", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("numberOfItems"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSMetadata.prototype, "NumberOfItems", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("itemsPerPage"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSMetadata.prototype, "ItemsPerPage", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("currentPage"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSMetadata.prototype, "CurrentPage", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("modified"),
+    tslib_1.__metadata("design:type", Date)
+], OPDSMetadata.prototype, "Modified", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSMetadata.prototype, "_OnDeserialized", null);
+OPDSMetadata = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSMetadata);
+exports.OPDSMetadata = OPDSMetadata;
+
+},{"./opds2-contributor":396,"ta-json":540,"tslib":553}],402:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let OPDSPrice = class OPDSPrice {
+    _OnDeserialized() {
+        if (!this.Currency) {
+            console.log("OPDSPrice.Currency is not set!");
+        }
+        if (!this.Value) {
+            console.log("OPDSPrice.Value is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("currency"),
+    tslib_1.__metadata("design:type", String)
+], OPDSPrice.prototype, "Currency", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("value"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSPrice.prototype, "Value", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSPrice.prototype, "_OnDeserialized", null);
+OPDSPrice = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSPrice);
+exports.OPDSPrice = OPDSPrice;
+
+},{"ta-json":540,"tslib":553}],403:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_indirectAcquisition_1 = require("./opds2-indirectAcquisition");
+const opds2_price_1 = require("./opds2-price");
+let OPDSProperties = class OPDSProperties {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("numberOfItems"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSProperties.prototype, "NumberOfItems", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("price"),
+    tslib_1.__metadata("design:type", opds2_price_1.OPDSPrice)
+], OPDSProperties.prototype, "Price", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("indirectAcquisition"),
+    ta_json_1.JsonElementType(opds2_indirectAcquisition_1.OPDSIndirectAcquisition),
+    tslib_1.__metadata("design:type", Array)
+], OPDSProperties.prototype, "IndirectAcquisitions", void 0);
+OPDSProperties = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSProperties);
+exports.OPDSProperties = OPDSProperties;
+
+},{"./opds2-indirectAcquisition":399,"./opds2-price":402,"ta-json":540,"tslib":553}],404:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_belongsTo_1 = require("./opds2-belongsTo");
+const opds2_collection_1 = require("./opds2-collection");
+const opds2_contributor_1 = require("./opds2-contributor");
+const opds2_link_1 = require("./opds2-link");
+const opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
+let OPDSPublication = class OPDSPublication {
+    findFirstLinkByRel(rel) {
+        return this.Links ? this.Links.find((l) => {
+            return l.HasRel(rel);
+        }) : undefined;
+    }
+    AddImage(href, typeImage, height, width) {
+        const i = new opds2_link_1.OPDSLink();
+        i.Href = href;
+        i.TypeLink = typeImage;
+        if (height) {
+            i.Height = height;
+        }
+        if (width) {
+            i.Width = width;
+        }
+        if (!this.Images) {
+            this.Images = [];
+        }
+        this.Images.push(i);
+    }
+    AddLink(href, typeLink, rel, title) {
+        const l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.TypeLink = typeLink;
+        if (rel) {
+            l.AddRel(rel);
+        }
+        if (title) {
+            l.Title = title;
+        }
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(l);
+    }
+    AddAuthor(name, identifier, sortAs, href, typeLink) {
+        const c = new opds2_contributor_1.OPDSContributor();
+        c.Name = name;
+        if (identifier) {
+            c.Identifier = identifier;
+        }
+        if (sortAs) {
+            c.SortAs = sortAs;
+        }
+        const l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.Author) {
+            this.Metadata.Author = [];
+        }
+        this.Metadata.Author.push(c);
+    }
+    AddSerie(name, position, href, typeLink) {
+        const c = new opds2_collection_1.OPDSCollection();
+        c.Name = name;
+        c.Position = position;
+        const l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.BelongsTo) {
+            this.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+        }
+        if (!this.Metadata.BelongsTo.Series) {
+            this.Metadata.BelongsTo.Series = [];
+        }
+        this.Metadata.BelongsTo.Series.push(c);
+    }
+    AddPublisher(name, href, typeLink) {
+        const c = new opds2_contributor_1.OPDSContributor();
+        c.Name = name;
+        const l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.Publisher) {
+            this.Metadata.Publisher = [];
+        }
+        this.Metadata.Publisher.push(c);
+    }
+    _OnDeserialized() {
+        if (!this.Metadata) {
+            console.log("OPDSPublication.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("OPDSPublication.Links is not set!");
+        }
+        if (!this.Images) {
+            console.log("OPDSPublication.Images is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("metadata"),
+    tslib_1.__metadata("design:type", opds2_publicationMetadata_1.OPDSPublicationMetadata)
+], OPDSPublication.prototype, "Metadata", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublication.prototype, "Links", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("images"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublication.prototype, "Images", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSPublication.prototype, "_OnDeserialized", null);
+OPDSPublication = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSPublication);
+exports.OPDSPublication = OPDSPublication;
+
+},{"./opds2-belongsTo":393,"./opds2-collection":395,"./opds2-contributor":396,"./opds2-link":400,"./opds2-publicationMetadata":405,"ta-json":540,"tslib":553}],405:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const opds2_belongsTo_1 = require("./opds2-belongsTo");
+const opds2_contributor_1 = require("./opds2-contributor");
+const opds2_subject_1 = require("./opds2-subject");
+let OPDSPublicationMetadata = class OPDSPublicationMetadata {
+    _OnDeserialized() {
+        if (!this.Title) {
+            console.log("OPDSPublicationMetadata.Title is not set!");
+        }
+        if (!this.Identifier) {
+            console.log("OPDSPublicationMetadata.Identifier is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("@type"),
+    tslib_1.__metadata("design:type", String)
+], OPDSPublicationMetadata.prototype, "RDFType", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("title"),
+    tslib_1.__metadata("design:type", Object)
+], OPDSPublicationMetadata.prototype, "Title", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("identifier"),
+    tslib_1.__metadata("design:type", String)
+], OPDSPublicationMetadata.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("author"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Author", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("translator"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Translator", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("editor"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Editor", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("artist"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Artist", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("illustrator"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Illustrator", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("letterer"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Letterer", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("penciler"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Penciler", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("colorist"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Colorist", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("inker"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Inker", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("narrator"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Narrator", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("contributor"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "OPDSContributor", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("publisher"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Publisher", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("imprint"),
+    ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Imprint", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("language"),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Language", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("modified"),
+    tslib_1.__metadata("design:type", Date)
+], OPDSPublicationMetadata.prototype, "Modified", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("published"),
+    tslib_1.__metadata("design:type", Date)
+], OPDSPublicationMetadata.prototype, "PublicationDate", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("description"),
+    tslib_1.__metadata("design:type", String)
+], OPDSPublicationMetadata.prototype, "Description", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("source"),
+    tslib_1.__metadata("design:type", String)
+], OPDSPublicationMetadata.prototype, "Source", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rights"),
+    tslib_1.__metadata("design:type", String)
+], OPDSPublicationMetadata.prototype, "Rights", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("subject"),
+    ta_json_1.JsonElementType(opds2_subject_1.OPDSSubject),
+    tslib_1.__metadata("design:type", Array)
+], OPDSPublicationMetadata.prototype, "Subject", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("belongs_to"),
+    tslib_1.__metadata("design:type", opds2_belongsTo_1.OPDSBelongsTo)
+], OPDSPublicationMetadata.prototype, "BelongsTo", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("duration"),
+    tslib_1.__metadata("design:type", Number)
+], OPDSPublicationMetadata.prototype, "Duration", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSPublicationMetadata.prototype, "_OnDeserialized", null);
+OPDSPublicationMetadata = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSPublicationMetadata);
+exports.OPDSPublicationMetadata = OPDSPublicationMetadata;
+
+},{"./opds2-belongsTo":393,"./opds2-contributor":396,"./opds2-subject":406,"ta-json":540,"tslib":553}],406:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let OPDSSubject = class OPDSSubject {
+    _OnDeserialized() {
+        if (!this.Name) {
+            console.log("OPDSSubject.Name is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", String)
+], OPDSSubject.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("sort_as"),
+    tslib_1.__metadata("design:type", String)
+], OPDSSubject.prototype, "SortAs", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("scheme"),
+    tslib_1.__metadata("design:type", String)
+], OPDSSubject.prototype, "Scheme", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("code"),
+    tslib_1.__metadata("design:type", String)
+], OPDSSubject.prototype, "Code", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSSubject.prototype, "_OnDeserialized", null);
+OPDSSubject = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSSubject);
+exports.OPDSSubject = OPDSSubject;
+
+},{"ta-json":540,"tslib":553}],407:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
+const ta_json_1 = require("ta-json");
+const opds2_facet_1 = require("./opds2-facet");
+const opds2_group_1 = require("./opds2-group");
+const opds2_link_1 = require("./opds2-link");
+const opds2_metadata_1 = require("./opds2-metadata");
+const opds2_publication_1 = require("./opds2-publication");
+let OPDSFeed = class OPDSFeed {
+    findFirstLinkByRel(rel) {
+        return this.Links ? this.Links.find((l) => {
+            return l.HasRel(rel);
+        }) : undefined;
+    }
+    AddLink(href, rel, typeLink, templated) {
+        const l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.AddRel(rel);
+        l.TypeLink = typeLink;
+        if (templated) {
+            l.Templated = true;
+        }
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(l);
+    }
+    AddNavigation(title, href, rel, typeLink) {
+        const l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.TypeLink = typeLink;
+        l.AddRel(rel);
+        if (title) {
+            l.Title = title;
+        }
+        if (!this.Navigation) {
+            this.Navigation = [];
+        }
+        this.Navigation.push(l);
+    }
+    AddPagination(numberItems, itemsPerPage, currentPage, nextLink, prevLink, firstLink, lastLink) {
+        if (!this.Metadata) {
+            this.Metadata = new opds2_metadata_1.OPDSMetadata();
+        }
+        this.Metadata.CurrentPage = currentPage;
+        this.Metadata.ItemsPerPage = itemsPerPage;
+        this.Metadata.NumberOfItems = numberItems;
+        if (nextLink) {
+            this.AddLink(nextLink, "next", "application/opds+json", false);
+        }
+        if (prevLink) {
+            this.AddLink(prevLink, "previous", "application/opds+json", false);
+        }
+        if (firstLink) {
+            this.AddLink(firstLink, "first", "application/opds+json", false);
+        }
+        if (lastLink) {
+            this.AddLink(lastLink, "last", "application/opds+json", false);
+        }
+    }
+    AddFacet(link, group) {
+        if (this.Facets) {
+            const found = this.Facets.find((f) => {
+                if (f.Metadata && f.Metadata.Title === group) {
+                    if (!f.Links) {
+                        f.Links = [];
+                    }
+                    f.Links.push(link);
+                    return true;
+                }
+                return false;
+            });
+            if (found) {
+                return;
+            }
+        }
+        const facet = new opds2_facet_1.OPDSFacet();
+        facet.Metadata = new opds2_metadata_1.OPDSMetadata();
+        facet.Metadata.Title = group;
+        facet.Links = [];
+        facet.Links.push(link);
+        if (!this.Facets) {
+            this.Facets = [];
+        }
+        this.Facets.push(facet);
+    }
+    AddPublicationInGroup(publication, collLink) {
+        if (this.Groups) {
+            const found1 = this.Groups.find((g) => {
+                if (g.Links) {
+                    const found2 = g.Links.find((l) => {
+                        if (l.Href === collLink.Href) {
+                            if (!g.Publications) {
+                                g.Publications = [];
+                            }
+                            g.Publications.push(publication);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (found2) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (found1) {
+                return;
+            }
+        }
+        const group = new opds2_group_1.OPDSGroup();
+        group.Metadata = new opds2_metadata_1.OPDSMetadata();
+        group.Metadata.Title = collLink.Title;
+        group.Publications = [];
+        group.Publications.push(publication);
+        const linkSelf = new opds2_link_1.OPDSLink();
+        linkSelf.AddRel("self");
+        linkSelf.Title = collLink.Title;
+        linkSelf.Href = collLink.Href;
+        group.Links = [];
+        group.Links.push(linkSelf);
+        if (!this.Groups) {
+            this.Groups = [];
+        }
+        this.Groups.push(group);
+    }
+    AddNavigationInGroup(link, collLink) {
+        if (this.Groups) {
+            const found1 = this.Groups.find((g) => {
+                if (g.Links) {
+                    const found2 = g.Links.find((l) => {
+                        if (l.Href === collLink.Href) {
+                            if (!g.Navigation) {
+                                g.Navigation = [];
+                            }
+                            g.Navigation.push(link);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (found2) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (found1) {
+                return;
+            }
+        }
+        const group = new opds2_group_1.OPDSGroup();
+        group.Metadata = new opds2_metadata_1.OPDSMetadata();
+        group.Metadata.Title = collLink.Title;
+        group.Navigation = [];
+        group.Navigation.push(link);
+        const linkSelf = new opds2_link_1.OPDSLink();
+        linkSelf.AddRel("self");
+        linkSelf.Title = collLink.Title;
+        linkSelf.Href = collLink.Href;
+        group.Links = [];
+        group.Links.push(link);
+        if (!this.Groups) {
+            this.Groups = [];
+        }
+        this.Groups.push(group);
+    }
+    _OnDeserialized() {
+        if (!this.Metadata) {
+            console.log("OPDS2Feed.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("OPDS2Feed.Links is not set!");
+        }
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("@context"),
+    ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFeed.prototype, "Context", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("metadata"),
+    tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
+], OPDSFeed.prototype, "Metadata", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFeed.prototype, "Links", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("publications"),
+    ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFeed.prototype, "Publications", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("navigation"),
+    ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFeed.prototype, "Navigation", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("facets"),
+    ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFeed.prototype, "Facets", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("groups"),
+    ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
+    tslib_1.__metadata("design:type", Array)
+], OPDSFeed.prototype, "Groups", void 0);
+tslib_1.__decorate([
+    ta_json_1.OnDeserialized(),
+    tslib_1.__metadata("design:type", Function),
+    tslib_1.__metadata("design:paramtypes", []),
+    tslib_1.__metadata("design:returntype", void 0)
+], OPDSFeed.prototype, "_OnDeserialized", null);
+OPDSFeed = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], OPDSFeed);
+exports.OPDSFeed = OPDSFeed;
+
+},{"../../_utils/ta-json-string-converter":343,"./opds2-facet":397,"./opds2-group":398,"./opds2-link":400,"./opds2-metadata":401,"./opds2-publication":404,"ta-json":540,"tslib":553}],408:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const path = require("path");
+const metadata_1 = require("../models/metadata");
+const metadata_contributor_1 = require("../models/metadata-contributor");
+const publication_1 = require("../models/publication");
+const publication_link_1 = require("../models/publication-link");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+const zipFactory_1 = require("../_utils/zip/zipFactory");
+const mime = require("mime-types");
+const slugify = require("slugify");
+const xmldom = require("xmldom");
+const comicrack_1 = require("./comicrack/comicrack");
+const epub_1 = require("./epub");
+function CbzParsePromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        let zip;
+        try {
+            zip = yield zipFactory_1.zipLoadPromise(filePath);
+        }
+        catch (err) {
+            return Promise.reject(err);
+        }
+        if (!zip.hasEntries()) {
+            return Promise.reject("CBZ zip empty");
+        }
+        const publication = new publication_1.Publication();
+        publication.Context = ["http://readium.org/webpub/default.jsonld"];
+        publication.Metadata = new metadata_1.Metadata();
+        publication.Metadata.RDFType = "http://schema.org/ComicIssue";
+        publication.Metadata.Identifier = filePathToTitle(filePath);
+        publication.AddToInternal("type", "cbz");
+        publication.AddToInternal("zip", zip);
+        let comicInfoEntryName;
+        zip.forEachEntry((entryName) => {
+            const link = new publication_link_1.Link();
+            link.Href = entryName;
+            const mediaType = mime.lookup(entryName);
+            if (mediaType) {
+                link.TypeLink = mediaType;
+            }
+            else {
+                console.log("!!!!!! NO MEDIA TYPE?!");
+            }
+            if (link.TypeLink && link.TypeLink.startsWith("image/")) {
+                if (!publication.Spine) {
+                    publication.Spine = [];
+                }
+                publication.Spine.push(link);
+            }
+            else if (entryName.endsWith("ComicInfo.xml")) {
+                comicInfoEntryName = entryName;
+            }
+        });
+        if (!publication.Metadata.Title) {
+            publication.Metadata.Title = path.basename(filePath);
+        }
+        if (comicInfoEntryName) {
+            try {
+                const _b = yield comicRackMetadata(zip, comicInfoEntryName, publication);
+                console.log(_b);
+            }
+            catch (err) {
+                console.log(err);
+            }
+        }
+        return publication;
+    });
+}
+exports.CbzParsePromise = CbzParsePromise;
+const filePathToTitle = (filePath) => {
+    const fileName = path.basename(filePath);
+    return slugify(fileName, "_").replace(/[\.]/g, "_");
+};
+const comicRackMetadata = (zip, entryName, publication) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    let comicZipStream_;
+    try {
+        comicZipStream_ = yield zip.entryStreamPromise(entryName);
+    }
+    catch (err) {
+        console.log(err);
+        return;
+    }
+    const comicZipStream = comicZipStream_.stream;
+    let comicZipData;
+    try {
+        comicZipData = yield BufferUtils_1.streamToBufferPromise(comicZipStream);
+    }
+    catch (err) {
+        console.log(err);
+        return;
+    }
+    const comicXmlStr = comicZipData.toString("utf8");
+    const comicXmlDoc = new xmldom.DOMParser().parseFromString(comicXmlStr);
+    const comicMeta = xml_js_mapper_1.XML.deserialize(comicXmlDoc, comicrack_1.ComicInfo);
+    comicMeta.ZipPath = entryName;
+    if (!publication.Metadata) {
+        publication.Metadata = new metadata_1.Metadata();
+    }
+    if (comicMeta.Writer) {
+        const cont = new metadata_contributor_1.Contributor();
+        cont.Name = comicMeta.Writer;
+        if (!publication.Metadata.Author) {
+            publication.Metadata.Author = [];
+        }
+        publication.Metadata.Author.push(cont);
+    }
+    if (comicMeta.Penciller) {
+        const cont = new metadata_contributor_1.Contributor();
+        cont.Name = comicMeta.Writer;
+        if (!publication.Metadata.Penciler) {
+            publication.Metadata.Penciler = [];
+        }
+        publication.Metadata.Penciler.push(cont);
+    }
+    if (comicMeta.Colorist) {
+        const cont = new metadata_contributor_1.Contributor();
+        cont.Name = comicMeta.Writer;
+        if (!publication.Metadata.Colorist) {
+            publication.Metadata.Colorist = [];
+        }
+        publication.Metadata.Colorist.push(cont);
+    }
+    if (comicMeta.Inker) {
+        const cont = new metadata_contributor_1.Contributor();
+        cont.Name = comicMeta.Writer;
+        if (!publication.Metadata.Inker) {
+            publication.Metadata.Inker = [];
+        }
+        publication.Metadata.Inker.push(cont);
+    }
+    if (comicMeta.Title) {
+        publication.Metadata.Title = comicMeta.Title;
+    }
+    if (!publication.Metadata.Title) {
+        if (comicMeta.Series) {
+            let title = comicMeta.Series;
+            if (comicMeta.Number) {
+                title = title + " - " + comicMeta.Number;
+            }
+            publication.Metadata.Title = title;
+        }
+    }
+    if (comicMeta.Pages) {
+        for (const p of comicMeta.Pages) {
+            const l = new publication_link_1.Link();
+            if (p.Type === "FrontCover") {
+                l.AddRel("cover");
+                yield epub_1.addCoverDimensions(publication, l);
+            }
+            l.Href = publication.Spine[p.Image].Href;
+            if (p.ImageHeight) {
+                l.Height = p.ImageHeight;
+            }
+            if (p.ImageWidth) {
+                l.Width = p.ImageWidth;
+            }
+            if (p.Bookmark) {
+                l.Title = p.Bookmark;
+            }
+            if (!publication.TOC) {
+                publication.TOC = [];
+            }
+            publication.TOC.push(l);
+        }
+    }
+});
+
+},{"../_utils/stream/BufferUtils":340,"../_utils/xml-js-mapper":363,"../_utils/zip/zipFactory":370,"../models/metadata":382,"../models/metadata-contributor":377,"../models/publication":384,"../models/publication-link":383,"./comicrack/comicrack":410,"./epub":411,"mime-types":303,"path":undefined,"slugify":491,"tslib":553,"xmldom":572}],409:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Page = class Page {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@Image"),
+    tslib_1.__metadata("design:type", Number)
+], Page.prototype, "Image", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@Bookmark"),
+    tslib_1.__metadata("design:type", String)
+], Page.prototype, "Bookmark", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@Type"),
+    tslib_1.__metadata("design:type", String)
+], Page.prototype, "Type", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@ImageSize"),
+    tslib_1.__metadata("design:type", Number)
+], Page.prototype, "ImageSize", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@ImageWidth"),
+    tslib_1.__metadata("design:type", Number)
+], Page.prototype, "ImageWidth", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@ImageHeight"),
+    tslib_1.__metadata("design:type", Number)
+], Page.prototype, "ImageHeight", void 0);
+Page = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        xsd: "http://www.w3.org/2001/XMLSchema",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], Page);
+exports.Page = Page;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],410:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const comicrack_page_1 = require("./comicrack-page");
+let ComicInfo = class ComicInfo {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Title"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Title", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Series"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Series", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Volume"),
+    tslib_1.__metadata("design:type", Number)
+], ComicInfo.prototype, "Volume", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Number"),
+    tslib_1.__metadata("design:type", Number)
+], ComicInfo.prototype, "Number", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Writer"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Writer", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Penciller"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Penciller", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Inker"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Inker", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Colorist"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Colorist", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ScanInformation"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "ScanInformation", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Summary"),
+    tslib_1.__metadata("design:type", String)
+], ComicInfo.prototype, "Summary", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Year"),
+    tslib_1.__metadata("design:type", Number)
+], ComicInfo.prototype, "Year", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("PageCount"),
+    tslib_1.__metadata("design:type", Number)
+], ComicInfo.prototype, "PageCount", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("Pages/Page"),
+    xml_js_mapper_1.XmlItemType(comicrack_page_1.Page),
+    tslib_1.__metadata("design:type", Array)
+], ComicInfo.prototype, "Pages", void 0);
+ComicInfo = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        xsd: "http://www.w3.org/2001/XMLSchema",
+        xsi: "http://www.w3.org/2001/XMLSchema-instance",
+    })
+], ComicInfo);
+exports.ComicInfo = ComicInfo;
+
+},{"../../_utils/xml-js-mapper":363,"./comicrack-page":409,"tslib":553}],411:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const path = require("path");
+const querystring = require("querystring");
+const media_overlay_1 = require("../models/media-overlay");
+const metadata_1 = require("../models/metadata");
+const metadata_belongsto_1 = require("../models/metadata-belongsto");
+const metadata_collection_1 = require("../models/metadata-collection");
+const metadata_contributor_1 = require("../models/metadata-contributor");
+const metadata_encrypted_1 = require("../models/metadata-encrypted");
+const metadata_media_overlay_1 = require("../models/metadata-media-overlay");
+const metadata_properties_1 = require("../models/metadata-properties");
+const metadata_subject_1 = require("../models/metadata-subject");
+const publication_1 = require("../models/publication");
+const publication_link_1 = require("../models/publication-link");
+const transformer_1 = require("../transform/transformer");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+const xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+const zipFactory_1 = require("../_utils/zip/zipFactory");
+const debug_ = require("debug");
+const sizeOf = require("image-size");
+const moment = require("moment");
+const ta_json_1 = require("ta-json");
+const xmldom = require("xmldom");
+const xpath = require("xpath");
+const container_1 = require("./epub/container");
+const encryption_1 = require("./epub/encryption");
+const lcp_1 = require("./epub/lcp");
+const ncx_1 = require("./epub/ncx");
+const opf_1 = require("./epub/opf");
+const opf_author_1 = require("./epub/opf-author");
+const smil_1 = require("./epub/smil");
+const smil_seq_1 = require("./epub/smil-seq");
+const debug = debug_("r2:epub");
+const epub3 = "3.0";
+const epub301 = "3.0.1";
+const epub31 = "3.1";
+const autoMeta = "auto";
+const noneMeta = "none";
+const reflowableMeta = "reflowable";
+exports.mediaOverlayURLPath = "media-overlay.json";
+exports.mediaOverlayURLParam = "resource";
+exports.addCoverDimensions = (publication, coverLink) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    const zipInternal = publication.findFromInternal("zip");
+    if (zipInternal) {
+        const zip = zipInternal.Value;
+        if (zip.hasEntry(coverLink.Href)) {
+            let zipStream;
+            try {
+                zipStream = yield zip.entryStreamPromise(coverLink.Href);
+            }
+            catch (err) {
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
+                debug(err);
+                return;
+            }
+            let zipData;
+            try {
+                zipData = yield BufferUtils_1.streamToBufferPromise(zipStream.stream);
+                const imageInfo = sizeOf(zipData);
+                if (imageInfo) {
+                    coverLink.Width = imageInfo.width;
+                    coverLink.Height = imageInfo.height;
+                    if (coverLink.TypeLink &&
+                        coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
+                            !== ("image/" + imageInfo.type)) {
+                        debug(`Wrong image type? ${coverLink.TypeLink} -- ${imageInfo.type}`);
+                    }
+                }
+            }
+            catch (err) {
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
+                debug(err);
+            }
+        }
+    }
+});
+function EpubParsePromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        let zip;
+        try {
+            zip = yield zipFactory_1.zipLoadPromise(filePath);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        if (!zip.hasEntries()) {
+            return Promise.reject("EPUB zip empty");
+        }
+        const publication = new publication_1.Publication();
+        publication.Context = ["http://readium.org/webpub/default.jsonld"];
+        publication.Metadata = new metadata_1.Metadata();
+        publication.Metadata.RDFType = "http://schema.org/Book";
+        publication.Metadata.Modified = moment(Date.now()).toDate();
+        publication.AddToInternal("filename", path.basename(filePath));
+        publication.AddToInternal("type", "epub");
+        publication.AddToInternal("zip", zip);
+        let lcpl;
+        const lcplZipPath = "META-INF/license.lcpl";
+        if (zip.hasEntry(lcplZipPath)) {
+            let lcplZipStream_;
+            try {
+                lcplZipStream_ = yield zip.entryStreamPromise(lcplZipPath);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
+            const lcplZipStream = lcplZipStream_.stream;
+            let lcplZipData;
+            try {
+                lcplZipData = yield BufferUtils_1.streamToBufferPromise(lcplZipStream);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
+            const lcplStr = lcplZipData.toString("utf8");
+            const lcplJson = global.JSON.parse(lcplStr);
+            debug(lcplJson);
+            lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
+            lcpl.ZipPath = lcplZipPath;
+            lcpl.JsonSource = lcplStr;
+            lcpl.init();
+            publication.LCP = lcpl;
+            publication.AddLink("application/vnd.readium.lcp.license-1.0+json", ["license"], lcpl.ZipPath, false);
+        }
+        let encryption;
+        const encZipPath = "META-INF/encryption.xml";
+        if (zip.hasEntry(encZipPath)) {
+            let encryptionXmlZipStream_;
+            try {
+                encryptionXmlZipStream_ = yield zip.entryStreamPromise(encZipPath);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
+            const encryptionXmlZipStream = encryptionXmlZipStream_.stream;
+            let encryptionXmlZipData;
+            try {
+                encryptionXmlZipData = yield BufferUtils_1.streamToBufferPromise(encryptionXmlZipStream);
+            }
+            catch (err) {
+                debug(err);
+                return Promise.reject(err);
+            }
+            const encryptionXmlStr = encryptionXmlZipData.toString("utf8");
+            const encryptionXmlDoc = new xmldom.DOMParser().parseFromString(encryptionXmlStr);
+            encryption = xml_js_mapper_1.XML.deserialize(encryptionXmlDoc, encryption_1.Encryption);
+            encryption.ZipPath = encZipPath;
+        }
+        const containerZipPath = "META-INF/container.xml";
+        let containerXmlZipStream_;
+        try {
+            containerXmlZipStream_ = yield zip.entryStreamPromise(containerZipPath);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        const containerXmlZipStream = containerXmlZipStream_.stream;
+        let containerXmlZipData;
+        try {
+            containerXmlZipData = yield BufferUtils_1.streamToBufferPromise(containerXmlZipStream);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        const containerXmlStr = containerXmlZipData.toString("utf8");
+        const containerXmlDoc = new xmldom.DOMParser().parseFromString(containerXmlStr);
+        const container = xml_js_mapper_1.XML.deserialize(containerXmlDoc, container_1.Container);
+        container.ZipPath = containerZipPath;
+        const rootfile = container.Rootfile[0];
+        let opfZipStream_;
+        try {
+            opfZipStream_ = yield zip.entryStreamPromise(rootfile.Path);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        const opfZipStream = opfZipStream_.stream;
+        let opfZipData;
+        try {
+            opfZipData = yield BufferUtils_1.streamToBufferPromise(opfZipStream);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        const opfStr = opfZipData.toString("utf8");
+        const opfDoc = new xmldom.DOMParser().parseFromString(opfStr);
+        const opf = xml_js_mapper_1.XML.deserialize(opfDoc, opf_1.OPF);
+        opf.ZipPath = rootfile.Path;
+        let ncx;
+        if (opf.Spine.Toc) {
+            const ncxManItem = opf.Manifest.find((manifestItem) => {
+                return manifestItem.ID === opf.Spine.Toc;
+            });
+            if (ncxManItem) {
+                const ncxFilePath = path.join(path.dirname(opf.ZipPath), ncxManItem.Href)
+                    .replace(/\\/g, "/");
+                let ncxZipStream_;
+                try {
+                    ncxZipStream_ = yield zip.entryStreamPromise(ncxFilePath);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
+                const ncxZipStream = ncxZipStream_.stream;
+                let ncxZipData;
+                try {
+                    ncxZipData = yield BufferUtils_1.streamToBufferPromise(ncxZipStream);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
+                const ncxStr = ncxZipData.toString("utf8");
+                const ncxDoc = new xmldom.DOMParser().parseFromString(ncxStr);
+                ncx = xml_js_mapper_1.XML.deserialize(ncxDoc, ncx_1.NCX);
+                ncx.ZipPath = ncxFilePath;
+            }
+        }
+        addTitle(publication, rootfile, opf);
+        addIdentifier(publication, rootfile, opf);
+        if (opf.Metadata) {
+            if (opf.Metadata.Language) {
+                publication.Metadata.Language = opf.Metadata.Language;
+            }
+            if (opf.Metadata.Rights && opf.Metadata.Rights.length) {
+                publication.Metadata.Rights = opf.Metadata.Rights.join(" ");
+            }
+            if (opf.Metadata.Description && opf.Metadata.Description.length) {
+                publication.Metadata.Description = opf.Metadata.Description[0];
+            }
+            if (opf.Metadata.Publisher && opf.Metadata.Publisher.length) {
+                publication.Metadata.Publisher = [];
+                opf.Metadata.Publisher.forEach((pub) => {
+                    const contrib = new metadata_contributor_1.Contributor();
+                    contrib.Name = pub;
+                    publication.Metadata.Publisher.push(contrib);
+                });
+            }
+            if (opf.Metadata.Source && opf.Metadata.Source.length) {
+                publication.Metadata.Source = opf.Metadata.Source[0];
+            }
+            if (opf.Metadata.Contributor && opf.Metadata.Contributor.length) {
+                opf.Metadata.Contributor.forEach((cont) => {
+                    addContributor(publication, rootfile, opf, cont, undefined);
+                });
+            }
+            if (opf.Metadata.Creator && opf.Metadata.Creator.length) {
+                opf.Metadata.Creator.forEach((cont) => {
+                    addContributor(publication, rootfile, opf, cont, "aut");
+                });
+            }
+            if (opf.Metadata.Meta) {
+                const metasDuration = [];
+                const metasNarrator = [];
+                const metasActiveClass = [];
+                const metasPlaybackActiveClass = [];
+                opf.Metadata.Meta.forEach((metaTag) => {
+                    if (metaTag.Property === "media:duration") {
+                        metasDuration.push(metaTag);
+                    }
+                    if (metaTag.Property === "media:narrator") {
+                        metasNarrator.push(metaTag);
+                    }
+                    if (metaTag.Property === "media:active-class") {
+                        metasActiveClass.push(metaTag);
+                    }
+                    if (metaTag.Property === "media:playback-active-class") {
+                        metasPlaybackActiveClass.push(metaTag);
+                    }
+                });
+                if (metasDuration.length) {
+                    publication.Metadata.Duration = media_overlay_1.timeStrToSeconds(metasDuration[0].Data);
+                }
+                if (metasNarrator.length) {
+                    if (!publication.Metadata.Narrator) {
+                        publication.Metadata.Narrator = [];
+                    }
+                    metasNarrator.forEach((metaNarrator) => {
+                        const cont = new metadata_contributor_1.Contributor();
+                        cont.Name = metaNarrator.Data;
+                        publication.Metadata.Narrator.push(cont);
+                    });
+                }
+                if (metasActiveClass.length) {
+                    if (!publication.Metadata.MediaOverlay) {
+                        publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
+                    }
+                    publication.Metadata.MediaOverlay.ActiveClass = metasActiveClass[0].Data;
+                }
+                if (metasPlaybackActiveClass.length) {
+                    if (!publication.Metadata.MediaOverlay) {
+                        publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
+                    }
+                    publication.Metadata.MediaOverlay.PlaybackActiveClass = metasPlaybackActiveClass[0].Data;
+                }
+            }
+        }
+        if (opf.Spine && opf.Spine.PageProgression) {
+            publication.Metadata.Direction = opf.Spine.PageProgression;
+        }
+        if (isEpub3OrMore(rootfile, opf)) {
+            findContributorInMeta(publication, rootfile, opf);
+        }
+        yield fillSpineAndResource(publication, rootfile, opf);
+        addRendition(publication, rootfile, opf);
+        yield addCoverRel(publication, rootfile, opf);
+        if (encryption) {
+            fillEncryptionInfo(publication, rootfile, opf, encryption, lcpl);
+        }
+        yield fillTOCFromNavDoc(publication, rootfile, opf, zip);
+        if (!publication.TOC || !publication.TOC.length) {
+            if (ncx) {
+                fillTOCFromNCX(publication, rootfile, opf, ncx);
+                fillPageListFromNCX(publication, rootfile, opf, ncx);
+            }
+            fillLandmarksFromGuide(publication, rootfile, opf);
+        }
+        fillCalibreSerieInfo(publication, rootfile, opf);
+        fillSubject(publication, rootfile, opf);
+        fillPublicationDate(publication, rootfile, opf);
+        yield fillMediaOverlay(publication, rootfile, opf, zip);
+        return publication;
+    });
+}
+exports.EpubParsePromise = EpubParsePromise;
+function getAllMediaOverlays(publication) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const mos = [];
+        if (publication.Spine) {
+            for (const link of publication.Spine) {
+                if (link.MediaOverlays) {
+                    for (const mo of link.MediaOverlays) {
+                        try {
+                            yield fillMediaOverlayParse(publication, mo);
+                        }
+                        catch (err) {
+                            return Promise.reject(err);
+                        }
+                        mos.push(mo);
+                    }
+                }
+            }
+        }
+        return Promise.resolve(mos);
+    });
+}
+exports.getAllMediaOverlays = getAllMediaOverlays;
+function getMediaOverlay(publication, spineHref) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const mos = [];
+        if (publication.Spine) {
+            for (const link of publication.Spine) {
+                if (link.MediaOverlays && link.Href.indexOf(spineHref) >= 0) {
+                    for (const mo of link.MediaOverlays) {
+                        try {
+                            yield fillMediaOverlayParse(publication, mo);
+                        }
+                        catch (err) {
+                            return Promise.reject(err);
+                        }
+                        mos.push(mo);
+                    }
+                }
+            }
+        }
+        return Promise.resolve(mos);
+    });
+}
+exports.getMediaOverlay = getMediaOverlay;
+const fillMediaOverlayParse = (publication, mo) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    if (mo.initialized) {
+        return;
+    }
+    let link;
+    if (publication.Resources) {
+        const relativePath = mo.SmilPathInZip;
+        if (publication.Resources) {
+            link = publication.Resources.find((l) => {
+                if (l.Href === relativePath) {
+                    return true;
+                }
+                return false;
+            });
+        }
+        if (!link) {
+            if (publication.Spine) {
+                link = publication.Spine.find((l) => {
+                    if (l.Href === relativePath) {
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+        if (!link) {
+            const err = "Asset not declared in publication spine/resources! " + relativePath;
+            debug(err);
+            return Promise.reject(err);
+        }
+    }
+    const zipInternal = publication.findFromInternal("zip");
+    if (!zipInternal) {
+        return;
+    }
+    const zip = zipInternal.Value;
+    let smilZipStream_;
+    try {
+        smilZipStream_ = yield zip.entryStreamPromise(mo.SmilPathInZip);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
+    if (link && link.Properties && link.Properties.Encrypted) {
+        let decryptFail = false;
+        let transformedStream;
+        try {
+            transformedStream = yield transformer_1.Transformers.tryStream(publication, link, smilZipStream_, false, 0, 0);
+        }
+        catch (err) {
+            debug(err);
+            return Promise.reject(err);
+        }
+        if (transformedStream) {
+            smilZipStream_ = transformedStream;
+        }
+        else {
+            decryptFail = true;
+        }
+        if (decryptFail) {
+            const err = "Encryption scheme not supported.";
+            debug(err);
+            return Promise.reject(err);
+        }
+    }
+    const smilZipStream = smilZipStream_.stream;
+    let smilZipData;
+    try {
+        smilZipData = yield BufferUtils_1.streamToBufferPromise(smilZipStream);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
+    const smilStr = smilZipData.toString("utf8");
+    const smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
+    const smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
+    smil.ZipPath = mo.SmilPathInZip;
+    mo.initialized = true;
+    debug("PARSED SMIL: " + mo.SmilPathInZip);
+    mo.Role = [];
+    mo.Role.push("section");
+    if (smil.Body) {
+        if (smil.Body.EpubType) {
+            smil.Body.EpubType.trim().split(" ").forEach((role) => {
+                if (!role.length) {
+                    return;
+                }
+                if (mo.Role.indexOf(role) < 0) {
+                    mo.Role.push(role);
+                }
+            });
+        }
+        if (smil.Body.TextRef) {
+            const zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
+                .replace(/\\/g, "/");
+            mo.Text = zipPath;
+        }
+        if (smil.Body.Children && smil.Body.Children.length) {
+            smil.Body.Children.forEach((seqChild) => {
+                if (!mo.Children) {
+                    mo.Children = [];
+                }
+                addSeqToMediaOverlay(smil, publication, mo, mo.Children, seqChild);
+            });
+        }
+    }
+    return;
+});
+const fillMediaOverlay = (publication, rootfile, opf, zip) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    if (!publication.Resources) {
+        return;
+    }
+    for (const item of publication.Resources) {
+        if (item.TypeLink !== "application/smil+xml") {
+            continue;
+        }
+        if (!zip.hasEntry(item.Href)) {
+            continue;
+        }
+        const manItemsHtmlWithSmil = [];
+        opf.Manifest.forEach((manItemHtmlWithSmil) => {
+            if (manItemHtmlWithSmil.MediaOverlay) {
+                const manItemSmil = opf.Manifest.find((mi) => {
+                    if (mi.ID === manItemHtmlWithSmil.MediaOverlay) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (manItemSmil) {
+                    const smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
+                        .replace(/\\/g, "/");
+                    if (smilFilePath2 === item.Href) {
+                        manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
+                    }
+                }
+            }
+        });
+        const mo = new media_overlay_1.MediaOverlayNode();
+        mo.SmilPathInZip = item.Href;
+        mo.initialized = false;
+        manItemsHtmlWithSmil.forEach((manItemHtmlWithSmil) => {
+            const htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
+                .replace(/\\/g, "/");
+            const link = findLinKByHref(publication, rootfile, opf, htmlPathInZip);
+            if (link) {
+                if (!link.MediaOverlays) {
+                    link.MediaOverlays = [];
+                }
+                const alreadyExists = link.MediaOverlays.find((moo) => {
+                    if (item.Href === moo.SmilPathInZip) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (!alreadyExists) {
+                    link.MediaOverlays.push(mo);
+                }
+                if (!link.Properties) {
+                    link.Properties = new metadata_properties_1.Properties();
+                }
+                link.Properties.MediaOverlay = exports.mediaOverlayURLPath + "?" +
+                    exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
+            }
+        });
+        if (item.Properties && item.Properties.Encrypted) {
+            debug("ENCRYPTED SMIL MEDIA OVERLAY: " + item.Href);
+            continue;
+        }
+    }
+    return;
+});
+const addSeqToMediaOverlay = (smil, publication, rootMO, mo, seqChild) => {
+    const moc = new media_overlay_1.MediaOverlayNode();
+    moc.initialized = rootMO.initialized;
+    mo.push(moc);
+    if (seqChild instanceof smil_seq_1.Seq) {
+        moc.Role = [];
+        moc.Role.push("section");
+        const seq = seqChild;
+        if (seq.EpubType) {
+            seq.EpubType.trim().split(" ").forEach((role) => {
+                if (!role.length) {
+                    return;
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
+        if (seq.TextRef) {
+            const zipPath = path.join(path.dirname(smil.ZipPath), seq.TextRef)
+                .replace(/\\/g, "/");
+            moc.Text = zipPath;
+        }
+        if (seq.Children && seq.Children.length) {
+            seq.Children.forEach((child) => {
+                if (!moc.Children) {
+                    moc.Children = [];
+                }
+                addSeqToMediaOverlay(smil, publication, rootMO, moc.Children, child);
+            });
+        }
+    }
+    else {
+        const par = seqChild;
+        if (par.EpubType) {
+            par.EpubType.trim().split(" ").forEach((role) => {
+                if (!role.length) {
+                    return;
+                }
+                if (!moc.Role) {
+                    moc.Role = [];
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
+        if (par.Text && par.Text.Src) {
+            const zipPath = path.join(path.dirname(smil.ZipPath), par.Text.Src)
+                .replace(/\\/g, "/");
+            moc.Text = zipPath;
+        }
+        if (par.Audio && par.Audio.Src) {
+            const zipPath = path.join(path.dirname(smil.ZipPath), par.Audio.Src)
+                .replace(/\\/g, "/");
+            moc.Audio = zipPath;
+            moc.Audio += "#t=";
+            moc.Audio += par.Audio.ClipBegin ? media_overlay_1.timeStrToSeconds(par.Audio.ClipBegin) : "0";
+            if (par.Audio.ClipEnd) {
+                moc.Audio += ",";
+                moc.Audio += media_overlay_1.timeStrToSeconds(par.Audio.ClipEnd);
+            }
+        }
+    }
+};
+const fillPublicationDate = (publication, rootfile, opf) => {
+    if (opf.Metadata && opf.Metadata.Date && opf.Metadata.Date.length) {
+        if (isEpub3OrMore(rootfile, opf) && opf.Metadata.Date[0] && opf.Metadata.Date[0].Data) {
+            publication.Metadata.PublicationDate = moment(opf.Metadata.Date[0].Data).toDate();
+            return;
+        }
+        opf.Metadata.Date.forEach((date) => {
+            if (date.Data && date.Event && date.Event.indexOf("publication") >= 0) {
+                publication.Metadata.PublicationDate = moment(date.Data).toDate();
+            }
+        });
+    }
+};
+const findContributorInMeta = (publication, rootfile, opf) => {
+    if (opf.Metadata && opf.Metadata.Meta) {
+        opf.Metadata.Meta.forEach((meta) => {
+            if (meta.Property === "dcterms:creator" || meta.Property === "dcterms:contributor") {
+                const cont = new opf_author_1.Author();
+                cont.Data = meta.Data;
+                cont.ID = meta.ID;
+                addContributor(publication, rootfile, opf, cont, undefined);
+            }
+        });
+    }
+};
+const addContributor = (publication, rootfile, opf, cont, forcedRole) => {
+    const contributor = new metadata_contributor_1.Contributor();
+    let role;
+    if (isEpub3OrMore(rootfile, opf)) {
+        const meta = findMetaByRefineAndProperty(rootfile, opf, cont.ID, "role");
+        if (meta && meta.Property === "role") {
+            role = meta.Data;
+        }
+        if (!role && forcedRole) {
+            role = forcedRole;
+        }
+        const metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, cont.ID, "alternate-script");
+        if (metaAlt && metaAlt.length) {
+            contributor.Name = {};
+            if (publication.Metadata &&
+                publication.Metadata.Language &&
+                publication.Metadata.Language.length) {
+                contributor.Name[publication.Metadata.Language[0].toLowerCase()] = cont.Data;
+            }
+            metaAlt.forEach((m) => {
+                if (m.Lang) {
+                    contributor.Name[m.Lang] = m.Data;
+                }
+            });
+        }
+        else {
+            contributor.Name = cont.Data;
+        }
+    }
+    else {
+        contributor.Name = cont.Data;
+        role = cont.Role;
+        if (!role && forcedRole) {
+            role = forcedRole;
+        }
+    }
+    if (role) {
+        switch (role) {
+            case "aut": {
+                if (!publication.Metadata.Author) {
+                    publication.Metadata.Author = [];
+                }
+                publication.Metadata.Author.push(contributor);
+                break;
+            }
+            case "trl": {
+                if (!publication.Metadata.Translator) {
+                    publication.Metadata.Translator = [];
+                }
+                publication.Metadata.Translator.push(contributor);
+                break;
+            }
+            case "art": {
+                if (!publication.Metadata.Artist) {
+                    publication.Metadata.Artist = [];
+                }
+                publication.Metadata.Artist.push(contributor);
+                break;
+            }
+            case "edt": {
+                if (!publication.Metadata.Editor) {
+                    publication.Metadata.Editor = [];
+                }
+                publication.Metadata.Editor.push(contributor);
+                break;
+            }
+            case "ill": {
+                if (!publication.Metadata.Illustrator) {
+                    publication.Metadata.Illustrator = [];
+                }
+                publication.Metadata.Illustrator.push(contributor);
+                break;
+            }
+            case "ltr": {
+                if (!publication.Metadata.Letterer) {
+                    publication.Metadata.Letterer = [];
+                }
+                publication.Metadata.Letterer.push(contributor);
+                break;
+            }
+            case "pen": {
+                if (!publication.Metadata.Penciler) {
+                    publication.Metadata.Penciler = [];
+                }
+                publication.Metadata.Penciler.push(contributor);
+                break;
+            }
+            case "clr": {
+                if (!publication.Metadata.Colorist) {
+                    publication.Metadata.Colorist = [];
+                }
+                publication.Metadata.Colorist.push(contributor);
+                break;
+            }
+            case "ink": {
+                if (!publication.Metadata.Inker) {
+                    publication.Metadata.Inker = [];
+                }
+                publication.Metadata.Inker.push(contributor);
+                break;
+            }
+            case "nrt": {
+                if (!publication.Metadata.Narrator) {
+                    publication.Metadata.Narrator = [];
+                }
+                publication.Metadata.Narrator.push(contributor);
+                break;
+            }
+            case "pbl": {
+                if (!publication.Metadata.Publisher) {
+                    publication.Metadata.Publisher = [];
+                }
+                publication.Metadata.Publisher.push(contributor);
+                break;
+            }
+            default: {
+                contributor.Role = role;
+                if (!publication.Metadata.Contributor) {
+                    publication.Metadata.Contributor = [];
+                }
+                publication.Metadata.Contributor.push(contributor);
+            }
+        }
+    }
+};
+const addIdentifier = (publication, _rootfile, opf) => {
+    if (opf.Metadata && opf.Metadata.Identifier) {
+        if (opf.UniqueIdentifier && opf.Metadata.Identifier.length > 1) {
+            opf.Metadata.Identifier.forEach((iden) => {
+                if (iden.ID === opf.UniqueIdentifier) {
+                    publication.Metadata.Identifier = iden.Data;
+                }
+            });
+        }
+        else if (opf.Metadata.Identifier.length > 0) {
+            publication.Metadata.Identifier = opf.Metadata.Identifier[0].Data;
+        }
+    }
+};
+const addTitle = (publication, rootfile, opf) => {
+    if (isEpub3OrMore(rootfile, opf)) {
+        let mainTitle;
+        if (opf.Metadata &&
+            opf.Metadata.Title &&
+            opf.Metadata.Title.length) {
+            if (opf.Metadata.Meta) {
+                const tt = opf.Metadata.Title.find((title) => {
+                    const refineID = "#" + title.ID;
+                    const m = opf.Metadata.Meta.find((meta) => {
+                        if (meta.Data === "main" && meta.Refine === refineID) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (m) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (tt) {
+                    mainTitle = tt;
+                }
+            }
+            if (!mainTitle) {
+                mainTitle = opf.Metadata.Title[0];
+            }
+        }
+        if (mainTitle) {
+            const metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, mainTitle.ID, "alternate-script");
+            if (metaAlt && metaAlt.length) {
+                publication.Metadata.Title = {};
+                if (mainTitle.Lang) {
+                    publication.Metadata.Title[mainTitle.Lang.toLowerCase()] = mainTitle.Data;
+                }
+                metaAlt.forEach((m) => {
+                    if (m.Lang) {
+                        publication.Metadata.Title[m.Lang.toLowerCase()] = m.Data;
+                    }
+                });
+            }
+            else {
+                publication.Metadata.Title = mainTitle.Data;
+            }
+        }
+    }
+    else {
+        if (opf.Metadata &&
+            opf.Metadata.Title &&
+            opf.Metadata.Title.length) {
+            publication.Metadata.Title = opf.Metadata.Title[0].Data;
+        }
+    }
+};
+const addRelAndPropertiesToLink = (publication, link, linkEpub, rootfile, opf) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    if (linkEpub.Properties) {
+        yield addToLinkFromProperties(publication, link, linkEpub.Properties);
+    }
+    const spineProperties = findPropertiesInSpineForManifest(linkEpub, rootfile, opf);
+    if (spineProperties) {
+        yield addToLinkFromProperties(publication, link, spineProperties);
+    }
+});
+const addToLinkFromProperties = (publication, link, propertiesString) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    const properties = propertiesString.trim().split(" ");
+    const propertiesStruct = new metadata_properties_1.Properties();
+    for (const p of properties) {
+        switch (p) {
+            case "cover-image": {
+                link.AddRel("cover");
+                yield exports.addCoverDimensions(publication, link);
+                break;
+            }
+            case "nav": {
+                link.AddRel("contents");
+                break;
+            }
+            case "scripted": {
+                if (!propertiesStruct.Contains) {
+                    propertiesStruct.Contains = [];
+                }
+                propertiesStruct.Contains.push("js");
+                break;
+            }
+            case "mathml": {
+                if (!propertiesStruct.Contains) {
+                    propertiesStruct.Contains = [];
+                }
+                propertiesStruct.Contains.push("mathml");
+                break;
+            }
+            case "onix-record": {
+                if (!propertiesStruct.Contains) {
+                    propertiesStruct.Contains = [];
+                }
+                propertiesStruct.Contains.push("onix");
+                break;
+            }
+            case "svg": {
+                if (!propertiesStruct.Contains) {
+                    propertiesStruct.Contains = [];
+                }
+                propertiesStruct.Contains.push("svg");
+                break;
+            }
+            case "xmp-record": {
+                if (!propertiesStruct.Contains) {
+                    propertiesStruct.Contains = [];
+                }
+                propertiesStruct.Contains.push("xmp");
+                break;
+            }
+            case "remote-resources": {
+                if (!propertiesStruct.Contains) {
+                    propertiesStruct.Contains = [];
+                }
+                propertiesStruct.Contains.push("remote-resources");
+                break;
+            }
+            case "page-spread-left": {
+                propertiesStruct.Page = "left";
+                break;
+            }
+            case "page-spread-right": {
+                propertiesStruct.Page = "right";
+                break;
+            }
+            case "page-spread-center": {
+                propertiesStruct.Page = "center";
+                break;
+            }
+            case "rendition:spread-none": {
+                propertiesStruct.Spread = noneMeta;
+                break;
+            }
+            case "rendition:spread-auto": {
+                propertiesStruct.Spread = autoMeta;
+                break;
+            }
+            case "rendition:spread-landscape": {
+                propertiesStruct.Spread = "landscape";
+                break;
+            }
+            case "rendition:spread-portrait": {
+                propertiesStruct.Spread = "portrait";
+                break;
+            }
+            case "rendition:spread-both": {
+                propertiesStruct.Spread = "both";
+                break;
+            }
+            case "rendition:layout-reflowable": {
+                propertiesStruct.Layout = reflowableMeta;
+                break;
+            }
+            case "rendition:layout-pre-paginated": {
+                propertiesStruct.Layout = "fixed";
+                break;
+            }
+            case "rendition:orientation-auto": {
+                propertiesStruct.Orientation = "auto";
+                break;
+            }
+            case "rendition:orientation-landscape": {
+                propertiesStruct.Orientation = "landscape";
+                break;
+            }
+            case "rendition:orientation-portrait": {
+                propertiesStruct.Orientation = "portrait";
+                break;
+            }
+            case "rendition:flow-auto": {
+                propertiesStruct.Overflow = autoMeta;
+                break;
+            }
+            case "rendition:flow-paginated": {
+                propertiesStruct.Overflow = "paginated";
+                break;
+            }
+            case "rendition:flow-scrolled-continuous": {
+                propertiesStruct.Overflow = "scrolled-continuous";
+                break;
+            }
+            case "rendition:flow-scrolled-doc": {
+                propertiesStruct.Overflow = "scrolled";
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+        if (propertiesStruct.Layout ||
+            propertiesStruct.Orientation ||
+            propertiesStruct.Overflow ||
+            propertiesStruct.Page ||
+            propertiesStruct.Spread ||
+            (propertiesStruct.Contains && propertiesStruct.Contains.length)) {
+            link.Properties = propertiesStruct;
+        }
+    }
+});
+const addMediaOverlay = (link, linkEpub, rootfile, opf) => {
+    if (linkEpub.MediaOverlay) {
+        const meta = findMetaByRefineAndProperty(rootfile, opf, linkEpub.MediaOverlay, "media:duration");
+        if (meta) {
+            link.Duration = media_overlay_1.timeStrToSeconds(meta.Data);
+        }
+    }
+};
+const findInManifestByID = (publication, rootfile, opf, ID) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    if (opf.Manifest && opf.Manifest.length) {
+        const item = opf.Manifest.find((manItem) => {
+            if (manItem.ID === ID) {
+                return true;
+            }
+            return false;
+        });
+        if (item) {
+            const linkItem = new publication_link_1.Link();
+            linkItem.TypeLink = item.MediaType;
+            const zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
+                .replace(/\\/g, "/");
+            linkItem.Href = zipPath;
+            yield addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf);
+            addMediaOverlay(linkItem, item, rootfile, opf);
+            return linkItem;
+        }
+    }
+    return Promise.reject(`${ID} not found`);
+});
+const addRendition = (publication, _rootfile, opf) => {
+    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
+        const rendition = new metadata_properties_1.Properties();
+        opf.Metadata.Meta.forEach((meta) => {
+            switch (meta.Property) {
+                case "rendition:layout": {
+                    if (meta.Data === "pre-paginated") {
+                        rendition.Layout = "fixed";
+                    }
+                    else if (meta.Data === "reflowable") {
+                        rendition.Layout = "reflowable";
+                    }
+                    break;
+                }
+                case "rendition:orientation": {
+                    rendition.Orientation = meta.Data;
+                    break;
+                }
+                case "rendition:spread": {
+                    rendition.Spread = meta.Data;
+                    break;
+                }
+                case "rendition:flow": {
+                    rendition.Overflow = meta.Data;
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        });
+        if (rendition.Layout || rendition.Orientation || rendition.Overflow || rendition.Page || rendition.Spread) {
+            publication.Metadata.Rendition = rendition;
+        }
+    }
+};
+const fillSpineAndResource = (publication, rootfile, opf) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    if (opf.Spine && opf.Spine.Items && opf.Spine.Items.length) {
+        for (const item of opf.Spine.Items) {
+            if (!item.Linear || item.Linear === "yes") {
+                let linkItem;
+                try {
+                    linkItem = yield findInManifestByID(publication, rootfile, opf, item.IDref);
+                }
+                catch (err) {
+                    debug(err);
+                    continue;
+                }
+                if (linkItem && linkItem.Href) {
+                    if (!publication.Spine) {
+                        publication.Spine = [];
+                    }
+                    publication.Spine.push(linkItem);
+                }
+            }
+        }
+    }
+    if (opf.Manifest && opf.Manifest.length) {
+        for (const item of opf.Manifest) {
+            const zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
+                .replace(/\\/g, "/");
+            const linkSpine = findInSpineByHref(publication, zipPath);
+            if (!linkSpine || !linkSpine.Href) {
+                const linkItem = new publication_link_1.Link();
+                linkItem.TypeLink = item.MediaType;
+                linkItem.Href = zipPath;
+                yield addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf);
+                addMediaOverlay(linkItem, item, rootfile, opf);
+                if (!publication.Resources) {
+                    publication.Resources = [];
+                }
+                publication.Resources.push(linkItem);
+            }
+        }
+    }
+});
+const fillEncryptionInfo = (publication, _rootfile, _opf, encryption, lcp) => {
+    encryption.EncryptedData.forEach((encInfo) => {
+        const encrypted = new metadata_encrypted_1.Encrypted();
+        encrypted.Algorithm = encInfo.EncryptionMethod.Algorithm;
+        if (lcp &&
+            encrypted.Algorithm !== "http://www.idpf.org/2008/embedding" &&
+            encrypted.Algorithm !== "http://ns.adobe.com/pdf/enc#RC") {
+            encrypted.Profile = lcp.Encryption.Profile;
+            encrypted.Scheme = "http://readium.org/2014/01/lcp";
+        }
+        if (encInfo.EncryptionProperties && encInfo.EncryptionProperties.length) {
+            encInfo.EncryptionProperties.forEach((prop) => {
+                if (prop.Compression) {
+                    if (prop.Compression.OriginalLength) {
+                        encrypted.OriginalLength = parseFloat(prop.Compression.OriginalLength);
+                    }
+                    if (prop.Compression.Method === "8") {
+                        encrypted.Compression = "deflate";
+                    }
+                    else {
+                        encrypted.Compression = "none";
+                    }
+                }
+            });
+        }
+        publication.Resources.forEach((l, _i, _arr) => {
+            const filePath = l.Href;
+            if (filePath === encInfo.CipherData.CipherReference.URI) {
+                if (!l.Properties) {
+                    l.Properties = new metadata_properties_1.Properties();
+                }
+                l.Properties.Encrypted = encrypted;
+            }
+        });
+        publication.Spine.forEach((l, _i, _arr) => {
+            const filePath = l.Href;
+            if (filePath === encInfo.CipherData.CipherReference.URI) {
+                if (!l.Properties) {
+                    l.Properties = new metadata_properties_1.Properties();
+                }
+                l.Properties.Encrypted = encrypted;
+            }
+        });
+    });
+};
+const fillPageListFromNCX = (publication, _rootfile, _opf, ncx) => {
+    if (ncx.PageList && ncx.PageList.PageTarget && ncx.PageList.PageTarget.length) {
+        ncx.PageList.PageTarget.forEach((pageTarget) => {
+            const link = new publication_link_1.Link();
+            const zipPath = path.join(path.dirname(ncx.ZipPath), pageTarget.Content.Src)
+                .replace(/\\/g, "/");
+            link.Href = zipPath;
+            link.Title = pageTarget.Text;
+            if (!publication.PageList) {
+                publication.PageList = [];
+            }
+            publication.PageList.push(link);
+        });
+    }
+};
+const fillTOCFromNCX = (publication, rootfile, opf, ncx) => {
+    if (ncx.Points && ncx.Points.length) {
+        ncx.Points.forEach((point) => {
+            if (!publication.TOC) {
+                publication.TOC = [];
+            }
+            fillTOCFromNavPoint(publication, rootfile, opf, ncx, point, publication.TOC);
+        });
+    }
+};
+const fillLandmarksFromGuide = (publication, _rootfile, opf) => {
+    if (opf.Guide && opf.Guide.length) {
+        opf.Guide.forEach((ref) => {
+            if (ref.Href) {
+                const link = new publication_link_1.Link();
+                const zipPath = path.join(path.dirname(opf.ZipPath), ref.Href)
+                    .replace(/\\/g, "/");
+                link.Href = zipPath;
+                link.Title = ref.Title;
+                if (!publication.Landmarks) {
+                    publication.Landmarks = [];
+                }
+                publication.Landmarks.push(link);
+            }
+        });
+    }
+};
+const fillTOCFromNavPoint = (publication, rootfile, opf, ncx, point, node) => {
+    const link = new publication_link_1.Link();
+    const zipPath = path.join(path.dirname(ncx.ZipPath), point.Content.Src)
+        .replace(/\\/g, "/");
+    link.Href = zipPath;
+    link.Title = point.Text;
+    if (point.Points && point.Points.length) {
+        point.Points.forEach((p) => {
+            if (!link.Children) {
+                link.Children = [];
+            }
+            fillTOCFromNavPoint(publication, rootfile, opf, ncx, p, link.Children);
+        });
+    }
+    node.push(link);
+};
+const fillSubject = (publication, _rootfile, opf) => {
+    if (opf.Metadata && opf.Metadata.Subject && opf.Metadata.Subject.length) {
+        opf.Metadata.Subject.forEach((s) => {
+            const sub = new metadata_subject_1.Subject();
+            sub.Name = s.Data;
+            sub.Code = s.Term;
+            sub.Scheme = s.Authority;
+            if (!publication.Metadata.Subject) {
+                publication.Metadata.Subject = [];
+            }
+            publication.Metadata.Subject.push(sub);
+        });
+    }
+};
+const fillCalibreSerieInfo = (publication, _rootfile, opf) => {
+    let serie;
+    let seriePosition;
+    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
+        opf.Metadata.Meta.forEach((m) => {
+            if (m.Name === "calibre:series") {
+                serie = m.Content;
+            }
+            if (m.Name === "calibre:series_index") {
+                seriePosition = parseFloat(m.Content);
+            }
+        });
+    }
+    if (serie) {
+        const collection = new metadata_collection_1.Collection();
+        collection.Name = serie;
+        if (seriePosition) {
+            collection.Position = seriePosition;
+        }
+        if (!publication.Metadata.BelongsTo) {
+            publication.Metadata.BelongsTo = new metadata_belongsto_1.BelongsTo();
+        }
+        if (!publication.Metadata.BelongsTo.Series) {
+            publication.Metadata.BelongsTo.Series = [];
+        }
+        publication.Metadata.BelongsTo.Series.push(collection);
+    }
+};
+const fillTOCFromNavDoc = (publication, _rootfile, _opf, zip) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    const navLink = publication.GetNavDoc();
+    if (!navLink) {
+        return;
+    }
+    const navDocFilePath = navLink.Href;
+    if (!zip.hasEntry(navDocFilePath)) {
+        return;
+    }
+    let navDocZipStream_;
+    try {
+        navDocZipStream_ = yield zip.entryStreamPromise(navDocFilePath);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
+    const navDocZipStream = navDocZipStream_.stream;
+    let navDocZipData;
+    try {
+        navDocZipData = yield BufferUtils_1.streamToBufferPromise(navDocZipStream);
+    }
+    catch (err) {
+        debug(err);
+        return Promise.reject(err);
+    }
+    const navDocStr = navDocZipData.toString("utf8");
+    const navXmlDoc = new xmldom.DOMParser().parseFromString(navDocStr);
+    const select = xpath.useNamespaces({
+        epub: "http://www.idpf.org/2007/ops",
+        xhtml: "http://www.w3.org/1999/xhtml",
+    });
+    const navs = select("/xhtml:html/xhtml:body//xhtml:nav", navXmlDoc);
+    if (navs && navs.length) {
+        navs.forEach((navElement) => {
+            const typeNav = select("@epub:type", navElement);
+            if (typeNav && typeNav.length) {
+                const olElem = select("xhtml:ol", navElement);
+                const roles = typeNav[0].value;
+                const role = roles.trim().split(" ")[0];
+                switch (role) {
+                    case "toc": {
+                        publication.TOC = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.TOC, navLink.Href);
+                        break;
+                    }
+                    case "page-list": {
+                        publication.PageList = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.PageList, navLink.Href);
+                        break;
+                    }
+                    case "landmarks": {
+                        publication.Landmarks = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.Landmarks, navLink.Href);
+                        break;
+                    }
+                    case "lot": {
+                        publication.LOT = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.LOT, navLink.Href);
+                        break;
+                    }
+                    case "loa": {
+                        publication.LOA = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.LOA, navLink.Href);
+                        break;
+                    }
+                    case "loi": {
+                        publication.LOI = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.LOI, navLink.Href);
+                        break;
+                    }
+                    case "lov": {
+                        publication.LOV = [];
+                        fillTOCFromNavDocWithOL(select, olElem, publication.LOV, navLink.Href);
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
+        });
+    }
+});
+const fillTOCFromNavDocWithOL = (select, olElems, node, navDocPath) => {
+    olElems.forEach((olElem) => {
+        const liElems = select("xhtml:li", olElem);
+        if (liElems && liElems.length) {
+            liElems.forEach((liElem) => {
+                const link = new publication_link_1.Link();
+                node.push(link);
+                const aElems = select("xhtml:a", liElem);
+                if (aElems && aElems.length > 0) {
+                    const aHref = select("@href", aElems[0]);
+                    if (aHref && aHref.length) {
+                        let val = aHref[0].value;
+                        if (val[0] === "#") {
+                            val = path.basename(navDocPath) + val;
+                        }
+                        const zipPath = path.join(path.dirname(navDocPath), val)
+                            .replace(/\\/g, "/");
+                        link.Href = zipPath;
+                    }
+                    let aText = aElems[0].textContent;
+                    if (aText && aText.length) {
+                        aText = aText.trim();
+                        aText = aText.replace(/\s\s+/g, " ");
+                        link.Title = aText;
+                    }
+                }
+                else {
+                    const liFirstChild = select("xhtml:*[1]", liElem);
+                    if (liFirstChild && liFirstChild.length && liFirstChild[0].textContent) {
+                        link.Title = liFirstChild[0].textContent.trim();
+                    }
+                }
+                const olElemsNext = select("xhtml:ol", liElem);
+                if (olElemsNext && olElemsNext.length) {
+                    if (!link.Children) {
+                        link.Children = [];
+                    }
+                    fillTOCFromNavDocWithOL(select, olElemsNext, link.Children, navDocPath);
+                }
+            });
+        }
+    });
+};
+const addCoverRel = (publication, rootfile, opf) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    let coverID;
+    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
+        opf.Metadata.Meta.find((meta) => {
+            if (meta.Name === "cover") {
+                coverID = meta.Content;
+                return true;
+            }
+            return false;
+        });
+    }
+    if (coverID) {
+        let manifestInfo;
+        try {
+            manifestInfo = yield findInManifestByID(publication, rootfile, opf, coverID);
+        }
+        catch (err) {
+            debug(err);
+            return;
+        }
+        if (manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length) {
+            const href = manifestInfo.Href;
+            const linky = publication.Resources.find((item, _i, _arr) => {
+                if (item.Href === href) {
+                    return true;
+                }
+                return false;
+            });
+            if (linky) {
+                linky.AddRel("cover");
+                yield exports.addCoverDimensions(publication, linky);
+            }
+        }
+    }
+});
+const findPropertiesInSpineForManifest = (linkEpub, _rootfile, opf) => {
+    if (opf.Spine && opf.Spine.Items && opf.Spine.Items.length) {
+        const it = opf.Spine.Items.find((item) => {
+            if (item.IDref === linkEpub.ID) {
+                return true;
+            }
+            return false;
+        });
+        if (it && it.Properties) {
+            return it.Properties;
+        }
+    }
+    return undefined;
+};
+const findInSpineByHref = (publication, href) => {
+    if (publication.Spine && publication.Spine.length) {
+        const ll = publication.Spine.find((l) => {
+            if (l.Href === href) {
+                return true;
+            }
+            return false;
+        });
+        if (ll) {
+            return ll;
+        }
+    }
+    return undefined;
+};
+const findMetaByRefineAndProperty = (rootfile, opf, ID, property) => {
+    const ret = findAllMetaByRefineAndProperty(rootfile, opf, ID, property);
+    if (ret.length) {
+        return ret[0];
+    }
+    return undefined;
+};
+const findAllMetaByRefineAndProperty = (_rootfile, opf, ID, property) => {
+    const metas = [];
+    const refineID = "#" + ID;
+    if (opf.Metadata && opf.Metadata.Meta) {
+        opf.Metadata.Meta.forEach((metaTag) => {
+            if (metaTag.Refine === refineID && metaTag.Property === property) {
+                metas.push(metaTag);
+            }
+        });
+    }
+    return metas;
+};
+const getEpubVersion = (rootfile, opf) => {
+    if (rootfile.Version) {
+        return rootfile.Version;
+    }
+    else if (opf.Version) {
+        return opf.Version;
+    }
+    return undefined;
+};
+const isEpub3OrMore = (rootfile, opf) => {
+    const version = getEpubVersion(rootfile, opf);
+    return (version === epub3 || version === epub301 || version === epub31);
+};
+const findLinKByHref = (publication, _rootfile, _opf, href) => {
+    if (publication.Spine && publication.Spine.length) {
+        const ll = publication.Spine.find((l) => {
+            const pathInZip = l.Href;
+            if (href === pathInZip) {
+                return true;
+            }
+            return false;
+        });
+        if (ll) {
+            return ll;
+        }
+    }
+    return undefined;
+};
+
+},{"../_utils/stream/BufferUtils":340,"../_utils/xml-js-mapper":363,"../_utils/zip/zipFactory":370,"../models/media-overlay":372,"../models/metadata":382,"../models/metadata-belongsto":373,"../models/metadata-collection":375,"../models/metadata-contributor":377,"../models/metadata-encrypted":378,"../models/metadata-media-overlay":379,"../models/metadata-properties":380,"../models/metadata-subject":381,"../models/publication":384,"../models/publication-link":383,"../transform/transformer":460,"./epub/container":413,"./epub/encryption":422,"./epub/lcp":431,"./epub/ncx":436,"./epub/opf":448,"./epub/opf-author":437,"./epub/smil":455,"./epub/smil-seq":453,"debug":142,"image-size":260,"moment":307,"path":undefined,"querystring":undefined,"ta-json":540,"tslib":553,"xmldom":572,"xpath":575}],412:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Rootfile = class Rootfile {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@full-path"),
+    tslib_1.__metadata("design:type", String)
+], Rootfile.prototype, "Path", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@media-type"),
+    tslib_1.__metadata("design:type", String)
+], Rootfile.prototype, "Type", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@version"),
+    tslib_1.__metadata("design:type", String)
+], Rootfile.prototype, "Version", void 0);
+Rootfile = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject()
+], Rootfile);
+exports.Rootfile = Rootfile;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],413:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const container_rootfile_1 = require("./container-rootfile");
+let Container = class Container {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("epub:rootfiles/epub:rootfile", {
+        epub: "urn:oasis:names:tc:opendocument:xmlns:container",
+        rendition: "http://www.idpf.org/2013/rendition",
+    }),
+    xml_js_mapper_1.XmlItemType(container_rootfile_1.Rootfile),
+    tslib_1.__metadata("design:type", Array)
+], Container.prototype, "Rootfile", void 0);
+Container = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dummyNS: "dummyURI",
+        epub: "wrong2",
+        rendition: "wrong1",
+    })
+], Container);
+exports.Container = Container;
+
+},{"../../_utils/xml-js-mapper":363,"./container-rootfile":412,"tslib":553}],414:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Compression = class Compression {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@Method"),
+    tslib_1.__metadata("design:type", String)
+], Compression.prototype, "Method", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@OriginalLength"),
+    tslib_1.__metadata("design:type", String)
+], Compression.prototype, "OriginalLength", void 0);
+Compression = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], Compression);
+exports.Compression = Compression;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],415:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const encryption_cypherreference_1 = require("./encryption-cypherreference");
+let CipherData = class CipherData {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("enc:CipherReference"),
+    tslib_1.__metadata("design:type", encryption_cypherreference_1.CipherReference)
+], CipherData.prototype, "CipherReference", void 0);
+CipherData = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], CipherData);
+exports.CipherData = CipherData;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-cypherreference":416,"tslib":553}],416:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let CipherReference = class CipherReference {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@URI"),
+    tslib_1.__metadata("design:type", String)
+], CipherReference.prototype, "URI", void 0);
+CipherReference = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], CipherReference);
+exports.CipherReference = CipherReference;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],417:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const encryption_cypherdata_1 = require("./encryption-cypherdata");
+const encryption_keyinfo_1 = require("./encryption-keyinfo");
+const encryption_method_1 = require("./encryption-method");
+const encryption_property_1 = require("./encryption-property");
+let EncryptedData = class EncryptedData {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("enc:EncryptionMethod"),
+    tslib_1.__metadata("design:type", encryption_method_1.EncryptionMethod)
+], EncryptedData.prototype, "EncryptionMethod", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ds:KeyInfo"),
+    tslib_1.__metadata("design:type", encryption_keyinfo_1.KeyInfo)
+], EncryptedData.prototype, "KeyInfo", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("enc:CipherData"),
+    tslib_1.__metadata("design:type", encryption_cypherdata_1.CipherData)
+], EncryptedData.prototype, "CipherData", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("enc:EncryptionProperties/enc:EncryptionProperty"),
+    xml_js_mapper_1.XmlItemType(encryption_property_1.EncryptionProperty),
+    tslib_1.__metadata("design:type", Array)
+], EncryptedData.prototype, "EncryptionProperties", void 0);
+EncryptedData = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], EncryptedData);
+exports.EncryptedData = EncryptedData;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-cypherdata":415,"./encryption-keyinfo":418,"./encryption-method":419,"./encryption-property":420,"tslib":553}],418:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const encryption_retrievalmethod_1 = require("./encryption-retrievalmethod");
+let KeyInfo = class KeyInfo {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ds:RetrievalMethod"),
+    tslib_1.__metadata("design:type", encryption_retrievalmethod_1.RetrievalMethod)
+], KeyInfo.prototype, "RetrievalMethod", void 0);
+KeyInfo = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], KeyInfo);
+exports.KeyInfo = KeyInfo;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-retrievalmethod":421,"tslib":553}],419:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let EncryptionMethod = class EncryptionMethod {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@Algorithm"),
+    tslib_1.__metadata("design:type", String)
+], EncryptionMethod.prototype, "Algorithm", void 0);
+EncryptionMethod = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], EncryptionMethod);
+exports.EncryptionMethod = EncryptionMethod;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],420:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const encryption_compression_1 = require("./encryption-compression");
+let EncryptionProperty = class EncryptionProperty {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ns:Compression"),
+    tslib_1.__metadata("design:type", encryption_compression_1.Compression)
+], EncryptionProperty.prototype, "Compression", void 0);
+EncryptionProperty = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], EncryptionProperty);
+exports.EncryptionProperty = EncryptionProperty;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-compression":414,"tslib":553}],421:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let RetrievalMethod = class RetrievalMethod {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@URI"),
+    tslib_1.__metadata("design:type", String)
+], RetrievalMethod.prototype, "URI", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@Type"),
+    tslib_1.__metadata("design:type", String)
+], RetrievalMethod.prototype, "Type", void 0);
+RetrievalMethod = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], RetrievalMethod);
+exports.RetrievalMethod = RetrievalMethod;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],422:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const encryption_data_1 = require("./encryption-data");
+let Encryption = class Encryption {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("enc:EncryptedData"),
+    xml_js_mapper_1.XmlItemType(encryption_data_1.EncryptedData),
+    tslib_1.__metadata("design:type", Array)
+], Encryption.prototype, "EncryptedData", void 0);
+Encryption = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ds: "http://www.w3.org/2000/09/xmldsig#",
+        enc: "http://www.w3.org/2001/04/xmlenc#",
+        encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+        ns: "http://www.idpf.org/2016/encryption#compression",
+    })
+], Encryption);
+exports.Encryption = Encryption;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-data":417,"tslib":553}],423:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LCPCertificateBasicProfile = `-----BEGIN CERTIFICATE-----
+MIIFZzCCA0+gAwIBAgIJAMWdQaWkExQEMA0GCSqGSIb3DQEBCwUAMGcxCzAJBgNV
+BAYTAkZSMQ4wDAYDVQQHEwVQYXJpczEPMA0GA1UEChMGRURSTGFiMRIwEAYDVQQL
+EwlMQ1AgVGVzdHMxIzAhBgNVBAMTGkVEUkxhYiBSZWFkaXVtIExDUCB0ZXN0IENB
+MB4XDTE2MDMyNDIyNTc1OVoXDTM4MDExODIyNTc1OVowZzELMAkGA1UEBhMCRlIx
+DjAMBgNVBAcTBVBhcmlzMQ8wDQYDVQQKEwZFRFJMYWIxEjAQBgNVBAsTCUxDUCBU
+ZXN0czEjMCEGA1UEAxMaRURSTGFiIFJlYWRpdW0gTENQIHRlc3QgQ0EwggIiMA0G
+CSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDfxfveCISAmGDhXcZj+q6cXD3zQDr/
+kRG4fnqBm1rxFN1nshI0ObSMNwcV98c3D2swewQ6qFa+4INRakrF4ObtPtiQ7Tti
+/qYWf41rez/8x5M+DFeca8SIuf4Wi2u310EoplQm4JX3Qnvax7I/ivl+BtSzDY1h
+4bkA9dPPrp/vGa8dh0rIYaclJ9UEW/i4jyQkry36BfGKboOMYZioqPJfOFIIiSTb
+0nvHERssaS2MobWACinRRwL7Mih4mUV/v9Vhry3jN+wfxMKA+J/zcsY6p9HVgIhE
+kmyDIH4/vw+mLMcUQ4YFQeIOKRBRLHYcLHOUQNNIDw2gJAK/G/rfOeW3zu/tYCpk
+hT8PWrhd4zM+TdegpeFkidnNSvYFlKrojWhJisty3HuD+BXQ6ArjikIj4dCYc2BM
+ZVUH50FEwl1ZpndQAySMCceOX8t6RX4jqbvhbyXjqR/Nr5SaN8G6gHemX/5LWdOa
+5D8dUwOGbQjR7igLQy+4UNefjvFp8Z5/No/vLD/3Ziwau+wFjcGXs9UdpqKgIzfW
+KAu77vPVb0vUvDczOU4HRx4bB3eAb4gI6meBYHKroogIpteDOfco48zhweiMGasz
+HwBU4rylW/seV/2l5IunsGNRSlVtT4z5xL7kn5fcYy5ZtStJrrOKZSJWaH+3Mvmb
+sgwPqlZYMNAoiwIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3
+DQEBCwUAA4ICAQCmMGGqjnIo0BgItLmKrXW8yFRncZdjLAS5fCRNO0C34vDrm9N/
+y1qhoITqQ+vKVeA+M/sWzTQihPz+pyWGfvjqxdagpepPERX0ZFENMJaP5Sc8R0bL
+y96Xxk7L/SnVvJ2jgRP/D7X6jQrLxQbDceFRPelE+KcrcfAQdTLO9VTJEIkr4j6L
+BMDjqMcXASo+/t5fAhz3rUlo1gvhgdX+E4iJSoPwimr0pmUWFS473eS8Jrgn5meG
+Pq5Kmf3Q+1hYlisIAzRARJXWJxBxeI+VLCF2c90m1MLXpET4tm2s8Ln9ePw4edGM
+crwbR4nTEN+aGbPyo0yhs+smQA28B1LRnnZRyj70wHii6PN9+qtbr1S41FzKnLvO
+EBU63KxOE+NiN4p8q/Gx2J+lDtNy4OKEjgNNpp9fpzEbcSdnNK1dmZTbdKFV/QqT
+DQ8paH3TWX0eel/LeBHyn5W6A6B0maLRKNN98jcbqDyx2RfkEcEqvlQgEThNKH/6
+2hfQ8BEAzFdevtenyjKbnHmJ861t/hAnvCbbxMrT0gzgK2+gnqTFJiON3s0SObsG
+ivPak5w5wtvreFvEHCntnhIocuqc9AOFoDdQo9idB25YUzwot0NNL6pShMNXNE6F
+Imaa1w7gBDc+DVRYAoJzHF+awCOgqEDEXu67GHgcrXpQ9Ts7Eq+wjNy9OQ==
+-----END CERTIFICATE-----`;
+exports.DUMMY_CRL = `-----BEGIN X509 CRL-----
+MIICrTCBljANBgkqhkiG9w0BAQQFADBnMQswCQYDVQQGEwJGUjEOMAwGA1UEBxMF
+UGFyaXMxDzANBgNVBAoTBkVEUkxhYjESMBAGA1UECxMJTENQIFRlc3RzMSMwIQYD
+VQQDExpFRFJMYWIgUmVhZGl1bSBMQ1AgdGVzdCBDQRcNMTcwOTI2MTM1NTE1WhcN
+MjcwOTI0MTM1NTE1WjANBgkqhkiG9w0BAQQFAAOCAgEA27f50xnlaKGUdqs6u6rD
+WsR75z+tZrH4J2aA5E9I/K5fNe20FftQZb6XNjVQTNvawoMW0q+Rh9dVjDnV5Cfw
+ptchu738ZQr8iCOLQHvIM6wqQj7XwMqvyNaaeGMZxfRMGlx7T9DOwvtWFCc5X0ik
+YGPPV19CFf1cas8x9Y3LE8GmCtX9eUrotWLKRggG+qRTCri/SlaoicfzqhViiGeL
+dW8RpG/Q6ox+tLHti3fxOgZarMgMbRmUa6OTh8pnxrfnrdtD2PbwACvaEMCpNCZR
+aSTMRmIxw8UUbUA/JxDIwyISGn3ZRgbFAglYzaX80rSQZr6e0bFlzHl1xZtZ0Raz
+GQWP9vvfH5ESp6FsD98g//VYigatoPz/EKU4cfP+1W/Zrr4jRSBFB37rxASXPBcx
+L8cerb9nnRbAEvIqxnR4e0ZkhMyqIrLUZ3Jva0fC30kdtp09/KJ22mXKBz85wUQa
+7ihiSz7pov0R9hpY93fvt++idHBECRNGOeBC4wRtGxpru8ZUa0/KFOD0HXHMQDwV
+cIa/72T0okStOqjIOcWflxl/eAvUXwtet9Ht3o9giSl6hAObAeleMJOB37Bq9ASf
+h4w7d5he8zqfsCGjaG1OVQNWVAGxQQViWVysfcJohny4PIVAc9KkjCFa/QrkNGjr
+kUiV/PFCwL66iiF666DrXLY=
+-----END X509 CRL-----`;
+
+},{}],424:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let ContentKey = class ContentKey {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("encrypted_value"),
+    tslib_1.__metadata("design:type", String)
+], ContentKey.prototype, "EncryptedValue", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("algorithm"),
+    tslib_1.__metadata("design:type", String)
+], ContentKey.prototype, "Algorithm", void 0);
+ContentKey = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], ContentKey);
+exports.ContentKey = ContentKey;
+
+},{"ta-json":540,"tslib":553}],425:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+const lcp_contentkey_1 = require("./lcp-contentkey");
+const lcp_userkey_1 = require("./lcp-userkey");
+let Encryption = class Encryption {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("profile"),
+    tslib_1.__metadata("design:type", String)
+], Encryption.prototype, "Profile", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("content_key"),
+    tslib_1.__metadata("design:type", lcp_contentkey_1.ContentKey)
+], Encryption.prototype, "ContentKey", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("user_key"),
+    tslib_1.__metadata("design:type", lcp_userkey_1.UserKey)
+], Encryption.prototype, "UserKey", void 0);
+Encryption = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Encryption);
+exports.Encryption = Encryption;
+
+},{"./lcp-contentkey":424,"./lcp-userkey":430,"ta-json":540,"tslib":553}],426:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Link = class Link {
+    HasRel(rel) {
+        return this.Rel === rel;
+    }
+    SetRel(rel) {
+        this.Rel = rel;
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("length"),
+    tslib_1.__metadata("design:type", Number)
+], Link.prototype, "Length", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("href"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Href", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("title"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Title", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("type"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Type", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("templated"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Templated", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("profile"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Profile", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("hash"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Hash", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rel"),
+    tslib_1.__metadata("design:type", String)
+], Link.prototype, "Rel", void 0);
+Link = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Link);
+exports.Link = Link;
+
+},{"ta-json":540,"tslib":553}],427:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Rights = class Rights {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("print"),
+    tslib_1.__metadata("design:type", Number)
+], Rights.prototype, "Print", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("copy"),
+    tslib_1.__metadata("design:type", Number)
+], Rights.prototype, "Copy", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("start"),
+    tslib_1.__metadata("design:type", Date)
+], Rights.prototype, "Start", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("end"),
+    tslib_1.__metadata("design:type", Date)
+], Rights.prototype, "End", void 0);
+Rights = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Rights);
+exports.Rights = Rights;
+
+},{"ta-json":540,"tslib":553}],428:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let Signature = class Signature {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("algorithm"),
+    tslib_1.__metadata("design:type", String)
+], Signature.prototype, "Algorithm", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("certificate"),
+    tslib_1.__metadata("design:type", String)
+], Signature.prototype, "Certificate", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("value"),
+    tslib_1.__metadata("design:type", String)
+], Signature.prototype, "Value", void 0);
+Signature = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], Signature);
+exports.Signature = Signature;
+
+},{"ta-json":540,"tslib":553}],429:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let User = class User {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("id"),
+    tslib_1.__metadata("design:type", String)
+], User.prototype, "ID", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("email"),
+    tslib_1.__metadata("design:type", String)
+], User.prototype, "Email", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("name"),
+    tslib_1.__metadata("design:type", String)
+], User.prototype, "Name", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("encrypted"),
+    ta_json_1.JsonElementType(String),
+    tslib_1.__metadata("design:type", Array)
+], User.prototype, "Encrypted", void 0);
+User = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], User);
+exports.User = User;
+
+},{"ta-json":540,"tslib":553}],430:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const ta_json_1 = require("ta-json");
+let UserKey = class UserKey {
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("text_hint"),
+    tslib_1.__metadata("design:type", String)
+], UserKey.prototype, "TextHint", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("algorithm"),
+    tslib_1.__metadata("design:type", String)
+], UserKey.prototype, "Algorithm", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("key_check"),
+    tslib_1.__metadata("design:type", String)
+], UserKey.prototype, "KeyCheck", void 0);
+UserKey = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], UserKey);
+exports.UserKey = UserKey;
+
+},{"ta-json":540,"tslib":553}],431:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const bind = require("bindings");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const debug_ = require("debug");
+const ta_json_1 = require("ta-json");
+const lcp_certificate_1 = require("./lcp-certificate");
+const lcp_encryption_1 = require("./lcp-encryption");
+const lcp_link_1 = require("./lcp-link");
+const lcp_rights_1 = require("./lcp-rights");
+const lcp_signature_1 = require("./lcp-signature");
+const lcp_user_1 = require("./lcp-user");
+const AES_BLOCK_SIZE = 16;
+const debug = debug_("r2:publication:lcp");
+let LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP", "lcp.node");
+function setLcpNativePluginPath(filepath) {
+    LCP_NATIVE_PLUGIN_PATH = filepath;
+    debug(LCP_NATIVE_PLUGIN_PATH);
+    const exists = fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
+    debug("LCP NATIVE PLUGIN: " + (exists ? "OKAY" : "MISSING"));
+    return exists;
+}
+exports.setLcpNativePluginPath = setLcpNativePluginPath;
+let LCP = class LCP {
+    constructor() {
+        this._usesNativeNodePlugin = undefined;
+    }
+    isNativeNodePlugin() {
+        this.init();
+        return this._usesNativeNodePlugin;
+    }
+    isReady() {
+        if (this.isNativeNodePlugin()) {
+            return typeof this._lcpContext !== "undefined";
+        }
+        return typeof this.ContentKey !== "undefined";
+    }
+    init() {
+        if (typeof this._usesNativeNodePlugin !== "undefined") {
+            return;
+        }
+        this.ContentKey = undefined;
+        this._lcpContext = undefined;
+        if (fs.existsSync(LCP_NATIVE_PLUGIN_PATH)) {
+            debug("LCP _usesNativeNodePlugin");
+            const filePath = path.dirname(LCP_NATIVE_PLUGIN_PATH);
+            const fileName = path.basename(LCP_NATIVE_PLUGIN_PATH);
+            debug(filePath);
+            debug(fileName);
+            this._usesNativeNodePlugin = true;
+            this._lcpNative = bind({
+                bindings: fileName,
+                module_root: filePath,
+                try: [[
+                        "module_root",
+                        "bindings",
+                    ]],
+            });
+        }
+        else {
+            debug("LCP JS impl");
+            this._usesNativeNodePlugin = false;
+            this._lcpNative = undefined;
+        }
+    }
+    decrypt(encryptedContent) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (!this.isNativeNodePlugin()) {
+                return Promise.reject("direct decrypt buffer only for native plugin");
+            }
+            if (!this._lcpContext) {
+                return Promise.reject("LCP context not initialized (needs setUserPassphrase)");
+            }
+            return new Promise((resolve, reject) => {
+                this._lcpNative.decrypt(this._lcpContext, encryptedContent, (er, decryptedContent) => {
+                    if (er) {
+                        debug(er);
+                        reject(er);
+                        return;
+                    }
+                    const padding = decryptedContent[decryptedContent.length - 1];
+                    const buff = decryptedContent.slice(0, decryptedContent.length - padding);
+                    resolve(buff);
+                });
+            });
+        });
+    }
+    setUserPassphrase(pass) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            this.init();
+            this.userPassphraseHex = pass;
+            if (!this.userPassphraseHex) {
+                return false;
+            }
+            const check = (this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
+                || this.Encryption.Profile === "http://readium.org/lcp/profile-1.0")
+                && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
+                && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
+            if (!check) {
+                debug("Incorrect LCP fields.");
+                debug(this.Encryption.Profile);
+                debug(this.Encryption.ContentKey.Algorithm);
+                debug(this.Encryption.UserKey.Algorithm);
+                return false;
+            }
+            if (this._usesNativeNodePlugin) {
+                return new Promise((resolve, _reject) => {
+                    this._lcpNative.findOneValidPassphrase(this.JsonSource, [this.userPassphraseHex], (err, validHashedPassphrase) => {
+                        if (err) {
+                            debug(err);
+                            resolve(false);
+                        }
+                        else {
+                            this._lcpNative.createContext(this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, (erro, context) => {
+                                if (erro) {
+                                    debug(erro);
+                                    resolve(false);
+                                    return;
+                                }
+                                this._lcpContext = context;
+                                resolve(true);
+                            });
+                        }
+                    });
+                });
+            }
+            else {
+                const userKey = new Buffer(this.userPassphraseHex, "hex");
+                const keyCheck = new Buffer(this.Encryption.UserKey.KeyCheck, "base64");
+                const encryptedLicenseID = keyCheck;
+                const iv = encryptedLicenseID.slice(0, AES_BLOCK_SIZE);
+                const encrypted = encryptedLicenseID.slice(AES_BLOCK_SIZE);
+                const decrypteds = [];
+                const decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
+                decryptStream.setAutoPadding(false);
+                const buff1 = decryptStream.update(encrypted);
+                if (buff1) {
+                    decrypteds.push(buff1);
+                }
+                const buff2 = decryptStream.final();
+                if (buff2) {
+                    decrypteds.push(buff2);
+                }
+                const decrypted = Buffer.concat(decrypteds);
+                const nPaddingBytes = decrypted[decrypted.length - 1];
+                const size = encrypted.length - nPaddingBytes;
+                const decryptedOut = decrypted.slice(0, size).toString("utf8");
+                if (this.ID !== decryptedOut) {
+                    debug("Failed LCP ID check.");
+                    return false;
+                }
+                const encryptedContentKey = new Buffer(this.Encryption.ContentKey.EncryptedValue, "base64");
+                const iv2 = encryptedContentKey.slice(0, AES_BLOCK_SIZE);
+                const encrypted2 = encryptedContentKey.slice(AES_BLOCK_SIZE);
+                const decrypteds2 = [];
+                const decryptStream2 = crypto.createDecipheriv("aes-256-cbc", userKey, iv2);
+                decryptStream2.setAutoPadding(false);
+                const buff1_ = decryptStream2.update(encrypted2);
+                if (buff1_) {
+                    decrypteds2.push(buff1_);
+                }
+                const buff2_ = decryptStream2.final();
+                if (buff2_) {
+                    decrypteds2.push(buff2_);
+                }
+                const decrypted2 = Buffer.concat(decrypteds2);
+                const nPaddingBytes2 = decrypted2[decrypted2.length - 1];
+                const size2 = encrypted2.length - nPaddingBytes2;
+                this.ContentKey = decrypted2.slice(0, size2);
+            }
+            return true;
+        });
+    }
+};
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("id"),
+    tslib_1.__metadata("design:type", String)
+], LCP.prototype, "ID", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("provider"),
+    tslib_1.__metadata("design:type", String)
+], LCP.prototype, "Provider", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("issued"),
+    tslib_1.__metadata("design:type", Date)
+], LCP.prototype, "Issued", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("updated"),
+    tslib_1.__metadata("design:type", Date)
+], LCP.prototype, "Updated", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("encryption"),
+    tslib_1.__metadata("design:type", lcp_encryption_1.Encryption)
+], LCP.prototype, "Encryption", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("rights"),
+    tslib_1.__metadata("design:type", lcp_rights_1.Rights)
+], LCP.prototype, "Rights", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("user"),
+    tslib_1.__metadata("design:type", lcp_user_1.User)
+], LCP.prototype, "User", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("signature"),
+    tslib_1.__metadata("design:type", lcp_signature_1.Signature)
+], LCP.prototype, "Signature", void 0);
+tslib_1.__decorate([
+    ta_json_1.JsonProperty("links"),
+    ta_json_1.JsonElementType(lcp_link_1.Link),
+    tslib_1.__metadata("design:type", Array)
+], LCP.prototype, "Links", void 0);
+LCP = tslib_1.__decorate([
+    ta_json_1.JsonObject()
+], LCP);
+exports.LCP = LCP;
+
+},{"./lcp-certificate":423,"./lcp-encryption":425,"./lcp-link":426,"./lcp-rights":427,"./lcp-signature":428,"./lcp-user":429,"bindings":77,"crypto":undefined,"debug":142,"fs":undefined,"path":undefined,"ta-json":540,"tslib":553}],432:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Content = class Content {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@src"),
+    tslib_1.__metadata("design:type", String)
+], Content.prototype, "Src", void 0);
+Content = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ncx: "http://www.daisy.org/z3986/2005/ncx/",
+    })
+], Content);
+exports.Content = Content;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],433:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const ncx_content_1 = require("./ncx-content");
+let NavPoint = NavPoint_1 = class NavPoint {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:navPoint"),
+    xml_js_mapper_1.XmlItemType(NavPoint_1),
+    tslib_1.__metadata("design:type", Array)
+], NavPoint.prototype, "Points", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
+    tslib_1.__metadata("design:type", String)
+], NavPoint.prototype, "Text", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:content"),
+    tslib_1.__metadata("design:type", ncx_content_1.Content)
+], NavPoint.prototype, "Content", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@playOrder"),
+    tslib_1.__metadata("design:type", Number)
+], NavPoint.prototype, "PlayerOrder", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], NavPoint.prototype, "ID", void 0);
+NavPoint = NavPoint_1 = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], NavPoint);
+exports.NavPoint = NavPoint;
+var NavPoint_1;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-content":432,"tslib":553}],434:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const ncx_pagetarget_1 = require("./ncx-pagetarget");
+let PageList = class PageList {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:pageTarget"),
+    xml_js_mapper_1.XmlItemType(ncx_pagetarget_1.PageTarget),
+    tslib_1.__metadata("design:type", Array)
+], PageList.prototype, "PageTarget", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@class"),
+    tslib_1.__metadata("design:type", String)
+], PageList.prototype, "Class", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], PageList.prototype, "ID", void 0);
+PageList = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], PageList);
+exports.PageList = PageList;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-pagetarget":435,"tslib":553}],435:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const ncx_content_1 = require("./ncx-content");
+let PageTarget = class PageTarget {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
+    tslib_1.__metadata("design:type", String)
+], PageTarget.prototype, "Text", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@value"),
+    tslib_1.__metadata("design:type", String)
+], PageTarget.prototype, "Value", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@type"),
+    tslib_1.__metadata("design:type", String)
+], PageTarget.prototype, "Type", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@playOrder"),
+    tslib_1.__metadata("design:type", Number)
+], PageTarget.prototype, "PlayOrder", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], PageTarget.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:content"),
+    tslib_1.__metadata("design:type", ncx_content_1.Content)
+], PageTarget.prototype, "Content", void 0);
+PageTarget = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], PageTarget);
+exports.PageTarget = PageTarget;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-content":432,"tslib":553}],436:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const ncx_navpoint_1 = require("./ncx-navpoint");
+const ncx_pagelist_1 = require("./ncx-pagelist");
+let NCX = class NCX {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:navMap/ncx:navPoint"),
+    xml_js_mapper_1.XmlItemType(ncx_navpoint_1.NavPoint),
+    tslib_1.__metadata("design:type", Array)
+], NCX.prototype, "Points", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("ncx:pageList"),
+    tslib_1.__metadata("design:type", ncx_pagelist_1.PageList)
+], NCX.prototype, "PageList", void 0);
+NCX = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        ncx: "http://www.daisy.org/z3986/2005/ncx/",
+    })
+], NCX);
+exports.NCX = NCX;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-navpoint":433,"./ncx-pagelist":434,"tslib":553}],437:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Author = class Author {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("text()"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "Data", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@file-as"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "FileAs", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@role"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "Role", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], Author.prototype, "ID", void 0);
+Author = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Author);
+exports.Author = Author;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],438:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let MetaDate = class MetaDate {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("text()"),
+    tslib_1.__metadata("design:type", String)
+], MetaDate.prototype, "Data", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@event"),
+    tslib_1.__metadata("design:type", String)
+], MetaDate.prototype, "Event", void 0);
+MetaDate = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+    })
+], MetaDate);
+exports.MetaDate = MetaDate;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],439:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Identifier = class Identifier {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("text()"),
+    tslib_1.__metadata("design:type", String)
+], Identifier.prototype, "Data", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], Identifier.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@scheme"),
+    tslib_1.__metadata("design:type", String)
+], Identifier.prototype, "Scheme", void 0);
+Identifier = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Identifier);
+exports.Identifier = Identifier;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],440:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Manifest = class Manifest {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], Manifest.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@href"),
+    tslib_1.__metadata("design:type", String)
+], Manifest.prototype, "Href", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@media-type"),
+    tslib_1.__metadata("design:type", String)
+], Manifest.prototype, "MediaType", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@media-fallback"),
+    tslib_1.__metadata("design:type", String)
+], Manifest.prototype, "Fallback", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@properties"),
+    tslib_1.__metadata("design:type", String)
+], Manifest.prototype, "Properties", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@media-overlay"),
+    tslib_1.__metadata("design:type", String)
+], Manifest.prototype, "MediaOverlay", void 0);
+Manifest = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Manifest);
+exports.Manifest = Manifest;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],441:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opf_author_1 = require("./opf-author");
+const opf_date_1 = require("./opf-date");
+const opf_identifier_1 = require("./opf-identifier");
+const opf_metafield_1 = require("./opf-metafield");
+const opf_subject_1 = require("./opf-subject");
+const opf_title_1 = require("./opf-title");
+let Metadata = class Metadata {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:title"),
+    xml_js_mapper_1.XmlItemType(opf_title_1.Title),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Title", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:language/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Language", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:identifier"),
+    xml_js_mapper_1.XmlItemType(opf_identifier_1.Identifier),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Identifier", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:creator"),
+    xml_js_mapper_1.XmlItemType(opf_author_1.Author),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Creator", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:subject"),
+    xml_js_mapper_1.XmlItemType(opf_subject_1.Subject),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Subject", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:description/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Description", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:publisher/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Publisher", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:contributor"),
+    xml_js_mapper_1.XmlItemType(opf_author_1.Author),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Contributor", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:date"),
+    xml_js_mapper_1.XmlItemType(opf_date_1.MetaDate),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Date", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:type/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Type", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:format/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Format", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:source/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Source", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:relation/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Relation", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:coverage/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Coverage", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dc:rights/text()"),
+    xml_js_mapper_1.XmlItemType(String),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Rights", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opf:meta"),
+    xml_js_mapper_1.XmlItemType(opf_metafield_1.Metafield),
+    tslib_1.__metadata("design:type", Array)
+], Metadata.prototype, "Meta", void 0);
+Metadata = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+    })
+], Metadata);
+exports.Metadata = Metadata;
+
+},{"../../_utils/xml-js-mapper":363,"./opf-author":437,"./opf-date":438,"./opf-identifier":439,"./opf-metafield":442,"./opf-subject":446,"./opf-title":447,"tslib":553}],442:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Metafield = class Metafield {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("text()"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Data", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@name"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Name", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@content"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Content", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@refines"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Refine", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@scheme"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Scheme", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@property"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Property", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+    tslib_1.__metadata("design:type", String)
+], Metafield.prototype, "Lang", void 0);
+Metafield = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Metafield);
+exports.Metafield = Metafield;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],443:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Reference = class Reference {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@href"),
+    tslib_1.__metadata("design:type", String)
+], Reference.prototype, "Href", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@title"),
+    tslib_1.__metadata("design:type", String)
+], Reference.prototype, "Title", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@type"),
+    tslib_1.__metadata("design:type", String)
+], Reference.prototype, "Type", void 0);
+Reference = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+    })
+], Reference);
+exports.Reference = Reference;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],444:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opf_spineitem_1 = require("./opf-spineitem");
+let Spine = class Spine {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], Spine.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@toc"),
+    tslib_1.__metadata("design:type", String)
+], Spine.prototype, "Toc", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@page-progression-direction"),
+    tslib_1.__metadata("design:type", String)
+], Spine.prototype, "PageProgression", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opf:itemref"),
+    xml_js_mapper_1.XmlItemType(opf_spineitem_1.SpineItem),
+    tslib_1.__metadata("design:type", Array)
+], Spine.prototype, "Items", void 0);
+Spine = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Spine);
+exports.Spine = Spine;
+
+},{"../../_utils/xml-js-mapper":363,"./opf-spineitem":445,"tslib":553}],445:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let SpineItem = class SpineItem {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@idref"),
+    tslib_1.__metadata("design:type", String)
+], SpineItem.prototype, "IDref", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@linear"),
+    tslib_1.__metadata("design:type", String)
+], SpineItem.prototype, "Linear", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], SpineItem.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@properties"),
+    tslib_1.__metadata("design:type", String)
+], SpineItem.prototype, "Properties", void 0);
+SpineItem = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], SpineItem);
+exports.SpineItem = SpineItem;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],446:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Subject = class Subject {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("text()"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Data", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@term"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Term", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@authority"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Authority", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+    tslib_1.__metadata("design:type", String)
+], Subject.prototype, "Lang", void 0);
+Subject = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Subject);
+exports.Subject = Subject;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],447:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Title = class Title {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("text()"),
+    tslib_1.__metadata("design:type", String)
+], Title.prototype, "Data", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+    tslib_1.__metadata("design:type", String)
+], Title.prototype, "ID", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+    tslib_1.__metadata("design:type", String)
+], Title.prototype, "Lang", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@dir"),
+    tslib_1.__metadata("design:type", String)
+], Title.prototype, "Dir", void 0);
+Title = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+        xml: "http://www.w3.org/XML/1998/namespace",
+    })
+], Title);
+exports.Title = Title;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],448:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const opf_manifest_1 = require("./opf-manifest");
+const opf_metadata_1 = require("./opf-metadata");
+const opf_reference_1 = require("./opf-reference");
+const opf_spine_1 = require("./opf-spine");
+let OPF = class OPF {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opf:metadata"),
+    tslib_1.__metadata("design:type", opf_metadata_1.Metadata)
+], OPF.prototype, "Metadata", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opf:manifest/opf:item"),
+    xml_js_mapper_1.XmlItemType(opf_manifest_1.Manifest),
+    tslib_1.__metadata("design:type", Array)
+], OPF.prototype, "Manifest", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opf:spine"),
+    tslib_1.__metadata("design:type", opf_spine_1.Spine)
+], OPF.prototype, "Spine", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("opf:guide/opf:reference"),
+    xml_js_mapper_1.XmlItemType(opf_reference_1.Reference),
+    tslib_1.__metadata("design:type", Array)
+], OPF.prototype, "Guide", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@unique-identifier"),
+    tslib_1.__metadata("design:type", String)
+], OPF.prototype, "UniqueIdentifier", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@dir"),
+    tslib_1.__metadata("design:type", String)
+], OPF.prototype, "Dir", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@version"),
+    tslib_1.__metadata("design:type", String)
+], OPF.prototype, "Version", void 0);
+OPF = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        dc: "http://purl.org/dc/elements/1.1/",
+        opf: "http://www.idpf.org/2007/opf",
+    })
+], OPF);
+exports.OPF = OPF;
+
+},{"../../_utils/xml-js-mapper":363,"./opf-manifest":440,"./opf-metadata":441,"./opf-reference":443,"./opf-spine":444,"tslib":553}],449:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Audio = class Audio {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@src"),
+    tslib_1.__metadata("design:type", String)
+], Audio.prototype, "Src", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@clipBegin"),
+    tslib_1.__metadata("design:type", String)
+], Audio.prototype, "ClipBegin", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
+    tslib_1.__metadata("design:type", String)
+], Audio.prototype, "ClipEnd", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+    tslib_1.__metadata("design:type", String)
+], Audio.prototype, "EpubType", void 0);
+Audio = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    })
+], Audio);
+exports.Audio = Audio;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],450:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const smil_seq_1 = require("./smil-seq");
+let Body = class Body extends smil_seq_1.Seq {
+    constructor() {
+        super(...arguments);
+        this.isBody = true;
+    }
+};
+Body = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    })
+], Body);
+exports.Body = Body;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-seq":453,"tslib":553}],451:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const smil_audio_1 = require("./smil-audio");
+const smil_seq_or_par_1 = require("./smil-seq-or-par");
+const smil_text_1 = require("./smil-text");
+let Par = class Par extends smil_seq_or_par_1.SeqOrPar {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("smil:text"),
+    tslib_1.__metadata("design:type", smil_text_1.Text)
+], Par.prototype, "Text", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("smil:audio"),
+    tslib_1.__metadata("design:type", smil_audio_1.Audio)
+], Par.prototype, "Audio", void 0);
+Par = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    }),
+    xml_js_mapper_1.XmlDiscriminatorValue("par")
+], Par);
+exports.Par = Par;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-audio":449,"./smil-seq-or-par":452,"./smil-text":454,"tslib":553}],452:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let SeqOrPar = class SeqOrPar {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+    tslib_1.__metadata("design:type", String)
+], SeqOrPar.prototype, "EpubType", void 0);
+SeqOrPar = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    }),
+    xml_js_mapper_1.XmlDiscriminatorProperty("localName")
+], SeqOrPar);
+exports.SeqOrPar = SeqOrPar;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],453:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const smil_seq_or_par_1 = require("./smil-seq-or-par");
+let Seq = class Seq extends smil_seq_or_par_1.SeqOrPar {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("smil:par|smil:seq"),
+    xml_js_mapper_1.XmlItemType(smil_seq_or_par_1.SeqOrPar),
+    tslib_1.__metadata("design:type", Array)
+], Seq.prototype, "Children", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:textref"),
+    tslib_1.__metadata("design:type", String)
+], Seq.prototype, "TextRef", void 0);
+Seq = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    }),
+    xml_js_mapper_1.XmlDiscriminatorValue("seq")
+], Seq);
+exports.Seq = Seq;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-seq-or-par":452,"tslib":553}],454:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+let Text = class Text {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@src"),
+    tslib_1.__metadata("design:type", String)
+], Text.prototype, "Src", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+    tslib_1.__metadata("design:type", String)
+], Text.prototype, "EpubType", void 0);
+Text = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    })
+], Text);
+exports.Text = Text;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],455:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+const smil_body_1 = require("./smil-body");
+const smil_par_1 = require("./smil-par");
+let SMIL = class SMIL {
+};
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("smil:body"),
+    tslib_1.__metadata("design:type", smil_body_1.Body)
+], SMIL.prototype, "Body", void 0);
+tslib_1.__decorate([
+    xml_js_mapper_1.XmlXPathSelector("dummy"),
+    tslib_1.__metadata("design:type", smil_par_1.Par)
+], SMIL.prototype, "Par", void 0);
+SMIL = tslib_1.__decorate([
+    xml_js_mapper_1.XmlObject({
+        epub: "http://www.idpf.org/2007/ops",
+        smil: "http://www.w3.org/ns/SMIL",
+    })
+], SMIL);
+exports.SMIL = SMIL;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-body":450,"./smil-par":451,"tslib":553}],456:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const path = require("path");
+const cbz_1 = require("./cbz");
+const epub_1 = require("./epub");
+function PublicationParsePromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const fileName = path.basename(filePath);
+        const ext = path.extname(fileName).toLowerCase();
+        return /\.epub[3]?$/.test(ext) ?
+            epub_1.EpubParsePromise(filePath) :
+            cbz_1.CbzParsePromise(filePath);
+    });
+}
+exports.PublicationParsePromise = PublicationParsePromise;
+
+},{"./cbz":408,"./epub":411,"path":undefined,"tslib":553}],457:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const crypto = require("crypto");
+const zlib = require("zlib");
+const RangeStream_1 = require("../_utils/stream/RangeStream");
+const debug_ = require("debug");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+const debug = debug_("r2:transformer:lcp");
+const AES_BLOCK_SIZE = 16;
+const readStream = (s, n) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    return new Promise((resolve, reject) => {
+        const onReadable = () => {
+            const b = s.read(n);
+            s.removeListener("readable", onReadable);
+            s.removeListener("error", reject);
+            resolve(b);
+        };
+        s.on("readable", onReadable);
+        s.on("error", reject);
+    });
+});
+class TransformerLCP {
+    supports(publication, link) {
+        if (!publication.LCP) {
+            return false;
+        }
+        if (!publication.LCP.isReady()) {
+            debug("LCP not ready!");
+            return false;
+        }
+        const check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
+            && (link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile" ||
+                link.Properties.Encrypted.Profile === "http://readium.org/lcp/profile-1.0")
+            && link.Properties.Encrypted.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
+        if (!check) {
+            debug("Incorrect resource LCP fields.");
+            debug(link.Properties.Encrypted.Scheme);
+            debug(link.Properties.Encrypted.Profile);
+            debug(link.Properties.Encrypted.Algorithm);
+            return false;
+        }
+        return true;
+    }
+    transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let plainTextSize = -1;
+            let nativelyDecryptedStream;
+            if (publication.LCP.isNativeNodePlugin()) {
+                debug("DECRYPT: " + link.Href);
+                let fullEncryptedBuffer;
+                try {
+                    fullEncryptedBuffer = yield BufferUtils_1.streamToBufferPromise(stream.stream);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject("OUCH!");
+                }
+                let nativelyDecryptedBuffer;
+                try {
+                    nativelyDecryptedBuffer = yield publication.LCP.decrypt(fullEncryptedBuffer);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject("OUCH!");
+                }
+                plainTextSize = nativelyDecryptedBuffer.length;
+                link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
+                if (link.Properties.Encrypted.OriginalLength &&
+                    link.Properties.Encrypted.Compression === "none" &&
+                    link.Properties.Encrypted.OriginalLength !== plainTextSize) {
+                    debug(`############### ` +
+                        `LCP transformStream() LENGTH NOT MATCH ` +
+                        `link.Properties.Encrypted.OriginalLength !== plainTextSize: ` +
+                        `${link.Properties.Encrypted.OriginalLength} !== ${plainTextSize}`);
+                }
+                nativelyDecryptedStream = BufferUtils_1.bufferToStream(nativelyDecryptedBuffer);
+            }
+            else {
+                let cryptoInfo;
+                let cypherBlockPadding = -1;
+                if (link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0) {
+                    plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
+                    cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
+                }
+                else {
+                    try {
+                        cryptoInfo = yield this.getDecryptedSizeStream(publication, link, stream);
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
+                    plainTextSize = cryptoInfo.length;
+                    cypherBlockPadding = cryptoInfo.padding;
+                    link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
+                    link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
+                    try {
+                        stream = yield stream.reset();
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
+                    if (link.Properties.Encrypted.OriginalLength &&
+                        link.Properties.Encrypted.Compression === "none" &&
+                        link.Properties.Encrypted.OriginalLength !== plainTextSize) {
+                        debug(`############### ` +
+                            `LCP transformStream() LENGTH NOT MATCH ` +
+                            `link.Properties.Encrypted.OriginalLength !== plainTextSize: ` +
+                            `${link.Properties.Encrypted.OriginalLength} !== ${plainTextSize}`);
+                    }
+                }
+            }
+            if (partialByteBegin < 0) {
+                partialByteBegin = 0;
+            }
+            if (partialByteEnd < 0) {
+                partialByteEnd = plainTextSize - 1;
+                if (link.Properties.Encrypted.OriginalLength) {
+                    partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
+                }
+            }
+            let destStream;
+            if (nativelyDecryptedStream) {
+                destStream = nativelyDecryptedStream;
+            }
+            else {
+                let rawDecryptStream;
+                let ivBuffer;
+                if (link.Properties.Encrypted.CypherBlockIV) {
+                    ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
+                    const cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
+                    stream.stream.pipe(cypherRangeStream);
+                    rawDecryptStream = cypherRangeStream;
+                }
+                else {
+                    try {
+                        ivBuffer = yield readStream(stream.stream, AES_BLOCK_SIZE);
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
+                    link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
+                    stream.stream.resume();
+                    rawDecryptStream = stream.stream;
+                }
+                const decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
+                decryptStream.setAutoPadding(false);
+                rawDecryptStream.pipe(decryptStream);
+                destStream = decryptStream;
+                if (link.Properties.Encrypted.CypherBlockPadding) {
+                    const cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
+                    destStream.pipe(cypherUnpaddedStream);
+                    destStream = cypherUnpaddedStream;
+                }
+            }
+            if (link.Properties.Encrypted.Compression === "deflate") {
+                const inflateStream = zlib.createInflateRaw();
+                destStream.pipe(inflateStream);
+                destStream = inflateStream;
+            }
+            const l = link.Properties.Encrypted.OriginalLength ?
+                link.Properties.Encrypted.OriginalLength : plainTextSize;
+            if (isPartialByteRangeRequest) {
+                const rangeStream = new RangeStream_1.RangeStream(partialByteBegin, partialByteEnd, l);
+                destStream.pipe(rangeStream);
+                destStream = rangeStream;
+            }
+            const sal = {
+                length: l,
+                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    let resetedStream;
+                    try {
+                        resetedStream = yield stream.reset();
+                    }
+                    catch (err) {
+                        debug(err);
+                        return Promise.reject(err);
+                    }
+                    if (!resetedStream) {
+                        return Promise.reject("??");
+                    }
+                    return this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
+                }),
+                stream: destStream,
+            };
+            return Promise.resolve(sal);
+        });
+    }
+    getDecryptedSizeStream(publication, _link, stream) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                const TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
+                if (stream.length < TWO_AES_BLOCK_SIZE) {
+                    reject("crypto err");
+                    return;
+                }
+                const readPos = stream.length - TWO_AES_BLOCK_SIZE;
+                const cypherRangeStream = new RangeStream_1.RangeStream(readPos, readPos + TWO_AES_BLOCK_SIZE - 1, stream.length);
+                stream.stream.pipe(cypherRangeStream);
+                const decrypteds = [];
+                cypherRangeStream.on("readable", () => {
+                    const ivBuffer = cypherRangeStream.read(AES_BLOCK_SIZE);
+                    if (!ivBuffer) {
+                        return;
+                    }
+                    const encrypted = cypherRangeStream.read(AES_BLOCK_SIZE);
+                    const decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
+                    decryptStream.setAutoPadding(false);
+                    const buff1 = decryptStream.update(encrypted);
+                    if (buff1) {
+                        decrypteds.push(buff1);
+                    }
+                    const buff2 = decryptStream.final();
+                    if (buff2) {
+                        decrypteds.push(buff2);
+                    }
+                });
+                cypherRangeStream.on("end", () => {
+                    const decrypted = Buffer.concat(decrypteds);
+                    const nPaddingBytes = decrypted[AES_BLOCK_SIZE - 1];
+                    const size = stream.length - AES_BLOCK_SIZE - nPaddingBytes;
+                    const res = {
+                        length: size,
+                        padding: nPaddingBytes,
+                    };
+                    resolve(res);
+                });
+                cypherRangeStream.on("error", () => {
+                    reject("DECRYPT err");
+                });
+            });
+        });
+    }
+}
+exports.TransformerLCP = TransformerLCP;
+
+},{"../_utils/stream/BufferUtils":340,"../_utils/stream/RangeStream":341,"crypto":undefined,"debug":142,"tslib":553,"zlib":undefined}],458:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+class TransformerObfAdobe {
+    supports(_publication, link) {
+        return link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC";
+    }
+    transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let data;
+            try {
+                data = yield BufferUtils_1.streamToBufferPromise(stream.stream);
+            }
+            catch (err) {
+                return Promise.reject(err);
+            }
+            let buff;
+            try {
+                buff = yield this.transformBuffer(publication, link, data);
+            }
+            catch (err) {
+                return Promise.reject(err);
+            }
+            const sal = {
+                length: buff.length,
+                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    return Promise.resolve(sal);
+                }),
+                stream: BufferUtils_1.bufferToStream(buff),
+            };
+            return Promise.resolve(sal);
+        });
+    }
+    transformBuffer(publication, _link, data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let pubID = publication.Metadata.Identifier;
+            pubID = pubID.replace("urn:uuid:", "");
+            pubID = pubID.replace(/-/g, "");
+            pubID = pubID.replace(/\s/g, "");
+            const key = [];
+            for (let i = 0; i < 16; i++) {
+                const byteHex = pubID.substr(i * 2, 2);
+                const byteNumer = parseInt(byteHex, 16);
+                key.push(byteNumer);
+            }
+            const prefixLength = 1024;
+            const zipDataPrefix = data.slice(0, prefixLength);
+            for (let i = 0; i < prefixLength; i++) {
+                zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
+            }
+            const zipDataRemainder = data.slice(prefixLength);
+            return Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]));
+        });
+    }
+}
+exports.TransformerObfAdobe = TransformerObfAdobe;
+
+},{"../_utils/stream/BufferUtils":340,"tslib":553}],459:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const crypto = require("crypto");
+const BufferUtils_1 = require("../_utils/stream/BufferUtils");
+class TransformerObfIDPF {
+    supports(_publication, link) {
+        return link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding";
+    }
+    transformStream(publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let data;
+            try {
+                data = yield BufferUtils_1.streamToBufferPromise(stream.stream);
+            }
+            catch (err) {
+                return Promise.reject(err);
+            }
+            let buff;
+            try {
+                buff = yield this.transformBuffer(publication, link, data);
+            }
+            catch (err) {
+                return Promise.reject(err);
+            }
+            const sal = {
+                length: buff.length,
+                reset: () => tslib_1.__awaiter(this, void 0, void 0, function* () {
+                    return Promise.resolve(sal);
+                }),
+                stream: BufferUtils_1.bufferToStream(buff),
+            };
+            return Promise.resolve(sal);
+        });
+    }
+    transformBuffer(publication, _link, data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let pubID = publication.Metadata.Identifier;
+            pubID = pubID.replace(/\s/g, "");
+            const checkSum = crypto.createHash("sha1");
+            checkSum.update(pubID);
+            const key = checkSum.digest();
+            const prefixLength = 1040;
+            const zipDataPrefix = data.slice(0, prefixLength);
+            for (let i = 0; i < prefixLength; i++) {
+                zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
+            }
+            const zipDataRemainder = data.slice(prefixLength);
+            return Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]));
+        });
+    }
+}
+exports.TransformerObfIDPF = TransformerObfIDPF;
+
+},{"../_utils/stream/BufferUtils":340,"crypto":undefined,"tslib":553}],460:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const transformer_lcp_1 = require("./transformer-lcp");
+const transformer_obf_adobe_1 = require("./transformer-obf-adobe");
+const transformer_obf_idpf_1 = require("./transformer-obf-idpf");
+class Transformers {
+    constructor() {
+        this.transformers = [];
+    }
+    static instance() {
+        return Transformers._instance;
+    }
+    static tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            return Transformers.instance()._tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
+        });
+    }
+    add(transformer) {
+        if (this.transformers.indexOf(transformer) < 0) {
+            this.transformers.push(transformer);
+        }
+    }
+    _tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            let transformedData;
+            const transformer = this.transformers.find((t) => {
+                if (!t.supports(publication, link)) {
+                    return false;
+                }
+                transformedData = t.transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
+                if (transformedData) {
+                    return true;
+                }
+                return false;
+            });
+            if (transformer && transformedData) {
+                return transformedData;
+            }
+            return Promise.reject("transformers fail (stream)");
+        });
+    }
+}
+Transformers._instance = new Transformers();
+exports.Transformers = Transformers;
+Transformers.instance().add(new transformer_obf_adobe_1.TransformerObfAdobe());
+Transformers.instance().add(new transformer_obf_idpf_1.TransformerObfIDPF());
+Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
+
+},{"./transformer-lcp":457,"./transformer-obf-adobe":458,"./transformer-obf-idpf":459,"tslib":553}],461:[function(require,module,exports){
 /*!
  * range-parser
  * Copyright(c) 2012-2014 TJ Holowaychuk
@@ -87521,7 +87509,7 @@ function sortByRangeStart (a, b) {
   return a.start - b.start
 }
 
-},{}],463:[function(require,module,exports){
+},{}],462:[function(require,module,exports){
 /*!
  * raw-body
  * Copyright(c) 2013-2014 Jonathan Ong
@@ -87809,7 +87797,7 @@ function readStream (stream, encoding, length, limit, callback) {
   }
 }
 
-},{"bytes":252,"http-errors":357,"iconv-lite":383,"unpipe":564}],464:[function(require,module,exports){
+},{"bytes":127,"http-errors":231,"iconv-lite":257,"unpipe":563}],463:[function(require,module,exports){
 /*! *****************************************************************************
 Copyright (C) Microsoft. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
@@ -88935,7 +88923,7 @@ var Reflect;
             Function("return this;")());
 })(Reflect || (Reflect = {}));
 
-},{}],465:[function(require,module,exports){
+},{}],464:[function(require,module,exports){
 'use strict';
 
 var core = require('../'),
@@ -89011,7 +88999,7 @@ module.exports = function (options) {
 
 };
 
-},{"../":467,"lodash/isArray":417,"lodash/isFunction":418,"lodash/isObjectLike":420}],466:[function(require,module,exports){
+},{"../":466,"lodash/isArray":291,"lodash/isFunction":292,"lodash/isObjectLike":294}],465:[function(require,module,exports){
 'use strict';
 
 
@@ -89075,7 +89063,7 @@ module.exports = {
     TransformError: TransformError
 };
 
-},{}],467:[function(require,module,exports){
+},{}],466:[function(require,module,exports){
 'use strict';
 
 var errors = require('./errors.js'),
@@ -89244,7 +89232,7 @@ module.exports = function (options) {
 
 };
 
-},{"./errors.js":466,"lodash/isFunction":418,"lodash/isObjectLike":420,"lodash/isString":421,"lodash/isUndefined":422}],468:[function(require,module,exports){
+},{"./errors.js":465,"lodash/isFunction":292,"lodash/isObjectLike":294,"lodash/isString":295,"lodash/isUndefined":296}],467:[function(require,module,exports){
 'use strict';
 
 var configure = require('request-promise-core/configure/request2'),
@@ -89272,7 +89260,7 @@ configure({
 
 module.exports = request;
 
-},{"request":469,"request-promise-core/configure/request2":465,"stealthy-require":519,"tough-cookie":547}],469:[function(require,module,exports){
+},{"request":468,"request-promise-core/configure/request2":464,"stealthy-require":518,"tough-cookie":546}],468:[function(require,module,exports){
 // Copyright 2010-2012 Mikeal Rogers
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -89429,7 +89417,7 @@ Object.defineProperty(request, 'debug', {
   }
 })
 
-},{"./lib/cookies":471,"./lib/helpers":474,"./request":480,"extend":299}],470:[function(require,module,exports){
+},{"./lib/cookies":470,"./lib/helpers":473,"./request":479,"extend":174}],469:[function(require,module,exports){
 'use strict'
 
 var caseless = require('caseless')
@@ -89598,7 +89586,7 @@ Auth.prototype.onResponse = function (response) {
 
 exports.Auth = Auth
 
-},{"./helpers":474,"caseless":253,"uuid":566}],471:[function(require,module,exports){
+},{"./helpers":473,"caseless":128,"uuid":565}],470:[function(require,module,exports){
 'use strict'
 
 var tough = require('tough-cookie')
@@ -89638,7 +89626,7 @@ exports.jar = function (store) {
   return new RequestJar(store)
 }
 
-},{"tough-cookie":547}],472:[function(require,module,exports){
+},{"tough-cookie":546}],471:[function(require,module,exports){
 'use strict'
 
 function formatHostname (hostname) {
@@ -89719,7 +89707,7 @@ function getProxyFromURI (uri) {
 
 module.exports = getProxyFromURI
 
-},{}],473:[function(require,module,exports){
+},{}],472:[function(require,module,exports){
 'use strict'
 
 var fs = require('fs')
@@ -89926,7 +89914,7 @@ Har.prototype.options = function (options) {
 
 exports.Har = Har
 
-},{"extend":299,"fs":undefined,"har-validator":347,"querystring":undefined}],474:[function(require,module,exports){
+},{"extend":174,"fs":undefined,"har-validator":222,"querystring":undefined}],473:[function(require,module,exports){
 'use strict'
 
 var jsonSafeStringify = require('json-stringify-safe')
@@ -89994,7 +89982,7 @@ exports.copy = copy
 exports.version = version
 exports.defer = defer
 
-},{"crypto":undefined,"json-stringify-safe":409,"safe-buffer":484}],475:[function(require,module,exports){
+},{"crypto":undefined,"json-stringify-safe":283,"safe-buffer":483}],474:[function(require,module,exports){
 'use strict'
 
 var uuid = require('uuid')
@@ -90108,7 +90096,7 @@ Multipart.prototype.onRequest = function (options) {
 
 exports.Multipart = Multipart
 
-},{"combined-stream":255,"isstream":404,"safe-buffer":484,"uuid":566}],476:[function(require,module,exports){
+},{"combined-stream":130,"isstream":278,"safe-buffer":483,"uuid":565}],475:[function(require,module,exports){
 'use strict'
 
 var url = require('url')
@@ -90258,7 +90246,7 @@ OAuth.prototype.onRequest = function (_oauth) {
 
 exports.OAuth = OAuth
 
-},{"caseless":253,"crypto":undefined,"oauth-sign":446,"qs":458,"safe-buffer":484,"url":undefined,"uuid":566}],477:[function(require,module,exports){
+},{"caseless":128,"crypto":undefined,"oauth-sign":320,"qs":332,"safe-buffer":483,"url":undefined,"uuid":565}],476:[function(require,module,exports){
 'use strict'
 
 var qs = require('qs')
@@ -90310,7 +90298,7 @@ Querystring.prototype.unescape = querystring.unescape
 
 exports.Querystring = Querystring
 
-},{"qs":458,"querystring":undefined}],478:[function(require,module,exports){
+},{"qs":332,"querystring":undefined}],477:[function(require,module,exports){
 'use strict'
 
 var url = require('url')
@@ -90466,7 +90454,7 @@ Redirect.prototype.onResponse = function (response) {
 
 exports.Redirect = Redirect
 
-},{"url":undefined}],479:[function(require,module,exports){
+},{"url":undefined}],478:[function(require,module,exports){
 'use strict'
 
 var url = require('url')
@@ -90643,7 +90631,7 @@ Tunnel.defaultProxyHeaderWhiteList = defaultProxyHeaderWhiteList
 Tunnel.defaultProxyHeaderExclusiveList = defaultProxyHeaderExclusiveList
 exports.Tunnel = Tunnel
 
-},{"tunnel-agent":555,"url":undefined}],480:[function(require,module,exports){
+},{"tunnel-agent":554,"url":undefined}],479:[function(require,module,exports){
 'use strict'
 
 var http = require('http')
@@ -92197,9 +92185,9 @@ Request.defaultProxyHeaderExclusiveList =
 Request.prototype.toJSON = requestToJSON
 module.exports = Request
 
-},{"./lib/auth":470,"./lib/cookies":471,"./lib/getProxyFromURI":472,"./lib/har":473,"./lib/helpers":474,"./lib/multipart":475,"./lib/oauth":476,"./lib/querystring":477,"./lib/redirect":478,"./lib/tunnel":479,"aws-sign2":196,"aws4":197,"caseless":253,"extend":299,"forever-agent":318,"form-data":319,"hawk":351,"http":undefined,"http-signature":359,"https":undefined,"is-typedarray":403,"isstream":404,"mime-types":429,"performance-now":453,"safe-buffer":484,"stream":undefined,"stringstream":520,"url":undefined,"util":undefined,"zlib":undefined}],481:[function(require,module,exports){
+},{"./lib/auth":469,"./lib/cookies":470,"./lib/getProxyFromURI":471,"./lib/har":472,"./lib/helpers":473,"./lib/multipart":474,"./lib/oauth":475,"./lib/querystring":476,"./lib/redirect":477,"./lib/tunnel":478,"aws-sign2":71,"aws4":72,"caseless":128,"extend":174,"forever-agent":193,"form-data":194,"hawk":225,"http":undefined,"http-signature":233,"https":undefined,"is-typedarray":277,"isstream":278,"mime-types":303,"performance-now":327,"safe-buffer":483,"stream":undefined,"stringstream":519,"url":undefined,"util":undefined,"zlib":undefined}],480:[function(require,module,exports){
 module.exports = require('./lib/retry');
-},{"./lib/retry":482}],482:[function(require,module,exports){
+},{"./lib/retry":481}],481:[function(require,module,exports){
 var RetryOperation = require('./retry_operation');
 
 exports.operation = function(options) {
@@ -92300,7 +92288,7 @@ exports.wrap = function(obj, options, methods) {
   }
 };
 
-},{"./retry_operation":483}],483:[function(require,module,exports){
+},{"./retry_operation":482}],482:[function(require,module,exports){
 function RetryOperation(timeouts, options) {
   // Compatibility for the old (timeouts, retryForever) signature
   if (typeof options === 'boolean') {
@@ -92445,7 +92433,7 @@ RetryOperation.prototype.mainError = function() {
   return mainError;
 };
 
-},{}],484:[function(require,module,exports){
+},{}],483:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -92509,7 +92497,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":undefined}],485:[function(require,module,exports){
+},{"buffer":undefined}],484:[function(require,module,exports){
 /*!
  * send
  * Copyright(c) 2012 TJ Holowaychuk
@@ -93641,15 +93629,15 @@ function setHeaders (res, headers) {
   }
 }
 
-},{"debug":488,"depd":270,"destroy":274,"encodeurl":279,"escape-html":281,"etag":282,"fresh":322,"fs":undefined,"http-errors":357,"mime":430,"ms":439,"on-finished":447,"path":undefined,"range-parser":462,"statuses":518,"stream":undefined,"util":undefined}],486:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":487,"dup":245}],487:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],488:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":486,"./node.js":489,"dup":247}],489:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":487,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],490:[function(require,module,exports){
+},{"debug":487,"depd":145,"destroy":149,"encodeurl":154,"escape-html":156,"etag":157,"fresh":197,"fs":undefined,"http-errors":231,"mime":304,"ms":313,"on-finished":321,"path":undefined,"range-parser":461,"statuses":517,"stream":undefined,"util":undefined}],485:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":486,"dup":120}],486:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],487:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":485,"./node.js":488,"dup":122}],488:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":486,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],489:[function(require,module,exports){
 /*!
  * serve-static
  * Copyright(c) 2010 Sencha Inc.
@@ -93860,13 +93848,14 @@ function createRedirectDirectoryListener () {
   }
 }
 
-},{"encodeurl":279,"escape-html":281,"parseurl":450,"path":undefined,"send":485,"url":undefined}],491:[function(require,module,exports){
-arguments[4][358][0].apply(exports,arguments)
-},{"dup":358}],492:[function(require,module,exports){
+},{"encodeurl":154,"escape-html":156,"parseurl":324,"path":undefined,"send":484,"url":undefined}],490:[function(require,module,exports){
+arguments[4][232][0].apply(exports,arguments)
+},{"dup":232}],491:[function(require,module,exports){
 
 ;(function (name, root, factory) {
   if (typeof exports === 'object') {
     module.exports = factory()
+    module.exports['default'] = factory()
   }
   /* istanbul ignore next */
   else if (typeof define === 'function' && define.amd) {
@@ -93914,7 +93903,7 @@ arguments[4][358][0].apply(exports,arguments)
   return replace
 }))
 
-},{}],493:[function(require,module,exports){
+},{}],492:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -94328,7 +94317,7 @@ exports.now = function () {
     return now + internals.last.offset;
 };
 
-},{"dgram":undefined,"dns":undefined,"hoek":356}],494:[function(require,module,exports){
+},{"dgram":undefined,"dns":undefined,"hoek":230}],493:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var algInfo = {
@@ -94498,7 +94487,7 @@ module.exports = {
 	curves: curves
 };
 
-},{}],495:[function(require,module,exports){
+},{}],494:[function(require,module,exports){
 // Copyright 2016 Joyent, Inc.
 
 module.exports = Certificate;
@@ -94877,7 +94866,7 @@ Certificate._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./errors":498,"./fingerprint":499,"./formats/openssh-cert":501,"./formats/x509":509,"./formats/x509-pem":508,"./identity":510,"./key":512,"./private-key":513,"./signature":514,"./utils":516,"assert-plus":185,"crypto":undefined,"util":undefined}],496:[function(require,module,exports){
+},{"./algs":493,"./errors":497,"./fingerprint":498,"./formats/openssh-cert":500,"./formats/x509":508,"./formats/x509-pem":507,"./identity":509,"./key":511,"./private-key":512,"./signature":513,"./utils":515,"assert-plus":60,"crypto":undefined,"util":undefined}],495:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = {
@@ -95290,7 +95279,7 @@ function generateECDSA(curve) {
 	}
 }
 
-},{"./algs":494,"./key":512,"./private-key":513,"./utils":516,"assert-plus":185,"crypto":undefined,"ecc-jsbn":275,"ecc-jsbn/lib/ec":276,"jsbn":405,"tweetnacl":556}],497:[function(require,module,exports){
+},{"./algs":493,"./key":511,"./private-key":512,"./utils":515,"assert-plus":60,"crypto":undefined,"ecc-jsbn":150,"ecc-jsbn/lib/ec":151,"jsbn":279,"tweetnacl":555}],496:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -95388,7 +95377,7 @@ Signer.prototype.sign = function () {
 	return (sigObj);
 };
 
-},{"./signature":514,"assert-plus":185,"stream":undefined,"tweetnacl":556,"util":undefined}],498:[function(require,module,exports){
+},{"./signature":513,"assert-plus":60,"stream":undefined,"tweetnacl":555,"util":undefined}],497:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var assert = require('assert-plus');
@@ -95474,7 +95463,7 @@ module.exports = {
 	CertificateParseError: CertificateParseError
 };
 
-},{"assert-plus":185,"util":undefined}],499:[function(require,module,exports){
+},{"assert-plus":60,"util":undefined}],498:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = Fingerprint;
@@ -95637,7 +95626,7 @@ Fingerprint._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./certificate":495,"./errors":498,"./key":512,"./utils":516,"assert-plus":185,"crypto":undefined}],500:[function(require,module,exports){
+},{"./algs":493,"./certificate":494,"./errors":497,"./key":511,"./utils":515,"assert-plus":60,"crypto":undefined}],499:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -95712,7 +95701,7 @@ function write(key, options) {
 	throw (new Error('"auto" format cannot be used for writing'));
 }
 
-},{"../key":512,"../private-key":513,"../utils":516,"./pem":502,"./rfc4253":505,"./ssh":507,"assert-plus":185}],501:[function(require,module,exports){
+},{"../key":511,"../private-key":512,"../utils":515,"./pem":501,"./rfc4253":504,"./ssh":506,"assert-plus":60}],500:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = {
@@ -96036,7 +96025,7 @@ function getCertType(key) {
 	throw (new Error('Unsupported key type ' + key.type));
 }
 
-},{"../algs":494,"../certificate":495,"../identity":510,"../key":512,"../private-key":513,"../signature":514,"../ssh-buffer":515,"../utils":516,"./rfc4253":505,"assert-plus":185,"crypto":undefined}],502:[function(require,module,exports){
+},{"../algs":493,"../certificate":494,"../identity":509,"../key":511,"../private-key":512,"../signature":513,"../ssh-buffer":514,"../utils":515,"./rfc4253":504,"assert-plus":60,"crypto":undefined}],501:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -96224,7 +96213,7 @@ function write(key, options, type) {
 	return (buf.slice(0, o));
 }
 
-},{"../algs":494,"../errors":498,"../key":512,"../private-key":513,"../utils":516,"./pkcs1":503,"./pkcs8":504,"./rfc4253":505,"./ssh-private":506,"asn1":184,"assert-plus":185,"crypto":undefined}],503:[function(require,module,exports){
+},{"../algs":493,"../errors":497,"../key":511,"../private-key":512,"../utils":515,"./pkcs1":502,"./pkcs8":503,"./rfc4253":504,"./ssh-private":505,"asn1":59,"assert-plus":60,"crypto":undefined}],502:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -96546,7 +96535,7 @@ function writePkcs1ECDSAPrivate(der, key) {
 	der.endSequence();
 }
 
-},{"../algs":494,"../key":512,"../private-key":513,"../utils":516,"./pem":502,"./pkcs8":504,"asn1":184,"assert-plus":185}],504:[function(require,module,exports){
+},{"../algs":493,"../key":511,"../private-key":512,"../utils":515,"./pem":501,"./pkcs8":503,"asn1":59,"assert-plus":60}],503:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97053,7 +97042,7 @@ function writePkcs8ECDSAPrivate(key, der) {
 	der.endSequence();
 }
 
-},{"../algs":494,"../key":512,"../private-key":513,"../utils":516,"./pem":502,"asn1":184,"assert-plus":185}],505:[function(require,module,exports){
+},{"../algs":493,"../key":511,"../private-key":512,"../utils":515,"./pem":501,"asn1":59,"assert-plus":60}],504:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97201,7 +97190,7 @@ function write(key, options) {
 	return (buf.toBuffer());
 }
 
-},{"../algs":494,"../key":512,"../private-key":513,"../ssh-buffer":515,"../utils":516,"assert-plus":185}],506:[function(require,module,exports){
+},{"../algs":493,"../key":511,"../private-key":512,"../ssh-buffer":514,"../utils":515,"assert-plus":60}],505:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97464,7 +97453,7 @@ function write(key, options) {
 	return (buf.slice(0, o));
 }
 
-},{"../algs":494,"../errors":498,"../key":512,"../private-key":513,"../ssh-buffer":515,"../utils":516,"./pem":502,"./rfc4253":505,"asn1":184,"assert-plus":185,"bcrypt-pbkdf":201,"crypto":undefined}],507:[function(require,module,exports){
+},{"../algs":493,"../errors":497,"../key":511,"../private-key":512,"../ssh-buffer":514,"../utils":515,"./pem":501,"./rfc4253":504,"asn1":59,"assert-plus":60,"bcrypt-pbkdf":76,"crypto":undefined}],506:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97580,7 +97569,7 @@ function write(key, options) {
 	return (new Buffer(parts.join(' ')));
 }
 
-},{"../key":512,"../private-key":513,"../utils":516,"./rfc4253":505,"./ssh-private":506,"assert-plus":185}],508:[function(require,module,exports){
+},{"../key":511,"../private-key":512,"../utils":515,"./rfc4253":504,"./ssh-private":505,"assert-plus":60}],507:[function(require,module,exports){
 // Copyright 2016 Joyent, Inc.
 
 var x509 = require('./x509');
@@ -97659,7 +97648,7 @@ function write(cert, options) {
 	return (buf.slice(0, o));
 }
 
-},{"../algs":494,"../certificate":495,"../identity":510,"../key":512,"../private-key":513,"../signature":514,"../utils":516,"./pem":502,"./x509":509,"asn1":184,"assert-plus":185}],509:[function(require,module,exports){
+},{"../algs":493,"../certificate":494,"../identity":509,"../key":511,"../private-key":512,"../signature":513,"../utils":515,"./pem":501,"./x509":508,"asn1":59,"assert-plus":60}],508:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = {
@@ -98387,7 +98376,7 @@ function writeBitField(setBits, bitIndex) {
 	return (bits);
 }
 
-},{"../algs":494,"../certificate":495,"../identity":510,"../key":512,"../private-key":513,"../signature":514,"../utils":516,"./pem":502,"./pkcs8":504,"asn1":184,"assert-plus":185}],510:[function(require,module,exports){
+},{"../algs":493,"../certificate":494,"../identity":509,"../key":511,"../private-key":512,"../signature":513,"../utils":515,"./pem":501,"./pkcs8":503,"asn1":59,"assert-plus":60}],509:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = Identity;
@@ -98666,7 +98655,7 @@ Identity._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./errors":498,"./fingerprint":499,"./signature":514,"./utils":516,"asn1":184,"assert-plus":185,"crypto":undefined,"util":undefined}],511:[function(require,module,exports){
+},{"./algs":493,"./errors":497,"./fingerprint":498,"./signature":513,"./utils":515,"asn1":59,"assert-plus":60,"crypto":undefined,"util":undefined}],510:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var Key = require('./key');
@@ -98707,7 +98696,7 @@ module.exports = {
 	CertificateParseError: errs.CertificateParseError
 };
 
-},{"./certificate":495,"./errors":498,"./fingerprint":499,"./identity":510,"./key":512,"./private-key":513,"./signature":514}],512:[function(require,module,exports){
+},{"./certificate":494,"./errors":497,"./fingerprint":498,"./identity":509,"./key":511,"./private-key":512,"./signature":513}],511:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = Key;
@@ -98983,7 +98972,7 @@ Key._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./dhe":496,"./ed-compat":497,"./errors":498,"./fingerprint":499,"./formats/auto":500,"./formats/pem":502,"./formats/pkcs1":503,"./formats/pkcs8":504,"./formats/rfc4253":505,"./formats/ssh":507,"./formats/ssh-private":506,"./private-key":513,"./signature":514,"./utils":516,"assert-plus":185,"crypto":undefined}],513:[function(require,module,exports){
+},{"./algs":493,"./dhe":495,"./ed-compat":496,"./errors":497,"./fingerprint":498,"./formats/auto":499,"./formats/pem":501,"./formats/pkcs1":502,"./formats/pkcs8":503,"./formats/rfc4253":504,"./formats/ssh":506,"./formats/ssh-private":505,"./private-key":512,"./signature":513,"./utils":515,"assert-plus":60,"crypto":undefined}],512:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = PrivateKey;
@@ -99239,7 +99228,7 @@ PrivateKey._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./dhe":496,"./ed-compat":497,"./errors":498,"./fingerprint":499,"./formats/auto":500,"./formats/pem":502,"./formats/pkcs1":503,"./formats/pkcs8":504,"./formats/rfc4253":505,"./formats/ssh-private":506,"./key":512,"./signature":514,"./utils":516,"assert-plus":185,"crypto":undefined,"tweetnacl":556,"util":undefined}],514:[function(require,module,exports){
+},{"./algs":493,"./dhe":495,"./ed-compat":496,"./errors":497,"./fingerprint":498,"./formats/auto":499,"./formats/pem":501,"./formats/pkcs1":502,"./formats/pkcs8":503,"./formats/rfc4253":504,"./formats/ssh-private":505,"./key":511,"./signature":513,"./utils":515,"assert-plus":60,"crypto":undefined,"tweetnacl":555,"util":undefined}],513:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = Signature;
@@ -99554,7 +99543,7 @@ Signature._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./errors":498,"./ssh-buffer":515,"./utils":516,"asn1":184,"assert-plus":185,"crypto":undefined}],515:[function(require,module,exports){
+},{"./algs":493,"./errors":497,"./ssh-buffer":514,"./utils":515,"asn1":59,"assert-plus":60,"crypto":undefined}],514:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = SSHBuffer;
@@ -99704,7 +99693,7 @@ SSHBuffer.prototype.write = function (buf) {
 	this._offset += buf.length;
 };
 
-},{"assert-plus":185}],516:[function(require,module,exports){
+},{"assert-plus":60}],515:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -99994,7 +99983,7 @@ function opensshCipherInfo(cipher) {
 	return (inf);
 }
 
-},{"./private-key":513,"assert-plus":185,"crypto":undefined,"jsbn":405}],517:[function(require,module,exports){
+},{"./private-key":512,"assert-plus":60,"crypto":undefined,"jsbn":279}],516:[function(require,module,exports){
 module.exports={
   "100": "Continue",
   "101": "Switching Protocols",
@@ -100060,7 +100049,7 @@ module.exports={
   "510": "Not Extended",
   "511": "Network Authentication Required"
 }
-},{}],518:[function(require,module,exports){
+},{}],517:[function(require,module,exports){
 /*!
  * statuses
  * Copyright(c) 2014 Jonathan Ong
@@ -100172,7 +100161,7 @@ function status (code) {
   return n
 }
 
-},{"./codes.json":517}],519:[function(require,module,exports){
+},{"./codes.json":516}],518:[function(require,module,exports){
 'use strict';
 
 var isNative = /\.node$/;
@@ -100255,7 +100244,7 @@ module.exports = function (requireCache, callback, callbackForModulesToKeep, mod
 
 };
 
-},{}],520:[function(require,module,exports){
+},{}],519:[function(require,module,exports){
 var util = require('util')
 var Stream = require('stream')
 var StringDecoder = require('string_decoder').StringDecoder
@@ -100359,135 +100348,59 @@ function alignedWrite(buffer) {
   return returnBuffer.toString(this.encoding)
 }
 
-},{"stream":undefined,"string_decoder":undefined,"util":undefined}],521:[function(require,module,exports){
+},{"stream":undefined,"string_decoder":undefined,"util":undefined}],520:[function(require,module,exports){
 'use strict';
-const os = require('os');
-const hasFlag = require('has-flag');
+var argv = process.argv;
 
-const env = process.env;
+var terminator = argv.indexOf('--');
+var hasFlag = function (flag) {
+	flag = '--' + flag;
+	var pos = argv.indexOf(flag);
+	return pos !== -1 && (terminator !== -1 ? pos < terminator : true);
+};
 
-function translateLevel(level) {
-	if (level === 0) {
-		return false;
+module.exports = (function () {
+	if ('FORCE_COLOR' in process.env) {
+		return true;
 	}
 
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3
-	};
-}
-
-function supportsColor(stream) {
 	if (hasFlag('no-color') ||
 		hasFlag('no-colors') ||
 		hasFlag('color=false')) {
-		return 0;
-	}
-
-	if (hasFlag('color=16m') ||
-		hasFlag('color=full') ||
-		hasFlag('color=truecolor')) {
-		return 3;
-	}
-
-	if (hasFlag('color=256')) {
-		return 2;
+		return false;
 	}
 
 	if (hasFlag('color') ||
 		hasFlag('colors') ||
 		hasFlag('color=true') ||
 		hasFlag('color=always')) {
-		return 1;
+		return true;
 	}
 
-	if (stream && !stream.isTTY) {
-		return 0;
+	if (process.stdout && !process.stdout.isTTY) {
+		return false;
 	}
 
 	if (process.platform === 'win32') {
-		// Node.js 7.5.0 is the first version of Node.js to include a patch to
-		// libuv that enables 256 color output on Windows. Anything earlier and it
-		// won't work. However, here we target Node.js 8 at minimum as it is an LTS
-		// release, and Node.js 7 is not. Windows 10 build 10586 is the first Windows
-		// release that supports 256 colors. Windows 10 build 14931 is the first release
-		// that supports 16m/TrueColor.
-		const osRelease = os.release().split('.');
-		if (
-			Number(process.versions.node.split('.')[0]) >= 8 &&
-			Number(osRelease[0]) >= 10 &&
-			Number(osRelease[2]) >= 10586
-		) {
-			return Number(osRelease[2]) >= 14931 ? 3 : 2;
-		}
-
-		return 1;
+		return true;
 	}
 
-	if ('CI' in env) {
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
-			return 1;
-		}
-
-		return 0;
+	if ('COLORTERM' in process.env) {
+		return true;
 	}
 
-	if ('TEAMCITY_VERSION' in env) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+	if (process.env.TERM === 'dumb') {
+		return false;
 	}
 
-	if ('TERM_PROGRAM' in env) {
-		const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-		switch (env.TERM_PROGRAM) {
-			case 'iTerm.app':
-				return version >= 3 ? 3 : 2;
-			case 'Hyper':
-				return 3;
-			case 'Apple_Terminal':
-				return 2;
-			// No default
-		}
+	if (/^screen|^xterm|^vt100|color|ansi|cygwin|linux/i.test(process.env.TERM)) {
+		return true;
 	}
 
-	if (/-256(color)?$/i.test(env.TERM)) {
-		return 2;
-	}
+	return false;
+})();
 
-	if (/^screen|^xterm|^vt100|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-		return 1;
-	}
-
-	if ('COLORTERM' in env) {
-		return 1;
-	}
-
-	if (env.TERM === 'dumb') {
-		return 0;
-	}
-
-	return 0;
-}
-
-function getSupportLevel(stream) {
-	let level = supportsColor(stream);
-
-	if ('FORCE_COLOR' in env) {
-		level = (env.FORCE_COLOR.length > 0 && parseInt(env.FORCE_COLOR, 10) === 0) ? 0 : (level || 1);
-	}
-
-	return translateLevel(level);
-}
-
-module.exports = {
-	supportsColor: getSupportLevel,
-	stdout: getSupportLevel(process.stdout),
-	stderr: getSupportLevel(process.stderr)
-};
-
-},{"has-flag":348,"os":undefined}],522:[function(require,module,exports){
+},{}],521:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const property_definition_1 = require("./property-definition");
@@ -100565,7 +100478,7 @@ function getTypedInheritanceChain(type, object) {
 }
 exports.getTypedInheritanceChain = getTypedInheritanceChain;
 
-},{"./property-definition":523}],523:[function(require,module,exports){
+},{"./property-definition":522}],522:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class PropertyDefinition {
@@ -100578,7 +100491,7 @@ class PropertyDefinition {
 }
 exports.PropertyDefinition = PropertyDefinition;
 
-},{}],524:[function(require,module,exports){
+},{}],523:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class BufferConverter {
@@ -100603,7 +100516,7 @@ class BufferConverter {
 }
 exports.BufferConverter = BufferConverter;
 
-},{}],525:[function(require,module,exports){
+},{}],524:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const date_converter_1 = require("./date-converter");
@@ -100612,7 +100525,7 @@ exports.propertyConverters = new Map();
 exports.propertyConverters.set(Buffer, new buffer_converter_1.BufferConverter());
 exports.propertyConverters.set(Date, new date_converter_1.DateConverter());
 
-},{"./buffer-converter":524,"./date-converter":526}],526:[function(require,module,exports){
+},{"./buffer-converter":523,"./date-converter":525}],525:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class DateConverter {
@@ -100628,7 +100541,7 @@ class DateConverter {
 }
 exports.DateConverter = DateConverter;
 
-},{}],527:[function(require,module,exports){
+},{}],526:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -100638,7 +100551,7 @@ __export(require("./converter"));
 __export(require("./buffer-converter"));
 __export(require("./date-converter"));
 
-},{"./buffer-converter":524,"./converter":525,"./date-converter":526}],528:[function(require,module,exports){
+},{"./buffer-converter":523,"./converter":524,"./date-converter":525}],527:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100651,7 +100564,7 @@ function BeforeDeserialized() {
 }
 exports.BeforeDeserialized = BeforeDeserialized;
 
-},{"../classes/object-definition":522}],529:[function(require,module,exports){
+},{"../classes/object-definition":521}],528:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -100670,7 +100583,7 @@ __export(require("./json-constructor"));
 __export(require("./before-deserialized"));
 __export(require("./on-deserialized"));
 
-},{"./before-deserialized":528,"./json-constructor":530,"./json-converter":531,"./json-discriminator-property":532,"./json-discriminator-value":533,"./json-element-type":534,"./json-object":535,"./json-property":536,"./json-readonly":537,"./json-type":538,"./json-writeonly":539,"./on-deserialized":540}],530:[function(require,module,exports){
+},{"./before-deserialized":527,"./json-constructor":529,"./json-converter":530,"./json-discriminator-property":531,"./json-discriminator-value":532,"./json-element-type":533,"./json-object":534,"./json-property":535,"./json-readonly":536,"./json-type":537,"./json-writeonly":538,"./on-deserialized":539}],529:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100683,7 +100596,7 @@ function JsonConstructor() {
 }
 exports.JsonConstructor = JsonConstructor;
 
-},{"../classes/object-definition":522}],531:[function(require,module,exports){
+},{"../classes/object-definition":521}],530:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100701,7 +100614,7 @@ function JsonConverter(converter) {
 }
 exports.JsonConverter = JsonConverter;
 
-},{"../classes/object-definition":522}],532:[function(require,module,exports){
+},{"../classes/object-definition":521}],531:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100713,7 +100626,7 @@ function JsonDiscriminatorProperty(property) {
 }
 exports.JsonDiscriminatorProperty = JsonDiscriminatorProperty;
 
-},{"../classes/object-definition":522}],533:[function(require,module,exports){
+},{"../classes/object-definition":521}],532:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100725,7 +100638,7 @@ function JsonDiscriminatorValue(value) {
 }
 exports.JsonDiscriminatorValue = JsonDiscriminatorValue;
 
-},{"../classes/object-definition":522}],534:[function(require,module,exports){
+},{"../classes/object-definition":521}],533:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100738,7 +100651,7 @@ function JsonElementType(type) {
 }
 exports.JsonElementType = JsonElementType;
 
-},{"../classes/object-definition":522}],535:[function(require,module,exports){
+},{"../classes/object-definition":521}],534:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100750,7 +100663,7 @@ function JsonObject() {
 }
 exports.JsonObject = JsonObject;
 
-},{"../classes/object-definition":522}],536:[function(require,module,exports){
+},{"../classes/object-definition":521}],535:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
@@ -100770,7 +100683,7 @@ function JsonProperty(propertyName) {
 }
 exports.JsonProperty = JsonProperty;
 
-},{"../classes/object-definition":522,"reflect-metadata":545}],537:[function(require,module,exports){
+},{"../classes/object-definition":521,"reflect-metadata":544}],536:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100783,7 +100696,7 @@ function JsonReadonly() {
 }
 exports.JsonReadonly = JsonReadonly;
 
-},{"../classes/object-definition":522}],538:[function(require,module,exports){
+},{"../classes/object-definition":521}],537:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100796,7 +100709,7 @@ function JsonType(type) {
 }
 exports.JsonType = JsonType;
 
-},{"../classes/object-definition":522}],539:[function(require,module,exports){
+},{"../classes/object-definition":521}],538:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100809,7 +100722,7 @@ function JsonWriteonly() {
 }
 exports.JsonWriteonly = JsonWriteonly;
 
-},{"../classes/object-definition":522}],540:[function(require,module,exports){
+},{"../classes/object-definition":521}],539:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100822,7 +100735,7 @@ function OnDeserialized() {
 }
 exports.OnDeserialized = OnDeserialized;
 
-},{"../classes/object-definition":522}],541:[function(require,module,exports){
+},{"../classes/object-definition":521}],540:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -100832,7 +100745,7 @@ __export(require("./json"));
 __export(require("./decorators"));
 __export(require("./converters"));
 
-},{"./converters":527,"./decorators":529,"./json":542}],542:[function(require,module,exports){
+},{"./converters":526,"./decorators":528,"./json":541}],541:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const serialize_1 = require("./methods/serialize");
@@ -100853,7 +100766,7 @@ class JSON {
 }
 exports.JSON = JSON;
 
-},{"./methods/deserialize":543,"./methods/serialize":544}],543:[function(require,module,exports){
+},{"./methods/deserialize":542,"./methods/serialize":543}],542:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -100924,7 +100837,7 @@ function deserializeObject(object, definition, options) {
     return value;
 }
 
-},{"../classes/object-definition":522,"../converters/converter":525}],544:[function(require,module,exports){
+},{"../classes/object-definition":521,"../converters/converter":524}],543:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const converter_1 = require("./../converters/converter");
@@ -100996,9 +100909,9 @@ function serializeObject(object, definition) {
     return value;
 }
 
-},{"../classes/object-definition":522,"./../converters/converter":525}],545:[function(require,module,exports){
-arguments[4][464][0].apply(exports,arguments)
-},{"dup":464}],546:[function(require,module,exports){
+},{"../classes/object-definition":521,"./../converters/converter":524}],544:[function(require,module,exports){
+arguments[4][463][0].apply(exports,arguments)
+},{"dup":463}],545:[function(require,module,exports){
 /*!
  * Tmp
  *
@@ -101611,7 +101524,7 @@ module.exports.tmpNameSync = tmpNameSync;
 
 module.exports.setGracefulCleanup = setGracefulCleanup;
 
-},{"crypto":undefined,"fs":undefined,"os-tmpdir":449,"path":undefined}],547:[function(require,module,exports){
+},{"crypto":undefined,"fs":undefined,"os-tmpdir":323,"path":undefined}],546:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -102954,7 +102867,7 @@ module.exports = {
   canonicalDomain: canonicalDomain
 };
 
-},{"../package.json":553,"./memstore":548,"./pathMatch":549,"./permuteDomain":550,"./pubsuffix":551,"./store":552,"net":undefined,"punycode":undefined,"url":undefined}],548:[function(require,module,exports){
+},{"../package.json":552,"./memstore":547,"./pathMatch":548,"./permuteDomain":549,"./pubsuffix":550,"./store":551,"net":undefined,"punycode":undefined,"url":undefined}],547:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -103126,7 +103039,7 @@ MemoryCookieStore.prototype.getAllCookies = function(cb) {
   cb(null, cookies);
 };
 
-},{"./pathMatch":549,"./permuteDomain":550,"./store":552,"util":undefined}],549:[function(require,module,exports){
+},{"./pathMatch":548,"./permuteDomain":549,"./store":551,"util":undefined}],548:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -103189,7 +103102,7 @@ function pathMatch (reqPath, cookiePath) {
 
 exports.pathMatch = pathMatch;
 
-},{}],550:[function(require,module,exports){
+},{}],549:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -103247,7 +103160,7 @@ function permuteDomain (domain) {
 
 exports.permuteDomain = permuteDomain;
 
-},{"./pubsuffix":551}],551:[function(require,module,exports){
+},{"./pubsuffix":550}],550:[function(require,module,exports){
 /****************************************************
  * AUTOMATICALLY GENERATED by generate-pubsuffix.js *
  *                  DO NOT EDIT!                    *
@@ -103347,7 +103260,7 @@ var index = module.exports.index = Object.freeze(
 
 // END of automatically generated file
 
-},{"punycode":undefined}],552:[function(require,module,exports){
+},{"punycode":undefined}],551:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -103420,7 +103333,7 @@ Store.prototype.getAllCookies = function(cb) {
   throw new Error('getAllCookies is not implemented (therefore jar cannot be serialized)');
 };
 
-},{}],553:[function(require,module,exports){
+},{}],552:[function(require,module,exports){
 module.exports={
   "_from": "tough-cookie@~2.3.3",
   "_id": "tough-cookie@2.3.3",
@@ -103515,7 +103428,7 @@ module.exports={
   "version": "2.3.3"
 }
 
-},{}],554:[function(require,module,exports){
+},{}],553:[function(require,module,exports){
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
@@ -103742,7 +103655,7 @@ var __makeTemplateObject;
     exporter("__makeTemplateObject", __makeTemplateObject);
 });
 
-},{}],555:[function(require,module,exports){
+},{}],554:[function(require,module,exports){
 'use strict'
 
 var net = require('net')
@@ -103988,7 +103901,7 @@ if (process.env.NODE_DEBUG && /\btunnel\b/.test(process.env.NODE_DEBUG)) {
 }
 exports.debug = debug // for test
 
-},{"assert":undefined,"events":undefined,"http":undefined,"https":undefined,"net":undefined,"safe-buffer":484,"tls":undefined,"util":undefined}],556:[function(require,module,exports){
+},{"assert":undefined,"events":undefined,"http":undefined,"https":undefined,"net":undefined,"safe-buffer":483,"tls":undefined,"util":undefined}],555:[function(require,module,exports){
 (function(nacl) {
 'use strict';
 
@@ -106378,7 +106291,7 @@ nacl.setPRNG = function(fn) {
 
 })(typeof module !== 'undefined' && module.exports ? module.exports : (self.nacl = self.nacl || {}));
 
-},{"crypto":undefined}],557:[function(require,module,exports){
+},{"crypto":undefined}],556:[function(require,module,exports){
 /*!
  * type-is
  * Copyright(c) 2014 Jonathan Ong
@@ -106642,12 +106555,12 @@ function tryNormalizeType (value) {
   }
 }
 
-},{"media-typer":424,"mime-types":429}],558:[function(require,module,exports){
+},{"media-typer":298,"mime-types":303}],557:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/compare');
 
-},{"./lib/compare":560}],559:[function(require,module,exports){
+},{"./lib/compare":559}],558:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -106744,7 +106657,7 @@ var ByteAssertion = function () {
 }();
 
 exports.default = ByteAssertion;
-},{}],560:[function(require,module,exports){
+},{}],559:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -106770,7 +106683,7 @@ function isDate(date) {
 function isNumber(number) {
   return new _byteAssertion2.default(number);
 }
-},{"./byteAssertion":559,"./dateAssertion":561}],561:[function(require,module,exports){
+},{"./byteAssertion":558,"./dateAssertion":560}],560:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -106859,7 +106772,7 @@ var DateAssertion = function () {
 }();
 
 exports.default = DateAssertion;
-},{"./dates":562,"moment":433}],562:[function(require,module,exports){
+},{"./dates":561,"moment":307}],561:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -106886,7 +106799,7 @@ normaliser.addAlias('minutes', 'mins');
 function normalise(name) {
   return normaliser.normalise(name);
 }
-},{"./unitNormaliser":563}],563:[function(require,module,exports){
+},{"./unitNormaliser":562}],562:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -106927,7 +106840,7 @@ var UnitNormaliser = function () {
 }();
 
 exports.default = UnitNormaliser;
-},{}],564:[function(require,module,exports){
+},{}],563:[function(require,module,exports){
 /*!
  * unpipe
  * Copyright(c) 2015 Douglas Christopher Wilson
@@ -106998,7 +106911,7 @@ function unpipe(stream) {
   }
 }
 
-},{}],565:[function(require,module,exports){
+},{}],564:[function(require,module,exports){
 /**
  * Merge object b with object a.
  *
@@ -107023,7 +106936,7 @@ exports = module.exports = function(a, b){
   return a;
 };
 
-},{}],566:[function(require,module,exports){
+},{}],565:[function(require,module,exports){
 var v1 = require('./v1');
 var v4 = require('./v4');
 
@@ -107033,7 +106946,7 @@ uuid.v4 = v4;
 
 module.exports = uuid;
 
-},{"./v1":569,"./v4":570}],567:[function(require,module,exports){
+},{"./v1":568,"./v4":569}],566:[function(require,module,exports){
 /**
  * Convert array of 16 byte values to UUID string format of the form:
  * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
@@ -107058,7 +106971,7 @@ function bytesToUuid(buf, offset) {
 
 module.exports = bytesToUuid;
 
-},{}],568:[function(require,module,exports){
+},{}],567:[function(require,module,exports){
 // Unique ID creation requires a high quality random # generator.  In node.js
 // this is pretty straight-forward - we use the crypto API.
 
@@ -107070,7 +106983,7 @@ function rng() {
 
 module.exports = rng;
 
-},{"crypto":undefined}],569:[function(require,module,exports){
+},{"crypto":undefined}],568:[function(require,module,exports){
 var rng = require('./lib/rng');
 var bytesToUuid = require('./lib/bytesToUuid');
 
@@ -107172,7 +107085,7 @@ function v1(options, buf, offset) {
 
 module.exports = v1;
 
-},{"./lib/bytesToUuid":567,"./lib/rng":568}],570:[function(require,module,exports){
+},{"./lib/bytesToUuid":566,"./lib/rng":567}],569:[function(require,module,exports){
 var rng = require('./lib/rng');
 var bytesToUuid = require('./lib/bytesToUuid');
 
@@ -107203,7 +107116,7 @@ function v4(options, buf, offset) {
 
 module.exports = v4;
 
-},{"./lib/bytesToUuid":567,"./lib/rng":568}],571:[function(require,module,exports){
+},{"./lib/bytesToUuid":566,"./lib/rng":567}],570:[function(require,module,exports){
 /*!
  * vary
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -107354,7 +107267,7 @@ function vary (res, field) {
   }
 }
 
-},{}],572:[function(require,module,exports){
+},{}],571:[function(require,module,exports){
 /*
  * verror.js: richer JavaScript errors
  */
@@ -107807,7 +107720,7 @@ WError.prototype.cause = function we_cause(c)
 	return (this.jse_cause);
 };
 
-},{"assert-plus":185,"core-util-is":261,"extsprintf":300,"util":undefined}],573:[function(require,module,exports){
+},{"assert-plus":60,"core-util-is":136,"extsprintf":175,"util":undefined}],572:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -108060,7 +107973,7 @@ function appendElement (hander,node) {
 	exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":574,"./sax":575}],574:[function(require,module,exports){
+},{"./dom":573,"./sax":574}],573:[function(require,module,exports){
 /*
  * DOM Level 2
  * Object DOMException
@@ -109306,7 +109219,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{}],575:[function(require,module,exports){
+},{}],574:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -109941,7 +109854,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],576:[function(require,module,exports){
+},{}],575:[function(require,module,exports){
 /*
  * xpath.js
  *
@@ -114707,7 +114620,7 @@ exports.select1 = function(e, doc) {
 // end non-node wrapper
 })(xpath);
 
-},{}],577:[function(require,module,exports){
+},{}],576:[function(require,module,exports){
 var fs = require("fs");
 var zlib = require("zlib");
 var fd_slicer = require("fd-slicer");
@@ -115484,5 +115397,5 @@ function defaultCallback(err) {
   if (err) throw err;
 }
 
-},{"buffer-crc32":251,"events":undefined,"fd-slicer":303,"fs":undefined,"stream":undefined,"util":undefined,"zlib":undefined}]},{},[37])
+},{"buffer-crc32":126,"events":undefined,"fd-slicer":178,"fs":undefined,"stream":undefined,"util":undefined,"zlib":undefined}]},{},[2])
 //# sourceMappingURL=server-cli.js.map

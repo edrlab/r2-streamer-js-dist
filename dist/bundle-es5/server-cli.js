@@ -1,1582 +1,11 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-function sortObject(obj) {
-    if (obj instanceof Array) {
-        for (var i = 0; i < obj.length; i++) {
-            obj[i] = sortObject(obj[i]);
-        }
-        return obj;
-    }
-    else if (typeof obj !== "object") {
-        return obj;
-    }
-    var newObj = {};
-    Object.keys(obj).sort().forEach(function (key) {
-        newObj[key] = sortObject(obj[key]);
-    });
-    return newObj;
-}
-exports.sortObject = sortObject;
-function traverseJsonObjects_(parent, keyInParent, obj, func) {
-    func(obj, parent, keyInParent);
-    if (obj instanceof Array) {
-        for (var index = 0; index < obj.length; index++) {
-            var item = obj[index];
-            if (typeof item !== "undefined") {
-                traverseJsonObjects_(obj, index, item, func);
-            }
-        }
-    }
-    else if (typeof obj === "object") {
-        Object.keys(obj).forEach(function (key) {
-            if (obj.hasOwnProperty(key)) {
-                var item = obj[key];
-                if (typeof item !== "undefined") {
-                    traverseJsonObjects_(obj, key, item, func);
-                }
-            }
-        });
-    }
-}
-function traverseJsonObjects(obj, func) {
-    traverseJsonObjects_(undefined, undefined, obj, func);
-}
-exports.traverseJsonObjects = traverseJsonObjects;
-
-},{}],2:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-function parseRangeHeader(rangeHeader) {
-    var ranges = [];
-    if (!rangeHeader) {
-        return ranges;
-    }
-    var rHeader;
-    if (rangeHeader instanceof Array) {
-        rHeader = rangeHeader;
-    }
-    else {
-        rHeader = [rangeHeader];
-    }
-    rHeader.forEach(function (rh) {
-        var arr = parseRangeHeader_(rh);
-        ranges = ranges.concat(arr);
-    });
-    return ranges;
-}
-exports.parseRangeHeader = parseRangeHeader;
-function parseRangeHeader_(rangeHeader) {
-    var ranges = [];
-    var iEqual = rangeHeader.indexOf("=");
-    if (iEqual <= 0) {
-        return ranges;
-    }
-    var rangesStr = rangeHeader.substr(iEqual + 1);
-    var rangeStrArray = rangesStr.split(",");
-    rangeStrArray.forEach(function (rangeStr) {
-        var beginEndArray = rangeStr.split("-");
-        var beginStr = beginEndArray[0];
-        var endStr = beginEndArray[1];
-        var begin = -1;
-        if (beginStr && beginStr.length) {
-            begin = parseInt(beginStr, 10);
-        }
-        var end = -1;
-        if (endStr && endStr.length) {
-            end = parseInt(endStr, 10);
-        }
-        var rangeObj = { begin: begin, end: end };
-        ranges.push(rangeObj);
-    });
-    return ranges;
-}
-function combineRanges(ranges) {
-    var orderedRanges = ranges
-        .map(function (range, index) {
-        return {
-            begin: range.begin,
-            end: range.end,
-            index: index,
-        };
-    })
-        .sort(function (a, b) {
-        return a.begin - b.begin;
-    });
-    var j = 0;
-    var i = 1;
-    for (j = 0, i = 1; i < orderedRanges.length; i++) {
-        var orderedRange = orderedRanges[i];
-        var currentRange = orderedRanges[j];
-        if (orderedRange.begin > currentRange.end + 1) {
-            orderedRanges[++j] = orderedRange;
-        }
-        else if (orderedRange.end > currentRange.end) {
-            currentRange.end = orderedRange.end;
-            currentRange.index = Math.min(currentRange.index, orderedRange.index);
-        }
-    }
-    orderedRanges.length = j + 1;
-    return orderedRanges
-        .sort(function (a, b) {
-        return a.index - b.index;
-    })
-        .map(function (range) {
-        return {
-            begin: range.begin,
-            end: range.end,
-        };
-    });
-}
-exports.combineRanges = combineRanges;
-
-},{}],3:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var path = require("path");
-var querystring = require("querystring");
-function isHTTP(urlOrPath) {
-    return urlOrPath.indexOf("http") === 0;
-}
-exports.isHTTP = isHTTP;
-function encodeURIComponent_RFC3986(str) {
-    return encodeURIComponent(str)
-        .replace(/[!'()*]/g, function (c) {
-        return "%" + c.charCodeAt(0).toString(16);
-    });
-}
-exports.encodeURIComponent_RFC3986 = encodeURIComponent_RFC3986;
-function encodeURIComponent_RFC5987(str) {
-    return encodeURIComponent(str).
-        replace(/['()]/g, querystring.escape).
-        replace(/\*/g, "%2A").
-        replace(/%(?:7C|60|5E)/g, querystring.unescape);
-}
-exports.encodeURIComponent_RFC5987 = encodeURIComponent_RFC5987;
-function ensureAbsolute(rootUrl, linkHref) {
-    var url = linkHref;
-    if (!isHTTP(url) && url.indexOf("data:") !== 0) {
-        if (url.indexOf("//") === 0) {
-            if (rootUrl.indexOf("https://") === 0) {
-                url = "https:" + url;
-            }
-            else {
-                url = "http:" + url;
-            }
-            return url;
-        }
-        if (url[0] === "/") {
-            var j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
-            var rootUrlOrigin = rootUrl.substr(0, j);
-            url = path.join(rootUrlOrigin, url);
-        }
-        else {
-            var i = rootUrl.indexOf("?");
-            var rootUrlWithoutQuery = rootUrl;
-            if (i >= 0) {
-                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
-            }
-            if (rootUrlWithoutQuery.substr(-1) === "/") {
-                url = path.join(rootUrlWithoutQuery, url);
-            }
-            else {
-                url = path.join(path.dirname(rootUrlWithoutQuery), url);
-            }
-        }
-        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
-    }
-    return url;
-}
-exports.ensureAbsolute = ensureAbsolute;
-
-},{"path":undefined,"querystring":undefined}],4:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var stream_1 = require("stream");
-var BufferReadableStream = (function (_super) {
-    tslib_1.__extends(BufferReadableStream, _super);
-    function BufferReadableStream(buffer) {
-        var _this = _super.call(this) || this;
-        _this.buffer = buffer;
-        _this.alreadyRead = 0;
-        return _this;
-    }
-    BufferReadableStream.prototype._read = function (size) {
-        if (this.alreadyRead >= this.buffer.length) {
-            this.push(null);
-            return;
-        }
-        var chunk = this.alreadyRead ?
-            this.buffer.slice(this.alreadyRead) :
-            this.buffer;
-        if (size) {
-            var l = size;
-            if (size > chunk.length) {
-                l = chunk.length;
-            }
-            chunk = chunk.slice(0, l);
-        }
-        this.alreadyRead += chunk.length;
-        this.push(chunk);
-    };
-    return BufferReadableStream;
-}(stream_1.Readable));
-exports.BufferReadableStream = BufferReadableStream;
-
-},{"stream":undefined,"tslib":554}],5:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var BufferReadableStream_1 = require("./BufferReadableStream");
-function bufferToStream(buffer) {
-    return new BufferReadableStream_1.BufferReadableStream(buffer);
-}
-exports.bufferToStream = bufferToStream;
-function streamToBufferPromise_READABLE(readStream) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        return tslib_1.__generator(this, function (_a) {
-            return [2, new Promise(function (resolve, reject) {
-                    var buffers = [];
-                    readStream.on("error", reject);
-                    readStream.on("readable", function () {
-                        var chunk;
-                        do {
-                            chunk = readStream.read();
-                            if (chunk) {
-                                buffers.push(chunk);
-                            }
-                        } while (chunk);
-                    });
-                    readStream.on("end", function () {
-                        resolve(Buffer.concat(buffers));
-                    });
-                })];
-        });
-    });
-}
-exports.streamToBufferPromise_READABLE = streamToBufferPromise_READABLE;
-function streamToBufferPromise(readStream) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        return tslib_1.__generator(this, function (_a) {
-            return [2, new Promise(function (resolve, reject) {
-                    var buffers = [];
-                    readStream.on("error", reject);
-                    readStream.on("data", function (data) {
-                        buffers.push(data);
-                    });
-                    readStream.on("end", function () {
-                        resolve(Buffer.concat(buffers));
-                    });
-                })];
-        });
-    });
-}
-exports.streamToBufferPromise = streamToBufferPromise;
-
-},{"./BufferReadableStream":4,"tslib":554}],6:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var debug_ = require("debug");
-var stream_1 = require("stream");
-var debug = debug_("r2:RangeStream");
-var RangeStream = (function (_super) {
-    tslib_1.__extends(RangeStream, _super);
-    function RangeStream(streamBegin, streamEnd, streamLength) {
-        var _this = _super.call(this) || this;
-        _this.streamBegin = streamBegin;
-        _this.streamEnd = streamEnd;
-        _this.streamLength = streamLength;
-        _this.bytesReceived = 0;
-        _this.finished = false;
-        _this.closed = false;
-        _this.on("end", function () {
-        });
-        _this.on("finish", function () {
-        });
-        return _this;
-    }
-    RangeStream.prototype._flush = function (callback) {
-        callback();
-    };
-    RangeStream.prototype._transform = function (chunk, _encoding, callback) {
-        this.bytesReceived += chunk.length;
-        if (this.finished) {
-            if (!this.closed) {
-                debug("???? CLOSING...");
-                this.closed = true;
-                this.push(null);
-            }
-            else {
-                debug("???? STILL PIPE CALLING _transform ??!");
-                this.end();
-            }
-        }
-        else {
-            if (this.bytesReceived > this.streamBegin) {
-                var chunkBegin = 0;
-                var chunkEnd = chunk.length - 1;
-                chunkBegin = this.streamBegin - (this.bytesReceived - chunk.length);
-                if (chunkBegin < 0) {
-                    chunkBegin = 0;
-                }
-                if (this.bytesReceived > this.streamEnd) {
-                    this.finished = true;
-                    chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
-                }
-                this.push(chunk.slice(chunkBegin, chunkEnd + 1));
-                if (this.finished) {
-                    this.closed = true;
-                    this.push(null);
-                    this.end();
-                }
-            }
-            else {
-            }
-        }
-        callback();
-    };
-    return RangeStream;
-}(stream_1.Transform));
-exports.RangeStream = RangeStream;
-
-},{"debug":267,"stream":undefined,"tslib":554}],7:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var JsonDateConverter = (function () {
-    function JsonDateConverter() {
-    }
-    JsonDateConverter.prototype.serialize = function (property) {
-        return property.toISOString();
-    };
-    JsonDateConverter.prototype.deserialize = function (value) {
-        return new Date(value);
-    };
-    JsonDateConverter.prototype.collapseArrayWithSingleItem = function () {
-        return false;
-    };
-    return JsonDateConverter;
-}());
-exports.JsonDateConverter = JsonDateConverter;
-
-},{}],8:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var JsonStringConverter = (function () {
-    function JsonStringConverter() {
-    }
-    JsonStringConverter.prototype.serialize = function (property) {
-        return property;
-    };
-    JsonStringConverter.prototype.deserialize = function (value) {
-        return value;
-    };
-    JsonStringConverter.prototype.collapseArrayWithSingleItem = function () {
-        return true;
-    };
-    return JsonStringConverter;
-}());
-exports.JsonStringConverter = JsonStringConverter;
-
-},{}],9:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var property_definition_1 = require("./property-definition");
-var ObjectDefinition = (function () {
-    function ObjectDefinition() {
-        this.ctr = function () { return undefined; };
-        this.beforeDeserialized = function () { return undefined; };
-        this.onDeserialized = function () { return undefined; };
-        this.properties = new Map();
-    }
-    ObjectDefinition.prototype.getProperty = function (key) {
-        var property = this.properties.get(key);
-        if (!property) {
-            property = new property_definition_1.PropertyDefinition();
-            this.properties.set(key, property);
-        }
-        return property;
-    };
-    return ObjectDefinition;
-}());
-exports.ObjectDefinition = ObjectDefinition;
-exports.objectDefinitions = new Map();
-function getDefinition(objectType) {
-    var definition = exports.objectDefinitions.get(objectType);
-    if (!definition) {
-        definition = new ObjectDefinition();
-        exports.objectDefinitions.set(objectType, definition);
-    }
-    return definition;
-}
-exports.getDefinition = getDefinition;
-function getInheritanceChain(objectType) {
-    if (!objectType) {
-        return [];
-    }
-    var parent = Object.getPrototypeOf(objectType);
-    return [objectType.constructor].concat(getInheritanceChain(parent));
-}
-exports.getInheritanceChain = getInheritanceChain;
-function getChildObjectTypeDefinitions(parentObjectType) {
-    var childDefs = [];
-    exports.objectDefinitions.forEach(function (def, objectType) {
-        var superObjectType = Object.getPrototypeOf(objectType.prototype).constructor;
-        if (superObjectType === parentObjectType) {
-            childDefs.push({ functionType: objectType, objectDefinition: def });
-        }
-    });
-    return childDefs;
-}
-function getTypedInheritanceChain(objectType, objectInstance) {
-    var parentDef = exports.objectDefinitions.get(objectType);
-    var childDefs = [];
-    if (objectInstance && parentDef && parentDef.discriminatorProperty) {
-        childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType));
-    }
-    var actualObjectType;
-    while (childDefs.length !== 0 && !actualObjectType) {
-        var ifo = childDefs.shift();
-        var objectType2 = ifo ? ifo.functionType : undefined;
-        var def = ifo ? ifo.objectDefinition : undefined;
-        if (def && def.hasOwnProperty("discriminatorValue")) {
-            if (objectInstance
-                && parentDef
-                && def.discriminatorValue === objectInstance[parentDef.discriminatorProperty]) {
-                if (def.hasOwnProperty("discriminatorProperty")) {
-                    return getTypedInheritanceChain(objectType2, objectInstance);
-                }
-                actualObjectType = objectType2;
-            }
-        }
-        else {
-            childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType2));
-        }
-    }
-    if (!actualObjectType) {
-        actualObjectType = objectType;
-    }
-    var inheritanceChain = new Set(getInheritanceChain(Object.create(actualObjectType.prototype)));
-    return Array.from(inheritanceChain).filter(function (t) { return exports.objectDefinitions.has(t); });
-}
-exports.getTypedInheritanceChain = getTypedInheritanceChain;
-
-},{"./property-definition":10}],10:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var PropertyDefinition = (function () {
-    function PropertyDefinition() {
-        this.array = false;
-        this.set = false;
-        this.readonly = false;
-        this.writeonly = false;
-    }
-    return PropertyDefinition;
-}());
-exports.PropertyDefinition = PropertyDefinition;
-
-},{}],11:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var BufferConverter = (function () {
-    function BufferConverter() {
-        this.encoding = "utf8";
-    }
-    BufferConverter.prototype.serialize = function (property) {
-        return property.toString(this.encoding);
-    };
-    BufferConverter.prototype.deserialize = function (value) {
-        return Buffer.from(value, this.encoding);
-    };
-    BufferConverter.prototype.collapseArrayWithSingleItem = function () {
-        return false;
-    };
-    return BufferConverter;
-}());
-exports.BufferConverter = BufferConverter;
-
-},{}],12:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var buffer_converter_1 = require("./buffer-converter");
-var date_converter_1 = require("./date-converter");
-exports.propertyConverters = new Map();
-exports.propertyConverters.set(Buffer, new buffer_converter_1.BufferConverter());
-exports.propertyConverters.set(Date, new date_converter_1.DateConverter());
-
-},{"./buffer-converter":11,"./date-converter":13}],13:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var DateConverter = (function () {
-    function DateConverter() {
-    }
-    DateConverter.prototype.serialize = function (property) {
-        return property.toISOString();
-    };
-    DateConverter.prototype.deserialize = function (value) {
-        return new Date(value);
-    };
-    DateConverter.prototype.collapseArrayWithSingleItem = function () {
-        return false;
-    };
-    return DateConverter;
-}());
-exports.DateConverter = DateConverter;
-
-},{}],14:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-tslib_1.__exportStar(require("./converter"), exports);
-tslib_1.__exportStar(require("./buffer-converter"), exports);
-tslib_1.__exportStar(require("./date-converter"), exports);
-
-},{"./buffer-converter":11,"./converter":12,"./date-converter":13,"tslib":554}],15:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function BeforeDeserialized() {
-    return function (target, key) {
-        var definition = object_definition_1.getDefinition(target.constructor);
-        definition.beforeDeserialized = target[key];
-    };
-}
-exports.BeforeDeserialized = BeforeDeserialized;
-
-},{"../classes/object-definition":9}],16:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-tslib_1.__exportStar(require("./xml-object"), exports);
-tslib_1.__exportStar(require("./xml-xpathselector"), exports);
-tslib_1.__exportStar(require("./xml-type"), exports);
-tslib_1.__exportStar(require("./xml-item-type"), exports);
-tslib_1.__exportStar(require("./xml-converter"), exports);
-tslib_1.__exportStar(require("./xml-readonly"), exports);
-tslib_1.__exportStar(require("./xml-writeonly"), exports);
-tslib_1.__exportStar(require("./xml-discriminator-property"), exports);
-tslib_1.__exportStar(require("./xml-discriminator-value"), exports);
-tslib_1.__exportStar(require("./xml-constructor"), exports);
-tslib_1.__exportStar(require("./before-deserialized"), exports);
-tslib_1.__exportStar(require("./on-deserialized"), exports);
-
-},{"./before-deserialized":15,"./on-deserialized":17,"./xml-constructor":18,"./xml-converter":19,"./xml-discriminator-property":20,"./xml-discriminator-value":21,"./xml-item-type":22,"./xml-object":23,"./xml-readonly":24,"./xml-type":25,"./xml-writeonly":26,"./xml-xpathselector":27,"tslib":554}],17:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function OnDeserialized() {
-    return function (target, key) {
-        var definition = object_definition_1.getDefinition(target.constructor);
-        definition.onDeserialized = target[key];
-    };
-}
-exports.OnDeserialized = OnDeserialized;
-
-},{"../classes/object-definition":9}],18:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlConstructor() {
-    return function (target, key) {
-        var definition = object_definition_1.getDefinition(target.constructor);
-        definition.ctr = target[key];
-    };
-}
-exports.XmlConstructor = XmlConstructor;
-
-},{"../classes/object-definition":9}],19:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlConverter(converter) {
-    return function (target, key) {
-        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        if (typeof converter === "function") {
-            property.converter = new converter();
-        }
-        else {
-            property.converter = converter;
-        }
-    };
-}
-exports.XmlConverter = XmlConverter;
-
-},{"../classes/object-definition":9}],20:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlDiscriminatorProperty(property) {
-    return function (objectType) {
-        object_definition_1.getDefinition(objectType).discriminatorProperty = property;
-    };
-}
-exports.XmlDiscriminatorProperty = XmlDiscriminatorProperty;
-
-},{"../classes/object-definition":9}],21:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlDiscriminatorValue(value) {
-    return function (objectType) {
-        object_definition_1.getDefinition(objectType).discriminatorValue = value;
-    };
-}
-exports.XmlDiscriminatorValue = XmlDiscriminatorValue;
-
-},{"../classes/object-definition":9}],22:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlItemType(objectType) {
-    return function (target, key) {
-        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.objectType = objectType;
-    };
-}
-exports.XmlItemType = XmlItemType;
-
-},{"../classes/object-definition":9}],23:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlObject(namespaces) {
-    return function (objectType) {
-        var def = object_definition_1.getDefinition(objectType);
-        if (namespaces) {
-            def.namespaces = namespaces;
-        }
-        if (def.namespaces && def.properties) {
-            def.properties.forEach(function (propDef) {
-                if (def.namespaces) {
-                    for (var prop in def.namespaces) {
-                        if (def.namespaces.hasOwnProperty(prop)) {
-                            if (!propDef.namespaces || !propDef.namespaces[prop]) {
-                                if (!propDef.namespaces) {
-                                    propDef.namespaces = {};
-                                }
-                                propDef.namespaces[prop] = def.namespaces[prop];
-                            }
-                        }
-                    }
-                    if (propDef.xpathSelectorParsed) {
-                        propDef.xpathSelectorParsed.forEach(function (xp) {
-                            if (xp.namespacePrefix && !xp.namespaceUri) {
-                                xp.namespaceUri = propDef.namespaces ?
-                                    propDef.namespaces[xp.namespacePrefix] :
-                                    undefined;
-                            }
-                        });
-                    }
-                }
-            });
-        }
-    };
-}
-exports.XmlObject = XmlObject;
-
-},{"../classes/object-definition":9}],24:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlReadonly() {
-    return function (target, key) {
-        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.readonly = true;
-    };
-}
-exports.XmlReadonly = XmlReadonly;
-
-},{"../classes/object-definition":9}],25:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlType(objectType) {
-    return function (target, key) {
-        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.objectType = objectType;
-    };
-}
-exports.XmlType = XmlType;
-
-},{"../classes/object-definition":9}],26:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var object_definition_1 = require("../classes/object-definition");
-function XmlWriteonly() {
-    return function (target, key) {
-        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
-        property.writeonly = true;
-    };
-}
-exports.XmlWriteonly = XmlWriteonly;
-
-},{"../classes/object-definition":9}],27:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-require("reflect-metadata");
-var object_definition_1 = require("../classes/object-definition");
-function XmlXPathSelector(selector, namespaces) {
-    return function (target, key) {
-        var objectType = Reflect.getMetadata("design:type", target, key);
-        var objDef = object_definition_1.getDefinition(target.constructor);
-        var property = objDef.getProperty(key);
-        property.xpathSelector = selector;
-        if (namespaces) {
-            property.namespaces = namespaces;
-        }
-        property.array = objectType === Array;
-        property.set = objectType === Set;
-        if (!property.array && !property.set && !property.objectType) {
-            property.objectType = objectType;
-        }
-        if (property.xpathSelector.indexOf("|") < 0
-            && property.xpathSelector.indexOf(">") < 0
-            && property.xpathSelector.indexOf("*") < 0
-            && property.xpathSelector.indexOf("||") < 0
-            && property.xpathSelector.indexOf("[") < 0
-            && property.xpathSelector.indexOf("]") < 0) {
-            property.xpathSelectorParsed = [];
-            var items = property.xpathSelector.split("/");
-            items.forEach(function (item) {
-                if (!item.length) {
-                    return;
-                }
-                var subitems = item.split(":");
-                var isAttribute = item[0] === "@";
-                var isText = item === "text()";
-                var localName = subitems.length > 1 ?
-                    subitems[1] :
-                    (isAttribute ? subitems[0].substr(1) : subitems[0]);
-                var namespacePrefix = subitems.length > 1 ?
-                    (isAttribute ? subitems[0].substr(1) : subitems[0]) :
-                    undefined;
-                var namespaceUri = namespacePrefix ?
-                    (namespaces ? namespaces[namespacePrefix] : undefined) :
-                    undefined;
-                var xItem = {
-                    isAttribute: isAttribute,
-                    isText: isText,
-                    localName: localName,
-                    namespacePrefix: namespacePrefix,
-                    namespaceUri: namespaceUri,
-                };
-                property.xpathSelectorParsed.push(xItem);
-            });
-        }
-    };
-}
-exports.XmlXPathSelector = XmlXPathSelector;
-
-},{"../classes/object-definition":9,"reflect-metadata":464}],28:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-tslib_1.__exportStar(require("./xml"), exports);
-tslib_1.__exportStar(require("./decorators"), exports);
-tslib_1.__exportStar(require("./converters"), exports);
-
-},{"./converters":14,"./decorators":16,"./xml":30,"tslib":554}],29:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xpath = require("xpath");
-var object_definition_1 = require("../classes/object-definition");
-var converter_1 = require("../converters/converter");
-function deserialize(objectInstance, objectType, options) {
-    if (options === void 0) { options = { runConstructor: false }; }
-    return deserializeRootObject(objectInstance, objectType, options);
-}
-exports.deserialize = deserialize;
-function deserializeRootObject(objectInstance, objectType, options) {
-    if (objectType === void 0) { objectType = Object; }
-    if (!object_definition_1.objectDefinitions.has(objectType)) {
-        return undefined;
-    }
-    var _a = object_definition_1.getTypedInheritanceChain(objectType, objectInstance), objectType2 = _a[0], superTypes = _a.slice(1);
-    var output = Object.create(objectType2.prototype);
-    var definitions = superTypes.reverse().concat([objectType2]).map(function (t) { return object_definition_1.objectDefinitions.get(t); })
-        .filter(function (t) { return !!t; });
-    definitions.forEach(function (d) {
-        if (!d) {
-            return;
-        }
-        if (options.runConstructor) {
-            d.ctr.call(output);
-        }
-        d.beforeDeserialized.call(output);
-        d.properties.forEach(function (p, key) {
-            if (!p.objectType) {
-                throw new Error("Cannot deserialize property \"" + key + "\" without type!");
-            }
-            if (p.readonly) {
-                return;
-            }
-            if (p.xpathSelectorParsed) {
-                var xpathMatched_1 = [];
-                var currentNodes_1 = [objectInstance];
-                p.xpathSelectorParsed.forEach(function (item, index) {
-                    var nextCurrentNodes = [];
-                    currentNodes_1.forEach(function (currentNode) {
-                        if (item.isText) {
-                            var textNode = currentNode.firstChild;
-                            if (currentNode.childNodes && currentNode.childNodes.length) {
-                                for (var i = 0; i < currentNode.childNodes.length; i++) {
-                                    var childNode = currentNode.childNodes.item(i);
-                                    if (childNode.nodeType === 3) {
-                                        textNode = childNode;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (textNode) {
-                                xpathMatched_1.push(textNode);
-                            }
-                        }
-                        else if (item.isAttribute) {
-                            if (currentNode.attributes) {
-                                var attr = item.namespaceUri ?
-                                    currentNode.attributes.getNamedItemNS(item.namespaceUri, item.localName) :
-                                    currentNode.attributes.getNamedItem(item.localName);
-                                if (attr) {
-                                    xpathMatched_1.push(attr);
-                                }
-                            }
-                        }
-                        else {
-                            if (currentNode.childNodes && currentNode.childNodes.length) {
-                                for (var i = 0; i < currentNode.childNodes.length; i++) {
-                                    var childNode = currentNode.childNodes.item(i);
-                                    if (childNode.nodeType !== 1) {
-                                        continue;
-                                    }
-                                    if (childNode.localName !== item.localName) {
-                                        continue;
-                                    }
-                                    if (item.namespaceUri && item.namespaceUri !== childNode.namespaceURI) {
-                                        continue;
-                                    }
-                                    nextCurrentNodes.push(childNode);
-                                }
-                            }
-                        }
-                    });
-                    currentNodes_1 = nextCurrentNodes;
-                    if (index === p.xpathSelectorParsed.length - 1) {
-                        currentNodes_1.forEach(function (node) {
-                            xpathMatched_1.push(node);
-                        });
-                    }
-                });
-                if (xpathMatched_1 && xpathMatched_1.length) {
-                    if (p.array || p.set) {
-                        output[key] = [];
-                        xpathMatched_1.forEach(function (item) {
-                            output[key].push(deserializeObject(item, p, options));
-                        });
-                        if (p.set) {
-                            output[key] = new Set(output[key]);
-                        }
-                        return;
-                    }
-                    output[key] = deserializeObject(xpathMatched_1[0], p, options);
-                }
-            }
-            else {
-                var select = xpath.useNamespaces(p.namespaces || {});
-                var xPathSelected = select(p.xpathSelector, objectInstance);
-                if (xPathSelected && xPathSelected.length) {
-                    var xpathMatched_2 = [];
-                    if (!(xPathSelected instanceof Array)) {
-                        xpathMatched_2.push(xPathSelected);
-                    }
-                    else {
-                        xPathSelected.forEach(function (item) {
-                            xpathMatched_2.push(item);
-                        });
-                    }
-                    if (p.array || p.set) {
-                        output[key] = [];
-                        xpathMatched_2.forEach(function (item) {
-                            output[key].push(deserializeObject(item, p, options));
-                        });
-                        if (p.set) {
-                            output[key] = new Set(output[key]);
-                        }
-                        return;
-                    }
-                    output[key] = deserializeObject(xpathMatched_2[0], p, options);
-                }
-            }
-        });
-        d.onDeserialized.call(output);
-    });
-    return output;
-}
-function deserializeObject(objectInstance, definition, _options) {
-    var primitive = definition.objectType === String
-        || definition.objectType === Boolean
-        || definition.objectType === Number;
-    var value = objectInstance.nodeType === 3 ?
-        objectInstance.data :
-        (objectInstance.nodeType === 2 ?
-            objectInstance.value :
-            (objectInstance.nodeType === 1 ?
-                objectInstance.localName :
-                objectInstance.nodeValue));
-    var converter = definition.converter || converter_1.propertyConverters.get(definition.objectType);
-    if (converter) {
-        return converter.deserialize(value);
-    }
-    if (!primitive) {
-        var objDefinition = object_definition_1.objectDefinitions.get(definition.objectType);
-        if (objDefinition) {
-            return deserialize(objectInstance, definition.objectType);
-        }
-    }
-    return value;
-}
-
-},{"../classes/object-definition":9,"../converters/converter":12,"xpath":576}],30:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var deserialize_1 = require("./methods/deserialize");
-var XML = (function () {
-    function XML() {
-    }
-    XML.deserialize = function (objectInstance, objectType, options) {
-        if (objectInstance.nodeType === 9) {
-            objectInstance = objectInstance.documentElement;
-        }
-        return deserialize_1.deserialize(objectInstance, objectType, options);
-    };
-    return XML;
-}());
-exports.XML = XML;
-
-},{"./methods/deserialize":29}],31:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var RangeStream_1 = require("../stream/RangeStream");
-var Zip = (function () {
-    function Zip() {
-    }
-    Zip.prototype.entryStreamRangePromise = function (entryPath, begin, end) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var streamAndLength, err_1, b, e, stream, sal;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4, this.entryStreamPromise(entryPath)];
-                    case 1:
-                        streamAndLength = _a.sent();
-                        return [3, 3];
-                    case 2:
-                        err_1 = _a.sent();
-                        console.log(err_1);
-                        return [2, Promise.reject(err_1)];
-                    case 3:
-                        streamAndLength = streamAndLength;
-                        b = begin < 0 ? 0 : begin;
-                        e = end < 0 ? (streamAndLength.length - 1) : end;
-                        stream = new RangeStream_1.RangeStream(b, e, streamAndLength.length);
-                        streamAndLength.stream.pipe(stream);
-                        sal = {
-                            length: streamAndLength.length,
-                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                return tslib_1.__generator(this, function (_a) {
-                                    return [2, this.entryStreamRangePromise(entryPath, begin, end)];
-                                });
-                            }); },
-                            stream: stream,
-                        };
-                        return [2, sal];
-                }
-            });
-        });
-    };
-    return Zip;
-}());
-exports.Zip = Zip;
-
-},{"../stream/RangeStream":6,"tslib":554}],32:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var debug_ = require("debug");
-var StreamZip = require("node-stream-zip");
-var zip_1 = require("./zip");
-var debug = debug_("r2:zip1");
-var Zip1 = (function (_super) {
-    tslib_1.__extends(Zip1, _super);
-    function Zip1(filePath, zip) {
-        var _this = _super.call(this) || this;
-        _this.filePath = filePath;
-        _this.zip = zip;
-        return _this;
-    }
-    Zip1.loadPromise = function (filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
-                return [2, new Promise(function (resolve, reject) {
-                        var zip = new StreamZip({
-                            file: filePath,
-                            storeEntries: true,
-                        });
-                        zip.on("error", function (err) {
-                            debug("--ZIP error: " + filePath);
-                            debug(err);
-                            reject(err);
-                        });
-                        zip.on("entry", function (_entry) {
-                        });
-                        zip.on("extract", function (entry, file) {
-                            debug("--ZIP extract:");
-                            debug(entry.name);
-                            debug(file);
-                        });
-                        zip.on("ready", function () {
-                            resolve(new Zip1(filePath, zip));
-                        });
-                    })];
-            });
-        });
-    };
-    Zip1.prototype.freeDestroy = function () {
-        debug("freeDestroy: Zip1 -- " + this.filePath);
-        if (this.zip) {
-            this.zip.close();
-        }
-    };
-    Zip1.prototype.entriesCount = function () {
-        return this.zip.entriesCount;
-    };
-    Zip1.prototype.hasEntries = function () {
-        return this.entriesCount() > 0;
-    };
-    Zip1.prototype.hasEntry = function (entryPath) {
-        return this.hasEntries()
-            && this.zip.entries()[entryPath];
-    };
-    Zip1.prototype.forEachEntry = function (callback) {
-        if (!this.hasEntries()) {
-            return;
-        }
-        Object.keys(this.zip.entries()).forEach(function (entryName) {
-            callback(entryName);
-        });
-    };
-    Zip1.prototype.entryStreamPromise = function (entryPath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return tslib_1.__generator(this, function (_a) {
-                if (!this.hasEntries() || !this.hasEntry(entryPath)) {
-                    return [2, Promise.reject("no such path in zip: " + entryPath)];
-                }
-                return [2, new Promise(function (resolve, reject) {
-                        _this.zip.stream(entryPath, function (err, stream) {
-                            if (err) {
-                                reject(err);
-                                return;
-                            }
-                            var entry = _this.zip.entries()[entryPath];
-                            var streamAndLength = {
-                                length: entry.size,
-                                reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                    return tslib_1.__generator(this, function (_a) {
-                                        return [2, this.entryStreamPromise(entryPath)];
-                                    });
-                                }); },
-                                stream: stream,
-                            };
-                            resolve(streamAndLength);
-                        });
-                    })];
-            });
-        });
-    };
-    return Zip1;
-}(zip_1.Zip));
-exports.Zip1 = Zip1;
-
-},{"./zip":31,"debug":267,"node-stream-zip":445,"tslib":554}],33:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var debug_ = require("debug");
-var request = require("request");
-var requestPromise = require("request-promise-native");
-var yauzl = require("yauzl");
-var UrlUtils_1 = require("../http/UrlUtils");
-var BufferUtils_1 = require("../stream/BufferUtils");
-var zip_1 = require("./zip");
-var zip2RandomAccessReader_Http_1 = require("./zip2RandomAccessReader_Http");
-var debug = debug_("r2:zip2");
-var Zip2 = (function (_super) {
-    tslib_1.__extends(Zip2, _super);
-    function Zip2(filePath, zip) {
-        var _this = _super.call(this) || this;
-        _this.filePath = filePath;
-        _this.zip = zip;
-        _this.entries = {};
-        return _this;
-    }
-    Zip2.loadPromise = function (filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
-                if (UrlUtils_1.isHTTP(filePath)) {
-                    return [2, Zip2.loadPromiseHTTP(filePath)];
-                }
-                return [2, new Promise(function (resolve, reject) {
-                        yauzl.open(filePath, { lazyEntries: true, autoClose: false }, function (err, zip) {
-                            if (err) {
-                                debug("yauzl init ERROR");
-                                debug(err);
-                                reject(err);
-                                return;
-                            }
-                            var zip2 = new Zip2(filePath, zip);
-                            zip.on("error", function (erro) {
-                                debug("yauzl ERROR");
-                                debug(erro);
-                                reject(erro);
-                            });
-                            zip.readEntry();
-                            zip.on("entry", function (entry) {
-                                if (entry.fileName[entry.fileName.length - 1] === "/") {
-                                }
-                                else {
-                                    zip2.addEntry(entry);
-                                }
-                                zip.readEntry();
-                            });
-                            zip.on("end", function () {
-                                debug("yauzl END");
-                                resolve(zip2);
-                            });
-                            zip.on("close", function () {
-                                debug("yauzl CLOSE");
-                            });
-                        });
-                    })];
-            });
-        });
-    };
-    Zip2.loadPromiseHTTP = function (filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var needsStreamingResponse;
-            return tslib_1.__generator(this, function (_a) {
-                needsStreamingResponse = true;
-                return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                        var _this = this;
-                        var failure, success, res, err_1;
-                        return tslib_1.__generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0:
-                                    failure = function (err) {
-                                        debug(err);
-                                        reject(err);
-                                    };
-                                    success = function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                        var _this = this;
-                                        var httpZipByteLength, failure_1, success_, ress, err_2, httpZipReader;
-                                        return tslib_1.__generator(this, function (_a) {
-                                            switch (_a.label) {
-                                                case 0:
-                                                    if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
-                                                        failure("HTTP CODE " + res.statusCode);
-                                                        return [2];
-                                                    }
-                                                    debug(filePath);
-                                                    debug(res.headers);
-                                                    if (!res.headers["content-length"]) {
-                                                        reject("content-length not supported!");
-                                                        return [2];
-                                                    }
-                                                    httpZipByteLength = parseInt(res.headers["content-length"], 10);
-                                                    debug("Content-Length: " + httpZipByteLength);
-                                                    if (!(!res.headers["accept-ranges"]
-                                                        || res.headers["accept-ranges"] !== "bytes")) return [3, 8];
-                                                    if (httpZipByteLength > (2 * 1024 * 1024)) {
-                                                        reject("accept-ranges not supported, file too big to download: " + httpZipByteLength);
-                                                        return [2];
-                                                    }
-                                                    debug("Downloading: " + filePath);
-                                                    failure_1 = function (err) {
-                                                        debug(err);
-                                                        reject(err);
-                                                    };
-                                                    success_ = function (ress) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                                        var buffer, err_3;
-                                                        return tslib_1.__generator(this, function (_a) {
-                                                            switch (_a.label) {
-                                                                case 0:
-                                                                    if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
-                                                                        failure_1("HTTP CODE " + ress.statusCode);
-                                                                        return [2];
-                                                                    }
-                                                                    _a.label = 1;
-                                                                case 1:
-                                                                    _a.trys.push([1, 3, , 4]);
-                                                                    return [4, BufferUtils_1.streamToBufferPromise(ress)];
-                                                                case 2:
-                                                                    buffer = _a.sent();
-                                                                    return [3, 4];
-                                                                case 3:
-                                                                    err_3 = _a.sent();
-                                                                    debug(err_3);
-                                                                    reject(err_3);
-                                                                    return [2];
-                                                                case 4:
-                                                                    yauzl.fromBuffer(buffer, { lazyEntries: true }, function (err, zip) {
-                                                                        if (err) {
-                                                                            debug("yauzl init ERROR");
-                                                                            debug(err);
-                                                                            reject(err);
-                                                                            return;
-                                                                        }
-                                                                        var zip2 = new Zip2(filePath, zip);
-                                                                        zip.on("error", function (erro) {
-                                                                            debug("yauzl ERROR");
-                                                                            debug(erro);
-                                                                            reject(erro);
-                                                                        });
-                                                                        zip.readEntry();
-                                                                        zip.on("entry", function (entry) {
-                                                                            if (entry.fileName[entry.fileName.length - 1] === "/") {
-                                                                            }
-                                                                            else {
-                                                                                zip2.addEntry(entry);
-                                                                            }
-                                                                            zip.readEntry();
-                                                                        });
-                                                                        zip.on("end", function () {
-                                                                            debug("yauzl END");
-                                                                            resolve(zip2);
-                                                                        });
-                                                                        zip.on("close", function () {
-                                                                            debug("yauzl CLOSE");
-                                                                        });
-                                                                    });
-                                                                    return [2];
-                                                            }
-                                                        });
-                                                    }); };
-                                                    if (!needsStreamingResponse) return [3, 1];
-                                                    request.get({
-                                                        headers: {},
-                                                        method: "GET",
-                                                        uri: filePath,
-                                                    })
-                                                        .on("response", success_)
-                                                        .on("error", failure_1);
-                                                    return [3, 7];
-                                                case 1:
-                                                    ress = void 0;
-                                                    _a.label = 2;
-                                                case 2:
-                                                    _a.trys.push([2, 4, , 5]);
-                                                    return [4, requestPromise({
-                                                            headers: {},
-                                                            method: "GET",
-                                                            resolveWithFullResponse: true,
-                                                            uri: filePath,
-                                                        })];
-                                                case 3:
-                                                    ress = _a.sent();
-                                                    return [3, 5];
-                                                case 4:
-                                                    err_2 = _a.sent();
-                                                    failure_1(err_2);
-                                                    return [2];
-                                                case 5: return [4, success_(ress)];
-                                                case 6:
-                                                    _a.sent();
-                                                    _a.label = 7;
-                                                case 7: return [2];
-                                                case 8:
-                                                    httpZipReader = new zip2RandomAccessReader_Http_1.HttpZipReader(filePath, httpZipByteLength);
-                                                    yauzl.fromRandomAccessReader(httpZipReader, httpZipByteLength, { lazyEntries: true, autoClose: false }, function (err, zip) {
-                                                        if (err) {
-                                                            debug("yauzl init ERROR");
-                                                            debug(err);
-                                                            reject(err);
-                                                            return;
-                                                        }
-                                                        zip.httpZipReader = httpZipReader;
-                                                        var zip2 = new Zip2(filePath, zip);
-                                                        zip.on("error", function (erro) {
-                                                            debug("yauzl ERROR");
-                                                            debug(erro);
-                                                            reject(erro);
-                                                        });
-                                                        zip.readEntry();
-                                                        zip.on("entry", function (entry) {
-                                                            if (entry.fileName[entry.fileName.length - 1] === "/") {
-                                                            }
-                                                            else {
-                                                                zip2.addEntry(entry);
-                                                            }
-                                                            zip.readEntry();
-                                                        });
-                                                        zip.on("end", function () {
-                                                            debug("yauzl END");
-                                                            resolve(zip2);
-                                                        });
-                                                        zip.on("close", function () {
-                                                            debug("yauzl CLOSE");
-                                                        });
-                                                    });
-                                                    return [2];
-                                            }
-                                        });
-                                    }); };
-                                    if (!needsStreamingResponse) return [3, 1];
-                                    request.get({
-                                        headers: {},
-                                        method: "HEAD",
-                                        uri: filePath,
-                                    })
-                                        .on("response", success)
-                                        .on("error", failure);
-                                    return [3, 7];
-                                case 1:
-                                    res = void 0;
-                                    _a.label = 2;
-                                case 2:
-                                    _a.trys.push([2, 4, , 5]);
-                                    return [4, requestPromise({
-                                            headers: {},
-                                            method: "HEAD",
-                                            resolveWithFullResponse: true,
-                                            uri: filePath,
-                                        })];
-                                case 3:
-                                    res = _a.sent();
-                                    return [3, 5];
-                                case 4:
-                                    err_1 = _a.sent();
-                                    failure(err_1);
-                                    return [2];
-                                case 5: return [4, success(res)];
-                                case 6:
-                                    _a.sent();
-                                    _a.label = 7;
-                                case 7: return [2];
-                            }
-                        });
-                    }); })];
-            });
-        });
-    };
-    Zip2.prototype.freeDestroy = function () {
-        debug("freeDestroy: Zip2 -- " + this.filePath);
-        if (this.zip) {
-            this.zip.close();
-        }
-    };
-    Zip2.prototype.entriesCount = function () {
-        return this.zip.entryCount;
-    };
-    Zip2.prototype.hasEntries = function () {
-        return this.entriesCount() > 0;
-    };
-    Zip2.prototype.hasEntry = function (entryPath) {
-        return this.hasEntries() && this.entries[entryPath];
-    };
-    Zip2.prototype.forEachEntry = function (callback) {
-        if (!this.hasEntries()) {
-            return;
-        }
-        Object.keys(this.entries).forEach(function (entryName) {
-            callback(entryName);
-        });
-    };
-    Zip2.prototype.entryStreamPromise = function (entryPath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var entry;
-            return tslib_1.__generator(this, function (_a) {
-                if (!this.hasEntries() || !this.hasEntry(entryPath)) {
-                    return [2, Promise.reject("no such path in zip: " + entryPath)];
-                }
-                entry = this.entries[entryPath];
-                return [2, new Promise(function (resolve, reject) {
-                        _this.zip.openReadStream(entry, function (err, stream) {
-                            if (err) {
-                                debug("yauzl openReadStream ERROR");
-                                debug(err);
-                                reject(err);
-                                return;
-                            }
-                            var streamAndLength = {
-                                length: entry.uncompressedSize,
-                                reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                    return tslib_1.__generator(this, function (_a) {
-                                        return [2, this.entryStreamPromise(entryPath)];
-                                    });
-                                }); },
-                                stream: stream,
-                            };
-                            resolve(streamAndLength);
-                        });
-                    })];
-            });
-        });
-    };
-    Zip2.prototype.addEntry = function (entry) {
-        this.entries[entry.fileName] = entry;
-    };
-    return Zip2;
-}(zip_1.Zip));
-exports.Zip2 = Zip2;
-
-},{"../http/UrlUtils":3,"../stream/BufferUtils":5,"./zip":31,"./zip2RandomAccessReader_Http":34,"debug":267,"request":469,"request-promise-native":468,"tslib":554,"yauzl":577}],34:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var stream_1 = require("stream");
-var util = require("util");
-var debug_ = require("debug");
-var request = require("request");
-var requestPromise = require("request-promise-native");
-var yauzl = require("yauzl");
-var BufferUtils_1 = require("../stream/BufferUtils");
-var debug = debug_("r2:httpStream");
-var HttpZipReader = (function () {
-    function HttpZipReader(url, byteLength) {
-        this.url = url;
-        this.byteLength = byteLength;
-        this.firstBuffer = undefined;
-        this.firstBufferStart = 0;
-        this.firstBufferEnd = 0;
-        yauzl.RandomAccessReader.call(this);
-    }
-    HttpZipReader.prototype._readStreamForRange = function (start, end) {
-        var _this = this;
-        if (this.firstBuffer && start >= this.firstBufferStart && end <= this.firstBufferEnd) {
-            var begin = start - this.firstBufferStart;
-            var stop_1 = end - this.firstBufferStart;
-            return BufferUtils_1.bufferToStream(this.firstBuffer.slice(begin, stop_1));
-        }
-        var stream = new stream_1.PassThrough();
-        var lastByteIndex = end - 1;
-        var range = start + "-" + lastByteIndex;
-        var failure = function (err) {
-            debug(err);
-        };
-        var success = function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-            var buffer, err_1;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
-                            failure("HTTP CODE " + res.statusCode);
-                            return [2];
-                        }
-                        if (!this.firstBuffer) return [3, 1];
-                        res.pipe(stream);
-                        return [3, 6];
-                    case 1:
-                        buffer = void 0;
-                        _a.label = 2;
-                    case 2:
-                        _a.trys.push([2, 4, , 5]);
-                        return [4, BufferUtils_1.streamToBufferPromise(res)];
-                    case 3:
-                        buffer = _a.sent();
-                        return [3, 5];
-                    case 4:
-                        err_1 = _a.sent();
-                        debug(err_1);
-                        stream.end();
-                        return [2];
-                    case 5:
-                        this.firstBuffer = buffer;
-                        this.firstBufferStart = start;
-                        this.firstBufferEnd = end;
-                        stream.write(buffer);
-                        stream.end();
-                        _a.label = 6;
-                    case 6: return [2];
-                }
-            });
-        }); };
-        var needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers: { Range: "bytes=" + range },
-                method: "GET",
-                uri: this.url,
-            })
-                .on("response", success)
-                .on("error", failure);
-        }
-        else {
-            (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                var res, err_2;
-                return tslib_1.__generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            _a.trys.push([0, 2, , 3]);
-                            return [4, requestPromise({
-                                    headers: { Range: "bytes=" + range },
-                                    method: "GET",
-                                    resolveWithFullResponse: true,
-                                    uri: this.url,
-                                })];
-                        case 1:
-                            res = _a.sent();
-                            return [3, 3];
-                        case 2:
-                            err_2 = _a.sent();
-                            failure(err_2);
-                            return [2];
-                        case 3: return [4, success(res)];
-                        case 4:
-                            _a.sent();
-                            return [2];
-                    }
-                });
-            }); })();
-        }
-        return stream;
-    };
-    return HttpZipReader;
-}());
-exports.HttpZipReader = HttpZipReader;
-util.inherits(HttpZipReader, yauzl.RandomAccessReader);
-
-},{"../stream/BufferUtils":5,"debug":267,"request":469,"request-promise-native":468,"stream":undefined,"tslib":554,"util":undefined,"yauzl":577}],35:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var UrlUtils_1 = require("../http/UrlUtils");
-var zip1_1 = require("./zip1");
-var zip2_1 = require("./zip2");
-function zipLoadPromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        return tslib_1.__generator(this, function (_a) {
-            if (UrlUtils_1.isHTTP(filePath)) {
-                return [2, zip2_1.Zip2.loadPromise(filePath)];
-            }
-            return [2, zip1_1.Zip1.loadPromise(filePath)];
-        });
-    });
-}
-exports.zipLoadPromise = zipLoadPromise;
-
-},{"../http/UrlUtils":3,"./zip1":32,"./zip2":33,"tslib":554}],36:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var path = require("path");
-var transformer_1 = require("../transform/transformer");
-var RangeUtils_1 = require("../_utils/http/RangeUtils");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var transformer_1 = require("r2-shared-js/dist/es5/src/transform/transformer");
+var RangeUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/RangeUtils");
+var BufferUtils_1 = require("r2-shared-js/dist/es5/src/_utils/stream/BufferUtils");
 var debug_ = require("debug");
 var express = require("express");
 var mime = require("mime-types");
@@ -1838,7 +267,7 @@ function serverAssets(server, routerPathBase64) {
 }
 exports.serverAssets = serverAssets;
 
-},{"../_utils/http/RangeUtils":2,"../_utils/stream/BufferUtils":5,"../transform/transformer":136,"debug":267,"express":283,"mime-types":429,"path":undefined,"tslib":554}],37:[function(require,module,exports){
+},{"debug":142,"express":158,"mime-types":303,"path":undefined,"r2-shared-js/dist/es5/src/_utils/http/RangeUtils":337,"r2-shared-js/dist/es5/src/_utils/stream/BufferUtils":340,"r2-shared-js/dist/es5/src/transform/transformer":460,"tslib":553}],2:[function(require,module,exports){
 "use strict";
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -1847,8 +276,8 @@ var fs = require("fs");
 var path = require("path");
 var debug_ = require("debug");
 var filehound = require("filehound");
-var lcp_1 = require("../parser/epub/lcp");
-var init_globals_1 = require("../init-globals");
+var lcp_1 = require("r2-shared-js/dist/es5/src/parser/epub/lcp");
+var init_globals_1 = require("r2-shared-js/dist/es5/src/init-globals");
 var server_1 = require("./server");
 init_globals_1.initGlobals();
 lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
@@ -1911,15 +340,15 @@ else {
     server.start(0);
 }
 
-},{"../init-globals":47,"../parser/epub/lcp":107,"./server":46,"debug":267,"filehound":308,"fs":undefined,"path":undefined,"tslib":554}],38:[function(require,module,exports){
+},{"./server":11,"debug":142,"filehound":183,"fs":undefined,"path":undefined,"r2-shared-js/dist/es5/src/init-globals":371,"r2-shared-js/dist/es5/src/parser/epub/lcp":431,"tslib":553}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var path = require("path");
-var epub_1 = require("../parser/epub");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
-var JsonUtils_1 = require("../_utils/JsonUtils");
+var epub_1 = require("r2-shared-js/dist/es5/src/parser/epub");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
+var JsonUtils_1 = require("r2-shared-js/dist/es5/src/_utils/JsonUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
@@ -2205,15 +634,15 @@ function serverManifestJson(server, routerPathBase64) {
 }
 exports.serverManifestJson = serverManifestJson;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../parser/epub":87,"crypto":undefined,"css2json":264,"debug":267,"express":283,"json-markup":406,"path":undefined,"ta-json":541,"tslib":554}],39:[function(require,module,exports){
+},{"crypto":undefined,"css2json":139,"debug":142,"express":158,"json-markup":280,"path":undefined,"r2-shared-js/dist/es5/src/_utils/JsonUtils":336,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es5/src/parser/epub":411,"ta-json":540,"tslib":553}],4:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var path = require("path");
-var epub_1 = require("../parser/epub");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
-var JsonUtils_1 = require("../_utils/JsonUtils");
+var epub_1 = require("r2-shared-js/dist/es5/src/parser/epub");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
+var JsonUtils_1 = require("r2-shared-js/dist/es5/src/_utils/JsonUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
@@ -2358,15 +787,15 @@ function serverMediaOverlays(server, routerPathBase64) {
 }
 exports.serverMediaOverlays = serverMediaOverlays;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../parser/epub":87,"crypto":undefined,"css2json":264,"debug":267,"express":283,"json-markup":406,"path":undefined,"ta-json":541,"tslib":554}],40:[function(require,module,exports){
+},{"crypto":undefined,"css2json":139,"debug":142,"express":158,"json-markup":280,"path":undefined,"r2-shared-js/dist/es5/src/_utils/JsonUtils":336,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es5/src/parser/epub":411,"ta-json":540,"tslib":553}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var opds_1 = require("../opds/opds1/opds");
-var opds_entry_1 = require("../opds/opds1/opds-entry");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+var opds_1 = require("r2-shared-js/dist/es5/src/opds/opds1/opds");
+var opds_entry_1 = require("r2-shared-js/dist/es5/src/opds/opds1/opds-entry");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
+var BufferUtils_1 = require("r2-shared-js/dist/es5/src/_utils/stream/BufferUtils");
+var xml_js_mapper_1 = require("r2-shared-js/dist/es5/src/_utils/xml-js-mapper");
 var debug_ = require("debug");
 var express = require("express");
 var morgan = require("morgan");
@@ -2609,16 +1038,16 @@ function serverOPDS(_server, topRouter) {
 }
 exports.serverOPDS = serverOPDS;
 
-},{"../_utils/http/UrlUtils":3,"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../opds/opds1/opds":68,"../opds/opds1/opds-entry":64,"./server-trailing-slash-redirect":44,"debug":267,"express":283,"morgan":434,"request":469,"request-promise-native":468,"tslib":554,"xmldom":573}],41:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"debug":142,"express":158,"morgan":308,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es5/src/_utils/stream/BufferUtils":340,"r2-shared-js/dist/es5/src/_utils/xml-js-mapper":363,"r2-shared-js/dist/es5/src/opds/opds1/opds":392,"r2-shared-js/dist/es5/src/opds/opds1/opds-entry":388,"request":468,"request-promise-native":467,"tslib":553,"xmldom":572}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var converter_1 = require("../opds/converter");
-var opds_1 = require("../opds/opds1/opds");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
-var JsonUtils_1 = require("../_utils/JsonUtils");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+var converter_1 = require("r2-shared-js/dist/es5/src/opds/converter");
+var opds_1 = require("r2-shared-js/dist/es5/src/opds/opds1/opds");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
+var JsonUtils_1 = require("r2-shared-js/dist/es5/src/_utils/JsonUtils");
+var BufferUtils_1 = require("r2-shared-js/dist/es5/src/_utils/stream/BufferUtils");
+var xml_js_mapper_1 = require("r2-shared-js/dist/es5/src/_utils/xml-js-mapper");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
@@ -2808,13 +1237,13 @@ function serverOPDS12(_server, topRouter) {
 }
 exports.serverOPDS12 = serverOPDS12;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../opds/converter":61,"../opds/opds1/opds":68,"./server-trailing-slash-redirect":44,"css2json":264,"debug":267,"express":283,"json-markup":406,"morgan":434,"request":469,"request-promise-native":468,"ta-json":541,"tslib":554,"xmldom":573}],42:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"css2json":139,"debug":142,"express":158,"json-markup":280,"morgan":308,"r2-shared-js/dist/es5/src/_utils/JsonUtils":336,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es5/src/_utils/stream/BufferUtils":340,"r2-shared-js/dist/es5/src/_utils/xml-js-mapper":363,"r2-shared-js/dist/es5/src/opds/converter":385,"r2-shared-js/dist/es5/src/opds/opds1/opds":392,"request":468,"request-promise-native":467,"ta-json":540,"tslib":553,"xmldom":572}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var crypto = require("crypto");
-var opds2_link_1 = require("../opds/opds2/opds2-link");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
-var JsonUtils_1 = require("../_utils/JsonUtils");
+var opds2_link_1 = require("r2-shared-js/dist/es5/src/opds/opds2/opds2-link");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
+var JsonUtils_1 = require("r2-shared-js/dist/es5/src/_utils/JsonUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
@@ -2947,7 +1376,7 @@ function serverOPDS2(server, topRouter) {
 }
 exports.serverOPDS2 = serverOPDS2;
 
-},{"../_utils/JsonUtils":1,"../_utils/http/UrlUtils":3,"../opds/opds2/opds2-link":76,"./server-trailing-slash-redirect":44,"crypto":undefined,"css2json":264,"debug":267,"express":283,"json-markup":406,"ta-json":541}],43:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"crypto":undefined,"css2json":139,"debug":142,"express":158,"json-markup":280,"r2-shared-js/dist/es5/src/_utils/JsonUtils":336,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es5/src/opds/opds2/opds2-link":400,"ta-json":540}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var path = require("path");
@@ -2955,7 +1384,7 @@ var querystring = require("querystring");
 var debug_ = require("debug");
 var express = require("express");
 var morgan = require("morgan");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:server:pub");
 function serverPub(server, topRouter) {
@@ -3034,7 +1463,7 @@ function serverPub(server, topRouter) {
 }
 exports.serverPub = serverPub;
 
-},{"../_utils/http/UrlUtils":3,"./server-trailing-slash-redirect":44,"debug":267,"express":283,"morgan":434,"path":undefined,"querystring":undefined}],44:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"debug":142,"express":158,"morgan":308,"path":undefined,"querystring":undefined,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var debug_ = require("debug");
@@ -3058,7 +1487,7 @@ function trailingSlashRedirect(req, res, next) {
 }
 exports.trailingSlashRedirect = trailingSlashRedirect;
 
-},{"debug":267}],45:[function(require,module,exports){
+},{"debug":142}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var debug_ = require("debug");
@@ -3109,7 +1538,7 @@ function serverUrl(_server, topRouter) {
 }
 exports.serverUrl = serverUrl;
 
-},{"./server-trailing-slash-redirect":44,"debug":267,"express":283,"morgan":434}],46:[function(require,module,exports){
+},{"./server-trailing-slash-redirect":9,"debug":142,"express":158,"morgan":308}],11:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
@@ -3117,15 +1546,15 @@ var child_process = require("child_process");
 var crypto = require("crypto");
 var fs = require("fs");
 var path = require("path");
-var opds2_1 = require("../opds/opds2/opds2");
-var UrlUtils_1 = require("../_utils/http/UrlUtils");
+var opds2_1 = require("r2-shared-js/dist/es5/src/opds/opds2/opds2");
+var UrlUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/UrlUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
 var tmp_1 = require("tmp");
-var publication_parser_1 = require("../parser/publication-parser");
+var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var server_assets_1 = require("./server-assets");
 var server_manifestjson_1 = require("./server-manifestjson");
 var server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -3391,6859 +1820,7 @@ var Server = (function () {
 }());
 exports.Server = Server;
 
-},{"../_utils/http/UrlUtils":3,"../opds/opds2/opds2":83,"../parser/publication-parser":132,"./server-assets":36,"./server-manifestjson":38,"./server-mediaoverlays":39,"./server-opds":40,"./server-opds1-2":41,"./server-opds2":42,"./server-pub":43,"./server-url":45,"child_process":undefined,"crypto":undefined,"css2json":264,"debug":267,"express":283,"fs":undefined,"json-markup":406,"path":undefined,"ta-json":541,"tmp":546,"tslib":554}],47:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var metadata_collection_1 = require("./models/metadata-collection");
-var metadata_collection_json_converter_1 = require("./models/metadata-collection-json-converter");
-var metadata_contributor_1 = require("./models/metadata-contributor");
-var metadata_contributor_json_converter_1 = require("./models/metadata-contributor-json-converter");
-var opds2_collection_1 = require("./opds/opds2/opds2-collection");
-var opds2_collection_json_converter_1 = require("./opds/opds2/opds2-collection-json-converter");
-var ta_json_date_converter_1 = require("./_utils/ta-json-date-converter");
-var xml_js_mapper_1 = require("./_utils/xml-js-mapper");
-var ta_json_1 = require("ta-json");
-function initGlobals() {
-    ta_json_1.propertyConverters.set(Buffer, new ta_json_1.BufferConverter());
-    ta_json_1.propertyConverters.set(Date, new ta_json_date_converter_1.JsonDateConverter());
-    ta_json_1.propertyConverters.set(metadata_contributor_1.Contributor, new metadata_contributor_json_converter_1.JsonContributorConverter());
-    ta_json_1.propertyConverters.set(metadata_collection_1.Collection, new metadata_collection_json_converter_1.JsonCollectionConverter());
-    ta_json_1.propertyConverters.set(opds2_collection_1.OPDSCollection, new opds2_collection_json_converter_1.JsonOPDSCollectionConverter());
-    xml_js_mapper_1.propertyConverters.set(Buffer, new xml_js_mapper_1.BufferConverter());
-    xml_js_mapper_1.propertyConverters.set(Date, new xml_js_mapper_1.DateConverter());
-}
-exports.initGlobals = initGlobals;
-
-},{"./_utils/ta-json-date-converter":7,"./_utils/xml-js-mapper":28,"./models/metadata-collection":51,"./models/metadata-collection-json-converter":50,"./models/metadata-contributor":53,"./models/metadata-contributor-json-converter":52,"./opds/opds2/opds2-collection":71,"./opds/opds2/opds2-collection-json-converter":70,"ta-json":541}],48:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-function timeStrToSeconds(timeStr) {
-    if (!timeStr) {
-        return 0;
-    }
-    var hours = 0;
-    var minutes = 0;
-    var seconds = 0;
-    try {
-        var iMin = timeStr.indexOf("min");
-        if (iMin > 0) {
-            var minsStr = timeStr.substr(0, iMin);
-            minutes = parseFloat(minsStr);
-        }
-        else {
-            var iMs = timeStr.indexOf("ms");
-            if (iMs > 0) {
-                var msStr = timeStr.substr(0, iMs);
-                var ms = parseFloat(msStr);
-                seconds = ms / 1000;
-            }
-            else {
-                var iS = timeStr.indexOf("s");
-                if (iS > 0) {
-                    var sStr = timeStr.substr(0, iS);
-                    seconds = parseFloat(sStr);
-                }
-                else {
-                    var iH = timeStr.indexOf("h");
-                    if (iH > 0) {
-                        var hStr = timeStr.substr(0, iH);
-                        hours = parseFloat(hStr);
-                    }
-                    else {
-                        var arr = timeStr.split(":");
-                        if (arr.length === 1) {
-                            seconds = parseFloat(arr[0]);
-                        }
-                        else if (arr.length === 2) {
-                            minutes = parseFloat(arr[0]);
-                            seconds = parseFloat(arr[1]);
-                        }
-                        else if (arr.length === 3) {
-                            hours = parseFloat(arr[0]);
-                            minutes = parseFloat(arr[1]);
-                            seconds = parseFloat(arr[2]);
-                        }
-                        else {
-                            console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR ??");
-                            console.log(timeStr);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    catch (err) {
-        console.log(err);
-        console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR!");
-        console.log(timeStr);
-        return 0;
-    }
-    return (hours * 3600) + (minutes * 60) + seconds;
-}
-exports.timeStrToSeconds = timeStrToSeconds;
-var MediaOverlayNode = (function () {
-    function MediaOverlayNode() {
-    }
-    MediaOverlayNode_1 = MediaOverlayNode;
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("text"),
-        tslib_1.__metadata("design:type", String)
-    ], MediaOverlayNode.prototype, "Text", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("audio"),
-        tslib_1.__metadata("design:type", String)
-    ], MediaOverlayNode.prototype, "Audio", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("role"),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], MediaOverlayNode.prototype, "Role", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("children"),
-        ta_json_1.JsonElementType(MediaOverlayNode_1),
-        tslib_1.__metadata("design:type", Array)
-    ], MediaOverlayNode.prototype, "Children", void 0);
-    MediaOverlayNode = MediaOverlayNode_1 = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], MediaOverlayNode);
-    return MediaOverlayNode;
-    var MediaOverlayNode_1;
-}());
-exports.MediaOverlayNode = MediaOverlayNode;
-
-},{"ta-json":541,"tslib":554}],49:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var metadata_collection_1 = require("./metadata-collection");
-var BelongsTo = (function () {
-    function BelongsTo() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("series"),
-        ta_json_1.JsonElementType(metadata_collection_1.Collection),
-        tslib_1.__metadata("design:type", Array)
-    ], BelongsTo.prototype, "Series", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("collection"),
-        ta_json_1.JsonElementType(metadata_collection_1.Collection),
-        tslib_1.__metadata("design:type", Array)
-    ], BelongsTo.prototype, "Collection", void 0);
-    BelongsTo = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], BelongsTo);
-    return BelongsTo;
-}());
-exports.BelongsTo = BelongsTo;
-
-},{"./metadata-collection":51,"ta-json":541,"tslib":554}],50:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var ta_json_1 = require("ta-json");
-var metadata_collection_1 = require("./metadata-collection");
-var JsonCollectionConverter = (function () {
-    function JsonCollectionConverter() {
-    }
-    JsonCollectionConverter.prototype.serialize = function (property) {
-        return ta_json_1.JSON.serialize(property);
-    };
-    JsonCollectionConverter.prototype.deserialize = function (value) {
-        if (typeof value === "string") {
-            var c = new metadata_collection_1.Collection();
-            c.Name = value;
-            return c;
-        }
-        else {
-            return ta_json_1.JSON.deserialize(value, metadata_collection_1.Collection);
-        }
-    };
-    JsonCollectionConverter.prototype.collapseArrayWithSingleItem = function () {
-        return true;
-    };
-    return JsonCollectionConverter;
-}());
-exports.JsonCollectionConverter = JsonCollectionConverter;
-
-},{"./metadata-collection":51,"ta-json":541}],51:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Collection = (function () {
-    function Collection() {
-    }
-    Collection.prototype._OnDeserialized = function () {
-        if (!this.Name) {
-            console.log("Collection.Name is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", String)
-    ], Collection.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("sort_as"),
-        tslib_1.__metadata("design:type", String)
-    ], Collection.prototype, "SortAs", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], Collection.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("position"),
-        tslib_1.__metadata("design:type", Number)
-    ], Collection.prototype, "Position", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], Collection.prototype, "_OnDeserialized", null);
-    Collection = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Collection);
-    return Collection;
-}());
-exports.Collection = Collection;
-
-},{"ta-json":541,"tslib":554}],52:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var ta_json_1 = require("ta-json");
-var metadata_contributor_1 = require("./metadata-contributor");
-var JsonContributorConverter = (function () {
-    function JsonContributorConverter() {
-    }
-    JsonContributorConverter.prototype.serialize = function (property) {
-        return ta_json_1.JSON.serialize(property);
-    };
-    JsonContributorConverter.prototype.deserialize = function (value) {
-        if (typeof value === "string") {
-            var c = new metadata_contributor_1.Contributor();
-            c.Name = value;
-            return c;
-        }
-        else {
-            return ta_json_1.JSON.deserialize(value, metadata_contributor_1.Contributor);
-        }
-    };
-    JsonContributorConverter.prototype.collapseArrayWithSingleItem = function () {
-        return true;
-    };
-    return JsonContributorConverter;
-}());
-exports.JsonContributorConverter = JsonContributorConverter;
-
-},{"./metadata-contributor":53,"ta-json":541}],53:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Contributor = (function () {
-    function Contributor() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", Object)
-    ], Contributor.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("sort_as"),
-        tslib_1.__metadata("design:type", String)
-    ], Contributor.prototype, "SortAs", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], Contributor.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("role"),
-        tslib_1.__metadata("design:type", String)
-    ], Contributor.prototype, "Role", void 0);
-    Contributor = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Contributor);
-    return Contributor;
-}());
-exports.Contributor = Contributor;
-
-},{"ta-json":541,"tslib":554}],54:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Encrypted = (function () {
-    function Encrypted() {
-        this.DecryptedLengthBeforeInflate = -1;
-        this.CypherBlockPadding = -1;
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("scheme"),
-        tslib_1.__metadata("design:type", String)
-    ], Encrypted.prototype, "Scheme", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("profile"),
-        tslib_1.__metadata("design:type", String)
-    ], Encrypted.prototype, "Profile", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("algorithm"),
-        tslib_1.__metadata("design:type", String)
-    ], Encrypted.prototype, "Algorithm", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("compression"),
-        tslib_1.__metadata("design:type", String)
-    ], Encrypted.prototype, "Compression", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("original-length"),
-        tslib_1.__metadata("design:type", Number)
-    ], Encrypted.prototype, "OriginalLength", void 0);
-    Encrypted = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Encrypted);
-    return Encrypted;
-}());
-exports.Encrypted = Encrypted;
-
-},{"ta-json":541,"tslib":554}],55:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var MediaOverlay = (function () {
-    function MediaOverlay() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("active-class"),
-        tslib_1.__metadata("design:type", String)
-    ], MediaOverlay.prototype, "ActiveClass", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("playback-active-class"),
-        tslib_1.__metadata("design:type", String)
-    ], MediaOverlay.prototype, "PlaybackActiveClass", void 0);
-    MediaOverlay = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], MediaOverlay);
-    return MediaOverlay;
-}());
-exports.MediaOverlay = MediaOverlay;
-
-},{"ta-json":541,"tslib":554}],56:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var metadata_encrypted_1 = require("./metadata-encrypted");
-var Properties = (function () {
-    function Properties() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("contains"),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Properties.prototype, "Contains", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("layout"),
-        tslib_1.__metadata("design:type", String)
-    ], Properties.prototype, "Layout", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("media-overlay"),
-        tslib_1.__metadata("design:type", String)
-    ], Properties.prototype, "MediaOverlay", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("orientation"),
-        tslib_1.__metadata("design:type", String)
-    ], Properties.prototype, "Orientation", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("overflow"),
-        tslib_1.__metadata("design:type", String)
-    ], Properties.prototype, "Overflow", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("page"),
-        tslib_1.__metadata("design:type", String)
-    ], Properties.prototype, "Page", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("spread"),
-        tslib_1.__metadata("design:type", String)
-    ], Properties.prototype, "Spread", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("encrypted"),
-        tslib_1.__metadata("design:type", metadata_encrypted_1.Encrypted)
-    ], Properties.prototype, "Encrypted", void 0);
-    Properties = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Properties);
-    return Properties;
-}());
-exports.Properties = Properties;
-
-},{"./metadata-encrypted":54,"ta-json":541,"tslib":554}],57:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Subject = (function () {
-    function Subject() {
-    }
-    Subject.prototype._OnDeserialized = function () {
-        if (!this.Name) {
-            console.log("Subject.Name is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("sort_as"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "SortAs", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("scheme"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Scheme", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("code"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Code", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], Subject.prototype, "_OnDeserialized", null);
-    Subject = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Subject);
-    return Subject;
-}());
-exports.Subject = Subject;
-
-},{"ta-json":541,"tslib":554}],58:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var metadata_belongsto_1 = require("./metadata-belongsto");
-var metadata_contributor_1 = require("./metadata-contributor");
-var metadata_media_overlay_1 = require("./metadata-media-overlay");
-var metadata_properties_1 = require("./metadata-properties");
-var metadata_subject_1 = require("./metadata-subject");
-var Metadata = (function () {
-    function Metadata() {
-    }
-    Metadata.prototype._OnDeserialized = function () {
-        if (!this.Title) {
-            console.log("Metadata.Title is not set!");
-        }
-        if (!this.Identifier) {
-            console.log("Metadata.Identifier is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "RDFType", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("title"),
-        tslib_1.__metadata("design:type", Object)
-    ], Metadata.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("author"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Author", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("translator"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Translator", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("editor"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Editor", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("artist"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Artist", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("illustrator"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Illustrator", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("letterer"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Letterer", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("penciler"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Penciler", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("colorist"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Colorist", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("inker"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Inker", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("narrator"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Narrator", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("contributor"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Contributor", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("publisher"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Publisher", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("imprint"),
-        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Imprint", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("language"),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Language", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("modified"),
-        tslib_1.__metadata("design:type", Date)
-    ], Metadata.prototype, "Modified", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("published"),
-        tslib_1.__metadata("design:type", Date)
-    ], Metadata.prototype, "PublicationDate", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("description"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "Description", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("direction"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "Direction", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rendition"),
-        tslib_1.__metadata("design:type", metadata_properties_1.Properties)
-    ], Metadata.prototype, "Rendition", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("source"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "Source", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("epub-type"),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "EpubType", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rights"),
-        tslib_1.__metadata("design:type", String)
-    ], Metadata.prototype, "Rights", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("subject"),
-        ta_json_1.JsonElementType(metadata_subject_1.Subject),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Subject", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("belongs_to"),
-        tslib_1.__metadata("design:type", metadata_belongsto_1.BelongsTo)
-    ], Metadata.prototype, "BelongsTo", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("duration"),
-        tslib_1.__metadata("design:type", Number)
-    ], Metadata.prototype, "Duration", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("media-overlay"),
-        tslib_1.__metadata("design:type", metadata_media_overlay_1.MediaOverlay)
-    ], Metadata.prototype, "MediaOverlay", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], Metadata.prototype, "_OnDeserialized", null);
-    Metadata = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Metadata);
-    return Metadata;
-}());
-exports.Metadata = Metadata;
-
-},{"./metadata-belongsto":49,"./metadata-contributor":53,"./metadata-media-overlay":55,"./metadata-properties":56,"./metadata-subject":57,"ta-json":541,"tslib":554}],59:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
-var ta_json_1 = require("ta-json");
-var metadata_properties_1 = require("./metadata-properties");
-var Link = (function () {
-    function Link() {
-    }
-    Link_1 = Link;
-    Link.prototype.AddRels = function (rels) {
-        var _this = this;
-        rels.forEach(function (rel) {
-            _this.AddRel(rel);
-        });
-    };
-    Link.prototype.AddRel = function (rel) {
-        if (this.HasRel(rel)) {
-            return;
-        }
-        if (!this.Rel) {
-            this.Rel = [rel];
-        }
-        else {
-            this.Rel.push(rel);
-        }
-    };
-    Link.prototype.HasRel = function (rel) {
-        return this.Rel && this.Rel.indexOf(rel) >= 0;
-    };
-    Link.prototype._OnDeserialized = function () {
-        if (!this.Href) {
-            console.log("Link.Href is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("href"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Href", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("type"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "TypeLink", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("height"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "Height", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("width"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "Width", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("title"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("properties"),
-        tslib_1.__metadata("design:type", metadata_properties_1.Properties)
-    ], Link.prototype, "Properties", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("duration"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "Duration", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("bitrate"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "Bitrate", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("templated"),
-        tslib_1.__metadata("design:type", Boolean)
-    ], Link.prototype, "Templated", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("children"),
-        ta_json_1.JsonElementType(Link_1),
-        tslib_1.__metadata("design:type", Array)
-    ], Link.prototype, "Children", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rel"),
-        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Link.prototype, "Rel", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], Link.prototype, "_OnDeserialized", null);
-    Link = Link_1 = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Link);
-    return Link;
-    var Link_1;
-}());
-exports.Link = Link;
-
-},{"../_utils/ta-json-string-converter":8,"./metadata-properties":56,"ta-json":541,"tslib":554}],60:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
-var ta_json_1 = require("ta-json");
-var metadata_1 = require("./metadata");
-var publication_link_1 = require("./publication-link");
-var Publication = (function () {
-    function Publication() {
-    }
-    Publication.prototype.freeDestroy = function () {
-        console.log("freeDestroy: Publication");
-        if (this.Internal) {
-            var zipInternal = this.findFromInternal("zip");
-            if (zipInternal) {
-                var zip = zipInternal.Value;
-                zip.freeDestroy();
-            }
-        }
-    };
-    Publication.prototype.findFromInternal = function (key) {
-        if (this.Internal) {
-            var found = this.Internal.find(function (internal) {
-                return internal.Name === key;
-            });
-            if (found) {
-                return found;
-            }
-        }
-        return undefined;
-    };
-    Publication.prototype.AddToInternal = function (key, value) {
-        var existing = this.findFromInternal(key);
-        if (existing) {
-            existing.Value = value;
-        }
-        else {
-            if (!this.Internal) {
-                this.Internal = [];
-            }
-            var internal = { Name: key, Value: value };
-            this.Internal.push(internal);
-        }
-    };
-    Publication.prototype.GetCover = function () {
-        return this.searchLinkByRel("cover");
-    };
-    Publication.prototype.GetNavDoc = function () {
-        return this.searchLinkByRel("contents");
-    };
-    Publication.prototype.searchLinkByRel = function (rel) {
-        if (this.Resources) {
-            var ll = this.Resources.find(function (link) {
-                return link.HasRel(rel);
-            });
-            if (ll) {
-                return ll;
-            }
-        }
-        if (this.Spine) {
-            var ll = this.Spine.find(function (link) {
-                return link.HasRel(rel);
-            });
-            if (ll) {
-                return ll;
-            }
-        }
-        if (this.Links) {
-            var ll = this.Links.find(function (link) {
-                return link.HasRel(rel);
-            });
-            if (ll) {
-                return ll;
-            }
-        }
-        return undefined;
-    };
-    Publication.prototype.AddLink = function (typeLink, rel, url, templated) {
-        var link = new publication_link_1.Link();
-        link.AddRels(rel);
-        link.Href = url;
-        link.TypeLink = typeLink;
-        link.Templated = templated;
-        if (!this.Links) {
-            this.Links = [];
-        }
-        this.Links.push(link);
-    };
-    Publication.prototype.GetPreFetchResources = function () {
-        var links = [];
-        if (this.Resources) {
-            var mediaTypes_1 = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
-            this.Resources.forEach(function (link) {
-                mediaTypes_1.forEach(function (mediaType) {
-                    if (link.TypeLink === mediaType) {
-                        links.push(link);
-                    }
-                });
-            });
-        }
-        return links;
-    };
-    Publication.prototype._OnDeserialized = function () {
-        if (!this.Metadata) {
-            console.log("Publication.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("Publication.Links is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("@context"),
-        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "Context", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("metadata"),
-        tslib_1.__metadata("design:type", metadata_1.Metadata)
-    ], Publication.prototype, "Metadata", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("spine"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "Spine", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("resources"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "Resources", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("toc"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "TOC", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("page-list"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "PageList", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("landmarks"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "Landmarks", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("loi"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "LOI", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("loa"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "LOA", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("lov"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "LOV", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("lot"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "LOT", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("images"),
-        ta_json_1.JsonElementType(publication_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Publication.prototype, "Images", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], Publication.prototype, "_OnDeserialized", null);
-    Publication = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Publication);
-    return Publication;
-}());
-exports.Publication = Publication;
-
-},{"../_utils/ta-json-string-converter":8,"./metadata":58,"./publication-link":59,"ta-json":541,"tslib":554}],61:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var opds2_1 = require("./opds2/opds2");
-var opds2_belongsTo_1 = require("./opds2/opds2-belongsTo");
-var opds2_collection_1 = require("./opds2/opds2-collection");
-var opds2_contributor_1 = require("./opds2/opds2-contributor");
-var opds2_indirectAcquisition_1 = require("./opds2/opds2-indirectAcquisition");
-var opds2_link_1 = require("./opds2/opds2-link");
-var opds2_metadata_1 = require("./opds2/opds2-metadata");
-var opds2_price_1 = require("./opds2/opds2-price");
-var opds2_properties_1 = require("./opds2/opds2-properties");
-var opds2_publication_1 = require("./opds2/opds2-publication");
-var opds2_publicationMetadata_1 = require("./opds2/opds2-publicationMetadata");
-var opds2_subject_1 = require("./opds2/opds2-subject");
-function convertOpds1ToOpds2(feed) {
-    var opds2feed = new opds2_1.OPDSFeed();
-    opds2feed.Metadata = new opds2_metadata_1.OPDSMetadata();
-    opds2feed.Metadata.Title = feed.Title;
-    opds2feed.Metadata.Modified = feed.Updated;
-    if (feed.OpensearchTotalResults) {
-        opds2feed.Metadata.NumberOfItems = feed.OpensearchTotalResults;
-    }
-    if (feed.OpensearchItemsPerPage) {
-        opds2feed.Metadata.ItemsPerPage = feed.OpensearchItemsPerPage;
-    }
-    if (feed.Authors) {
-        feed.Authors.forEach(function (aut) {
-            var cont = new opds2_contributor_1.OPDSContributor();
-            cont.Name = aut.Name;
-            cont.Identifier = aut.Uri;
-            if (!opds2feed.Metadata.Author) {
-                opds2feed.Metadata.Author = [];
-            }
-            opds2feed.Metadata.Author.push(cont);
-        });
-    }
-    if (feed.Entries) {
-        feed.Entries.forEach(function (entry) {
-            var isAnNavigation = true;
-            var collLink = new opds2_link_1.OPDSLink();
-            if (entry.Links) {
-                entry.Links.forEach(function (l) {
-                    if (l.HasRel("http://opds-spec.org/acquisition")) {
-                        isAnNavigation = false;
-                    }
-                    if (l.HasRel("collection") || l.HasRel("http://opds-spec.org/group")) {
-                        collLink.AddRel("collection");
-                        collLink.Href = l.Href;
-                        collLink.Title = l.Title;
-                    }
-                });
-            }
-            if (!isAnNavigation) {
-                var p_1 = new opds2_publication_1.OPDSPublication();
-                p_1.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-                p_1.Metadata.Title = entry.Title;
-                if (entry.DcIdentifier) {
-                    p_1.Metadata.Identifier = entry.DcIdentifier;
-                }
-                else {
-                    p_1.Metadata.Identifier = entry.Id;
-                }
-                p_1.Metadata.Language = [entry.DcLanguage];
-                p_1.Metadata.Modified = entry.Updated;
-                p_1.Metadata.PublicationDate = entry.Published;
-                p_1.Metadata.Rights = entry.DcRights;
-                if (entry.Series) {
-                    entry.Series.forEach(function (s) {
-                        var coll = new opds2_collection_1.OPDSCollection();
-                        coll.Name = s.Name;
-                        coll.Position = s.Position;
-                        var link = new opds2_link_1.OPDSLink();
-                        link.Href = s.Url;
-                        coll.Links = [];
-                        coll.Links.push(link);
-                        if (!p_1.Metadata.BelongsTo) {
-                            p_1.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
-                        }
-                        if (!p_1.Metadata.BelongsTo.Series) {
-                            p_1.Metadata.BelongsTo.Series = [];
-                        }
-                        p_1.Metadata.BelongsTo.Series.push(coll);
-                    });
-                }
-                if (entry.DcPublisher) {
-                    var c = new opds2_contributor_1.OPDSContributor();
-                    c.Name = entry.DcPublisher;
-                    if (!p_1.Metadata.Publisher) {
-                        p_1.Metadata.Publisher = [];
-                    }
-                    p_1.Metadata.Publisher.push(c);
-                }
-                if (entry.Categories) {
-                    entry.Categories.forEach(function (cat) {
-                        var subj = new opds2_subject_1.OPDSSubject();
-                        subj.Code = cat.Term;
-                        subj.Name = cat.Label;
-                        subj.Scheme = cat.Scheme;
-                        if (!p_1.Metadata.Subject) {
-                            p_1.Metadata.Subject = [];
-                        }
-                        p_1.Metadata.Subject.push(subj);
-                    });
-                }
-                if (entry.Authors) {
-                    entry.Authors.forEach(function (aut) {
-                        var cont = new opds2_contributor_1.OPDSContributor();
-                        cont.Name = aut.Name;
-                        cont.Identifier = aut.Uri;
-                        if (!p_1.Metadata.Author) {
-                            p_1.Metadata.Author = [];
-                        }
-                        p_1.Metadata.Author.push(cont);
-                    });
-                }
-                if (entry.Content) {
-                    p_1.Metadata.Description = entry.Content;
-                }
-                else if (entry.Summary) {
-                    p_1.Metadata.Description = entry.Summary;
-                }
-                if (entry.Links) {
-                    entry.Links.forEach(function (link) {
-                        var l = new opds2_link_1.OPDSLink();
-                        l.Href = link.Href;
-                        l.TypeLink = link.Type;
-                        l.AddRel(link.Rel);
-                        l.Title = link.Title;
-                        if (link.OpdsIndirectAcquisitions && link.OpdsIndirectAcquisitions.length) {
-                            if (!l.Properties) {
-                                l.Properties = new opds2_properties_1.OPDSProperties();
-                            }
-                            link.OpdsIndirectAcquisitions.forEach(function (ia) {
-                                var ind = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
-                                ind.TypeAcquisition = ia.OpdsIndirectAcquisitionType;
-                                if (ia.OpdsIndirectAcquisitions && ia.OpdsIndirectAcquisitions.length) {
-                                    ia.OpdsIndirectAcquisitions.forEach(function (iac) {
-                                        var cia = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
-                                        cia.TypeAcquisition = iac.OpdsIndirectAcquisitionType;
-                                        if (!ind.Children) {
-                                            ind.Children = [];
-                                        }
-                                        ind.Children.push(cia);
-                                    });
-                                }
-                                if (!l.Properties.IndirectAcquisitions) {
-                                    l.Properties.IndirectAcquisitions = [];
-                                }
-                                l.Properties.IndirectAcquisitions.push(ind);
-                            });
-                        }
-                        if (link.OpdsPrice && link.OpdsPriceCurrencyCode) {
-                            if (!l.Properties) {
-                                l.Properties = new opds2_properties_1.OPDSProperties();
-                            }
-                            l.Properties.Price = new opds2_price_1.OPDSPrice();
-                            l.Properties.Price.Currency = link.OpdsPriceCurrencyCode;
-                            l.Properties.Price.Value = link.OpdsPrice;
-                        }
-                        if (link.HasRel("collection") || link.HasRel("http://opds-spec.org/group")) {
-                        }
-                        else if (link.HasRel("http://opds-spec.org/image") ||
-                            link.HasRel("http://opds-spec.org/image/thumbnail")) {
-                            if (!p_1.Images) {
-                                p_1.Images = [];
-                            }
-                            p_1.Images.push(l);
-                        }
-                        else {
-                            if (!p_1.Links) {
-                                p_1.Links = [];
-                            }
-                            p_1.Links.push(l);
-                        }
-                    });
-                }
-                if (collLink.Href) {
-                    opds2feed.AddPublicationInGroup(p_1, collLink);
-                }
-                else {
-                    if (!opds2feed.Publications) {
-                        opds2feed.Publications = [];
-                    }
-                    opds2feed.Publications.push(p_1);
-                }
-            }
-            else {
-                var linkNav = new opds2_link_1.OPDSLink();
-                linkNav.Title = entry.Title;
-                if (entry.Links && entry.Links[0]) {
-                    linkNav.AddRel(entry.Links[0].Rel);
-                    linkNav.TypeLink = entry.Links[0].Type;
-                    linkNav.Href = entry.Links[0].Href;
-                }
-                if (collLink.Href) {
-                    opds2feed.AddNavigationInGroup(linkNav, collLink);
-                }
-                else {
-                    if (!opds2feed.Navigation) {
-                        opds2feed.Navigation = [];
-                    }
-                    opds2feed.Navigation.push(linkNav);
-                }
-            }
-        });
-    }
-    if (feed.Links) {
-        feed.Links.forEach(function (l) {
-            var linkFeed = new opds2_link_1.OPDSLink();
-            linkFeed.Href = l.Href;
-            linkFeed.AddRel(l.Rel);
-            linkFeed.TypeLink = l.Type;
-            linkFeed.Title = l.Title;
-            if (l.HasRel("http://opds-spec.org/facet")) {
-                linkFeed.Properties = new opds2_properties_1.OPDSProperties();
-                linkFeed.Properties.NumberOfItems = l.ThrCount;
-                opds2feed.AddFacet(linkFeed, l.FacetGroup);
-            }
-            else {
-                if (!opds2feed.Links) {
-                    opds2feed.Links = [];
-                }
-                opds2feed.Links.push(linkFeed);
-            }
-        });
-    }
-    return opds2feed;
-}
-exports.convertOpds1ToOpds2 = convertOpds1ToOpds2;
-
-},{"./opds2/opds2":83,"./opds2/opds2-belongsTo":69,"./opds2/opds2-collection":71,"./opds2/opds2-contributor":72,"./opds2/opds2-indirectAcquisition":75,"./opds2/opds2-link":76,"./opds2/opds2-metadata":77,"./opds2/opds2-price":78,"./opds2/opds2-properties":79,"./opds2/opds2-publication":80,"./opds2/opds2-publicationMetadata":81,"./opds2/opds2-subject":82}],62:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Author = (function () {
-    function Author() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:name/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:uri/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "Uri", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:email/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "Email", void 0);
-    Author = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], Author);
-    return Author;
-}());
-exports.Author = Author;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],63:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Category = (function () {
-    function Category() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@term"),
-        tslib_1.__metadata("design:type", String)
-    ], Category.prototype, "Term", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@scheme"),
-        tslib_1.__metadata("design:type", String)
-    ], Category.prototype, "Scheme", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@label"),
-        tslib_1.__metadata("design:type", String)
-    ], Category.prototype, "Label", void 0);
-    Category = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], Category);
-    return Category;
-}());
-exports.Category = Category;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],64:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var opds_author_1 = require("./opds-author");
-var opds_category_1 = require("./opds-category");
-var opds_link_1 = require("./opds-link");
-var opds_serie_1 = require("./opds-serie");
-var Entry = (function () {
-    function Entry() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:ratingValue"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "SchemaRatingValue", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:additionalType"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "SchemaRatingAdditionalType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@schema:additionalType"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "SchemaAdditionalType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:author"),
-        xml_js_mapper_1.XmlItemType(opds_author_1.Author),
-        tslib_1.__metadata("design:type", Array)
-    ], Entry.prototype, "Authors", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "Id", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:summary/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "Summary", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:summary/@type"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "SummaryType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:language/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcLanguage", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:extent/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcExtent", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:publisher/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcPublisher", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:rights/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcRights", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:issued/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcIssued", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcIdentifier", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/@xsi:type"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "DcIdentifierType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("bibframe:distribution/@bibframe:ProviderName"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "BibFrameDistributionProviderName", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:category"),
-        xml_js_mapper_1.XmlItemType(opds_category_1.Category),
-        tslib_1.__metadata("design:type", Array)
-    ], Entry.prototype, "Categories", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:content/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "Content", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:content/@type"),
-        tslib_1.__metadata("design:type", String)
-    ], Entry.prototype, "ContentType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
-        tslib_1.__metadata("design:type", Date)
-    ], Entry.prototype, "Updated", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:published/text()"),
-        tslib_1.__metadata("design:type", Date)
-    ], Entry.prototype, "Published", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:link"),
-        xml_js_mapper_1.XmlItemType(opds_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], Entry.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("schema:Series"),
-        xml_js_mapper_1.XmlItemType(opds_serie_1.Serie),
-        tslib_1.__metadata("design:type", Array)
-    ], Entry.prototype, "Series", void 0);
-    Entry = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], Entry);
-    return Entry;
-}());
-exports.Entry = Entry;
-
-},{"../../_utils/xml-js-mapper":28,"./opds-author":62,"./opds-category":63,"./opds-link":66,"./opds-serie":67,"tslib":554}],65:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var IndirectAcquisition = (function () {
-    function IndirectAcquisition() {
-    }
-    IndirectAcquisition_1 = IndirectAcquisition;
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], IndirectAcquisition.prototype, "OpdsIndirectAcquisitionType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
-        xml_js_mapper_1.XmlItemType(IndirectAcquisition_1),
-        tslib_1.__metadata("design:type", Array)
-    ], IndirectAcquisition.prototype, "OpdsIndirectAcquisitions", void 0);
-    IndirectAcquisition = IndirectAcquisition_1 = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], IndirectAcquisition);
-    return IndirectAcquisition;
-    var IndirectAcquisition_1;
-}());
-exports.IndirectAcquisition = IndirectAcquisition;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],66:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
-var Link = (function () {
-    function Link() {
-    }
-    Link.prototype.HasRel = function (rel) {
-        return this.Rel === rel;
-    };
-    Link.prototype.SetRel = function (rel) {
-        this.Rel = rel;
-    };
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "OpdsPrice", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opds:price/@currencycode"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "OpdsPriceCurrencyCode", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
-        xml_js_mapper_1.XmlItemType(opds_indirectAcquisition_1.IndirectAcquisition),
-        tslib_1.__metadata("design:type", Array)
-    ], Link.prototype, "OpdsIndirectAcquisitions", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Type", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@thr:count"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "ThrCount", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@opds:facetGroup"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "FacetGroup", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@href"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Href", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@title"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@rel"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Rel", void 0);
-    Link = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], Link);
-    return Link;
-}());
-exports.Link = Link;
-
-},{"../../_utils/xml-js-mapper":28,"./opds-indirectAcquisition":65,"tslib":554}],67:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Serie = (function () {
-    function Serie() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@schema:name"),
-        tslib_1.__metadata("design:type", String)
-    ], Serie.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@schema:url"),
-        tslib_1.__metadata("design:type", String)
-    ], Serie.prototype, "Url", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@schema:position"),
-        tslib_1.__metadata("design:type", Number)
-    ], Serie.prototype, "Position", void 0);
-    Serie = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], Serie);
-    return Serie;
-}());
-exports.Serie = Serie;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],68:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var opds_author_1 = require("./opds-author");
-var opds_entry_1 = require("./opds-entry");
-var opds_link_1 = require("./opds-link");
-var OPDS = (function () {
-    function OPDS() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opensearch:totalResults/text()"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDS.prototype, "OpensearchTotalResults", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opensearch:itemsPerPage/text()"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDS.prototype, "OpensearchItemsPerPage", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDS.prototype, "Id", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDS.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:subtitle/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDS.prototype, "SubTitle", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
-        tslib_1.__metadata("design:type", Date)
-    ], OPDS.prototype, "Updated", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:icon/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDS.prototype, "Icon", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:author"),
-        xml_js_mapper_1.XmlItemType(opds_author_1.Author),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDS.prototype, "Authors", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDS.prototype, "Lang", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:link"),
-        xml_js_mapper_1.XmlItemType(opds_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDS.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("atom:entry"),
-        xml_js_mapper_1.XmlItemType(opds_entry_1.Entry),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDS.prototype, "Entries", void 0);
-    OPDS = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            app: "http://www.w3.org/2007/app",
-            atom: "http://www.w3.org/2005/Atom",
-            bibframe: "http://bibframe.org/vocab/",
-            dcterms: "http://purl.org/dc/terms/",
-            odl: "http://opds-spec.org/odl",
-            opds: "http://opds-spec.org/2010/catalog",
-            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
-            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
-            schema: "http://schema.org",
-            thr: "http://purl.org/syndication/thread/1.0",
-            xml: "http://www.w3.org/XML/1998/namespace",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], OPDS);
-    return OPDS;
-}());
-exports.OPDS = OPDS;
-
-},{"../../_utils/xml-js-mapper":28,"./opds-author":62,"./opds-entry":64,"./opds-link":66,"tslib":554}],69:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_collection_1 = require("./opds2-collection");
-var OPDSBelongsTo = (function () {
-    function OPDSBelongsTo() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("series"),
-        ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSBelongsTo.prototype, "Series", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("collection"),
-        ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSBelongsTo.prototype, "Collection", void 0);
-    OPDSBelongsTo = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSBelongsTo);
-    return OPDSBelongsTo;
-}());
-exports.OPDSBelongsTo = OPDSBelongsTo;
-
-},{"./opds2-collection":71,"ta-json":541,"tslib":554}],70:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var ta_json_1 = require("ta-json");
-var opds2_collection_1 = require("./opds2-collection");
-var JsonOPDSCollectionConverter = (function () {
-    function JsonOPDSCollectionConverter() {
-    }
-    JsonOPDSCollectionConverter.prototype.serialize = function (property) {
-        return ta_json_1.JSON.serialize(property);
-    };
-    JsonOPDSCollectionConverter.prototype.deserialize = function (value) {
-        if (typeof value === "string") {
-            var c = new opds2_collection_1.OPDSCollection();
-            c.Name = value;
-            return c;
-        }
-        else {
-            return ta_json_1.JSON.deserialize(value, opds2_collection_1.OPDSCollection);
-        }
-    };
-    JsonOPDSCollectionConverter.prototype.collapseArrayWithSingleItem = function () {
-        return true;
-    };
-    return JsonOPDSCollectionConverter;
-}());
-exports.JsonOPDSCollectionConverter = JsonOPDSCollectionConverter;
-
-},{"./opds2-collection":71,"ta-json":541}],71:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_link_1 = require("./opds2-link");
-var OPDSCollection = (function () {
-    function OPDSCollection() {
-    }
-    OPDSCollection.prototype._OnDeserialized = function () {
-        if (!this.Name) {
-            console.log("OPDSCollection.Name is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSCollection.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("sort_as"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSCollection.prototype, "SortAs", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSCollection.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("position"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSCollection.prototype, "Position", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSCollection.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSCollection.prototype, "_OnDeserialized", null);
-    OPDSCollection = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSCollection);
-    return OPDSCollection;
-}());
-exports.OPDSCollection = OPDSCollection;
-
-},{"./opds2-link":76,"ta-json":541,"tslib":554}],72:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_link_1 = require("./opds2-link");
-var OPDSContributor = (function () {
-    function OPDSContributor() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", Object)
-    ], OPDSContributor.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("sort_as"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSContributor.prototype, "SortAs", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSContributor.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("role"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSContributor.prototype, "Role", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSContributor.prototype, "Links", void 0);
-    OPDSContributor = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSContributor);
-    return OPDSContributor;
-}());
-exports.OPDSContributor = OPDSContributor;
-
-},{"./opds2-link":76,"ta-json":541,"tslib":554}],73:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_link_1 = require("./opds2-link");
-var opds2_metadata_1 = require("./opds2-metadata");
-var OPDSFacet = (function () {
-    function OPDSFacet() {
-    }
-    OPDSFacet.prototype._OnDeserialized = function () {
-        if (!this.Metadata) {
-            console.log("OPDSFacet.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("OPDSFacet.Links is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("metadata"),
-        tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
-    ], OPDSFacet.prototype, "Metadata", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFacet.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSFacet.prototype, "_OnDeserialized", null);
-    OPDSFacet = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSFacet);
-    return OPDSFacet;
-}());
-exports.OPDSFacet = OPDSFacet;
-
-},{"./opds2-link":76,"./opds2-metadata":77,"ta-json":541,"tslib":554}],74:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_link_1 = require("./opds2-link");
-var opds2_metadata_1 = require("./opds2-metadata");
-var opds2_publication_1 = require("./opds2-publication");
-var OPDSGroup = (function () {
-    function OPDSGroup() {
-    }
-    OPDSGroup.prototype._OnDeserialized = function () {
-        if (!this.Metadata) {
-            console.log("OPDSGroup.Metadata is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("metadata"),
-        tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
-    ], OPDSGroup.prototype, "Metadata", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("publications"),
-        ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSGroup.prototype, "Publications", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSGroup.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("navigation"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSGroup.prototype, "Navigation", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSGroup.prototype, "_OnDeserialized", null);
-    OPDSGroup = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSGroup);
-    return OPDSGroup;
-}());
-exports.OPDSGroup = OPDSGroup;
-
-},{"./opds2-link":76,"./opds2-metadata":77,"./opds2-publication":80,"ta-json":541,"tslib":554}],75:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var OPDSIndirectAcquisition = (function () {
-    function OPDSIndirectAcquisition() {
-    }
-    OPDSIndirectAcquisition_1 = OPDSIndirectAcquisition;
-    OPDSIndirectAcquisition.prototype._OnDeserialized = function () {
-        if (!this.TypeAcquisition) {
-            console.log("OPDSIndirectAcquisition.TypeAcquisition is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("type"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSIndirectAcquisition.prototype, "TypeAcquisition", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("child"),
-        ta_json_1.JsonElementType(OPDSIndirectAcquisition_1),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSIndirectAcquisition.prototype, "Children", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSIndirectAcquisition.prototype, "_OnDeserialized", null);
-    OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSIndirectAcquisition);
-    return OPDSIndirectAcquisition;
-    var OPDSIndirectAcquisition_1;
-}());
-exports.OPDSIndirectAcquisition = OPDSIndirectAcquisition;
-
-},{"ta-json":541,"tslib":554}],76:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
-var ta_json_1 = require("ta-json");
-var opds2_properties_1 = require("./opds2-properties");
-var OPDSLink = (function () {
-    function OPDSLink() {
-    }
-    OPDSLink_1 = OPDSLink;
-    OPDSLink.prototype.AddRels = function (rels) {
-        var _this = this;
-        rels.forEach(function (rel) {
-            _this.AddRel(rel);
-        });
-    };
-    OPDSLink.prototype.AddRel = function (rel) {
-        if (this.HasRel(rel)) {
-            return;
-        }
-        if (!this.Rel) {
-            this.Rel = [rel];
-        }
-        else {
-            this.Rel.push(rel);
-        }
-    };
-    OPDSLink.prototype.HasRel = function (rel) {
-        return this.Rel && this.Rel.indexOf(rel) >= 0;
-    };
-    OPDSLink.prototype._OnDeserialized = function () {
-        if (!this.Href) {
-            console.log("Link.Href is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("href"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSLink.prototype, "Href", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("type"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSLink.prototype, "TypeLink", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("height"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSLink.prototype, "Height", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("width"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSLink.prototype, "Width", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("title"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSLink.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("properties"),
-        tslib_1.__metadata("design:type", opds2_properties_1.OPDSProperties)
-    ], OPDSLink.prototype, "Properties", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("duration"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSLink.prototype, "Duration", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("templated"),
-        tslib_1.__metadata("design:type", Boolean)
-    ], OPDSLink.prototype, "Templated", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("children"),
-        ta_json_1.JsonElementType(OPDSLink_1),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSLink.prototype, "Children", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("bitrate"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSLink.prototype, "Bitrate", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rel"),
-        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSLink.prototype, "Rel", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSLink.prototype, "_OnDeserialized", null);
-    OPDSLink = OPDSLink_1 = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSLink);
-    return OPDSLink;
-    var OPDSLink_1;
-}());
-exports.OPDSLink = OPDSLink;
-
-},{"../../_utils/ta-json-string-converter":8,"./opds2-properties":79,"ta-json":541,"tslib":554}],77:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_contributor_1 = require("./opds2-contributor");
-var OPDSMetadata = (function () {
-    function OPDSMetadata() {
-    }
-    OPDSMetadata.prototype._OnDeserialized = function () {
-        if (!this.Title) {
-            console.log("OPDSMetadata.Title is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("author"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSMetadata.prototype, "Author", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSMetadata.prototype, "RDFType", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("title"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSMetadata.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("numberOfItems"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSMetadata.prototype, "NumberOfItems", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("itemsPerPage"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSMetadata.prototype, "ItemsPerPage", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("currentPage"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSMetadata.prototype, "CurrentPage", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("modified"),
-        tslib_1.__metadata("design:type", Date)
-    ], OPDSMetadata.prototype, "Modified", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSMetadata.prototype, "_OnDeserialized", null);
-    OPDSMetadata = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSMetadata);
-    return OPDSMetadata;
-}());
-exports.OPDSMetadata = OPDSMetadata;
-
-},{"./opds2-contributor":72,"ta-json":541,"tslib":554}],78:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var OPDSPrice = (function () {
-    function OPDSPrice() {
-    }
-    OPDSPrice.prototype._OnDeserialized = function () {
-        if (!this.Currency) {
-            console.log("OPDSPrice.Currency is not set!");
-        }
-        if (!this.Value) {
-            console.log("OPDSPrice.Value is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("currency"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSPrice.prototype, "Currency", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("value"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSPrice.prototype, "Value", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSPrice.prototype, "_OnDeserialized", null);
-    OPDSPrice = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSPrice);
-    return OPDSPrice;
-}());
-exports.OPDSPrice = OPDSPrice;
-
-},{"ta-json":541,"tslib":554}],79:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_indirectAcquisition_1 = require("./opds2-indirectAcquisition");
-var opds2_price_1 = require("./opds2-price");
-var OPDSProperties = (function () {
-    function OPDSProperties() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("numberOfItems"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSProperties.prototype, "NumberOfItems", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("price"),
-        tslib_1.__metadata("design:type", opds2_price_1.OPDSPrice)
-    ], OPDSProperties.prototype, "Price", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("indirectAcquisition"),
-        ta_json_1.JsonElementType(opds2_indirectAcquisition_1.OPDSIndirectAcquisition),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSProperties.prototype, "IndirectAcquisitions", void 0);
-    OPDSProperties = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSProperties);
-    return OPDSProperties;
-}());
-exports.OPDSProperties = OPDSProperties;
-
-},{"./opds2-indirectAcquisition":75,"./opds2-price":78,"ta-json":541,"tslib":554}],80:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_belongsTo_1 = require("./opds2-belongsTo");
-var opds2_collection_1 = require("./opds2-collection");
-var opds2_contributor_1 = require("./opds2-contributor");
-var opds2_link_1 = require("./opds2-link");
-var opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
-var OPDSPublication = (function () {
-    function OPDSPublication() {
-    }
-    OPDSPublication.prototype.findFirstLinkByRel = function (rel) {
-        return this.Links ? this.Links.find(function (l) {
-            return l.HasRel(rel);
-        }) : undefined;
-    };
-    OPDSPublication.prototype.AddImage = function (href, typeImage, height, width) {
-        var i = new opds2_link_1.OPDSLink();
-        i.Href = href;
-        i.TypeLink = typeImage;
-        if (height) {
-            i.Height = height;
-        }
-        if (width) {
-            i.Width = width;
-        }
-        if (!this.Images) {
-            this.Images = [];
-        }
-        this.Images.push(i);
-    };
-    OPDSPublication.prototype.AddLink = function (href, typeLink, rel, title) {
-        var l = new opds2_link_1.OPDSLink();
-        l.Href = href;
-        l.TypeLink = typeLink;
-        if (rel) {
-            l.AddRel(rel);
-        }
-        if (title) {
-            l.Title = title;
-        }
-        if (!this.Links) {
-            this.Links = [];
-        }
-        this.Links.push(l);
-    };
-    OPDSPublication.prototype.AddAuthor = function (name, identifier, sortAs, href, typeLink) {
-        var c = new opds2_contributor_1.OPDSContributor();
-        c.Name = name;
-        if (identifier) {
-            c.Identifier = identifier;
-        }
-        if (sortAs) {
-            c.SortAs = sortAs;
-        }
-        var l = new opds2_link_1.OPDSLink();
-        if (href) {
-            l.Href = href;
-        }
-        if (typeLink) {
-            l.TypeLink = typeLink;
-        }
-        if (href) {
-            c.Links = [];
-            c.Links.push(l);
-        }
-        if (!this.Metadata) {
-            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-        }
-        if (!this.Metadata.Author) {
-            this.Metadata.Author = [];
-        }
-        this.Metadata.Author.push(c);
-    };
-    OPDSPublication.prototype.AddSerie = function (name, position, href, typeLink) {
-        var c = new opds2_collection_1.OPDSCollection();
-        c.Name = name;
-        c.Position = position;
-        var l = new opds2_link_1.OPDSLink();
-        if (href) {
-            l.Href = href;
-        }
-        if (typeLink) {
-            l.TypeLink = typeLink;
-        }
-        if (href) {
-            c.Links = [];
-            c.Links.push(l);
-        }
-        if (!this.Metadata) {
-            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-        }
-        if (!this.Metadata.BelongsTo) {
-            this.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
-        }
-        if (!this.Metadata.BelongsTo.Series) {
-            this.Metadata.BelongsTo.Series = [];
-        }
-        this.Metadata.BelongsTo.Series.push(c);
-    };
-    OPDSPublication.prototype.AddPublisher = function (name, href, typeLink) {
-        var c = new opds2_contributor_1.OPDSContributor();
-        c.Name = name;
-        var l = new opds2_link_1.OPDSLink();
-        if (href) {
-            l.Href = href;
-        }
-        if (typeLink) {
-            l.TypeLink = typeLink;
-        }
-        if (href) {
-            c.Links = [];
-            c.Links.push(l);
-        }
-        if (!this.Metadata) {
-            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-        }
-        if (!this.Metadata.Publisher) {
-            this.Metadata.Publisher = [];
-        }
-        this.Metadata.Publisher.push(c);
-    };
-    OPDSPublication.prototype._OnDeserialized = function () {
-        if (!this.Metadata) {
-            console.log("OPDSPublication.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("OPDSPublication.Links is not set!");
-        }
-        if (!this.Images) {
-            console.log("OPDSPublication.Images is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("metadata"),
-        tslib_1.__metadata("design:type", opds2_publicationMetadata_1.OPDSPublicationMetadata)
-    ], OPDSPublication.prototype, "Metadata", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublication.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("images"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublication.prototype, "Images", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSPublication.prototype, "_OnDeserialized", null);
-    OPDSPublication = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSPublication);
-    return OPDSPublication;
-}());
-exports.OPDSPublication = OPDSPublication;
-
-},{"./opds2-belongsTo":69,"./opds2-collection":71,"./opds2-contributor":72,"./opds2-link":76,"./opds2-publicationMetadata":81,"ta-json":541,"tslib":554}],81:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var opds2_belongsTo_1 = require("./opds2-belongsTo");
-var opds2_contributor_1 = require("./opds2-contributor");
-var opds2_subject_1 = require("./opds2-subject");
-var OPDSPublicationMetadata = (function () {
-    function OPDSPublicationMetadata() {
-    }
-    OPDSPublicationMetadata.prototype._OnDeserialized = function () {
-        if (!this.Title) {
-            console.log("OPDSPublicationMetadata.Title is not set!");
-        }
-        if (!this.Identifier) {
-            console.log("OPDSPublicationMetadata.Identifier is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSPublicationMetadata.prototype, "RDFType", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("title"),
-        tslib_1.__metadata("design:type", Object)
-    ], OPDSPublicationMetadata.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSPublicationMetadata.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("author"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Author", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("translator"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Translator", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("editor"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Editor", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("artist"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Artist", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("illustrator"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Illustrator", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("letterer"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Letterer", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("penciler"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Penciler", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("colorist"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Colorist", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("inker"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Inker", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("narrator"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Narrator", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("contributor"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "OPDSContributor", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("publisher"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Publisher", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("imprint"),
-        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Imprint", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("language"),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Language", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("modified"),
-        tslib_1.__metadata("design:type", Date)
-    ], OPDSPublicationMetadata.prototype, "Modified", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("published"),
-        tslib_1.__metadata("design:type", Date)
-    ], OPDSPublicationMetadata.prototype, "PublicationDate", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("description"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSPublicationMetadata.prototype, "Description", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("source"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSPublicationMetadata.prototype, "Source", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rights"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSPublicationMetadata.prototype, "Rights", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("subject"),
-        ta_json_1.JsonElementType(opds2_subject_1.OPDSSubject),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSPublicationMetadata.prototype, "Subject", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("belongs_to"),
-        tslib_1.__metadata("design:type", opds2_belongsTo_1.OPDSBelongsTo)
-    ], OPDSPublicationMetadata.prototype, "BelongsTo", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("duration"),
-        tslib_1.__metadata("design:type", Number)
-    ], OPDSPublicationMetadata.prototype, "Duration", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSPublicationMetadata.prototype, "_OnDeserialized", null);
-    OPDSPublicationMetadata = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSPublicationMetadata);
-    return OPDSPublicationMetadata;
-}());
-exports.OPDSPublicationMetadata = OPDSPublicationMetadata;
-
-},{"./opds2-belongsTo":69,"./opds2-contributor":72,"./opds2-subject":82,"ta-json":541,"tslib":554}],82:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var OPDSSubject = (function () {
-    function OPDSSubject() {
-    }
-    OPDSSubject.prototype._OnDeserialized = function () {
-        if (!this.Name) {
-            console.log("OPDSSubject.Name is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSSubject.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("sort_as"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSSubject.prototype, "SortAs", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("scheme"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSSubject.prototype, "Scheme", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("code"),
-        tslib_1.__metadata("design:type", String)
-    ], OPDSSubject.prototype, "Code", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSSubject.prototype, "_OnDeserialized", null);
-    OPDSSubject = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSSubject);
-    return OPDSSubject;
-}());
-exports.OPDSSubject = OPDSSubject;
-
-},{"ta-json":541,"tslib":554}],83:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
-var ta_json_1 = require("ta-json");
-var opds2_facet_1 = require("./opds2-facet");
-var opds2_group_1 = require("./opds2-group");
-var opds2_link_1 = require("./opds2-link");
-var opds2_metadata_1 = require("./opds2-metadata");
-var opds2_publication_1 = require("./opds2-publication");
-var OPDSFeed = (function () {
-    function OPDSFeed() {
-    }
-    OPDSFeed.prototype.findFirstLinkByRel = function (rel) {
-        return this.Links ? this.Links.find(function (l) {
-            return l.HasRel(rel);
-        }) : undefined;
-    };
-    OPDSFeed.prototype.AddLink = function (href, rel, typeLink, templated) {
-        var l = new opds2_link_1.OPDSLink();
-        l.Href = href;
-        l.AddRel(rel);
-        l.TypeLink = typeLink;
-        if (templated) {
-            l.Templated = true;
-        }
-        if (!this.Links) {
-            this.Links = [];
-        }
-        this.Links.push(l);
-    };
-    OPDSFeed.prototype.AddNavigation = function (title, href, rel, typeLink) {
-        var l = new opds2_link_1.OPDSLink();
-        l.Href = href;
-        l.TypeLink = typeLink;
-        l.AddRel(rel);
-        if (title) {
-            l.Title = title;
-        }
-        if (!this.Navigation) {
-            this.Navigation = [];
-        }
-        this.Navigation.push(l);
-    };
-    OPDSFeed.prototype.AddPagination = function (numberItems, itemsPerPage, currentPage, nextLink, prevLink, firstLink, lastLink) {
-        if (!this.Metadata) {
-            this.Metadata = new opds2_metadata_1.OPDSMetadata();
-        }
-        this.Metadata.CurrentPage = currentPage;
-        this.Metadata.ItemsPerPage = itemsPerPage;
-        this.Metadata.NumberOfItems = numberItems;
-        if (nextLink) {
-            this.AddLink(nextLink, "next", "application/opds+json", false);
-        }
-        if (prevLink) {
-            this.AddLink(prevLink, "previous", "application/opds+json", false);
-        }
-        if (firstLink) {
-            this.AddLink(firstLink, "first", "application/opds+json", false);
-        }
-        if (lastLink) {
-            this.AddLink(lastLink, "last", "application/opds+json", false);
-        }
-    };
-    OPDSFeed.prototype.AddFacet = function (link, group) {
-        if (this.Facets) {
-            var found = this.Facets.find(function (f) {
-                if (f.Metadata && f.Metadata.Title === group) {
-                    if (!f.Links) {
-                        f.Links = [];
-                    }
-                    f.Links.push(link);
-                    return true;
-                }
-                return false;
-            });
-            if (found) {
-                return;
-            }
-        }
-        var facet = new opds2_facet_1.OPDSFacet();
-        facet.Metadata = new opds2_metadata_1.OPDSMetadata();
-        facet.Metadata.Title = group;
-        facet.Links = [];
-        facet.Links.push(link);
-        if (!this.Facets) {
-            this.Facets = [];
-        }
-        this.Facets.push(facet);
-    };
-    OPDSFeed.prototype.AddPublicationInGroup = function (publication, collLink) {
-        if (this.Groups) {
-            var found1 = this.Groups.find(function (g) {
-                if (g.Links) {
-                    var found2 = g.Links.find(function (l) {
-                        if (l.Href === collLink.Href) {
-                            if (!g.Publications) {
-                                g.Publications = [];
-                            }
-                            g.Publications.push(publication);
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (found2) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-            if (found1) {
-                return;
-            }
-        }
-        var group = new opds2_group_1.OPDSGroup();
-        group.Metadata = new opds2_metadata_1.OPDSMetadata();
-        group.Metadata.Title = collLink.Title;
-        group.Publications = [];
-        group.Publications.push(publication);
-        var linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.AddRel("self");
-        linkSelf.Title = collLink.Title;
-        linkSelf.Href = collLink.Href;
-        group.Links = [];
-        group.Links.push(linkSelf);
-        if (!this.Groups) {
-            this.Groups = [];
-        }
-        this.Groups.push(group);
-    };
-    OPDSFeed.prototype.AddNavigationInGroup = function (link, collLink) {
-        if (this.Groups) {
-            var found1 = this.Groups.find(function (g) {
-                if (g.Links) {
-                    var found2 = g.Links.find(function (l) {
-                        if (l.Href === collLink.Href) {
-                            if (!g.Navigation) {
-                                g.Navigation = [];
-                            }
-                            g.Navigation.push(link);
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (found2) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-            if (found1) {
-                return;
-            }
-        }
-        var group = new opds2_group_1.OPDSGroup();
-        group.Metadata = new opds2_metadata_1.OPDSMetadata();
-        group.Metadata.Title = collLink.Title;
-        group.Navigation = [];
-        group.Navigation.push(link);
-        var linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.AddRel("self");
-        linkSelf.Title = collLink.Title;
-        linkSelf.Href = collLink.Href;
-        group.Links = [];
-        group.Links.push(link);
-        if (!this.Groups) {
-            this.Groups = [];
-        }
-        this.Groups.push(group);
-    };
-    OPDSFeed.prototype._OnDeserialized = function () {
-        if (!this.Metadata) {
-            console.log("OPDS2Feed.Metadata is not set!");
-        }
-        if (!this.Links) {
-            console.log("OPDS2Feed.Links is not set!");
-        }
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("@context"),
-        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFeed.prototype, "Context", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("metadata"),
-        tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
-    ], OPDSFeed.prototype, "Metadata", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFeed.prototype, "Links", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("publications"),
-        ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFeed.prototype, "Publications", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("navigation"),
-        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFeed.prototype, "Navigation", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("facets"),
-        ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFeed.prototype, "Facets", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("groups"),
-        ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
-        tslib_1.__metadata("design:type", Array)
-    ], OPDSFeed.prototype, "Groups", void 0);
-    tslib_1.__decorate([
-        ta_json_1.OnDeserialized(),
-        tslib_1.__metadata("design:type", Function),
-        tslib_1.__metadata("design:paramtypes", []),
-        tslib_1.__metadata("design:returntype", void 0)
-    ], OPDSFeed.prototype, "_OnDeserialized", null);
-    OPDSFeed = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], OPDSFeed);
-    return OPDSFeed;
-}());
-exports.OPDSFeed = OPDSFeed;
-
-},{"../../_utils/ta-json-string-converter":8,"./opds2-facet":73,"./opds2-group":74,"./opds2-link":76,"./opds2-metadata":77,"./opds2-publication":80,"ta-json":541,"tslib":554}],84:[function(require,module,exports){
-"use strict";
-var _this = this;
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var path = require("path");
-var metadata_1 = require("../models/metadata");
-var metadata_contributor_1 = require("../models/metadata-contributor");
-var publication_1 = require("../models/publication");
-var publication_link_1 = require("../models/publication-link");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
-var zipFactory_1 = require("../_utils/zip/zipFactory");
-var mime = require("mime-types");
-var slugify = require("slugify");
-var xmldom = require("xmldom");
-var comicrack_1 = require("./comicrack/comicrack");
-var epub_1 = require("./epub");
-function CbzParsePromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var zip, err_1, publication, comicInfoEntryName, _b, err_2;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4, zipFactory_1.zipLoadPromise(filePath)];
-                case 1:
-                    zip = _a.sent();
-                    return [3, 3];
-                case 2:
-                    err_1 = _a.sent();
-                    return [2, Promise.reject(err_1)];
-                case 3:
-                    if (!zip.hasEntries()) {
-                        return [2, Promise.reject("CBZ zip empty")];
-                    }
-                    publication = new publication_1.Publication();
-                    publication.Context = ["http://readium.org/webpub/default.jsonld"];
-                    publication.Metadata = new metadata_1.Metadata();
-                    publication.Metadata.RDFType = "http://schema.org/ComicIssue";
-                    publication.Metadata.Identifier = filePathToTitle(filePath);
-                    publication.AddToInternal("type", "cbz");
-                    publication.AddToInternal("zip", zip);
-                    zip.forEachEntry(function (entryName) {
-                        var link = new publication_link_1.Link();
-                        link.Href = entryName;
-                        var mediaType = mime.lookup(entryName);
-                        if (mediaType) {
-                            link.TypeLink = mediaType;
-                        }
-                        else {
-                            console.log("!!!!!! NO MEDIA TYPE?!");
-                        }
-                        if (link.TypeLink && link.TypeLink.startsWith("image/")) {
-                            if (!publication.Spine) {
-                                publication.Spine = [];
-                            }
-                            publication.Spine.push(link);
-                        }
-                        else if (entryName.endsWith("ComicInfo.xml")) {
-                            comicInfoEntryName = entryName;
-                        }
-                    });
-                    if (!publication.Metadata.Title) {
-                        publication.Metadata.Title = path.basename(filePath);
-                    }
-                    if (!comicInfoEntryName) return [3, 7];
-                    _a.label = 4;
-                case 4:
-                    _a.trys.push([4, 6, , 7]);
-                    return [4, comicRackMetadata(zip, comicInfoEntryName, publication)];
-                case 5:
-                    _b = _a.sent();
-                    console.log(_b);
-                    return [3, 7];
-                case 6:
-                    err_2 = _a.sent();
-                    console.log(err_2);
-                    return [3, 7];
-                case 7: return [2, publication];
-            }
-        });
-    });
-}
-exports.CbzParsePromise = CbzParsePromise;
-var filePathToTitle = function (filePath) {
-    var fileName = path.basename(filePath);
-    return slugify(fileName, "_").replace(/[\.]/g, "_");
-};
-var comicRackMetadata = function (zip, entryName, publication) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var comicZipStream_, err_3, comicZipStream, comicZipData, err_4, comicXmlStr, comicXmlDoc, comicMeta, cont, cont, cont, cont, title, _i, _a, p, l;
-    return tslib_1.__generator(this, function (_c) {
-        switch (_c.label) {
-            case 0:
-                _c.trys.push([0, 2, , 3]);
-                return [4, zip.entryStreamPromise(entryName)];
-            case 1:
-                comicZipStream_ = _c.sent();
-                return [3, 3];
-            case 2:
-                err_3 = _c.sent();
-                console.log(err_3);
-                return [2];
-            case 3:
-                comicZipStream = comicZipStream_.stream;
-                _c.label = 4;
-            case 4:
-                _c.trys.push([4, 6, , 7]);
-                return [4, BufferUtils_1.streamToBufferPromise(comicZipStream)];
-            case 5:
-                comicZipData = _c.sent();
-                return [3, 7];
-            case 6:
-                err_4 = _c.sent();
-                console.log(err_4);
-                return [2];
-            case 7:
-                comicXmlStr = comicZipData.toString("utf8");
-                comicXmlDoc = new xmldom.DOMParser().parseFromString(comicXmlStr);
-                comicMeta = xml_js_mapper_1.XML.deserialize(comicXmlDoc, comicrack_1.ComicInfo);
-                comicMeta.ZipPath = entryName;
-                if (!publication.Metadata) {
-                    publication.Metadata = new metadata_1.Metadata();
-                }
-                if (comicMeta.Writer) {
-                    cont = new metadata_contributor_1.Contributor();
-                    cont.Name = comicMeta.Writer;
-                    if (!publication.Metadata.Author) {
-                        publication.Metadata.Author = [];
-                    }
-                    publication.Metadata.Author.push(cont);
-                }
-                if (comicMeta.Penciller) {
-                    cont = new metadata_contributor_1.Contributor();
-                    cont.Name = comicMeta.Writer;
-                    if (!publication.Metadata.Penciler) {
-                        publication.Metadata.Penciler = [];
-                    }
-                    publication.Metadata.Penciler.push(cont);
-                }
-                if (comicMeta.Colorist) {
-                    cont = new metadata_contributor_1.Contributor();
-                    cont.Name = comicMeta.Writer;
-                    if (!publication.Metadata.Colorist) {
-                        publication.Metadata.Colorist = [];
-                    }
-                    publication.Metadata.Colorist.push(cont);
-                }
-                if (comicMeta.Inker) {
-                    cont = new metadata_contributor_1.Contributor();
-                    cont.Name = comicMeta.Writer;
-                    if (!publication.Metadata.Inker) {
-                        publication.Metadata.Inker = [];
-                    }
-                    publication.Metadata.Inker.push(cont);
-                }
-                if (comicMeta.Title) {
-                    publication.Metadata.Title = comicMeta.Title;
-                }
-                if (!publication.Metadata.Title) {
-                    if (comicMeta.Series) {
-                        title = comicMeta.Series;
-                        if (comicMeta.Number) {
-                            title = title + " - " + comicMeta.Number;
-                        }
-                        publication.Metadata.Title = title;
-                    }
-                }
-                if (!comicMeta.Pages) return [3, 12];
-                _i = 0, _a = comicMeta.Pages;
-                _c.label = 8;
-            case 8:
-                if (!(_i < _a.length)) return [3, 12];
-                p = _a[_i];
-                l = new publication_link_1.Link();
-                if (!(p.Type === "FrontCover")) return [3, 10];
-                l.AddRel("cover");
-                return [4, epub_1.addCoverDimensions(publication, l)];
-            case 9:
-                _c.sent();
-                _c.label = 10;
-            case 10:
-                l.Href = publication.Spine[p.Image].Href;
-                if (p.ImageHeight) {
-                    l.Height = p.ImageHeight;
-                }
-                if (p.ImageWidth) {
-                    l.Width = p.ImageWidth;
-                }
-                if (p.Bookmark) {
-                    l.Title = p.Bookmark;
-                }
-                if (!publication.TOC) {
-                    publication.TOC = [];
-                }
-                publication.TOC.push(l);
-                _c.label = 11;
-            case 11:
-                _i++;
-                return [3, 8];
-            case 12: return [2];
-        }
-    });
-}); };
-
-},{"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../_utils/zip/zipFactory":35,"../models/metadata":58,"../models/metadata-contributor":53,"../models/publication":60,"../models/publication-link":59,"./comicrack/comicrack":86,"./epub":87,"mime-types":429,"path":undefined,"slugify":492,"tslib":554,"xmldom":573}],85:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Page = (function () {
-    function Page() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@Image"),
-        tslib_1.__metadata("design:type", Number)
-    ], Page.prototype, "Image", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@Bookmark"),
-        tslib_1.__metadata("design:type", String)
-    ], Page.prototype, "Bookmark", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@Type"),
-        tslib_1.__metadata("design:type", String)
-    ], Page.prototype, "Type", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@ImageSize"),
-        tslib_1.__metadata("design:type", Number)
-    ], Page.prototype, "ImageSize", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@ImageWidth"),
-        tslib_1.__metadata("design:type", Number)
-    ], Page.prototype, "ImageWidth", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@ImageHeight"),
-        tslib_1.__metadata("design:type", Number)
-    ], Page.prototype, "ImageHeight", void 0);
-    Page = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            xsd: "http://www.w3.org/2001/XMLSchema",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], Page);
-    return Page;
-}());
-exports.Page = Page;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],86:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var comicrack_page_1 = require("./comicrack-page");
-var ComicInfo = (function () {
-    function ComicInfo() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Title"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Series"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Series", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Volume"),
-        tslib_1.__metadata("design:type", Number)
-    ], ComicInfo.prototype, "Volume", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Number"),
-        tslib_1.__metadata("design:type", Number)
-    ], ComicInfo.prototype, "Number", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Writer"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Writer", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Penciller"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Penciller", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Inker"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Inker", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Colorist"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Colorist", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ScanInformation"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "ScanInformation", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Summary"),
-        tslib_1.__metadata("design:type", String)
-    ], ComicInfo.prototype, "Summary", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Year"),
-        tslib_1.__metadata("design:type", Number)
-    ], ComicInfo.prototype, "Year", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("PageCount"),
-        tslib_1.__metadata("design:type", Number)
-    ], ComicInfo.prototype, "PageCount", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("Pages/Page"),
-        xml_js_mapper_1.XmlItemType(comicrack_page_1.Page),
-        tslib_1.__metadata("design:type", Array)
-    ], ComicInfo.prototype, "Pages", void 0);
-    ComicInfo = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            xsd: "http://www.w3.org/2001/XMLSchema",
-            xsi: "http://www.w3.org/2001/XMLSchema-instance",
-        })
-    ], ComicInfo);
-    return ComicInfo;
-}());
-exports.ComicInfo = ComicInfo;
-
-},{"../../_utils/xml-js-mapper":28,"./comicrack-page":85,"tslib":554}],87:[function(require,module,exports){
-"use strict";
-var _this = this;
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var path = require("path");
-var querystring = require("querystring");
-var media_overlay_1 = require("../models/media-overlay");
-var metadata_1 = require("../models/metadata");
-var metadata_belongsto_1 = require("../models/metadata-belongsto");
-var metadata_collection_1 = require("../models/metadata-collection");
-var metadata_contributor_1 = require("../models/metadata-contributor");
-var metadata_encrypted_1 = require("../models/metadata-encrypted");
-var metadata_media_overlay_1 = require("../models/metadata-media-overlay");
-var metadata_properties_1 = require("../models/metadata-properties");
-var metadata_subject_1 = require("../models/metadata-subject");
-var publication_1 = require("../models/publication");
-var publication_link_1 = require("../models/publication-link");
-var transformer_1 = require("../transform/transformer");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
-var zipFactory_1 = require("../_utils/zip/zipFactory");
-var debug_ = require("debug");
-var sizeOf = require("image-size");
-var moment = require("moment");
-var ta_json_1 = require("ta-json");
-var xmldom = require("xmldom");
-var xpath = require("xpath");
-var container_1 = require("./epub/container");
-var encryption_1 = require("./epub/encryption");
-var lcp_1 = require("./epub/lcp");
-var ncx_1 = require("./epub/ncx");
-var opf_1 = require("./epub/opf");
-var opf_author_1 = require("./epub/opf-author");
-var smil_1 = require("./epub/smil");
-var smil_seq_1 = require("./epub/smil-seq");
-var debug = debug_("r2:epub");
-var epub3 = "3.0";
-var epub301 = "3.0.1";
-var epub31 = "3.1";
-var autoMeta = "auto";
-var noneMeta = "none";
-var reflowableMeta = "reflowable";
-exports.mediaOverlayURLPath = "media-overlay.json";
-exports.mediaOverlayURLParam = "resource";
-exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var zipInternal, zip, zipStream, err_1, zipData, imageInfo, err_2;
-    return tslib_1.__generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                zipInternal = publication.findFromInternal("zip");
-                if (!zipInternal) return [3, 8];
-                zip = zipInternal.Value;
-                if (!zip.hasEntry(coverLink.Href)) return [3, 8];
-                zipStream = void 0;
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4, zip.entryStreamPromise(coverLink.Href)];
-            case 2:
-                zipStream = _a.sent();
-                return [3, 4];
-            case 3:
-                err_1 = _a.sent();
-                debug(coverLink.Href);
-                debug(coverLink.TypeLink);
-                debug(err_1);
-                return [2];
-            case 4:
-                zipData = void 0;
-                _a.label = 5;
-            case 5:
-                _a.trys.push([5, 7, , 8]);
-                return [4, BufferUtils_1.streamToBufferPromise(zipStream.stream)];
-            case 6:
-                zipData = _a.sent();
-                imageInfo = sizeOf(zipData);
-                if (imageInfo) {
-                    coverLink.Width = imageInfo.width;
-                    coverLink.Height = imageInfo.height;
-                    if (coverLink.TypeLink &&
-                        coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
-                            !== ("image/" + imageInfo.type)) {
-                        debug("Wrong image type? " + coverLink.TypeLink + " -- " + imageInfo.type);
-                    }
-                }
-                return [3, 8];
-            case 7:
-                err_2 = _a.sent();
-                debug(coverLink.Href);
-                debug(coverLink.TypeLink);
-                debug(err_2);
-                return [3, 8];
-            case 8: return [2];
-        }
-    });
-}); };
-function EpubParsePromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var zip, err_3, publication, lcpl, lcplZipPath, lcplZipStream_, err_4, lcplZipStream, lcplZipData, err_5, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, err_6, encryptionXmlZipStream, encryptionXmlZipData, err_7, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, err_8, containerXmlZipStream, containerXmlZipData, err_9, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, err_10, opfZipStream, opfZipData, err_11, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, err_12, ncxZipStream, ncxZipData, err_13, ncxStr, ncxDoc, metasDuration_1, metasNarrator_1, metasActiveClass_1, metasPlaybackActiveClass_1;
-        return tslib_1.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    _a.trys.push([0, 2, , 3]);
-                    return [4, zipFactory_1.zipLoadPromise(filePath)];
-                case 1:
-                    zip = _a.sent();
-                    return [3, 3];
-                case 2:
-                    err_3 = _a.sent();
-                    debug(err_3);
-                    return [2, Promise.reject(err_3)];
-                case 3:
-                    if (!zip.hasEntries()) {
-                        return [2, Promise.reject("EPUB zip empty")];
-                    }
-                    publication = new publication_1.Publication();
-                    publication.Context = ["http://readium.org/webpub/default.jsonld"];
-                    publication.Metadata = new metadata_1.Metadata();
-                    publication.Metadata.RDFType = "http://schema.org/Book";
-                    publication.Metadata.Modified = moment(Date.now()).toDate();
-                    publication.AddToInternal("filename", path.basename(filePath));
-                    publication.AddToInternal("type", "epub");
-                    publication.AddToInternal("zip", zip);
-                    lcplZipPath = "META-INF/license.lcpl";
-                    if (!zip.hasEntry(lcplZipPath)) return [3, 12];
-                    lcplZipStream_ = void 0;
-                    _a.label = 4;
-                case 4:
-                    _a.trys.push([4, 6, , 7]);
-                    return [4, zip.entryStreamPromise(lcplZipPath)];
-                case 5:
-                    lcplZipStream_ = _a.sent();
-                    return [3, 7];
-                case 6:
-                    err_4 = _a.sent();
-                    debug(err_4);
-                    return [2, Promise.reject(err_4)];
-                case 7:
-                    lcplZipStream = lcplZipStream_.stream;
-                    lcplZipData = void 0;
-                    _a.label = 8;
-                case 8:
-                    _a.trys.push([8, 10, , 11]);
-                    return [4, BufferUtils_1.streamToBufferPromise(lcplZipStream)];
-                case 9:
-                    lcplZipData = _a.sent();
-                    return [3, 11];
-                case 10:
-                    err_5 = _a.sent();
-                    debug(err_5);
-                    return [2, Promise.reject(err_5)];
-                case 11:
-                    lcplStr = lcplZipData.toString("utf8");
-                    lcplJson = global.JSON.parse(lcplStr);
-                    debug(lcplJson);
-                    lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
-                    lcpl.ZipPath = lcplZipPath;
-                    lcpl.JsonSource = lcplStr;
-                    lcpl.init();
-                    publication.LCP = lcpl;
-                    publication.AddLink("application/vnd.readium.lcp.license-1.0+json", ["license"], lcpl.ZipPath, false);
-                    _a.label = 12;
-                case 12:
-                    encZipPath = "META-INF/encryption.xml";
-                    if (!zip.hasEntry(encZipPath)) return [3, 21];
-                    encryptionXmlZipStream_ = void 0;
-                    _a.label = 13;
-                case 13:
-                    _a.trys.push([13, 15, , 16]);
-                    return [4, zip.entryStreamPromise(encZipPath)];
-                case 14:
-                    encryptionXmlZipStream_ = _a.sent();
-                    return [3, 16];
-                case 15:
-                    err_6 = _a.sent();
-                    debug(err_6);
-                    return [2, Promise.reject(err_6)];
-                case 16:
-                    encryptionXmlZipStream = encryptionXmlZipStream_.stream;
-                    encryptionXmlZipData = void 0;
-                    _a.label = 17;
-                case 17:
-                    _a.trys.push([17, 19, , 20]);
-                    return [4, BufferUtils_1.streamToBufferPromise(encryptionXmlZipStream)];
-                case 18:
-                    encryptionXmlZipData = _a.sent();
-                    return [3, 20];
-                case 19:
-                    err_7 = _a.sent();
-                    debug(err_7);
-                    return [2, Promise.reject(err_7)];
-                case 20:
-                    encryptionXmlStr = encryptionXmlZipData.toString("utf8");
-                    encryptionXmlDoc = new xmldom.DOMParser().parseFromString(encryptionXmlStr);
-                    encryption = xml_js_mapper_1.XML.deserialize(encryptionXmlDoc, encryption_1.Encryption);
-                    encryption.ZipPath = encZipPath;
-                    _a.label = 21;
-                case 21:
-                    containerZipPath = "META-INF/container.xml";
-                    _a.label = 22;
-                case 22:
-                    _a.trys.push([22, 24, , 25]);
-                    return [4, zip.entryStreamPromise(containerZipPath)];
-                case 23:
-                    containerXmlZipStream_ = _a.sent();
-                    return [3, 25];
-                case 24:
-                    err_8 = _a.sent();
-                    debug(err_8);
-                    return [2, Promise.reject(err_8)];
-                case 25:
-                    containerXmlZipStream = containerXmlZipStream_.stream;
-                    _a.label = 26;
-                case 26:
-                    _a.trys.push([26, 28, , 29]);
-                    return [4, BufferUtils_1.streamToBufferPromise(containerXmlZipStream)];
-                case 27:
-                    containerXmlZipData = _a.sent();
-                    return [3, 29];
-                case 28:
-                    err_9 = _a.sent();
-                    debug(err_9);
-                    return [2, Promise.reject(err_9)];
-                case 29:
-                    containerXmlStr = containerXmlZipData.toString("utf8");
-                    containerXmlDoc = new xmldom.DOMParser().parseFromString(containerXmlStr);
-                    container = xml_js_mapper_1.XML.deserialize(containerXmlDoc, container_1.Container);
-                    container.ZipPath = containerZipPath;
-                    rootfile = container.Rootfile[0];
-                    _a.label = 30;
-                case 30:
-                    _a.trys.push([30, 32, , 33]);
-                    return [4, zip.entryStreamPromise(rootfile.Path)];
-                case 31:
-                    opfZipStream_ = _a.sent();
-                    return [3, 33];
-                case 32:
-                    err_10 = _a.sent();
-                    debug(err_10);
-                    return [2, Promise.reject(err_10)];
-                case 33:
-                    opfZipStream = opfZipStream_.stream;
-                    _a.label = 34;
-                case 34:
-                    _a.trys.push([34, 36, , 37]);
-                    return [4, BufferUtils_1.streamToBufferPromise(opfZipStream)];
-                case 35:
-                    opfZipData = _a.sent();
-                    return [3, 37];
-                case 36:
-                    err_11 = _a.sent();
-                    debug(err_11);
-                    return [2, Promise.reject(err_11)];
-                case 37:
-                    opfStr = opfZipData.toString("utf8");
-                    opfDoc = new xmldom.DOMParser().parseFromString(opfStr);
-                    opf = xml_js_mapper_1.XML.deserialize(opfDoc, opf_1.OPF);
-                    opf.ZipPath = rootfile.Path;
-                    if (!opf.Spine.Toc) return [3, 46];
-                    ncxManItem = opf.Manifest.find(function (manifestItem) {
-                        return manifestItem.ID === opf.Spine.Toc;
-                    });
-                    if (!ncxManItem) return [3, 46];
-                    ncxFilePath = path.join(path.dirname(opf.ZipPath), ncxManItem.Href)
-                        .replace(/\\/g, "/");
-                    ncxZipStream_ = void 0;
-                    _a.label = 38;
-                case 38:
-                    _a.trys.push([38, 40, , 41]);
-                    return [4, zip.entryStreamPromise(ncxFilePath)];
-                case 39:
-                    ncxZipStream_ = _a.sent();
-                    return [3, 41];
-                case 40:
-                    err_12 = _a.sent();
-                    debug(err_12);
-                    return [2, Promise.reject(err_12)];
-                case 41:
-                    ncxZipStream = ncxZipStream_.stream;
-                    ncxZipData = void 0;
-                    _a.label = 42;
-                case 42:
-                    _a.trys.push([42, 44, , 45]);
-                    return [4, BufferUtils_1.streamToBufferPromise(ncxZipStream)];
-                case 43:
-                    ncxZipData = _a.sent();
-                    return [3, 45];
-                case 44:
-                    err_13 = _a.sent();
-                    debug(err_13);
-                    return [2, Promise.reject(err_13)];
-                case 45:
-                    ncxStr = ncxZipData.toString("utf8");
-                    ncxDoc = new xmldom.DOMParser().parseFromString(ncxStr);
-                    ncx = xml_js_mapper_1.XML.deserialize(ncxDoc, ncx_1.NCX);
-                    ncx.ZipPath = ncxFilePath;
-                    _a.label = 46;
-                case 46:
-                    addTitle(publication, rootfile, opf);
-                    addIdentifier(publication, rootfile, opf);
-                    if (opf.Metadata) {
-                        if (opf.Metadata.Language) {
-                            publication.Metadata.Language = opf.Metadata.Language;
-                        }
-                        if (opf.Metadata.Rights && opf.Metadata.Rights.length) {
-                            publication.Metadata.Rights = opf.Metadata.Rights.join(" ");
-                        }
-                        if (opf.Metadata.Description && opf.Metadata.Description.length) {
-                            publication.Metadata.Description = opf.Metadata.Description[0];
-                        }
-                        if (opf.Metadata.Publisher && opf.Metadata.Publisher.length) {
-                            publication.Metadata.Publisher = [];
-                            opf.Metadata.Publisher.forEach(function (pub) {
-                                var contrib = new metadata_contributor_1.Contributor();
-                                contrib.Name = pub;
-                                publication.Metadata.Publisher.push(contrib);
-                            });
-                        }
-                        if (opf.Metadata.Source && opf.Metadata.Source.length) {
-                            publication.Metadata.Source = opf.Metadata.Source[0];
-                        }
-                        if (opf.Metadata.Contributor && opf.Metadata.Contributor.length) {
-                            opf.Metadata.Contributor.forEach(function (cont) {
-                                addContributor(publication, rootfile, opf, cont, undefined);
-                            });
-                        }
-                        if (opf.Metadata.Creator && opf.Metadata.Creator.length) {
-                            opf.Metadata.Creator.forEach(function (cont) {
-                                addContributor(publication, rootfile, opf, cont, "aut");
-                            });
-                        }
-                        if (opf.Metadata.Meta) {
-                            metasDuration_1 = [];
-                            metasNarrator_1 = [];
-                            metasActiveClass_1 = [];
-                            metasPlaybackActiveClass_1 = [];
-                            opf.Metadata.Meta.forEach(function (metaTag) {
-                                if (metaTag.Property === "media:duration") {
-                                    metasDuration_1.push(metaTag);
-                                }
-                                if (metaTag.Property === "media:narrator") {
-                                    metasNarrator_1.push(metaTag);
-                                }
-                                if (metaTag.Property === "media:active-class") {
-                                    metasActiveClass_1.push(metaTag);
-                                }
-                                if (metaTag.Property === "media:playback-active-class") {
-                                    metasPlaybackActiveClass_1.push(metaTag);
-                                }
-                            });
-                            if (metasDuration_1.length) {
-                                publication.Metadata.Duration = media_overlay_1.timeStrToSeconds(metasDuration_1[0].Data);
-                            }
-                            if (metasNarrator_1.length) {
-                                if (!publication.Metadata.Narrator) {
-                                    publication.Metadata.Narrator = [];
-                                }
-                                metasNarrator_1.forEach(function (metaNarrator) {
-                                    var cont = new metadata_contributor_1.Contributor();
-                                    cont.Name = metaNarrator.Data;
-                                    publication.Metadata.Narrator.push(cont);
-                                });
-                            }
-                            if (metasActiveClass_1.length) {
-                                if (!publication.Metadata.MediaOverlay) {
-                                    publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
-                                }
-                                publication.Metadata.MediaOverlay.ActiveClass = metasActiveClass_1[0].Data;
-                            }
-                            if (metasPlaybackActiveClass_1.length) {
-                                if (!publication.Metadata.MediaOverlay) {
-                                    publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
-                                }
-                                publication.Metadata.MediaOverlay.PlaybackActiveClass = metasPlaybackActiveClass_1[0].Data;
-                            }
-                        }
-                    }
-                    if (opf.Spine && opf.Spine.PageProgression) {
-                        publication.Metadata.Direction = opf.Spine.PageProgression;
-                    }
-                    if (isEpub3OrMore(rootfile, opf)) {
-                        findContributorInMeta(publication, rootfile, opf);
-                    }
-                    return [4, fillSpineAndResource(publication, rootfile, opf)];
-                case 47:
-                    _a.sent();
-                    addRendition(publication, rootfile, opf);
-                    return [4, addCoverRel(publication, rootfile, opf)];
-                case 48:
-                    _a.sent();
-                    if (encryption) {
-                        fillEncryptionInfo(publication, rootfile, opf, encryption, lcpl);
-                    }
-                    return [4, fillTOCFromNavDoc(publication, rootfile, opf, zip)];
-                case 49:
-                    _a.sent();
-                    if (!publication.TOC || !publication.TOC.length) {
-                        if (ncx) {
-                            fillTOCFromNCX(publication, rootfile, opf, ncx);
-                            fillPageListFromNCX(publication, rootfile, opf, ncx);
-                        }
-                        fillLandmarksFromGuide(publication, rootfile, opf);
-                    }
-                    fillCalibreSerieInfo(publication, rootfile, opf);
-                    fillSubject(publication, rootfile, opf);
-                    fillPublicationDate(publication, rootfile, opf);
-                    return [4, fillMediaOverlay(publication, rootfile, opf, zip)];
-                case 50:
-                    _a.sent();
-                    return [2, publication];
-            }
-        });
-    });
-}
-exports.EpubParsePromise = EpubParsePromise;
-function getAllMediaOverlays(publication) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var mos, _a, _b, link, _c, _d, mo, err_14;
-        return tslib_1.__generator(this, function (_e) {
-            switch (_e.label) {
-                case 0:
-                    mos = [];
-                    if (!publication.Spine) return [3, 9];
-                    _a = 0, _b = publication.Spine;
-                    _e.label = 1;
-                case 1:
-                    if (!(_a < _b.length)) return [3, 9];
-                    link = _b[_a];
-                    if (!link.MediaOverlays) return [3, 8];
-                    _c = 0, _d = link.MediaOverlays;
-                    _e.label = 2;
-                case 2:
-                    if (!(_c < _d.length)) return [3, 8];
-                    mo = _d[_c];
-                    _e.label = 3;
-                case 3:
-                    _e.trys.push([3, 5, , 6]);
-                    return [4, fillMediaOverlayParse(publication, mo)];
-                case 4:
-                    _e.sent();
-                    return [3, 6];
-                case 5:
-                    err_14 = _e.sent();
-                    return [2, Promise.reject(err_14)];
-                case 6:
-                    mos.push(mo);
-                    _e.label = 7;
-                case 7:
-                    _c++;
-                    return [3, 2];
-                case 8:
-                    _a++;
-                    return [3, 1];
-                case 9: return [2, Promise.resolve(mos)];
-            }
-        });
-    });
-}
-exports.getAllMediaOverlays = getAllMediaOverlays;
-function getMediaOverlay(publication, spineHref) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var mos, _a, _b, link, _c, _d, mo, err_15;
-        return tslib_1.__generator(this, function (_e) {
-            switch (_e.label) {
-                case 0:
-                    mos = [];
-                    if (!publication.Spine) return [3, 9];
-                    _a = 0, _b = publication.Spine;
-                    _e.label = 1;
-                case 1:
-                    if (!(_a < _b.length)) return [3, 9];
-                    link = _b[_a];
-                    if (!(link.MediaOverlays && link.Href.indexOf(spineHref) >= 0)) return [3, 8];
-                    _c = 0, _d = link.MediaOverlays;
-                    _e.label = 2;
-                case 2:
-                    if (!(_c < _d.length)) return [3, 8];
-                    mo = _d[_c];
-                    _e.label = 3;
-                case 3:
-                    _e.trys.push([3, 5, , 6]);
-                    return [4, fillMediaOverlayParse(publication, mo)];
-                case 4:
-                    _e.sent();
-                    return [3, 6];
-                case 5:
-                    err_15 = _e.sent();
-                    return [2, Promise.reject(err_15)];
-                case 6:
-                    mos.push(mo);
-                    _e.label = 7;
-                case 7:
-                    _c++;
-                    return [3, 2];
-                case 8:
-                    _a++;
-                    return [3, 1];
-                case 9: return [2, Promise.resolve(mos)];
-            }
-        });
-    });
-}
-exports.getMediaOverlay = getMediaOverlay;
-var fillMediaOverlayParse = function (publication, mo) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var link, relativePath_1, err, zipInternal, zip, smilZipStream_, err_16, decryptFail, transformedStream, err_17, err, smilZipStream, smilZipData, err_18, smilStr, smilXmlDoc, smil, zipPath;
-    return tslib_1.__generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (mo.initialized) {
-                    return [2];
-                }
-                if (publication.Resources) {
-                    relativePath_1 = mo.SmilPathInZip;
-                    if (publication.Resources) {
-                        link = publication.Resources.find(function (l) {
-                            if (l.Href === relativePath_1) {
-                                return true;
-                            }
-                            return false;
-                        });
-                    }
-                    if (!link) {
-                        if (publication.Spine) {
-                            link = publication.Spine.find(function (l) {
-                                if (l.Href === relativePath_1) {
-                                    return true;
-                                }
-                                return false;
-                            });
-                        }
-                    }
-                    if (!link) {
-                        err = "Asset not declared in publication spine/resources! " + relativePath_1;
-                        debug(err);
-                        return [2, Promise.reject(err)];
-                    }
-                }
-                zipInternal = publication.findFromInternal("zip");
-                if (!zipInternal) {
-                    return [2];
-                }
-                zip = zipInternal.Value;
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4, zip.entryStreamPromise(mo.SmilPathInZip)];
-            case 2:
-                smilZipStream_ = _a.sent();
-                return [3, 4];
-            case 3:
-                err_16 = _a.sent();
-                debug(err_16);
-                return [2, Promise.reject(err_16)];
-            case 4:
-                if (!(link && link.Properties && link.Properties.Encrypted)) return [3, 9];
-                decryptFail = false;
-                transformedStream = void 0;
-                _a.label = 5;
-            case 5:
-                _a.trys.push([5, 7, , 8]);
-                return [4, transformer_1.Transformers.tryStream(publication, link, smilZipStream_, false, 0, 0)];
-            case 6:
-                transformedStream = _a.sent();
-                return [3, 8];
-            case 7:
-                err_17 = _a.sent();
-                debug(err_17);
-                return [2, Promise.reject(err_17)];
-            case 8:
-                if (transformedStream) {
-                    smilZipStream_ = transformedStream;
-                }
-                else {
-                    decryptFail = true;
-                }
-                if (decryptFail) {
-                    err = "Encryption scheme not supported.";
-                    debug(err);
-                    return [2, Promise.reject(err)];
-                }
-                _a.label = 9;
-            case 9:
-                smilZipStream = smilZipStream_.stream;
-                _a.label = 10;
-            case 10:
-                _a.trys.push([10, 12, , 13]);
-                return [4, BufferUtils_1.streamToBufferPromise(smilZipStream)];
-            case 11:
-                smilZipData = _a.sent();
-                return [3, 13];
-            case 12:
-                err_18 = _a.sent();
-                debug(err_18);
-                return [2, Promise.reject(err_18)];
-            case 13:
-                smilStr = smilZipData.toString("utf8");
-                smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
-                smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
-                smil.ZipPath = mo.SmilPathInZip;
-                mo.initialized = true;
-                debug("PARSED SMIL: " + mo.SmilPathInZip);
-                mo.Role = [];
-                mo.Role.push("section");
-                if (smil.Body) {
-                    if (smil.Body.EpubType) {
-                        smil.Body.EpubType.trim().split(" ").forEach(function (role) {
-                            if (!role.length) {
-                                return;
-                            }
-                            if (mo.Role.indexOf(role) < 0) {
-                                mo.Role.push(role);
-                            }
-                        });
-                    }
-                    if (smil.Body.TextRef) {
-                        zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
-                            .replace(/\\/g, "/");
-                        mo.Text = zipPath;
-                    }
-                    if (smil.Body.Children && smil.Body.Children.length) {
-                        smil.Body.Children.forEach(function (seqChild) {
-                            if (!mo.Children) {
-                                mo.Children = [];
-                            }
-                            addSeqToMediaOverlay(smil, publication, mo, mo.Children, seqChild);
-                        });
-                    }
-                }
-                return [2];
-        }
-    });
-}); };
-var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var _loop_1, _a, _b, item;
-    return tslib_1.__generator(this, function (_c) {
-        if (!publication.Resources) {
-            return [2];
-        }
-        _loop_1 = function (item) {
-            if (item.TypeLink !== "application/smil+xml") {
-                return "continue";
-            }
-            if (!zip.hasEntry(item.Href)) {
-                return "continue";
-            }
-            var manItemsHtmlWithSmil = [];
-            opf.Manifest.forEach(function (manItemHtmlWithSmil) {
-                if (manItemHtmlWithSmil.MediaOverlay) {
-                    var manItemSmil = opf.Manifest.find(function (mi) {
-                        if (mi.ID === manItemHtmlWithSmil.MediaOverlay) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (manItemSmil) {
-                        var smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
-                            .replace(/\\/g, "/");
-                        if (smilFilePath2 === item.Href) {
-                            manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
-                        }
-                    }
-                }
-            });
-            var mo = new media_overlay_1.MediaOverlayNode();
-            mo.SmilPathInZip = item.Href;
-            mo.initialized = false;
-            manItemsHtmlWithSmil.forEach(function (manItemHtmlWithSmil) {
-                var htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
-                    .replace(/\\/g, "/");
-                var link = findLinKByHref(publication, rootfile, opf, htmlPathInZip);
-                if (link) {
-                    if (!link.MediaOverlays) {
-                        link.MediaOverlays = [];
-                    }
-                    var alreadyExists = link.MediaOverlays.find(function (moo) {
-                        if (item.Href === moo.SmilPathInZip) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (!alreadyExists) {
-                        link.MediaOverlays.push(mo);
-                    }
-                    if (!link.Properties) {
-                        link.Properties = new metadata_properties_1.Properties();
-                    }
-                    link.Properties.MediaOverlay = exports.mediaOverlayURLPath + "?" +
-                        exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
-                }
-            });
-            if (item.Properties && item.Properties.Encrypted) {
-                debug("ENCRYPTED SMIL MEDIA OVERLAY: " + item.Href);
-                return "continue";
-            }
-        };
-        for (_a = 0, _b = publication.Resources; _a < _b.length; _a++) {
-            item = _b[_a];
-            _loop_1(item);
-        }
-        return [2];
-    });
-}); };
-var addSeqToMediaOverlay = function (smil, publication, rootMO, mo, seqChild) {
-    var moc = new media_overlay_1.MediaOverlayNode();
-    moc.initialized = rootMO.initialized;
-    mo.push(moc);
-    if (seqChild instanceof smil_seq_1.Seq) {
-        moc.Role = [];
-        moc.Role.push("section");
-        var seq = seqChild;
-        if (seq.EpubType) {
-            seq.EpubType.trim().split(" ").forEach(function (role) {
-                if (!role.length) {
-                    return;
-                }
-                if (moc.Role.indexOf(role) < 0) {
-                    moc.Role.push(role);
-                }
-            });
-        }
-        if (seq.TextRef) {
-            var zipPath = path.join(path.dirname(smil.ZipPath), seq.TextRef)
-                .replace(/\\/g, "/");
-            moc.Text = zipPath;
-        }
-        if (seq.Children && seq.Children.length) {
-            seq.Children.forEach(function (child) {
-                if (!moc.Children) {
-                    moc.Children = [];
-                }
-                addSeqToMediaOverlay(smil, publication, rootMO, moc.Children, child);
-            });
-        }
-    }
-    else {
-        var par = seqChild;
-        if (par.EpubType) {
-            par.EpubType.trim().split(" ").forEach(function (role) {
-                if (!role.length) {
-                    return;
-                }
-                if (!moc.Role) {
-                    moc.Role = [];
-                }
-                if (moc.Role.indexOf(role) < 0) {
-                    moc.Role.push(role);
-                }
-            });
-        }
-        if (par.Text && par.Text.Src) {
-            var zipPath = path.join(path.dirname(smil.ZipPath), par.Text.Src)
-                .replace(/\\/g, "/");
-            moc.Text = zipPath;
-        }
-        if (par.Audio && par.Audio.Src) {
-            var zipPath = path.join(path.dirname(smil.ZipPath), par.Audio.Src)
-                .replace(/\\/g, "/");
-            moc.Audio = zipPath;
-            moc.Audio += "#t=";
-            moc.Audio += par.Audio.ClipBegin ? media_overlay_1.timeStrToSeconds(par.Audio.ClipBegin) : "0";
-            if (par.Audio.ClipEnd) {
-                moc.Audio += ",";
-                moc.Audio += media_overlay_1.timeStrToSeconds(par.Audio.ClipEnd);
-            }
-        }
-    }
-};
-var fillPublicationDate = function (publication, rootfile, opf) {
-    if (opf.Metadata && opf.Metadata.Date && opf.Metadata.Date.length) {
-        if (isEpub3OrMore(rootfile, opf) && opf.Metadata.Date[0] && opf.Metadata.Date[0].Data) {
-            publication.Metadata.PublicationDate = moment(opf.Metadata.Date[0].Data).toDate();
-            return;
-        }
-        opf.Metadata.Date.forEach(function (date) {
-            if (date.Data && date.Event && date.Event.indexOf("publication") >= 0) {
-                publication.Metadata.PublicationDate = moment(date.Data).toDate();
-            }
-        });
-    }
-};
-var findContributorInMeta = function (publication, rootfile, opf) {
-    if (opf.Metadata && opf.Metadata.Meta) {
-        opf.Metadata.Meta.forEach(function (meta) {
-            if (meta.Property === "dcterms:creator" || meta.Property === "dcterms:contributor") {
-                var cont = new opf_author_1.Author();
-                cont.Data = meta.Data;
-                cont.ID = meta.ID;
-                addContributor(publication, rootfile, opf, cont, undefined);
-            }
-        });
-    }
-};
-var addContributor = function (publication, rootfile, opf, cont, forcedRole) {
-    var contributor = new metadata_contributor_1.Contributor();
-    var role;
-    if (isEpub3OrMore(rootfile, opf)) {
-        var meta = findMetaByRefineAndProperty(rootfile, opf, cont.ID, "role");
-        if (meta && meta.Property === "role") {
-            role = meta.Data;
-        }
-        if (!role && forcedRole) {
-            role = forcedRole;
-        }
-        var metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, cont.ID, "alternate-script");
-        if (metaAlt && metaAlt.length) {
-            contributor.Name = {};
-            if (publication.Metadata &&
-                publication.Metadata.Language &&
-                publication.Metadata.Language.length) {
-                contributor.Name[publication.Metadata.Language[0].toLowerCase()] = cont.Data;
-            }
-            metaAlt.forEach(function (m) {
-                if (m.Lang) {
-                    contributor.Name[m.Lang] = m.Data;
-                }
-            });
-        }
-        else {
-            contributor.Name = cont.Data;
-        }
-    }
-    else {
-        contributor.Name = cont.Data;
-        role = cont.Role;
-        if (!role && forcedRole) {
-            role = forcedRole;
-        }
-    }
-    if (role) {
-        switch (role) {
-            case "aut": {
-                if (!publication.Metadata.Author) {
-                    publication.Metadata.Author = [];
-                }
-                publication.Metadata.Author.push(contributor);
-                break;
-            }
-            case "trl": {
-                if (!publication.Metadata.Translator) {
-                    publication.Metadata.Translator = [];
-                }
-                publication.Metadata.Translator.push(contributor);
-                break;
-            }
-            case "art": {
-                if (!publication.Metadata.Artist) {
-                    publication.Metadata.Artist = [];
-                }
-                publication.Metadata.Artist.push(contributor);
-                break;
-            }
-            case "edt": {
-                if (!publication.Metadata.Editor) {
-                    publication.Metadata.Editor = [];
-                }
-                publication.Metadata.Editor.push(contributor);
-                break;
-            }
-            case "ill": {
-                if (!publication.Metadata.Illustrator) {
-                    publication.Metadata.Illustrator = [];
-                }
-                publication.Metadata.Illustrator.push(contributor);
-                break;
-            }
-            case "ltr": {
-                if (!publication.Metadata.Letterer) {
-                    publication.Metadata.Letterer = [];
-                }
-                publication.Metadata.Letterer.push(contributor);
-                break;
-            }
-            case "pen": {
-                if (!publication.Metadata.Penciler) {
-                    publication.Metadata.Penciler = [];
-                }
-                publication.Metadata.Penciler.push(contributor);
-                break;
-            }
-            case "clr": {
-                if (!publication.Metadata.Colorist) {
-                    publication.Metadata.Colorist = [];
-                }
-                publication.Metadata.Colorist.push(contributor);
-                break;
-            }
-            case "ink": {
-                if (!publication.Metadata.Inker) {
-                    publication.Metadata.Inker = [];
-                }
-                publication.Metadata.Inker.push(contributor);
-                break;
-            }
-            case "nrt": {
-                if (!publication.Metadata.Narrator) {
-                    publication.Metadata.Narrator = [];
-                }
-                publication.Metadata.Narrator.push(contributor);
-                break;
-            }
-            case "pbl": {
-                if (!publication.Metadata.Publisher) {
-                    publication.Metadata.Publisher = [];
-                }
-                publication.Metadata.Publisher.push(contributor);
-                break;
-            }
-            default: {
-                contributor.Role = role;
-                if (!publication.Metadata.Contributor) {
-                    publication.Metadata.Contributor = [];
-                }
-                publication.Metadata.Contributor.push(contributor);
-            }
-        }
-    }
-};
-var addIdentifier = function (publication, _rootfile, opf) {
-    if (opf.Metadata && opf.Metadata.Identifier) {
-        if (opf.UniqueIdentifier && opf.Metadata.Identifier.length > 1) {
-            opf.Metadata.Identifier.forEach(function (iden) {
-                if (iden.ID === opf.UniqueIdentifier) {
-                    publication.Metadata.Identifier = iden.Data;
-                }
-            });
-        }
-        else if (opf.Metadata.Identifier.length > 0) {
-            publication.Metadata.Identifier = opf.Metadata.Identifier[0].Data;
-        }
-    }
-};
-var addTitle = function (publication, rootfile, opf) {
-    if (isEpub3OrMore(rootfile, opf)) {
-        var mainTitle = void 0;
-        if (opf.Metadata &&
-            opf.Metadata.Title &&
-            opf.Metadata.Title.length) {
-            if (opf.Metadata.Meta) {
-                var tt = opf.Metadata.Title.find(function (title) {
-                    var refineID = "#" + title.ID;
-                    var m = opf.Metadata.Meta.find(function (meta) {
-                        if (meta.Data === "main" && meta.Refine === refineID) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (m) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (tt) {
-                    mainTitle = tt;
-                }
-            }
-            if (!mainTitle) {
-                mainTitle = opf.Metadata.Title[0];
-            }
-        }
-        if (mainTitle) {
-            var metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, mainTitle.ID, "alternate-script");
-            if (metaAlt && metaAlt.length) {
-                publication.Metadata.Title = {};
-                if (mainTitle.Lang) {
-                    publication.Metadata.Title[mainTitle.Lang.toLowerCase()] = mainTitle.Data;
-                }
-                metaAlt.forEach(function (m) {
-                    if (m.Lang) {
-                        publication.Metadata.Title[m.Lang.toLowerCase()] = m.Data;
-                    }
-                });
-            }
-            else {
-                publication.Metadata.Title = mainTitle.Data;
-            }
-        }
-    }
-    else {
-        if (opf.Metadata &&
-            opf.Metadata.Title &&
-            opf.Metadata.Title.length) {
-            publication.Metadata.Title = opf.Metadata.Title[0].Data;
-        }
-    }
-};
-var addRelAndPropertiesToLink = function (publication, link, linkEpub, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var spineProperties;
-    return tslib_1.__generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (!linkEpub.Properties) return [3, 2];
-                return [4, addToLinkFromProperties(publication, link, linkEpub.Properties)];
-            case 1:
-                _a.sent();
-                _a.label = 2;
-            case 2:
-                spineProperties = findPropertiesInSpineForManifest(linkEpub, rootfile, opf);
-                if (!spineProperties) return [3, 4];
-                return [4, addToLinkFromProperties(publication, link, spineProperties)];
-            case 3:
-                _a.sent();
-                _a.label = 4;
-            case 4: return [2];
-        }
-    });
-}); };
-var addToLinkFromProperties = function (publication, link, propertiesString) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var properties, propertiesStruct, _a, properties_1, p, _b;
-    return tslib_1.__generator(this, function (_c) {
-        switch (_c.label) {
-            case 0:
-                properties = propertiesString.trim().split(" ");
-                propertiesStruct = new metadata_properties_1.Properties();
-                _a = 0, properties_1 = properties;
-                _c.label = 1;
-            case 1:
-                if (!(_a < properties_1.length)) return [3, 31];
-                p = properties_1[_a];
-                _b = p;
-                switch (_b) {
-                    case "cover-image": return [3, 2];
-                    case "nav": return [3, 4];
-                    case "scripted": return [3, 5];
-                    case "mathml": return [3, 6];
-                    case "onix-record": return [3, 7];
-                    case "svg": return [3, 8];
-                    case "xmp-record": return [3, 9];
-                    case "remote-resources": return [3, 10];
-                    case "page-spread-left": return [3, 11];
-                    case "page-spread-right": return [3, 12];
-                    case "page-spread-center": return [3, 13];
-                    case "rendition:spread-none": return [3, 14];
-                    case "rendition:spread-auto": return [3, 15];
-                    case "rendition:spread-landscape": return [3, 16];
-                    case "rendition:spread-portrait": return [3, 17];
-                    case "rendition:spread-both": return [3, 18];
-                    case "rendition:layout-reflowable": return [3, 19];
-                    case "rendition:layout-pre-paginated": return [3, 20];
-                    case "rendition:orientation-auto": return [3, 21];
-                    case "rendition:orientation-landscape": return [3, 22];
-                    case "rendition:orientation-portrait": return [3, 23];
-                    case "rendition:flow-auto": return [3, 24];
-                    case "rendition:flow-paginated": return [3, 25];
-                    case "rendition:flow-scrolled-continuous": return [3, 26];
-                    case "rendition:flow-scrolled-doc": return [3, 27];
-                }
-                return [3, 28];
-            case 2:
-                link.AddRel("cover");
-                return [4, exports.addCoverDimensions(publication, link)];
-            case 3:
-                _c.sent();
-                return [3, 29];
-            case 4:
-                {
-                    link.AddRel("contents");
-                    return [3, 29];
-                }
-                _c.label = 5;
-            case 5:
-                {
-                    if (!propertiesStruct.Contains) {
-                        propertiesStruct.Contains = [];
-                    }
-                    propertiesStruct.Contains.push("js");
-                    return [3, 29];
-                }
-                _c.label = 6;
-            case 6:
-                {
-                    if (!propertiesStruct.Contains) {
-                        propertiesStruct.Contains = [];
-                    }
-                    propertiesStruct.Contains.push("mathml");
-                    return [3, 29];
-                }
-                _c.label = 7;
-            case 7:
-                {
-                    if (!propertiesStruct.Contains) {
-                        propertiesStruct.Contains = [];
-                    }
-                    propertiesStruct.Contains.push("onix");
-                    return [3, 29];
-                }
-                _c.label = 8;
-            case 8:
-                {
-                    if (!propertiesStruct.Contains) {
-                        propertiesStruct.Contains = [];
-                    }
-                    propertiesStruct.Contains.push("svg");
-                    return [3, 29];
-                }
-                _c.label = 9;
-            case 9:
-                {
-                    if (!propertiesStruct.Contains) {
-                        propertiesStruct.Contains = [];
-                    }
-                    propertiesStruct.Contains.push("xmp");
-                    return [3, 29];
-                }
-                _c.label = 10;
-            case 10:
-                {
-                    if (!propertiesStruct.Contains) {
-                        propertiesStruct.Contains = [];
-                    }
-                    propertiesStruct.Contains.push("remote-resources");
-                    return [3, 29];
-                }
-                _c.label = 11;
-            case 11:
-                {
-                    propertiesStruct.Page = "left";
-                    return [3, 29];
-                }
-                _c.label = 12;
-            case 12:
-                {
-                    propertiesStruct.Page = "right";
-                    return [3, 29];
-                }
-                _c.label = 13;
-            case 13:
-                {
-                    propertiesStruct.Page = "center";
-                    return [3, 29];
-                }
-                _c.label = 14;
-            case 14:
-                {
-                    propertiesStruct.Spread = noneMeta;
-                    return [3, 29];
-                }
-                _c.label = 15;
-            case 15:
-                {
-                    propertiesStruct.Spread = autoMeta;
-                    return [3, 29];
-                }
-                _c.label = 16;
-            case 16:
-                {
-                    propertiesStruct.Spread = "landscape";
-                    return [3, 29];
-                }
-                _c.label = 17;
-            case 17:
-                {
-                    propertiesStruct.Spread = "portrait";
-                    return [3, 29];
-                }
-                _c.label = 18;
-            case 18:
-                {
-                    propertiesStruct.Spread = "both";
-                    return [3, 29];
-                }
-                _c.label = 19;
-            case 19:
-                {
-                    propertiesStruct.Layout = reflowableMeta;
-                    return [3, 29];
-                }
-                _c.label = 20;
-            case 20:
-                {
-                    propertiesStruct.Layout = "fixed";
-                    return [3, 29];
-                }
-                _c.label = 21;
-            case 21:
-                {
-                    propertiesStruct.Orientation = "auto";
-                    return [3, 29];
-                }
-                _c.label = 22;
-            case 22:
-                {
-                    propertiesStruct.Orientation = "landscape";
-                    return [3, 29];
-                }
-                _c.label = 23;
-            case 23:
-                {
-                    propertiesStruct.Orientation = "portrait";
-                    return [3, 29];
-                }
-                _c.label = 24;
-            case 24:
-                {
-                    propertiesStruct.Overflow = autoMeta;
-                    return [3, 29];
-                }
-                _c.label = 25;
-            case 25:
-                {
-                    propertiesStruct.Overflow = "paginated";
-                    return [3, 29];
-                }
-                _c.label = 26;
-            case 26:
-                {
-                    propertiesStruct.Overflow = "scrolled-continuous";
-                    return [3, 29];
-                }
-                _c.label = 27;
-            case 27:
-                {
-                    propertiesStruct.Overflow = "scrolled";
-                    return [3, 29];
-                }
-                _c.label = 28;
-            case 28:
-                {
-                    return [3, 29];
-                }
-                _c.label = 29;
-            case 29:
-                if (propertiesStruct.Layout ||
-                    propertiesStruct.Orientation ||
-                    propertiesStruct.Overflow ||
-                    propertiesStruct.Page ||
-                    propertiesStruct.Spread ||
-                    (propertiesStruct.Contains && propertiesStruct.Contains.length)) {
-                    link.Properties = propertiesStruct;
-                }
-                _c.label = 30;
-            case 30:
-                _a++;
-                return [3, 1];
-            case 31: return [2];
-        }
-    });
-}); };
-var addMediaOverlay = function (link, linkEpub, rootfile, opf) {
-    if (linkEpub.MediaOverlay) {
-        var meta = findMetaByRefineAndProperty(rootfile, opf, linkEpub.MediaOverlay, "media:duration");
-        if (meta) {
-            link.Duration = media_overlay_1.timeStrToSeconds(meta.Data);
-        }
-    }
-};
-var findInManifestByID = function (publication, rootfile, opf, ID) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var item, linkItem, zipPath;
-    return tslib_1.__generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (!(opf.Manifest && opf.Manifest.length)) return [3, 2];
-                item = opf.Manifest.find(function (manItem) {
-                    if (manItem.ID === ID) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (!item) return [3, 2];
-                linkItem = new publication_link_1.Link();
-                linkItem.TypeLink = item.MediaType;
-                zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
-                    .replace(/\\/g, "/");
-                linkItem.Href = zipPath;
-                return [4, addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf)];
-            case 1:
-                _a.sent();
-                addMediaOverlay(linkItem, item, rootfile, opf);
-                return [2, linkItem];
-            case 2: return [2, Promise.reject(ID + " not found")];
-        }
-    });
-}); };
-var addRendition = function (publication, _rootfile, opf) {
-    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
-        var rendition_1 = new metadata_properties_1.Properties();
-        opf.Metadata.Meta.forEach(function (meta) {
-            switch (meta.Property) {
-                case "rendition:layout": {
-                    if (meta.Data === "pre-paginated") {
-                        rendition_1.Layout = "fixed";
-                    }
-                    else if (meta.Data === "reflowable") {
-                        rendition_1.Layout = "reflowable";
-                    }
-                    break;
-                }
-                case "rendition:orientation": {
-                    rendition_1.Orientation = meta.Data;
-                    break;
-                }
-                case "rendition:spread": {
-                    rendition_1.Spread = meta.Data;
-                    break;
-                }
-                case "rendition:flow": {
-                    rendition_1.Overflow = meta.Data;
-                    break;
-                }
-                default: {
-                    break;
-                }
-            }
-        });
-        if (rendition_1.Layout || rendition_1.Orientation || rendition_1.Overflow || rendition_1.Page || rendition_1.Spread) {
-            publication.Metadata.Rendition = rendition_1;
-        }
-    }
-};
-var fillSpineAndResource = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var _a, _b, item, linkItem, err_19, _c, _d, item, zipPath, linkSpine, linkItem;
-    return tslib_1.__generator(this, function (_e) {
-        switch (_e.label) {
-            case 0:
-                if (!(opf.Spine && opf.Spine.Items && opf.Spine.Items.length)) return [3, 7];
-                _a = 0, _b = opf.Spine.Items;
-                _e.label = 1;
-            case 1:
-                if (!(_a < _b.length)) return [3, 7];
-                item = _b[_a];
-                if (!(!item.Linear || item.Linear === "yes")) return [3, 6];
-                linkItem = void 0;
-                _e.label = 2;
-            case 2:
-                _e.trys.push([2, 4, , 5]);
-                return [4, findInManifestByID(publication, rootfile, opf, item.IDref)];
-            case 3:
-                linkItem = _e.sent();
-                return [3, 5];
-            case 4:
-                err_19 = _e.sent();
-                debug(err_19);
-                return [3, 6];
-            case 5:
-                if (linkItem && linkItem.Href) {
-                    if (!publication.Spine) {
-                        publication.Spine = [];
-                    }
-                    publication.Spine.push(linkItem);
-                }
-                _e.label = 6;
-            case 6:
-                _a++;
-                return [3, 1];
-            case 7:
-                if (!(opf.Manifest && opf.Manifest.length)) return [3, 11];
-                _c = 0, _d = opf.Manifest;
-                _e.label = 8;
-            case 8:
-                if (!(_c < _d.length)) return [3, 11];
-                item = _d[_c];
-                zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
-                    .replace(/\\/g, "/");
-                linkSpine = findInSpineByHref(publication, zipPath);
-                if (!(!linkSpine || !linkSpine.Href)) return [3, 10];
-                linkItem = new publication_link_1.Link();
-                linkItem.TypeLink = item.MediaType;
-                linkItem.Href = zipPath;
-                return [4, addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf)];
-            case 9:
-                _e.sent();
-                addMediaOverlay(linkItem, item, rootfile, opf);
-                if (!publication.Resources) {
-                    publication.Resources = [];
-                }
-                publication.Resources.push(linkItem);
-                _e.label = 10;
-            case 10:
-                _c++;
-                return [3, 8];
-            case 11: return [2];
-        }
-    });
-}); };
-var fillEncryptionInfo = function (publication, _rootfile, _opf, encryption, lcp) {
-    encryption.EncryptedData.forEach(function (encInfo) {
-        var encrypted = new metadata_encrypted_1.Encrypted();
-        encrypted.Algorithm = encInfo.EncryptionMethod.Algorithm;
-        if (lcp &&
-            encrypted.Algorithm !== "http://www.idpf.org/2008/embedding" &&
-            encrypted.Algorithm !== "http://ns.adobe.com/pdf/enc#RC") {
-            encrypted.Profile = lcp.Encryption.Profile;
-            encrypted.Scheme = "http://readium.org/2014/01/lcp";
-        }
-        if (encInfo.EncryptionProperties && encInfo.EncryptionProperties.length) {
-            encInfo.EncryptionProperties.forEach(function (prop) {
-                if (prop.Compression) {
-                    if (prop.Compression.OriginalLength) {
-                        encrypted.OriginalLength = parseFloat(prop.Compression.OriginalLength);
-                    }
-                    if (prop.Compression.Method === "8") {
-                        encrypted.Compression = "deflate";
-                    }
-                    else {
-                        encrypted.Compression = "none";
-                    }
-                }
-            });
-        }
-        publication.Resources.forEach(function (l, _i, _arr) {
-            var filePath = l.Href;
-            if (filePath === encInfo.CipherData.CipherReference.URI) {
-                if (!l.Properties) {
-                    l.Properties = new metadata_properties_1.Properties();
-                }
-                l.Properties.Encrypted = encrypted;
-            }
-        });
-        publication.Spine.forEach(function (l, _i, _arr) {
-            var filePath = l.Href;
-            if (filePath === encInfo.CipherData.CipherReference.URI) {
-                if (!l.Properties) {
-                    l.Properties = new metadata_properties_1.Properties();
-                }
-                l.Properties.Encrypted = encrypted;
-            }
-        });
-    });
-};
-var fillPageListFromNCX = function (publication, _rootfile, _opf, ncx) {
-    if (ncx.PageList && ncx.PageList.PageTarget && ncx.PageList.PageTarget.length) {
-        ncx.PageList.PageTarget.forEach(function (pageTarget) {
-            var link = new publication_link_1.Link();
-            var zipPath = path.join(path.dirname(ncx.ZipPath), pageTarget.Content.Src)
-                .replace(/\\/g, "/");
-            link.Href = zipPath;
-            link.Title = pageTarget.Text;
-            if (!publication.PageList) {
-                publication.PageList = [];
-            }
-            publication.PageList.push(link);
-        });
-    }
-};
-var fillTOCFromNCX = function (publication, rootfile, opf, ncx) {
-    if (ncx.Points && ncx.Points.length) {
-        ncx.Points.forEach(function (point) {
-            if (!publication.TOC) {
-                publication.TOC = [];
-            }
-            fillTOCFromNavPoint(publication, rootfile, opf, ncx, point, publication.TOC);
-        });
-    }
-};
-var fillLandmarksFromGuide = function (publication, _rootfile, opf) {
-    if (opf.Guide && opf.Guide.length) {
-        opf.Guide.forEach(function (ref) {
-            if (ref.Href) {
-                var link = new publication_link_1.Link();
-                var zipPath = path.join(path.dirname(opf.ZipPath), ref.Href)
-                    .replace(/\\/g, "/");
-                link.Href = zipPath;
-                link.Title = ref.Title;
-                if (!publication.Landmarks) {
-                    publication.Landmarks = [];
-                }
-                publication.Landmarks.push(link);
-            }
-        });
-    }
-};
-var fillTOCFromNavPoint = function (publication, rootfile, opf, ncx, point, node) {
-    var link = new publication_link_1.Link();
-    var zipPath = path.join(path.dirname(ncx.ZipPath), point.Content.Src)
-        .replace(/\\/g, "/");
-    link.Href = zipPath;
-    link.Title = point.Text;
-    if (point.Points && point.Points.length) {
-        point.Points.forEach(function (p) {
-            if (!link.Children) {
-                link.Children = [];
-            }
-            fillTOCFromNavPoint(publication, rootfile, opf, ncx, p, link.Children);
-        });
-    }
-    node.push(link);
-};
-var fillSubject = function (publication, _rootfile, opf) {
-    if (opf.Metadata && opf.Metadata.Subject && opf.Metadata.Subject.length) {
-        opf.Metadata.Subject.forEach(function (s) {
-            var sub = new metadata_subject_1.Subject();
-            sub.Name = s.Data;
-            sub.Code = s.Term;
-            sub.Scheme = s.Authority;
-            if (!publication.Metadata.Subject) {
-                publication.Metadata.Subject = [];
-            }
-            publication.Metadata.Subject.push(sub);
-        });
-    }
-};
-var fillCalibreSerieInfo = function (publication, _rootfile, opf) {
-    var serie;
-    var seriePosition;
-    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
-        opf.Metadata.Meta.forEach(function (m) {
-            if (m.Name === "calibre:series") {
-                serie = m.Content;
-            }
-            if (m.Name === "calibre:series_index") {
-                seriePosition = parseFloat(m.Content);
-            }
-        });
-    }
-    if (serie) {
-        var collection = new metadata_collection_1.Collection();
-        collection.Name = serie;
-        if (seriePosition) {
-            collection.Position = seriePosition;
-        }
-        if (!publication.Metadata.BelongsTo) {
-            publication.Metadata.BelongsTo = new metadata_belongsto_1.BelongsTo();
-        }
-        if (!publication.Metadata.BelongsTo.Series) {
-            publication.Metadata.BelongsTo.Series = [];
-        }
-        publication.Metadata.BelongsTo.Series.push(collection);
-    }
-};
-var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var navLink, navDocFilePath, navDocZipStream_, err_20, navDocZipStream, navDocZipData, err_21, navDocStr, navXmlDoc, select, navs;
-    return tslib_1.__generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                navLink = publication.GetNavDoc();
-                if (!navLink) {
-                    return [2];
-                }
-                navDocFilePath = navLink.Href;
-                if (!zip.hasEntry(navDocFilePath)) {
-                    return [2];
-                }
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4, zip.entryStreamPromise(navDocFilePath)];
-            case 2:
-                navDocZipStream_ = _a.sent();
-                return [3, 4];
-            case 3:
-                err_20 = _a.sent();
-                debug(err_20);
-                return [2, Promise.reject(err_20)];
-            case 4:
-                navDocZipStream = navDocZipStream_.stream;
-                _a.label = 5;
-            case 5:
-                _a.trys.push([5, 7, , 8]);
-                return [4, BufferUtils_1.streamToBufferPromise(navDocZipStream)];
-            case 6:
-                navDocZipData = _a.sent();
-                return [3, 8];
-            case 7:
-                err_21 = _a.sent();
-                debug(err_21);
-                return [2, Promise.reject(err_21)];
-            case 8:
-                navDocStr = navDocZipData.toString("utf8");
-                navXmlDoc = new xmldom.DOMParser().parseFromString(navDocStr);
-                select = xpath.useNamespaces({
-                    epub: "http://www.idpf.org/2007/ops",
-                    xhtml: "http://www.w3.org/1999/xhtml",
-                });
-                navs = select("/xhtml:html/xhtml:body//xhtml:nav", navXmlDoc);
-                if (navs && navs.length) {
-                    navs.forEach(function (navElement) {
-                        var typeNav = select("@epub:type", navElement);
-                        if (typeNav && typeNav.length) {
-                            var olElem = select("xhtml:ol", navElement);
-                            var roles = typeNav[0].value;
-                            var role = roles.trim().split(" ")[0];
-                            switch (role) {
-                                case "toc": {
-                                    publication.TOC = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.TOC, navLink.Href);
-                                    break;
-                                }
-                                case "page-list": {
-                                    publication.PageList = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.PageList, navLink.Href);
-                                    break;
-                                }
-                                case "landmarks": {
-                                    publication.Landmarks = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.Landmarks, navLink.Href);
-                                    break;
-                                }
-                                case "lot": {
-                                    publication.LOT = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOT, navLink.Href);
-                                    break;
-                                }
-                                case "loa": {
-                                    publication.LOA = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOA, navLink.Href);
-                                    break;
-                                }
-                                case "loi": {
-                                    publication.LOI = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOI, navLink.Href);
-                                    break;
-                                }
-                                case "lov": {
-                                    publication.LOV = [];
-                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOV, navLink.Href);
-                                    break;
-                                }
-                                default: {
-                                    break;
-                                }
-                            }
-                        }
-                    });
-                }
-                return [2];
-        }
-    });
-}); };
-var fillTOCFromNavDocWithOL = function (select, olElems, node, navDocPath) {
-    olElems.forEach(function (olElem) {
-        var liElems = select("xhtml:li", olElem);
-        if (liElems && liElems.length) {
-            liElems.forEach(function (liElem) {
-                var link = new publication_link_1.Link();
-                node.push(link);
-                var aElems = select("xhtml:a", liElem);
-                if (aElems && aElems.length > 0) {
-                    var aHref = select("@href", aElems[0]);
-                    if (aHref && aHref.length) {
-                        var val = aHref[0].value;
-                        if (val[0] === "#") {
-                            val = path.basename(navDocPath) + val;
-                        }
-                        var zipPath = path.join(path.dirname(navDocPath), val)
-                            .replace(/\\/g, "/");
-                        link.Href = zipPath;
-                    }
-                    var aText = aElems[0].textContent;
-                    if (aText && aText.length) {
-                        aText = aText.trim();
-                        aText = aText.replace(/\s\s+/g, " ");
-                        link.Title = aText;
-                    }
-                }
-                else {
-                    var liFirstChild = select("xhtml:*[1]", liElem);
-                    if (liFirstChild && liFirstChild.length && liFirstChild[0].textContent) {
-                        link.Title = liFirstChild[0].textContent.trim();
-                    }
-                }
-                var olElemsNext = select("xhtml:ol", liElem);
-                if (olElemsNext && olElemsNext.length) {
-                    if (!link.Children) {
-                        link.Children = [];
-                    }
-                    fillTOCFromNavDocWithOL(select, olElemsNext, link.Children, navDocPath);
-                }
-            });
-        }
-    });
-};
-var addCoverRel = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var coverID, manifestInfo, err_22, href_1, linky;
-    return tslib_1.__generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
-                    opf.Metadata.Meta.find(function (meta) {
-                        if (meta.Name === "cover") {
-                            coverID = meta.Content;
-                            return true;
-                        }
-                        return false;
-                    });
-                }
-                if (!coverID) return [3, 6];
-                manifestInfo = void 0;
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 3, , 4]);
-                return [4, findInManifestByID(publication, rootfile, opf, coverID)];
-            case 2:
-                manifestInfo = _a.sent();
-                return [3, 4];
-            case 3:
-                err_22 = _a.sent();
-                debug(err_22);
-                return [2];
-            case 4:
-                if (!(manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length)) return [3, 6];
-                href_1 = manifestInfo.Href;
-                linky = publication.Resources.find(function (item, _i, _arr) {
-                    if (item.Href === href_1) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (!linky) return [3, 6];
-                linky.AddRel("cover");
-                return [4, exports.addCoverDimensions(publication, linky)];
-            case 5:
-                _a.sent();
-                _a.label = 6;
-            case 6: return [2];
-        }
-    });
-}); };
-var findPropertiesInSpineForManifest = function (linkEpub, _rootfile, opf) {
-    if (opf.Spine && opf.Spine.Items && opf.Spine.Items.length) {
-        var it = opf.Spine.Items.find(function (item) {
-            if (item.IDref === linkEpub.ID) {
-                return true;
-            }
-            return false;
-        });
-        if (it && it.Properties) {
-            return it.Properties;
-        }
-    }
-    return undefined;
-};
-var findInSpineByHref = function (publication, href) {
-    if (publication.Spine && publication.Spine.length) {
-        var ll = publication.Spine.find(function (l) {
-            if (l.Href === href) {
-                return true;
-            }
-            return false;
-        });
-        if (ll) {
-            return ll;
-        }
-    }
-    return undefined;
-};
-var findMetaByRefineAndProperty = function (rootfile, opf, ID, property) {
-    var ret = findAllMetaByRefineAndProperty(rootfile, opf, ID, property);
-    if (ret.length) {
-        return ret[0];
-    }
-    return undefined;
-};
-var findAllMetaByRefineAndProperty = function (_rootfile, opf, ID, property) {
-    var metas = [];
-    var refineID = "#" + ID;
-    if (opf.Metadata && opf.Metadata.Meta) {
-        opf.Metadata.Meta.forEach(function (metaTag) {
-            if (metaTag.Refine === refineID && metaTag.Property === property) {
-                metas.push(metaTag);
-            }
-        });
-    }
-    return metas;
-};
-var getEpubVersion = function (rootfile, opf) {
-    if (rootfile.Version) {
-        return rootfile.Version;
-    }
-    else if (opf.Version) {
-        return opf.Version;
-    }
-    return undefined;
-};
-var isEpub3OrMore = function (rootfile, opf) {
-    var version = getEpubVersion(rootfile, opf);
-    return (version === epub3 || version === epub301 || version === epub31);
-};
-var findLinKByHref = function (publication, _rootfile, _opf, href) {
-    if (publication.Spine && publication.Spine.length) {
-        var ll = publication.Spine.find(function (l) {
-            var pathInZip = l.Href;
-            if (href === pathInZip) {
-                return true;
-            }
-            return false;
-        });
-        if (ll) {
-            return ll;
-        }
-    }
-    return undefined;
-};
-
-},{"../_utils/stream/BufferUtils":5,"../_utils/xml-js-mapper":28,"../_utils/zip/zipFactory":35,"../models/media-overlay":48,"../models/metadata":58,"../models/metadata-belongsto":49,"../models/metadata-collection":51,"../models/metadata-contributor":53,"../models/metadata-encrypted":54,"../models/metadata-media-overlay":55,"../models/metadata-properties":56,"../models/metadata-subject":57,"../models/publication":60,"../models/publication-link":59,"../transform/transformer":136,"./epub/container":89,"./epub/encryption":98,"./epub/lcp":107,"./epub/ncx":112,"./epub/opf":124,"./epub/opf-author":113,"./epub/smil":131,"./epub/smil-seq":129,"debug":267,"image-size":386,"moment":433,"path":undefined,"querystring":undefined,"ta-json":541,"tslib":554,"xmldom":573,"xpath":576}],88:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Rootfile = (function () {
-    function Rootfile() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@full-path"),
-        tslib_1.__metadata("design:type", String)
-    ], Rootfile.prototype, "Path", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@media-type"),
-        tslib_1.__metadata("design:type", String)
-    ], Rootfile.prototype, "Type", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@version"),
-        tslib_1.__metadata("design:type", String)
-    ], Rootfile.prototype, "Version", void 0);
-    Rootfile = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject()
-    ], Rootfile);
-    return Rootfile;
-}());
-exports.Rootfile = Rootfile;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],89:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var container_rootfile_1 = require("./container-rootfile");
-var Container = (function () {
-    function Container() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("epub:rootfiles/epub:rootfile", {
-            epub: "urn:oasis:names:tc:opendocument:xmlns:container",
-            rendition: "http://www.idpf.org/2013/rendition",
-        }),
-        xml_js_mapper_1.XmlItemType(container_rootfile_1.Rootfile),
-        tslib_1.__metadata("design:type", Array)
-    ], Container.prototype, "Rootfile", void 0);
-    Container = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dummyNS: "dummyURI",
-            epub: "wrong2",
-            rendition: "wrong1",
-        })
-    ], Container);
-    return Container;
-}());
-exports.Container = Container;
-
-},{"../../_utils/xml-js-mapper":28,"./container-rootfile":88,"tslib":554}],90:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Compression = (function () {
-    function Compression() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@Method"),
-        tslib_1.__metadata("design:type", String)
-    ], Compression.prototype, "Method", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@OriginalLength"),
-        tslib_1.__metadata("design:type", String)
-    ], Compression.prototype, "OriginalLength", void 0);
-    Compression = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], Compression);
-    return Compression;
-}());
-exports.Compression = Compression;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],91:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var encryption_cypherreference_1 = require("./encryption-cypherreference");
-var CipherData = (function () {
-    function CipherData() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("enc:CipherReference"),
-        tslib_1.__metadata("design:type", encryption_cypherreference_1.CipherReference)
-    ], CipherData.prototype, "CipherReference", void 0);
-    CipherData = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], CipherData);
-    return CipherData;
-}());
-exports.CipherData = CipherData;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-cypherreference":92,"tslib":554}],92:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var CipherReference = (function () {
-    function CipherReference() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@URI"),
-        tslib_1.__metadata("design:type", String)
-    ], CipherReference.prototype, "URI", void 0);
-    CipherReference = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], CipherReference);
-    return CipherReference;
-}());
-exports.CipherReference = CipherReference;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],93:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var encryption_cypherdata_1 = require("./encryption-cypherdata");
-var encryption_keyinfo_1 = require("./encryption-keyinfo");
-var encryption_method_1 = require("./encryption-method");
-var encryption_property_1 = require("./encryption-property");
-var EncryptedData = (function () {
-    function EncryptedData() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("enc:EncryptionMethod"),
-        tslib_1.__metadata("design:type", encryption_method_1.EncryptionMethod)
-    ], EncryptedData.prototype, "EncryptionMethod", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ds:KeyInfo"),
-        tslib_1.__metadata("design:type", encryption_keyinfo_1.KeyInfo)
-    ], EncryptedData.prototype, "KeyInfo", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("enc:CipherData"),
-        tslib_1.__metadata("design:type", encryption_cypherdata_1.CipherData)
-    ], EncryptedData.prototype, "CipherData", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("enc:EncryptionProperties/enc:EncryptionProperty"),
-        xml_js_mapper_1.XmlItemType(encryption_property_1.EncryptionProperty),
-        tslib_1.__metadata("design:type", Array)
-    ], EncryptedData.prototype, "EncryptionProperties", void 0);
-    EncryptedData = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], EncryptedData);
-    return EncryptedData;
-}());
-exports.EncryptedData = EncryptedData;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-cypherdata":91,"./encryption-keyinfo":94,"./encryption-method":95,"./encryption-property":96,"tslib":554}],94:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var encryption_retrievalmethod_1 = require("./encryption-retrievalmethod");
-var KeyInfo = (function () {
-    function KeyInfo() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ds:RetrievalMethod"),
-        tslib_1.__metadata("design:type", encryption_retrievalmethod_1.RetrievalMethod)
-    ], KeyInfo.prototype, "RetrievalMethod", void 0);
-    KeyInfo = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], KeyInfo);
-    return KeyInfo;
-}());
-exports.KeyInfo = KeyInfo;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-retrievalmethod":97,"tslib":554}],95:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var EncryptionMethod = (function () {
-    function EncryptionMethod() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@Algorithm"),
-        tslib_1.__metadata("design:type", String)
-    ], EncryptionMethod.prototype, "Algorithm", void 0);
-    EncryptionMethod = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], EncryptionMethod);
-    return EncryptionMethod;
-}());
-exports.EncryptionMethod = EncryptionMethod;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],96:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var encryption_compression_1 = require("./encryption-compression");
-var EncryptionProperty = (function () {
-    function EncryptionProperty() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ns:Compression"),
-        tslib_1.__metadata("design:type", encryption_compression_1.Compression)
-    ], EncryptionProperty.prototype, "Compression", void 0);
-    EncryptionProperty = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], EncryptionProperty);
-    return EncryptionProperty;
-}());
-exports.EncryptionProperty = EncryptionProperty;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-compression":90,"tslib":554}],97:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var RetrievalMethod = (function () {
-    function RetrievalMethod() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@URI"),
-        tslib_1.__metadata("design:type", String)
-    ], RetrievalMethod.prototype, "URI", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@Type"),
-        tslib_1.__metadata("design:type", String)
-    ], RetrievalMethod.prototype, "Type", void 0);
-    RetrievalMethod = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], RetrievalMethod);
-    return RetrievalMethod;
-}());
-exports.RetrievalMethod = RetrievalMethod;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],98:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var encryption_data_1 = require("./encryption-data");
-var Encryption = (function () {
-    function Encryption() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("enc:EncryptedData"),
-        xml_js_mapper_1.XmlItemType(encryption_data_1.EncryptedData),
-        tslib_1.__metadata("design:type", Array)
-    ], Encryption.prototype, "EncryptedData", void 0);
-    Encryption = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ds: "http://www.w3.org/2000/09/xmldsig#",
-            enc: "http://www.w3.org/2001/04/xmlenc#",
-            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
-            ns: "http://www.idpf.org/2016/encryption#compression",
-        })
-    ], Encryption);
-    return Encryption;
-}());
-exports.Encryption = Encryption;
-
-},{"../../_utils/xml-js-mapper":28,"./encryption-data":93,"tslib":554}],99:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.LCPCertificateBasicProfile = "-----BEGIN CERTIFICATE-----\nMIIFZzCCA0+gAwIBAgIJAMWdQaWkExQEMA0GCSqGSIb3DQEBCwUAMGcxCzAJBgNV\nBAYTAkZSMQ4wDAYDVQQHEwVQYXJpczEPMA0GA1UEChMGRURSTGFiMRIwEAYDVQQL\nEwlMQ1AgVGVzdHMxIzAhBgNVBAMTGkVEUkxhYiBSZWFkaXVtIExDUCB0ZXN0IENB\nMB4XDTE2MDMyNDIyNTc1OVoXDTM4MDExODIyNTc1OVowZzELMAkGA1UEBhMCRlIx\nDjAMBgNVBAcTBVBhcmlzMQ8wDQYDVQQKEwZFRFJMYWIxEjAQBgNVBAsTCUxDUCBU\nZXN0czEjMCEGA1UEAxMaRURSTGFiIFJlYWRpdW0gTENQIHRlc3QgQ0EwggIiMA0G\nCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDfxfveCISAmGDhXcZj+q6cXD3zQDr/\nkRG4fnqBm1rxFN1nshI0ObSMNwcV98c3D2swewQ6qFa+4INRakrF4ObtPtiQ7Tti\n/qYWf41rez/8x5M+DFeca8SIuf4Wi2u310EoplQm4JX3Qnvax7I/ivl+BtSzDY1h\n4bkA9dPPrp/vGa8dh0rIYaclJ9UEW/i4jyQkry36BfGKboOMYZioqPJfOFIIiSTb\n0nvHERssaS2MobWACinRRwL7Mih4mUV/v9Vhry3jN+wfxMKA+J/zcsY6p9HVgIhE\nkmyDIH4/vw+mLMcUQ4YFQeIOKRBRLHYcLHOUQNNIDw2gJAK/G/rfOeW3zu/tYCpk\nhT8PWrhd4zM+TdegpeFkidnNSvYFlKrojWhJisty3HuD+BXQ6ArjikIj4dCYc2BM\nZVUH50FEwl1ZpndQAySMCceOX8t6RX4jqbvhbyXjqR/Nr5SaN8G6gHemX/5LWdOa\n5D8dUwOGbQjR7igLQy+4UNefjvFp8Z5/No/vLD/3Ziwau+wFjcGXs9UdpqKgIzfW\nKAu77vPVb0vUvDczOU4HRx4bB3eAb4gI6meBYHKroogIpteDOfco48zhweiMGasz\nHwBU4rylW/seV/2l5IunsGNRSlVtT4z5xL7kn5fcYy5ZtStJrrOKZSJWaH+3Mvmb\nsgwPqlZYMNAoiwIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3\nDQEBCwUAA4ICAQCmMGGqjnIo0BgItLmKrXW8yFRncZdjLAS5fCRNO0C34vDrm9N/\ny1qhoITqQ+vKVeA+M/sWzTQihPz+pyWGfvjqxdagpepPERX0ZFENMJaP5Sc8R0bL\ny96Xxk7L/SnVvJ2jgRP/D7X6jQrLxQbDceFRPelE+KcrcfAQdTLO9VTJEIkr4j6L\nBMDjqMcXASo+/t5fAhz3rUlo1gvhgdX+E4iJSoPwimr0pmUWFS473eS8Jrgn5meG\nPq5Kmf3Q+1hYlisIAzRARJXWJxBxeI+VLCF2c90m1MLXpET4tm2s8Ln9ePw4edGM\ncrwbR4nTEN+aGbPyo0yhs+smQA28B1LRnnZRyj70wHii6PN9+qtbr1S41FzKnLvO\nEBU63KxOE+NiN4p8q/Gx2J+lDtNy4OKEjgNNpp9fpzEbcSdnNK1dmZTbdKFV/QqT\nDQ8paH3TWX0eel/LeBHyn5W6A6B0maLRKNN98jcbqDyx2RfkEcEqvlQgEThNKH/6\n2hfQ8BEAzFdevtenyjKbnHmJ861t/hAnvCbbxMrT0gzgK2+gnqTFJiON3s0SObsG\nivPak5w5wtvreFvEHCntnhIocuqc9AOFoDdQo9idB25YUzwot0NNL6pShMNXNE6F\nImaa1w7gBDc+DVRYAoJzHF+awCOgqEDEXu67GHgcrXpQ9Ts7Eq+wjNy9OQ==\n-----END CERTIFICATE-----";
-exports.DUMMY_CRL = "-----BEGIN X509 CRL-----\nMIICrTCBljANBgkqhkiG9w0BAQQFADBnMQswCQYDVQQGEwJGUjEOMAwGA1UEBxMF\nUGFyaXMxDzANBgNVBAoTBkVEUkxhYjESMBAGA1UECxMJTENQIFRlc3RzMSMwIQYD\nVQQDExpFRFJMYWIgUmVhZGl1bSBMQ1AgdGVzdCBDQRcNMTcwOTI2MTM1NTE1WhcN\nMjcwOTI0MTM1NTE1WjANBgkqhkiG9w0BAQQFAAOCAgEA27f50xnlaKGUdqs6u6rD\nWsR75z+tZrH4J2aA5E9I/K5fNe20FftQZb6XNjVQTNvawoMW0q+Rh9dVjDnV5Cfw\nptchu738ZQr8iCOLQHvIM6wqQj7XwMqvyNaaeGMZxfRMGlx7T9DOwvtWFCc5X0ik\nYGPPV19CFf1cas8x9Y3LE8GmCtX9eUrotWLKRggG+qRTCri/SlaoicfzqhViiGeL\ndW8RpG/Q6ox+tLHti3fxOgZarMgMbRmUa6OTh8pnxrfnrdtD2PbwACvaEMCpNCZR\naSTMRmIxw8UUbUA/JxDIwyISGn3ZRgbFAglYzaX80rSQZr6e0bFlzHl1xZtZ0Raz\nGQWP9vvfH5ESp6FsD98g//VYigatoPz/EKU4cfP+1W/Zrr4jRSBFB37rxASXPBcx\nL8cerb9nnRbAEvIqxnR4e0ZkhMyqIrLUZ3Jva0fC30kdtp09/KJ22mXKBz85wUQa\n7ihiSz7pov0R9hpY93fvt++idHBECRNGOeBC4wRtGxpru8ZUa0/KFOD0HXHMQDwV\ncIa/72T0okStOqjIOcWflxl/eAvUXwtet9Ht3o9giSl6hAObAeleMJOB37Bq9ASf\nh4w7d5he8zqfsCGjaG1OVQNWVAGxQQViWVysfcJohny4PIVAc9KkjCFa/QrkNGjr\nkUiV/PFCwL66iiF666DrXLY=\n-----END X509 CRL-----";
-
-},{}],100:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var ContentKey = (function () {
-    function ContentKey() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("encrypted_value"),
-        tslib_1.__metadata("design:type", String)
-    ], ContentKey.prototype, "EncryptedValue", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("algorithm"),
-        tslib_1.__metadata("design:type", String)
-    ], ContentKey.prototype, "Algorithm", void 0);
-    ContentKey = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], ContentKey);
-    return ContentKey;
-}());
-exports.ContentKey = ContentKey;
-
-},{"ta-json":541,"tslib":554}],101:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var lcp_contentkey_1 = require("./lcp-contentkey");
-var lcp_userkey_1 = require("./lcp-userkey");
-var Encryption = (function () {
-    function Encryption() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("profile"),
-        tslib_1.__metadata("design:type", String)
-    ], Encryption.prototype, "Profile", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("content_key"),
-        tslib_1.__metadata("design:type", lcp_contentkey_1.ContentKey)
-    ], Encryption.prototype, "ContentKey", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("user_key"),
-        tslib_1.__metadata("design:type", lcp_userkey_1.UserKey)
-    ], Encryption.prototype, "UserKey", void 0);
-    Encryption = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Encryption);
-    return Encryption;
-}());
-exports.Encryption = Encryption;
-
-},{"./lcp-contentkey":100,"./lcp-userkey":106,"ta-json":541,"tslib":554}],102:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Link = (function () {
-    function Link() {
-    }
-    Link.prototype.HasRel = function (rel) {
-        return this.Rel === rel;
-    };
-    Link.prototype.SetRel = function (rel) {
-        this.Rel = rel;
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("length"),
-        tslib_1.__metadata("design:type", Number)
-    ], Link.prototype, "Length", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("href"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Href", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("title"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("type"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Type", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("templated"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Templated", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("profile"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Profile", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("hash"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Hash", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rel"),
-        tslib_1.__metadata("design:type", String)
-    ], Link.prototype, "Rel", void 0);
-    Link = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Link);
-    return Link;
-}());
-exports.Link = Link;
-
-},{"ta-json":541,"tslib":554}],103:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Rights = (function () {
-    function Rights() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("print"),
-        tslib_1.__metadata("design:type", Number)
-    ], Rights.prototype, "Print", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("copy"),
-        tslib_1.__metadata("design:type", Number)
-    ], Rights.prototype, "Copy", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("start"),
-        tslib_1.__metadata("design:type", Date)
-    ], Rights.prototype, "Start", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("end"),
-        tslib_1.__metadata("design:type", Date)
-    ], Rights.prototype, "End", void 0);
-    Rights = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Rights);
-    return Rights;
-}());
-exports.Rights = Rights;
-
-},{"ta-json":541,"tslib":554}],104:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var Signature = (function () {
-    function Signature() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("algorithm"),
-        tslib_1.__metadata("design:type", String)
-    ], Signature.prototype, "Algorithm", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("certificate"),
-        tslib_1.__metadata("design:type", String)
-    ], Signature.prototype, "Certificate", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("value"),
-        tslib_1.__metadata("design:type", String)
-    ], Signature.prototype, "Value", void 0);
-    Signature = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], Signature);
-    return Signature;
-}());
-exports.Signature = Signature;
-
-},{"ta-json":541,"tslib":554}],105:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var User = (function () {
-    function User() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("id"),
-        tslib_1.__metadata("design:type", String)
-    ], User.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("email"),
-        tslib_1.__metadata("design:type", String)
-    ], User.prototype, "Email", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("name"),
-        tslib_1.__metadata("design:type", String)
-    ], User.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("encrypted"),
-        ta_json_1.JsonElementType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], User.prototype, "Encrypted", void 0);
-    User = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], User);
-    return User;
-}());
-exports.User = User;
-
-},{"ta-json":541,"tslib":554}],106:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var ta_json_1 = require("ta-json");
-var UserKey = (function () {
-    function UserKey() {
-    }
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("text_hint"),
-        tslib_1.__metadata("design:type", String)
-    ], UserKey.prototype, "TextHint", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("algorithm"),
-        tslib_1.__metadata("design:type", String)
-    ], UserKey.prototype, "Algorithm", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("key_check"),
-        tslib_1.__metadata("design:type", String)
-    ], UserKey.prototype, "KeyCheck", void 0);
-    UserKey = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], UserKey);
-    return UserKey;
-}());
-exports.UserKey = UserKey;
-
-},{"ta-json":541,"tslib":554}],107:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var bind = require("bindings");
-var crypto = require("crypto");
-var fs = require("fs");
-var path = require("path");
-var debug_ = require("debug");
-var ta_json_1 = require("ta-json");
-var lcp_certificate_1 = require("./lcp-certificate");
-var lcp_encryption_1 = require("./lcp-encryption");
-var lcp_link_1 = require("./lcp-link");
-var lcp_rights_1 = require("./lcp-rights");
-var lcp_signature_1 = require("./lcp-signature");
-var lcp_user_1 = require("./lcp-user");
-var AES_BLOCK_SIZE = 16;
-var debug = debug_("r2:publication:lcp");
-var LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP", "lcp.node");
-function setLcpNativePluginPath(filepath) {
-    LCP_NATIVE_PLUGIN_PATH = filepath;
-    debug(LCP_NATIVE_PLUGIN_PATH);
-    var exists = fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
-    debug("LCP NATIVE PLUGIN: " + (exists ? "OKAY" : "MISSING"));
-    return exists;
-}
-exports.setLcpNativePluginPath = setLcpNativePluginPath;
-var LCP = (function () {
-    function LCP() {
-        this._usesNativeNodePlugin = undefined;
-    }
-    LCP.prototype.isNativeNodePlugin = function () {
-        this.init();
-        return this._usesNativeNodePlugin;
-    };
-    LCP.prototype.isReady = function () {
-        if (this.isNativeNodePlugin()) {
-            return typeof this._lcpContext !== "undefined";
-        }
-        return typeof this.ContentKey !== "undefined";
-    };
-    LCP.prototype.init = function () {
-        if (typeof this._usesNativeNodePlugin !== "undefined") {
-            return;
-        }
-        this.ContentKey = undefined;
-        this._lcpContext = undefined;
-        if (fs.existsSync(LCP_NATIVE_PLUGIN_PATH)) {
-            debug("LCP _usesNativeNodePlugin");
-            var filePath = path.dirname(LCP_NATIVE_PLUGIN_PATH);
-            var fileName = path.basename(LCP_NATIVE_PLUGIN_PATH);
-            debug(filePath);
-            debug(fileName);
-            this._usesNativeNodePlugin = true;
-            this._lcpNative = bind({
-                bindings: fileName,
-                module_root: filePath,
-                try: [[
-                        "module_root",
-                        "bindings",
-                    ]],
-            });
-        }
-        else {
-            debug("LCP JS impl");
-            this._usesNativeNodePlugin = false;
-            this._lcpNative = undefined;
-        }
-    };
-    LCP.prototype.decrypt = function (encryptedContent) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return tslib_1.__generator(this, function (_a) {
-                if (!this.isNativeNodePlugin()) {
-                    return [2, Promise.reject("direct decrypt buffer only for native plugin")];
-                }
-                if (!this._lcpContext) {
-                    return [2, Promise.reject("LCP context not initialized (needs setUserPassphrase)")];
-                }
-                return [2, new Promise(function (resolve, reject) {
-                        _this._lcpNative.decrypt(_this._lcpContext, encryptedContent, function (er, decryptedContent) {
-                            if (er) {
-                                debug(er);
-                                reject(er);
-                                return;
-                            }
-                            var padding = decryptedContent[decryptedContent.length - 1];
-                            var buff = decryptedContent.slice(0, decryptedContent.length - padding);
-                            resolve(buff);
-                        });
-                    })];
-            });
-        });
-    };
-    LCP.prototype.setUserPassphrase = function (pass) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var check, userKey, keyCheck, encryptedLicenseID, iv, encrypted, decrypteds, decryptStream, buff1, buff2, decrypted, nPaddingBytes, size, decryptedOut, encryptedContentKey, iv2, encrypted2, decrypteds2, decryptStream2, buff1_, buff2_, decrypted2, nPaddingBytes2, size2;
-            return tslib_1.__generator(this, function (_a) {
-                this.init();
-                this.userPassphraseHex = pass;
-                if (!this.userPassphraseHex) {
-                    return [2, false];
-                }
-                check = (this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
-                    || this.Encryption.Profile === "http://readium.org/lcp/profile-1.0")
-                    && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
-                    && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
-                if (!check) {
-                    debug("Incorrect LCP fields.");
-                    debug(this.Encryption.Profile);
-                    debug(this.Encryption.ContentKey.Algorithm);
-                    debug(this.Encryption.UserKey.Algorithm);
-                    return [2, false];
-                }
-                if (this._usesNativeNodePlugin) {
-                    return [2, new Promise(function (resolve, _reject) {
-                            _this._lcpNative.findOneValidPassphrase(_this.JsonSource, [_this.userPassphraseHex], function (err, validHashedPassphrase) {
-                                if (err) {
-                                    debug(err);
-                                    resolve(false);
-                                }
-                                else {
-                                    _this._lcpNative.createContext(_this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, function (erro, context) {
-                                        if (erro) {
-                                            debug(erro);
-                                            resolve(false);
-                                            return;
-                                        }
-                                        _this._lcpContext = context;
-                                        resolve(true);
-                                    });
-                                }
-                            });
-                        })];
-                }
-                else {
-                    userKey = new Buffer(this.userPassphraseHex, "hex");
-                    keyCheck = new Buffer(this.Encryption.UserKey.KeyCheck, "base64");
-                    encryptedLicenseID = keyCheck;
-                    iv = encryptedLicenseID.slice(0, AES_BLOCK_SIZE);
-                    encrypted = encryptedLicenseID.slice(AES_BLOCK_SIZE);
-                    decrypteds = [];
-                    decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
-                    decryptStream.setAutoPadding(false);
-                    buff1 = decryptStream.update(encrypted);
-                    if (buff1) {
-                        decrypteds.push(buff1);
-                    }
-                    buff2 = decryptStream.final();
-                    if (buff2) {
-                        decrypteds.push(buff2);
-                    }
-                    decrypted = Buffer.concat(decrypteds);
-                    nPaddingBytes = decrypted[decrypted.length - 1];
-                    size = encrypted.length - nPaddingBytes;
-                    decryptedOut = decrypted.slice(0, size).toString("utf8");
-                    if (this.ID !== decryptedOut) {
-                        debug("Failed LCP ID check.");
-                        return [2, false];
-                    }
-                    encryptedContentKey = new Buffer(this.Encryption.ContentKey.EncryptedValue, "base64");
-                    iv2 = encryptedContentKey.slice(0, AES_BLOCK_SIZE);
-                    encrypted2 = encryptedContentKey.slice(AES_BLOCK_SIZE);
-                    decrypteds2 = [];
-                    decryptStream2 = crypto.createDecipheriv("aes-256-cbc", userKey, iv2);
-                    decryptStream2.setAutoPadding(false);
-                    buff1_ = decryptStream2.update(encrypted2);
-                    if (buff1_) {
-                        decrypteds2.push(buff1_);
-                    }
-                    buff2_ = decryptStream2.final();
-                    if (buff2_) {
-                        decrypteds2.push(buff2_);
-                    }
-                    decrypted2 = Buffer.concat(decrypteds2);
-                    nPaddingBytes2 = decrypted2[decrypted2.length - 1];
-                    size2 = encrypted2.length - nPaddingBytes2;
-                    this.ContentKey = decrypted2.slice(0, size2);
-                }
-                return [2, true];
-            });
-        });
-    };
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("id"),
-        tslib_1.__metadata("design:type", String)
-    ], LCP.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("provider"),
-        tslib_1.__metadata("design:type", String)
-    ], LCP.prototype, "Provider", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("issued"),
-        tslib_1.__metadata("design:type", Date)
-    ], LCP.prototype, "Issued", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("updated"),
-        tslib_1.__metadata("design:type", Date)
-    ], LCP.prototype, "Updated", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("encryption"),
-        tslib_1.__metadata("design:type", lcp_encryption_1.Encryption)
-    ], LCP.prototype, "Encryption", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("rights"),
-        tslib_1.__metadata("design:type", lcp_rights_1.Rights)
-    ], LCP.prototype, "Rights", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("user"),
-        tslib_1.__metadata("design:type", lcp_user_1.User)
-    ], LCP.prototype, "User", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("signature"),
-        tslib_1.__metadata("design:type", lcp_signature_1.Signature)
-    ], LCP.prototype, "Signature", void 0);
-    tslib_1.__decorate([
-        ta_json_1.JsonProperty("links"),
-        ta_json_1.JsonElementType(lcp_link_1.Link),
-        tslib_1.__metadata("design:type", Array)
-    ], LCP.prototype, "Links", void 0);
-    LCP = tslib_1.__decorate([
-        ta_json_1.JsonObject()
-    ], LCP);
-    return LCP;
-}());
-exports.LCP = LCP;
-
-},{"./lcp-certificate":99,"./lcp-encryption":101,"./lcp-link":102,"./lcp-rights":103,"./lcp-signature":104,"./lcp-user":105,"bindings":202,"crypto":undefined,"debug":267,"fs":undefined,"path":undefined,"ta-json":541,"tslib":554}],108:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Content = (function () {
-    function Content() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@src"),
-        tslib_1.__metadata("design:type", String)
-    ], Content.prototype, "Src", void 0);
-    Content = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ncx: "http://www.daisy.org/z3986/2005/ncx/",
-        })
-    ], Content);
-    return Content;
-}());
-exports.Content = Content;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],109:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var ncx_content_1 = require("./ncx-content");
-var NavPoint = (function () {
-    function NavPoint() {
-    }
-    NavPoint_1 = NavPoint;
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:navPoint"),
-        xml_js_mapper_1.XmlItemType(NavPoint_1),
-        tslib_1.__metadata("design:type", Array)
-    ], NavPoint.prototype, "Points", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], NavPoint.prototype, "Text", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:content"),
-        tslib_1.__metadata("design:type", ncx_content_1.Content)
-    ], NavPoint.prototype, "Content", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@playOrder"),
-        tslib_1.__metadata("design:type", Number)
-    ], NavPoint.prototype, "PlayerOrder", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], NavPoint.prototype, "ID", void 0);
-    NavPoint = NavPoint_1 = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ncx: "http://www.daisy.org/z3986/2005/ncx/",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], NavPoint);
-    return NavPoint;
-    var NavPoint_1;
-}());
-exports.NavPoint = NavPoint;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-content":108,"tslib":554}],110:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var ncx_pagetarget_1 = require("./ncx-pagetarget");
-var PageList = (function () {
-    function PageList() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:pageTarget"),
-        xml_js_mapper_1.XmlItemType(ncx_pagetarget_1.PageTarget),
-        tslib_1.__metadata("design:type", Array)
-    ], PageList.prototype, "PageTarget", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@class"),
-        tslib_1.__metadata("design:type", String)
-    ], PageList.prototype, "Class", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], PageList.prototype, "ID", void 0);
-    PageList = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ncx: "http://www.daisy.org/z3986/2005/ncx/",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], PageList);
-    return PageList;
-}());
-exports.PageList = PageList;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-pagetarget":111,"tslib":554}],111:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var ncx_content_1 = require("./ncx-content");
-var PageTarget = (function () {
-    function PageTarget() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
-        tslib_1.__metadata("design:type", String)
-    ], PageTarget.prototype, "Text", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@value"),
-        tslib_1.__metadata("design:type", String)
-    ], PageTarget.prototype, "Value", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], PageTarget.prototype, "Type", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@playOrder"),
-        tslib_1.__metadata("design:type", Number)
-    ], PageTarget.prototype, "PlayOrder", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], PageTarget.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:content"),
-        tslib_1.__metadata("design:type", ncx_content_1.Content)
-    ], PageTarget.prototype, "Content", void 0);
-    PageTarget = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ncx: "http://www.daisy.org/z3986/2005/ncx/",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], PageTarget);
-    return PageTarget;
-}());
-exports.PageTarget = PageTarget;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-content":108,"tslib":554}],112:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var ncx_navpoint_1 = require("./ncx-navpoint");
-var ncx_pagelist_1 = require("./ncx-pagelist");
-var NCX = (function () {
-    function NCX() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:navMap/ncx:navPoint"),
-        xml_js_mapper_1.XmlItemType(ncx_navpoint_1.NavPoint),
-        tslib_1.__metadata("design:type", Array)
-    ], NCX.prototype, "Points", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("ncx:pageList"),
-        tslib_1.__metadata("design:type", ncx_pagelist_1.PageList)
-    ], NCX.prototype, "PageList", void 0);
-    NCX = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            ncx: "http://www.daisy.org/z3986/2005/ncx/",
-        })
-    ], NCX);
-    return NCX;
-}());
-exports.NCX = NCX;
-
-},{"../../_utils/xml-js-mapper":28,"./ncx-navpoint":109,"./ncx-pagelist":110,"tslib":554}],113:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Author = (function () {
-    function Author() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "Data", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@file-as"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "FileAs", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@role"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "Role", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], Author.prototype, "ID", void 0);
-    Author = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Author);
-    return Author;
-}());
-exports.Author = Author;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],114:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var MetaDate = (function () {
-    function MetaDate() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("text()"),
-        tslib_1.__metadata("design:type", String)
-    ], MetaDate.prototype, "Data", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@event"),
-        tslib_1.__metadata("design:type", String)
-    ], MetaDate.prototype, "Event", void 0);
-    MetaDate = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-        })
-    ], MetaDate);
-    return MetaDate;
-}());
-exports.MetaDate = MetaDate;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],115:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Identifier = (function () {
-    function Identifier() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Identifier.prototype, "Data", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], Identifier.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@scheme"),
-        tslib_1.__metadata("design:type", String)
-    ], Identifier.prototype, "Scheme", void 0);
-    Identifier = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Identifier);
-    return Identifier;
-}());
-exports.Identifier = Identifier;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],116:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Manifest = (function () {
-    function Manifest() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], Manifest.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@href"),
-        tslib_1.__metadata("design:type", String)
-    ], Manifest.prototype, "Href", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@media-type"),
-        tslib_1.__metadata("design:type", String)
-    ], Manifest.prototype, "MediaType", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@media-fallback"),
-        tslib_1.__metadata("design:type", String)
-    ], Manifest.prototype, "Fallback", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@properties"),
-        tslib_1.__metadata("design:type", String)
-    ], Manifest.prototype, "Properties", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@media-overlay"),
-        tslib_1.__metadata("design:type", String)
-    ], Manifest.prototype, "MediaOverlay", void 0);
-    Manifest = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Manifest);
-    return Manifest;
-}());
-exports.Manifest = Manifest;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],117:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var opf_author_1 = require("./opf-author");
-var opf_date_1 = require("./opf-date");
-var opf_identifier_1 = require("./opf-identifier");
-var opf_metafield_1 = require("./opf-metafield");
-var opf_subject_1 = require("./opf-subject");
-var opf_title_1 = require("./opf-title");
-var Metadata = (function () {
-    function Metadata() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:title"),
-        xml_js_mapper_1.XmlItemType(opf_title_1.Title),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:language/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Language", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:identifier"),
-        xml_js_mapper_1.XmlItemType(opf_identifier_1.Identifier),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Identifier", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:creator"),
-        xml_js_mapper_1.XmlItemType(opf_author_1.Author),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Creator", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:subject"),
-        xml_js_mapper_1.XmlItemType(opf_subject_1.Subject),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Subject", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:description/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Description", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:publisher/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Publisher", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:contributor"),
-        xml_js_mapper_1.XmlItemType(opf_author_1.Author),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Contributor", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:date"),
-        xml_js_mapper_1.XmlItemType(opf_date_1.MetaDate),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Date", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:type/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Type", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:format/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Format", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:source/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Source", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:relation/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Relation", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:coverage/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Coverage", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dc:rights/text()"),
-        xml_js_mapper_1.XmlItemType(String),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Rights", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opf:meta"),
-        xml_js_mapper_1.XmlItemType(opf_metafield_1.Metafield),
-        tslib_1.__metadata("design:type", Array)
-    ], Metadata.prototype, "Meta", void 0);
-    Metadata = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-        })
-    ], Metadata);
-    return Metadata;
-}());
-exports.Metadata = Metadata;
-
-},{"../../_utils/xml-js-mapper":28,"./opf-author":113,"./opf-date":114,"./opf-identifier":115,"./opf-metafield":118,"./opf-subject":122,"./opf-title":123,"tslib":554}],118:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Metafield = (function () {
-    function Metafield() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Data", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@name"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Name", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@content"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Content", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@refines"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Refine", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@scheme"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Scheme", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@property"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Property", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-        tslib_1.__metadata("design:type", String)
-    ], Metafield.prototype, "Lang", void 0);
-    Metafield = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Metafield);
-    return Metafield;
-}());
-exports.Metafield = Metafield;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],119:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Reference = (function () {
-    function Reference() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@href"),
-        tslib_1.__metadata("design:type", String)
-    ], Reference.prototype, "Href", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@title"),
-        tslib_1.__metadata("design:type", String)
-    ], Reference.prototype, "Title", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@type"),
-        tslib_1.__metadata("design:type", String)
-    ], Reference.prototype, "Type", void 0);
-    Reference = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-        })
-    ], Reference);
-    return Reference;
-}());
-exports.Reference = Reference;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],120:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var opf_spineitem_1 = require("./opf-spineitem");
-var Spine = (function () {
-    function Spine() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], Spine.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@toc"),
-        tslib_1.__metadata("design:type", String)
-    ], Spine.prototype, "Toc", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@page-progression-direction"),
-        tslib_1.__metadata("design:type", String)
-    ], Spine.prototype, "PageProgression", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opf:itemref"),
-        xml_js_mapper_1.XmlItemType(opf_spineitem_1.SpineItem),
-        tslib_1.__metadata("design:type", Array)
-    ], Spine.prototype, "Items", void 0);
-    Spine = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Spine);
-    return Spine;
-}());
-exports.Spine = Spine;
-
-},{"../../_utils/xml-js-mapper":28,"./opf-spineitem":121,"tslib":554}],121:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var SpineItem = (function () {
-    function SpineItem() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@idref"),
-        tslib_1.__metadata("design:type", String)
-    ], SpineItem.prototype, "IDref", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@linear"),
-        tslib_1.__metadata("design:type", String)
-    ], SpineItem.prototype, "Linear", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], SpineItem.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@properties"),
-        tslib_1.__metadata("design:type", String)
-    ], SpineItem.prototype, "Properties", void 0);
-    SpineItem = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], SpineItem);
-    return SpineItem;
-}());
-exports.SpineItem = SpineItem;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],122:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Subject = (function () {
-    function Subject() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Data", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@term"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Term", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@authority"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Authority", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-        tslib_1.__metadata("design:type", String)
-    ], Subject.prototype, "Lang", void 0);
-    Subject = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Subject);
-    return Subject;
-}());
-exports.Subject = Subject;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],123:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Title = (function () {
-    function Title() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("text()"),
-        tslib_1.__metadata("design:type", String)
-    ], Title.prototype, "Data", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
-        tslib_1.__metadata("design:type", String)
-    ], Title.prototype, "ID", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
-        tslib_1.__metadata("design:type", String)
-    ], Title.prototype, "Lang", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@dir"),
-        tslib_1.__metadata("design:type", String)
-    ], Title.prototype, "Dir", void 0);
-    Title = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-            xml: "http://www.w3.org/XML/1998/namespace",
-        })
-    ], Title);
-    return Title;
-}());
-exports.Title = Title;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],124:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var opf_manifest_1 = require("./opf-manifest");
-var opf_metadata_1 = require("./opf-metadata");
-var opf_reference_1 = require("./opf-reference");
-var opf_spine_1 = require("./opf-spine");
-var OPF = (function () {
-    function OPF() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opf:metadata"),
-        tslib_1.__metadata("design:type", opf_metadata_1.Metadata)
-    ], OPF.prototype, "Metadata", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opf:manifest/opf:item"),
-        xml_js_mapper_1.XmlItemType(opf_manifest_1.Manifest),
-        tslib_1.__metadata("design:type", Array)
-    ], OPF.prototype, "Manifest", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opf:spine"),
-        tslib_1.__metadata("design:type", opf_spine_1.Spine)
-    ], OPF.prototype, "Spine", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("opf:guide/opf:reference"),
-        xml_js_mapper_1.XmlItemType(opf_reference_1.Reference),
-        tslib_1.__metadata("design:type", Array)
-    ], OPF.prototype, "Guide", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@unique-identifier"),
-        tslib_1.__metadata("design:type", String)
-    ], OPF.prototype, "UniqueIdentifier", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@dir"),
-        tslib_1.__metadata("design:type", String)
-    ], OPF.prototype, "Dir", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@version"),
-        tslib_1.__metadata("design:type", String)
-    ], OPF.prototype, "Version", void 0);
-    OPF = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            dc: "http://purl.org/dc/elements/1.1/",
-            opf: "http://www.idpf.org/2007/opf",
-        })
-    ], OPF);
-    return OPF;
-}());
-exports.OPF = OPF;
-
-},{"../../_utils/xml-js-mapper":28,"./opf-manifest":116,"./opf-metadata":117,"./opf-reference":119,"./opf-spine":120,"tslib":554}],125:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Audio = (function () {
-    function Audio() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@src"),
-        tslib_1.__metadata("design:type", String)
-    ], Audio.prototype, "Src", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@clipBegin"),
-        tslib_1.__metadata("design:type", String)
-    ], Audio.prototype, "ClipBegin", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
-        tslib_1.__metadata("design:type", String)
-    ], Audio.prototype, "ClipEnd", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@epub:type"),
-        tslib_1.__metadata("design:type", String)
-    ], Audio.prototype, "EpubType", void 0);
-    Audio = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        })
-    ], Audio);
-    return Audio;
-}());
-exports.Audio = Audio;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],126:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var smil_seq_1 = require("./smil-seq");
-var Body = (function (_super) {
-    tslib_1.__extends(Body, _super);
-    function Body() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.isBody = true;
-        return _this;
-    }
-    Body = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        })
-    ], Body);
-    return Body;
-}(smil_seq_1.Seq));
-exports.Body = Body;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-seq":129,"tslib":554}],127:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var smil_audio_1 = require("./smil-audio");
-var smil_seq_or_par_1 = require("./smil-seq-or-par");
-var smil_text_1 = require("./smil-text");
-var Par = (function (_super) {
-    tslib_1.__extends(Par, _super);
-    function Par() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("smil:text"),
-        tslib_1.__metadata("design:type", smil_text_1.Text)
-    ], Par.prototype, "Text", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("smil:audio"),
-        tslib_1.__metadata("design:type", smil_audio_1.Audio)
-    ], Par.prototype, "Audio", void 0);
-    Par = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        }),
-        xml_js_mapper_1.XmlDiscriminatorValue("par")
-    ], Par);
-    return Par;
-}(smil_seq_or_par_1.SeqOrPar));
-exports.Par = Par;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-audio":125,"./smil-seq-or-par":128,"./smil-text":130,"tslib":554}],128:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var SeqOrPar = (function () {
-    function SeqOrPar() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@epub:type"),
-        tslib_1.__metadata("design:type", String)
-    ], SeqOrPar.prototype, "EpubType", void 0);
-    SeqOrPar = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        }),
-        xml_js_mapper_1.XmlDiscriminatorProperty("localName")
-    ], SeqOrPar);
-    return SeqOrPar;
-}());
-exports.SeqOrPar = SeqOrPar;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],129:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var smil_seq_or_par_1 = require("./smil-seq-or-par");
-var Seq = (function (_super) {
-    tslib_1.__extends(Seq, _super);
-    function Seq() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("smil:par|smil:seq"),
-        xml_js_mapper_1.XmlItemType(smil_seq_or_par_1.SeqOrPar),
-        tslib_1.__metadata("design:type", Array)
-    ], Seq.prototype, "Children", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@epub:textref"),
-        tslib_1.__metadata("design:type", String)
-    ], Seq.prototype, "TextRef", void 0);
-    Seq = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        }),
-        xml_js_mapper_1.XmlDiscriminatorValue("seq")
-    ], Seq);
-    return Seq;
-}(smil_seq_or_par_1.SeqOrPar));
-exports.Seq = Seq;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-seq-or-par":128,"tslib":554}],130:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var Text = (function () {
-    function Text() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@src"),
-        tslib_1.__metadata("design:type", String)
-    ], Text.prototype, "Src", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("@epub:type"),
-        tslib_1.__metadata("design:type", String)
-    ], Text.prototype, "EpubType", void 0);
-    Text = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        })
-    ], Text);
-    return Text;
-}());
-exports.Text = Text;
-
-},{"../../_utils/xml-js-mapper":28,"tslib":554}],131:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
-var smil_body_1 = require("./smil-body");
-var smil_par_1 = require("./smil-par");
-var SMIL = (function () {
-    function SMIL() {
-    }
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("smil:body"),
-        tslib_1.__metadata("design:type", smil_body_1.Body)
-    ], SMIL.prototype, "Body", void 0);
-    tslib_1.__decorate([
-        xml_js_mapper_1.XmlXPathSelector("dummy"),
-        tslib_1.__metadata("design:type", smil_par_1.Par)
-    ], SMIL.prototype, "Par", void 0);
-    SMIL = tslib_1.__decorate([
-        xml_js_mapper_1.XmlObject({
-            epub: "http://www.idpf.org/2007/ops",
-            smil: "http://www.w3.org/ns/SMIL",
-        })
-    ], SMIL);
-    return SMIL;
-}());
-exports.SMIL = SMIL;
-
-},{"../../_utils/xml-js-mapper":28,"./smil-body":126,"./smil-par":127,"tslib":554}],132:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var path = require("path");
-var cbz_1 = require("./cbz");
-var epub_1 = require("./epub");
-function PublicationParsePromise(filePath) {
-    return tslib_1.__awaiter(this, void 0, void 0, function () {
-        var fileName, ext;
-        return tslib_1.__generator(this, function (_a) {
-            fileName = path.basename(filePath);
-            ext = path.extname(fileName).toLowerCase();
-            return [2, /\.epub[3]?$/.test(ext) ?
-                    epub_1.EpubParsePromise(filePath) :
-                    cbz_1.CbzParsePromise(filePath)];
-        });
-    });
-}
-exports.PublicationParsePromise = PublicationParsePromise;
-
-},{"./cbz":84,"./epub":87,"path":undefined,"tslib":554}],133:[function(require,module,exports){
-"use strict";
-var _this = this;
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var crypto = require("crypto");
-var zlib = require("zlib");
-var RangeStream_1 = require("../_utils/stream/RangeStream");
-var debug_ = require("debug");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var debug = debug_("r2:transformer:lcp");
-var AES_BLOCK_SIZE = 16;
-var readStream = function (s, n) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    return tslib_1.__generator(this, function (_a) {
-        return [2, new Promise(function (resolve, reject) {
-                var onReadable = function () {
-                    var b = s.read(n);
-                    s.removeListener("readable", onReadable);
-                    s.removeListener("error", reject);
-                    resolve(b);
-                };
-                s.on("readable", onReadable);
-                s.on("error", reject);
-            })];
-    });
-}); };
-var TransformerLCP = (function () {
-    function TransformerLCP() {
-    }
-    TransformerLCP.prototype.supports = function (publication, link) {
-        if (!publication.LCP) {
-            return false;
-        }
-        if (!publication.LCP.isReady()) {
-            debug("LCP not ready!");
-            return false;
-        }
-        var check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
-            && (link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile" ||
-                link.Properties.Encrypted.Profile === "http://readium.org/lcp/profile-1.0")
-            && link.Properties.Encrypted.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
-        if (!check) {
-            debug("Incorrect resource LCP fields.");
-            debug(link.Properties.Encrypted.Scheme);
-            debug(link.Properties.Encrypted.Profile);
-            debug(link.Properties.Encrypted.Algorithm);
-            return false;
-        }
-        return true;
-    };
-    TransformerLCP.prototype.transformStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var plainTextSize, nativelyDecryptedStream, fullEncryptedBuffer, err_1, nativelyDecryptedBuffer, err_2, cryptoInfo, cypherBlockPadding, err_3, err_4, destStream, rawDecryptStream, ivBuffer, cypherRangeStream, err_5, decryptStream, cypherUnpaddedStream, inflateStream, l, rangeStream, sal;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        plainTextSize = -1;
-                        if (!publication.LCP.isNativeNodePlugin()) return [3, 9];
-                        debug("DECRYPT: " + link.Href);
-                        fullEncryptedBuffer = void 0;
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
-                    case 2:
-                        fullEncryptedBuffer = _a.sent();
-                        return [3, 4];
-                    case 3:
-                        err_1 = _a.sent();
-                        debug(err_1);
-                        return [2, Promise.reject("OUCH!")];
-                    case 4:
-                        nativelyDecryptedBuffer = void 0;
-                        _a.label = 5;
-                    case 5:
-                        _a.trys.push([5, 7, , 8]);
-                        return [4, publication.LCP.decrypt(fullEncryptedBuffer)];
-                    case 6:
-                        nativelyDecryptedBuffer = _a.sent();
-                        return [3, 8];
-                    case 7:
-                        err_2 = _a.sent();
-                        debug(err_2);
-                        return [2, Promise.reject("OUCH!")];
-                    case 8:
-                        plainTextSize = nativelyDecryptedBuffer.length;
-                        link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
-                        if (link.Properties.Encrypted.OriginalLength &&
-                            link.Properties.Encrypted.Compression === "none" &&
-                            link.Properties.Encrypted.OriginalLength !== plainTextSize) {
-                            debug("############### " +
-                                "LCP transformStream() LENGTH NOT MATCH " +
-                                "link.Properties.Encrypted.OriginalLength !== plainTextSize: " +
-                                (link.Properties.Encrypted.OriginalLength + " !== " + plainTextSize));
-                        }
-                        nativelyDecryptedStream = BufferUtils_1.bufferToStream(nativelyDecryptedBuffer);
-                        return [3, 18];
-                    case 9:
-                        cryptoInfo = void 0;
-                        cypherBlockPadding = -1;
-                        if (!(link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0)) return [3, 10];
-                        plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
-                        cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
-                        return [3, 18];
-                    case 10:
-                        _a.trys.push([10, 12, , 13]);
-                        return [4, this.getDecryptedSizeStream(publication, link, stream)];
-                    case 11:
-                        cryptoInfo = _a.sent();
-                        return [3, 13];
-                    case 12:
-                        err_3 = _a.sent();
-                        debug(err_3);
-                        return [2, Promise.reject(err_3)];
-                    case 13:
-                        plainTextSize = cryptoInfo.length;
-                        cypherBlockPadding = cryptoInfo.padding;
-                        link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
-                        link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
-                        _a.label = 14;
-                    case 14:
-                        _a.trys.push([14, 16, , 17]);
-                        return [4, stream.reset()];
-                    case 15:
-                        stream = _a.sent();
-                        return [3, 17];
-                    case 16:
-                        err_4 = _a.sent();
-                        debug(err_4);
-                        return [2, Promise.reject(err_4)];
-                    case 17:
-                        if (link.Properties.Encrypted.OriginalLength &&
-                            link.Properties.Encrypted.Compression === "none" &&
-                            link.Properties.Encrypted.OriginalLength !== plainTextSize) {
-                            debug("############### " +
-                                "LCP transformStream() LENGTH NOT MATCH " +
-                                "link.Properties.Encrypted.OriginalLength !== plainTextSize: " +
-                                (link.Properties.Encrypted.OriginalLength + " !== " + plainTextSize));
-                        }
-                        _a.label = 18;
-                    case 18:
-                        if (partialByteBegin < 0) {
-                            partialByteBegin = 0;
-                        }
-                        if (partialByteEnd < 0) {
-                            partialByteEnd = plainTextSize - 1;
-                            if (link.Properties.Encrypted.OriginalLength) {
-                                partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
-                            }
-                        }
-                        if (!nativelyDecryptedStream) return [3, 19];
-                        destStream = nativelyDecryptedStream;
-                        return [3, 25];
-                    case 19:
-                        rawDecryptStream = void 0;
-                        ivBuffer = void 0;
-                        if (!link.Properties.Encrypted.CypherBlockIV) return [3, 20];
-                        ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
-                        cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
-                        stream.stream.pipe(cypherRangeStream);
-                        rawDecryptStream = cypherRangeStream;
-                        return [3, 24];
-                    case 20:
-                        _a.trys.push([20, 22, , 23]);
-                        return [4, readStream(stream.stream, AES_BLOCK_SIZE)];
-                    case 21:
-                        ivBuffer = _a.sent();
-                        return [3, 23];
-                    case 22:
-                        err_5 = _a.sent();
-                        debug(err_5);
-                        return [2, Promise.reject(err_5)];
-                    case 23:
-                        link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
-                        stream.stream.resume();
-                        rawDecryptStream = stream.stream;
-                        _a.label = 24;
-                    case 24:
-                        decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
-                        decryptStream.setAutoPadding(false);
-                        rawDecryptStream.pipe(decryptStream);
-                        destStream = decryptStream;
-                        if (link.Properties.Encrypted.CypherBlockPadding) {
-                            cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
-                            destStream.pipe(cypherUnpaddedStream);
-                            destStream = cypherUnpaddedStream;
-                        }
-                        _a.label = 25;
-                    case 25:
-                        if (link.Properties.Encrypted.Compression === "deflate") {
-                            inflateStream = zlib.createInflateRaw();
-                            destStream.pipe(inflateStream);
-                            destStream = inflateStream;
-                        }
-                        l = link.Properties.Encrypted.OriginalLength ?
-                            link.Properties.Encrypted.OriginalLength : plainTextSize;
-                        if (isPartialByteRangeRequest) {
-                            rangeStream = new RangeStream_1.RangeStream(partialByteBegin, partialByteEnd, l);
-                            destStream.pipe(rangeStream);
-                            destStream = rangeStream;
-                        }
-                        sal = {
-                            length: l,
-                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                var resetedStream, err_6;
-                                return tslib_1.__generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0:
-                                            _a.trys.push([0, 2, , 3]);
-                                            return [4, stream.reset()];
-                                        case 1:
-                                            resetedStream = _a.sent();
-                                            return [3, 3];
-                                        case 2:
-                                            err_6 = _a.sent();
-                                            debug(err_6);
-                                            return [2, Promise.reject(err_6)];
-                                        case 3:
-                                            if (!resetedStream) {
-                                                return [2, Promise.reject("??")];
-                                            }
-                                            return [2, this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
-                                    }
-                                });
-                            }); },
-                            stream: destStream,
-                        };
-                        return [2, Promise.resolve(sal)];
-                }
-            });
-        });
-    };
-    TransformerLCP.prototype.getDecryptedSizeStream = function (publication, _link, stream) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
-                return [2, new Promise(function (resolve, reject) {
-                        var TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
-                        if (stream.length < TWO_AES_BLOCK_SIZE) {
-                            reject("crypto err");
-                            return;
-                        }
-                        var readPos = stream.length - TWO_AES_BLOCK_SIZE;
-                        var cypherRangeStream = new RangeStream_1.RangeStream(readPos, readPos + TWO_AES_BLOCK_SIZE - 1, stream.length);
-                        stream.stream.pipe(cypherRangeStream);
-                        var decrypteds = [];
-                        cypherRangeStream.on("readable", function () {
-                            var ivBuffer = cypherRangeStream.read(AES_BLOCK_SIZE);
-                            if (!ivBuffer) {
-                                return;
-                            }
-                            var encrypted = cypherRangeStream.read(AES_BLOCK_SIZE);
-                            var decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
-                            decryptStream.setAutoPadding(false);
-                            var buff1 = decryptStream.update(encrypted);
-                            if (buff1) {
-                                decrypteds.push(buff1);
-                            }
-                            var buff2 = decryptStream.final();
-                            if (buff2) {
-                                decrypteds.push(buff2);
-                            }
-                        });
-                        cypherRangeStream.on("end", function () {
-                            var decrypted = Buffer.concat(decrypteds);
-                            var nPaddingBytes = decrypted[AES_BLOCK_SIZE - 1];
-                            var size = stream.length - AES_BLOCK_SIZE - nPaddingBytes;
-                            var res = {
-                                length: size,
-                                padding: nPaddingBytes,
-                            };
-                            resolve(res);
-                        });
-                        cypherRangeStream.on("error", function () {
-                            reject("DECRYPT err");
-                        });
-                    })];
-            });
-        });
-    };
-    return TransformerLCP;
-}());
-exports.TransformerLCP = TransformerLCP;
-
-},{"../_utils/stream/BufferUtils":5,"../_utils/stream/RangeStream":6,"crypto":undefined,"debug":267,"tslib":554,"zlib":undefined}],134:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var TransformerObfAdobe = (function () {
-    function TransformerObfAdobe() {
-    }
-    TransformerObfAdobe.prototype.supports = function (_publication, link) {
-        return link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC";
-    };
-    TransformerObfAdobe.prototype.transformStream = function (publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var data, err_1, buff, err_2, sal;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
-                    case 1:
-                        data = _a.sent();
-                        return [3, 3];
-                    case 2:
-                        err_1 = _a.sent();
-                        return [2, Promise.reject(err_1)];
-                    case 3:
-                        _a.trys.push([3, 5, , 6]);
-                        return [4, this.transformBuffer(publication, link, data)];
-                    case 4:
-                        buff = _a.sent();
-                        return [3, 6];
-                    case 5:
-                        err_2 = _a.sent();
-                        return [2, Promise.reject(err_2)];
-                    case 6:
-                        sal = {
-                            length: buff.length,
-                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                return tslib_1.__generator(this, function (_a) {
-                                    return [2, Promise.resolve(sal)];
-                                });
-                            }); },
-                            stream: BufferUtils_1.bufferToStream(buff),
-                        };
-                        return [2, Promise.resolve(sal)];
-                }
-            });
-        });
-    };
-    TransformerObfAdobe.prototype.transformBuffer = function (publication, _link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var pubID, key, i, byteHex, byteNumer, prefixLength, zipDataPrefix, i, zipDataRemainder;
-            return tslib_1.__generator(this, function (_a) {
-                pubID = publication.Metadata.Identifier;
-                pubID = pubID.replace("urn:uuid:", "");
-                pubID = pubID.replace(/-/g, "");
-                pubID = pubID.replace(/\s/g, "");
-                key = [];
-                for (i = 0; i < 16; i++) {
-                    byteHex = pubID.substr(i * 2, 2);
-                    byteNumer = parseInt(byteHex, 16);
-                    key.push(byteNumer);
-                }
-                prefixLength = 1024;
-                zipDataPrefix = data.slice(0, prefixLength);
-                for (i = 0; i < prefixLength; i++) {
-                    zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
-                }
-                zipDataRemainder = data.slice(prefixLength);
-                return [2, Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]))];
-            });
-        });
-    };
-    return TransformerObfAdobe;
-}());
-exports.TransformerObfAdobe = TransformerObfAdobe;
-
-},{"../_utils/stream/BufferUtils":5,"tslib":554}],135:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var crypto = require("crypto");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
-var TransformerObfIDPF = (function () {
-    function TransformerObfIDPF() {
-    }
-    TransformerObfIDPF.prototype.supports = function (_publication, link) {
-        return link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding";
-    };
-    TransformerObfIDPF.prototype.transformStream = function (publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            var data, err_1, buff, err_2, sal;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        _a.trys.push([0, 2, , 3]);
-                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
-                    case 1:
-                        data = _a.sent();
-                        return [3, 3];
-                    case 2:
-                        err_1 = _a.sent();
-                        return [2, Promise.reject(err_1)];
-                    case 3:
-                        _a.trys.push([3, 5, , 6]);
-                        return [4, this.transformBuffer(publication, link, data)];
-                    case 4:
-                        buff = _a.sent();
-                        return [3, 6];
-                    case 5:
-                        err_2 = _a.sent();
-                        return [2, Promise.reject(err_2)];
-                    case 6:
-                        sal = {
-                            length: buff.length,
-                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                                return tslib_1.__generator(this, function (_a) {
-                                    return [2, Promise.resolve(sal)];
-                                });
-                            }); },
-                            stream: BufferUtils_1.bufferToStream(buff),
-                        };
-                        return [2, Promise.resolve(sal)];
-                }
-            });
-        });
-    };
-    TransformerObfIDPF.prototype.transformBuffer = function (publication, _link, data) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var pubID, checkSum, key, prefixLength, zipDataPrefix, i, zipDataRemainder;
-            return tslib_1.__generator(this, function (_a) {
-                pubID = publication.Metadata.Identifier;
-                pubID = pubID.replace(/\s/g, "");
-                checkSum = crypto.createHash("sha1");
-                checkSum.update(pubID);
-                key = checkSum.digest();
-                prefixLength = 1040;
-                zipDataPrefix = data.slice(0, prefixLength);
-                for (i = 0; i < prefixLength; i++) {
-                    zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
-                }
-                zipDataRemainder = data.slice(prefixLength);
-                return [2, Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]))];
-            });
-        });
-    };
-    return TransformerObfIDPF;
-}());
-exports.TransformerObfIDPF = TransformerObfIDPF;
-
-},{"../_utils/stream/BufferUtils":5,"crypto":undefined,"tslib":554}],136:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var tslib_1 = require("tslib");
-var transformer_lcp_1 = require("./transformer-lcp");
-var transformer_obf_adobe_1 = require("./transformer-obf-adobe");
-var transformer_obf_idpf_1 = require("./transformer-obf-idpf");
-var Transformers = (function () {
-    function Transformers() {
-        this.transformers = [];
-    }
-    Transformers.instance = function () {
-        return Transformers._instance;
-    };
-    Transformers.tryStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            return tslib_1.__generator(this, function (_a) {
-                return [2, Transformers.instance()._tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
-            });
-        });
-    };
-    Transformers.prototype.add = function (transformer) {
-        if (this.transformers.indexOf(transformer) < 0) {
-            this.transformers.push(transformer);
-        }
-    };
-    Transformers.prototype._tryStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var transformedData, transformer;
-            return tslib_1.__generator(this, function (_a) {
-                transformer = this.transformers.find(function (t) {
-                    if (!t.supports(publication, link)) {
-                        return false;
-                    }
-                    transformedData = t.transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
-                    if (transformedData) {
-                        return true;
-                    }
-                    return false;
-                });
-                if (transformer && transformedData) {
-                    return [2, transformedData];
-                }
-                return [2, Promise.reject("transformers fail (stream)")];
-            });
-        });
-    };
-    Transformers._instance = new Transformers();
-    return Transformers;
-}());
-exports.Transformers = Transformers;
-Transformers.instance().add(new transformer_obf_adobe_1.TransformerObfAdobe());
-Transformers.instance().add(new transformer_obf_idpf_1.TransformerObfIDPF());
-Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
-
-},{"./transformer-lcp":133,"./transformer-obf-adobe":134,"./transformer-obf-idpf":135,"tslib":554}],137:[function(require,module,exports){
+},{"./server-assets":1,"./server-manifestjson":3,"./server-mediaoverlays":4,"./server-opds":5,"./server-opds1-2":6,"./server-opds2":7,"./server-pub":8,"./server-url":10,"child_process":undefined,"crypto":undefined,"css2json":139,"debug":142,"express":158,"fs":undefined,"json-markup":280,"path":undefined,"r2-shared-js/dist/es5/src/_utils/http/UrlUtils":338,"r2-shared-js/dist/es5/src/opds/opds2/opds2":407,"r2-shared-js/dist/es5/src/parser/publication-parser":456,"ta-json":540,"tmp":545,"tslib":553}],12:[function(require,module,exports){
 /*!
  * accepts
  * Copyright(c) 2014 Jonathan Ong
@@ -10483,7 +2060,7 @@ function validMime (type) {
   return typeof type === 'string'
 }
 
-},{"mime-types":429,"negotiator":440}],138:[function(require,module,exports){
+},{"mime-types":303,"negotiator":314}],13:[function(require,module,exports){
 'use strict';
 
 var KEYWORDS = [
@@ -10534,7 +2111,7 @@ module.exports = function (metaSchema, keywordsJsonPointers) {
   return metaSchema;
 };
 
-},{}],139:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var compileSchema = require('./compile')
@@ -11038,7 +2615,7 @@ function setLogger(self) {
 
 function noop() {}
 
-},{"./$data":138,"./cache":140,"./compile":145,"./compile/async":142,"./compile/error_classes":143,"./compile/formats":144,"./compile/resolve":146,"./compile/rules":147,"./compile/schema_obj":148,"./compile/util":150,"./keyword":174,"./patternGroups":175,"./refs/$data.json":176,"./refs/json-schema-draft-06.json":177,"co":254,"fast-json-stable-stringify":302}],140:[function(require,module,exports){
+},{"./$data":13,"./cache":15,"./compile":20,"./compile/async":17,"./compile/error_classes":18,"./compile/formats":19,"./compile/resolve":21,"./compile/rules":22,"./compile/schema_obj":23,"./compile/util":25,"./keyword":49,"./patternGroups":50,"./refs/$data.json":51,"./refs/json-schema-draft-06.json":52,"co":129,"fast-json-stable-stringify":177}],15:[function(require,module,exports){
 'use strict';
 
 
@@ -11066,7 +2643,7 @@ Cache.prototype.clear = function Cache_clear() {
   this._cache = {};
 };
 
-},{}],141:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 //all requires must be explicit because browserify won't work with dynamic requires
@@ -11099,7 +2676,7 @@ module.exports = {
   validate: require('../dotjs/validate')
 };
 
-},{"../dotjs/_limit":151,"../dotjs/_limitItems":152,"../dotjs/_limitLength":153,"../dotjs/_limitProperties":154,"../dotjs/allOf":155,"../dotjs/anyOf":156,"../dotjs/const":157,"../dotjs/contains":158,"../dotjs/dependencies":160,"../dotjs/enum":161,"../dotjs/format":162,"../dotjs/items":163,"../dotjs/multipleOf":164,"../dotjs/not":165,"../dotjs/oneOf":166,"../dotjs/pattern":167,"../dotjs/properties":168,"../dotjs/propertyNames":169,"../dotjs/ref":170,"../dotjs/required":171,"../dotjs/uniqueItems":172,"../dotjs/validate":173}],142:[function(require,module,exports){
+},{"../dotjs/_limit":26,"../dotjs/_limitItems":27,"../dotjs/_limitLength":28,"../dotjs/_limitProperties":29,"../dotjs/allOf":30,"../dotjs/anyOf":31,"../dotjs/const":32,"../dotjs/contains":33,"../dotjs/dependencies":35,"../dotjs/enum":36,"../dotjs/format":37,"../dotjs/items":38,"../dotjs/multipleOf":39,"../dotjs/not":40,"../dotjs/oneOf":41,"../dotjs/pattern":42,"../dotjs/properties":43,"../dotjs/propertyNames":44,"../dotjs/ref":45,"../dotjs/required":46,"../dotjs/uniqueItems":47,"../dotjs/validate":48}],17:[function(require,module,exports){
 'use strict';
 
 var MissingRefError = require('./error_classes').MissingRef;
@@ -11191,7 +2768,7 @@ function compileAsync(schema, meta, callback) {
   }
 }
 
-},{"./error_classes":143}],143:[function(require,module,exports){
+},{"./error_classes":18}],18:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve');
@@ -11227,7 +2804,7 @@ function errorSubclass(Subclass) {
   return Subclass;
 }
 
-},{"./resolve":146}],144:[function(require,module,exports){
+},{"./resolve":21}],19:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -11364,7 +2941,7 @@ function regex(str) {
   }
 }
 
-},{"./util":150}],145:[function(require,module,exports){
+},{"./util":25}],20:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve')
@@ -11746,7 +3323,7 @@ function vars(arr, statement) {
   return code;
 }
 
-},{"../dotjs/validate":173,"./error_classes":143,"./resolve":146,"./util":150,"co":254,"fast-deep-equal":301,"fast-json-stable-stringify":302}],146:[function(require,module,exports){
+},{"../dotjs/validate":48,"./error_classes":18,"./resolve":21,"./util":25,"co":129,"fast-deep-equal":176,"fast-json-stable-stringify":177}],21:[function(require,module,exports){
 'use strict';
 
 var url = require('url')
@@ -12019,7 +3596,7 @@ function resolveIds(schema) {
   return localRefs;
 }
 
-},{"./schema_obj":148,"./util":150,"fast-deep-equal":301,"json-schema-traverse":407,"url":undefined}],147:[function(require,module,exports){
+},{"./schema_obj":23,"./util":25,"fast-deep-equal":176,"json-schema-traverse":281,"url":undefined}],22:[function(require,module,exports){
 'use strict';
 
 var ruleModules = require('./_rules')
@@ -12079,7 +3656,7 @@ module.exports = function rules() {
   return RULES;
 };
 
-},{"./_rules":141,"./util":150}],148:[function(require,module,exports){
+},{"./_rules":16,"./util":25}],23:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -12090,7 +3667,7 @@ function SchemaObject(obj) {
   util.copy(obj, this);
 }
 
-},{"./util":150}],149:[function(require,module,exports){
+},{"./util":25}],24:[function(require,module,exports){
 'use strict';
 
 // https://mathiasbynens.be/notes/javascript-encoding
@@ -12112,7 +3689,7 @@ module.exports = function ucs2length(str) {
   return length;
 };
 
-},{}],150:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 'use strict';
 
 
@@ -12381,7 +3958,7 @@ function unescapeJsonPointer(str) {
   return str.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-},{"./ucs2length":149,"fast-deep-equal":301}],151:[function(require,module,exports){
+},{"./ucs2length":24,"fast-deep-equal":176}],26:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limit(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12532,7 +4109,7 @@ module.exports = function generate__limit(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],152:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12610,7 +4187,7 @@ module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],153:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12693,7 +4270,7 @@ module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],154:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12771,7 +4348,7 @@ module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],155:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 module.exports = function generate_allOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12816,7 +4393,7 @@ module.exports = function generate_allOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],156:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 'use strict';
 module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12891,7 +4468,7 @@ module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],157:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 'use strict';
 module.exports = function generate_const(it, $keyword, $ruleType) {
   var out = ' ';
@@ -12948,7 +4525,7 @@ module.exports = function generate_const(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],158:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 'use strict';
 module.exports = function generate_contains(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13031,7 +4608,7 @@ module.exports = function generate_contains(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],159:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 module.exports = function generate_custom(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13259,7 +4836,7 @@ module.exports = function generate_custom(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],160:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 'use strict';
 module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13428,7 +5005,7 @@ module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],161:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 'use strict';
 module.exports = function generate_enum(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13495,7 +5072,7 @@ module.exports = function generate_enum(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],162:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 module.exports = function generate_format(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13646,7 +5223,7 @@ module.exports = function generate_format(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],163:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 'use strict';
 module.exports = function generate_items(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13788,7 +5365,7 @@ module.exports = function generate_items(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],164:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13866,7 +5443,7 @@ module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],165:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 'use strict';
 module.exports = function generate_not(it, $keyword, $ruleType) {
   var out = ' ';
@@ -13951,7 +5528,7 @@ module.exports = function generate_not(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],166:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 'use strict';
 module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14023,7 +5600,7 @@ module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],167:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 'use strict';
 module.exports = function generate_pattern(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14099,7 +5676,7 @@ module.exports = function generate_pattern(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],168:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 'use strict';
 module.exports = function generate_properties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14569,7 +6146,7 @@ module.exports = function generate_properties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],169:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 'use strict';
 module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14652,7 +6229,7 @@ module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],170:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 'use strict';
 module.exports = function generate_ref(it, $keyword, $ruleType) {
   var out = ' ';
@@ -14777,7 +6354,7 @@ module.exports = function generate_ref(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],171:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 'use strict';
 module.exports = function generate_required(it, $keyword, $ruleType) {
   var out = ' ';
@@ -15047,7 +6624,7 @@ module.exports = function generate_required(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],172:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 'use strict';
 module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -15120,7 +6697,7 @@ module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],173:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 'use strict';
 module.exports = function generate_validate(it, $keyword, $ruleType) {
   var out = '';
@@ -15580,7 +7157,7 @@ module.exports = function generate_validate(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],174:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 'use strict';
 
 var IDENTIFIER = /^[a-z_$][a-z0-9_$-]*$/i;
@@ -15717,7 +7294,7 @@ function removeKeyword(keyword) {
   return this;
 }
 
-},{"./dotjs/custom":159}],175:[function(require,module,exports){
+},{"./dotjs/custom":34}],50:[function(require,module,exports){
 'use strict';
 
 var META_SCHEMA_ID = 'http://json-schema.org/draft-06/schema';
@@ -15755,7 +7332,7 @@ module.exports = function (ajv) {
   ajv.RULES.all.properties.implements.push('patternGroups');
 };
 
-},{}],176:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-06/schema#",
     "$id": "https://raw.githubusercontent.com/epoberezkin/ajv/master/lib/refs/$data.json#",
@@ -15774,7 +7351,7 @@ module.exports={
     "additionalProperties": false
 }
 
-},{}],177:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-06/schema#",
     "$id": "http://json-schema.org/draft-06/schema#",
@@ -15930,7 +7507,7 @@ module.exports={
     "default": {}
 }
 
-},{}],178:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 'use strict'
 
 /**
@@ -15996,7 +7573,7 @@ function arrayFlatten (array, depth) {
   return flattenWithDepth(array, [], depth)
 }
 
-},{}],179:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 
@@ -16011,7 +7588,7 @@ module.exports = {
 
 };
 
-},{}],180:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 var errors = require('./errors');
@@ -16040,7 +7617,7 @@ for (var e in errors) {
     module.exports[e] = errors[e];
 }
 
-},{"./errors":179,"./reader":181,"./types":182,"./writer":183}],181:[function(require,module,exports){
+},{"./errors":54,"./reader":56,"./types":57,"./writer":58}],56:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 var assert = require('assert');
@@ -16303,7 +7880,7 @@ Reader.prototype._readTag = function(tag) {
 
 module.exports = Reader;
 
-},{"./errors":179,"./types":182,"assert":undefined}],182:[function(require,module,exports){
+},{"./errors":54,"./types":57,"assert":undefined}],57:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 
@@ -16341,7 +7918,7 @@ module.exports = {
   Context: 128
 };
 
-},{}],183:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 var assert = require('assert');
@@ -16659,7 +8236,7 @@ Writer.prototype._ensure = function(len) {
 
 module.exports = Writer;
 
-},{"./errors":179,"./types":182,"assert":undefined}],184:[function(require,module,exports){
+},{"./errors":54,"./types":57,"assert":undefined}],59:[function(require,module,exports){
 // Copyright 2011 Mark Cavage <mcavage@gmail.com> All rights reserved.
 
 // If you have no idea what ASN.1 or BER is, see this:
@@ -16681,7 +8258,7 @@ module.exports = {
 
 };
 
-},{"./ber/index":180}],185:[function(require,module,exports){
+},{"./ber/index":55}],60:[function(require,module,exports){
 // Copyright (c) 2012, Mark Cavage. All rights reserved.
 // Copyright 2015 Joyent, Inc.
 
@@ -16894,7 +8471,7 @@ function _setExports(ndebug) {
 
 module.exports = _setExports(process.env.NODE_NDEBUG);
 
-},{"assert":undefined,"stream":undefined,"util":undefined}],186:[function(require,module,exports){
+},{"assert":undefined,"stream":undefined,"util":undefined}],61:[function(require,module,exports){
 module.exports =
 {
   parallel      : require('./parallel.js'),
@@ -16902,7 +8479,7 @@ module.exports =
   serialOrdered : require('./serialOrdered.js')
 };
 
-},{"./parallel.js":193,"./serial.js":194,"./serialOrdered.js":195}],187:[function(require,module,exports){
+},{"./parallel.js":68,"./serial.js":69,"./serialOrdered.js":70}],62:[function(require,module,exports){
 // API
 module.exports = abort;
 
@@ -16933,7 +8510,7 @@ function clean(key)
   }
 }
 
-},{}],188:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 var defer = require('./defer.js');
 
 // API
@@ -16969,7 +8546,7 @@ function async(callback)
   };
 }
 
-},{"./defer.js":189}],189:[function(require,module,exports){
+},{"./defer.js":64}],64:[function(require,module,exports){
 module.exports = defer;
 
 /**
@@ -16997,7 +8574,7 @@ function defer(fn)
   }
 }
 
-},{}],190:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 var async = require('./async.js')
   , abort = require('./abort.js')
   ;
@@ -17074,7 +8651,7 @@ function runJob(iterator, key, item, callback)
   return aborter;
 }
 
-},{"./abort.js":187,"./async.js":188}],191:[function(require,module,exports){
+},{"./abort.js":62,"./async.js":63}],66:[function(require,module,exports){
 // API
 module.exports = state;
 
@@ -17113,7 +8690,7 @@ function state(list, sortMethod)
   return initState;
 }
 
-},{}],192:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 var abort = require('./abort.js')
   , async = require('./async.js')
   ;
@@ -17144,7 +8721,7 @@ function terminator(callback)
   async(callback)(null, this.results);
 }
 
-},{"./abort.js":187,"./async.js":188}],193:[function(require,module,exports){
+},{"./abort.js":62,"./async.js":63}],68:[function(require,module,exports){
 var iterate    = require('./lib/iterate.js')
   , initState  = require('./lib/state.js')
   , terminator = require('./lib/terminator.js')
@@ -17189,7 +8766,7 @@ function parallel(list, iterator, callback)
   return terminator.bind(state, callback);
 }
 
-},{"./lib/iterate.js":190,"./lib/state.js":191,"./lib/terminator.js":192}],194:[function(require,module,exports){
+},{"./lib/iterate.js":65,"./lib/state.js":66,"./lib/terminator.js":67}],69:[function(require,module,exports){
 var serialOrdered = require('./serialOrdered.js');
 
 // Public API
@@ -17208,7 +8785,7 @@ function serial(list, iterator, callback)
   return serialOrdered(list, iterator, null, callback);
 }
 
-},{"./serialOrdered.js":195}],195:[function(require,module,exports){
+},{"./serialOrdered.js":70}],70:[function(require,module,exports){
 var iterate    = require('./lib/iterate.js')
   , initState  = require('./lib/state.js')
   , terminator = require('./lib/terminator.js')
@@ -17285,7 +8862,7 @@ function descending(a, b)
   return -1 * ascending(a, b);
 }
 
-},{"./lib/iterate.js":190,"./lib/state.js":191,"./lib/terminator.js":192}],196:[function(require,module,exports){
+},{"./lib/iterate.js":65,"./lib/state.js":66,"./lib/terminator.js":67}],71:[function(require,module,exports){
 
 /*!
  *  Copyright 2010 LearnBoost <dev@learnboost.com>
@@ -17499,7 +9076,7 @@ function canonicalizeResource (resource) {
 }
 module.exports.canonicalizeResource = canonicalizeResource
 
-},{"crypto":undefined,"url":undefined}],197:[function(require,module,exports){
+},{"crypto":undefined,"url":undefined}],72:[function(require,module,exports){
 var aws4 = exports,
     url = require('url'),
     querystring = require('querystring'),
@@ -17833,7 +9410,7 @@ aws4.sign = function(request, credentials) {
   return new RequestSigner(request, credentials).sign()
 }
 
-},{"./lru":198,"crypto":undefined,"querystring":undefined,"url":undefined}],198:[function(require,module,exports){
+},{"./lru":73,"crypto":undefined,"querystring":undefined,"url":undefined}],73:[function(require,module,exports){
 module.exports = function(size) {
   return new LruCache(size)
 }
@@ -17931,7 +9508,7 @@ function DoublyLinkedNode(key, val) {
   this.next = null
 }
 
-},{}],199:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 'use strict';
 module.exports = balanced;
 function balanced(a, b, str) {
@@ -17992,7 +9569,7 @@ function range(a, b, str) {
   return result;
 }
 
-},{}],200:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 /*!
  * basic-auth
  * Copyright(c) 2013 TJ Holowaychuk
@@ -18127,7 +9704,7 @@ function Credentials (name, pass) {
   this.pass = pass
 }
 
-},{"safe-buffer":484}],201:[function(require,module,exports){
+},{"safe-buffer":483}],76:[function(require,module,exports){
 'use strict';
 
 var crypto_hash_sha512 = require('tweetnacl').lowlevel.crypto_hash;
@@ -18685,7 +10262,7 @@ module.exports = {
       pbkdf: bcrypt_pbkdf
 };
 
-},{"tweetnacl":556}],202:[function(require,module,exports){
+},{"tweetnacl":555}],77:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -18858,7 +10435,7 @@ exports.getRoot = function getRoot (file) {
   }
 }
 
-},{"fs":undefined,"path":undefined}],203:[function(require,module,exports){
+},{"fs":undefined,"path":undefined}],78:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 var SomePromiseArray = Promise._SomePromiseArray;
@@ -18881,7 +10458,7 @@ Promise.prototype.any = function () {
 
 };
 
-},{}],204:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 "use strict";
 var firstLineError;
 try {throw new Error(); } catch (e) {firstLineError = e;}
@@ -19044,7 +10621,7 @@ Async.prototype._reset = function () {
 module.exports = Async;
 module.exports.firstLineError = firstLineError;
 
-},{"./queue":228,"./schedule":231,"./util":238}],205:[function(require,module,exports){
+},{"./queue":103,"./schedule":106,"./util":113}],80:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL, tryConvertToPromise, debug) {
 var calledBind = false;
@@ -19113,7 +10690,7 @@ Promise.bind = function (thisArg, value) {
 };
 };
 
-},{}],206:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 "use strict";
 var old;
 if (typeof Promise !== "undefined") old = Promise;
@@ -19126,7 +10703,7 @@ var bluebird = require("./promise")();
 bluebird.noConflict = noConflict;
 module.exports = bluebird;
 
-},{"./promise":224}],207:[function(require,module,exports){
+},{"./promise":99}],82:[function(require,module,exports){
 "use strict";
 var cr = Object.create;
 if (cr) {
@@ -19251,7 +10828,7 @@ Promise.prototype.get = function (propertyName) {
 };
 };
 
-},{"./util":238}],208:[function(require,module,exports){
+},{"./util":113}],83:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, PromiseArray, apiRejection, debug) {
 var util = require("./util");
@@ -19382,7 +10959,7 @@ Promise.prototype._resultCancelled = function() {
 
 };
 
-},{"./util":238}],209:[function(require,module,exports){
+},{"./util":113}],84:[function(require,module,exports){
 "use strict";
 module.exports = function(NEXT_FILTER) {
 var util = require("./util");
@@ -19426,7 +11003,7 @@ function catchFilter(instances, cb, promise) {
 return catchFilter;
 };
 
-},{"./es5":215,"./util":238}],210:[function(require,module,exports){
+},{"./es5":90,"./util":113}],85:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 var longStackTraces = false;
@@ -19497,7 +11074,7 @@ Context.activateLongStackTraces = function() {
 return Context;
 };
 
-},{}],211:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, Context) {
 var getDomain = Promise._getDomain;
@@ -20418,7 +11995,7 @@ return {
 };
 };
 
-},{"./errors":214,"./util":238}],212:[function(require,module,exports){
+},{"./errors":89,"./util":113}],87:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 function returner() {
@@ -20466,7 +12043,7 @@ Promise.prototype.catchReturn = function (value) {
 };
 };
 
-},{}],213:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var PromiseReduce = Promise.reduce;
@@ -20498,7 +12075,7 @@ Promise.mapSeries = PromiseMapSeries;
 };
 
 
-},{}],214:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 "use strict";
 var es5 = require("./es5");
 var Objectfreeze = es5.freeze;
@@ -20616,7 +12193,7 @@ module.exports = {
     Warning: Warning
 };
 
-},{"./es5":215,"./util":238}],215:[function(require,module,exports){
+},{"./es5":90,"./util":113}],90:[function(require,module,exports){
 var isES5 = (function(){
     "use strict";
     return this === undefined;
@@ -20698,7 +12275,7 @@ if (isES5) {
     };
 }
 
-},{}],216:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var PromiseMap = Promise.map;
@@ -20712,7 +12289,7 @@ Promise.filter = function (promises, fn, options) {
 };
 };
 
-},{}],217:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, tryConvertToPromise, NEXT_FILTER) {
 var util = require("./util");
@@ -20860,7 +12437,7 @@ Promise.prototype.tapCatch = function (handlerOrPredicate) {
 return PassThroughHandlerContext;
 };
 
-},{"./catch_filter":209,"./util":238}],218:[function(require,module,exports){
+},{"./catch_filter":84,"./util":113}],93:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise,
                           apiRejection,
@@ -21085,7 +12662,7 @@ Promise.spawn = function (generatorFunction) {
 };
 };
 
-},{"./errors":214,"./util":238}],219:[function(require,module,exports){
+},{"./errors":89,"./util":113}],94:[function(require,module,exports){
 "use strict";
 module.exports =
 function(Promise, PromiseArray, tryConvertToPromise, INTERNAL, async,
@@ -21255,7 +12832,7 @@ Promise.join = function () {
 
 };
 
-},{"./util":238}],220:[function(require,module,exports){
+},{"./util":113}],95:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise,
                           PromiseArray,
@@ -21425,7 +13002,7 @@ Promise.map = function (promises, fn, options, _filter) {
 
 };
 
-},{"./util":238}],221:[function(require,module,exports){
+},{"./util":113}],96:[function(require,module,exports){
 "use strict";
 module.exports =
 function(Promise, INTERNAL, tryConvertToPromise, apiRejection, debug) {
@@ -21482,7 +13059,7 @@ Promise.prototype._resolveFromSyncValue = function (value) {
 };
 };
 
-},{"./util":238}],222:[function(require,module,exports){
+},{"./util":113}],97:[function(require,module,exports){
 "use strict";
 var util = require("./util");
 var maybeWrapAsError = util.maybeWrapAsError;
@@ -21535,7 +13112,7 @@ function nodebackForPromise(promise, multiArgs) {
 
 module.exports = nodebackForPromise;
 
-},{"./errors":214,"./es5":215,"./util":238}],223:[function(require,module,exports){
+},{"./errors":89,"./es5":90,"./util":113}],98:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 var util = require("./util");
@@ -21595,7 +13172,7 @@ Promise.prototype.asCallback = Promise.prototype.nodeify = function (nodeback,
 };
 };
 
-},{"./util":238}],224:[function(require,module,exports){
+},{"./util":113}],99:[function(require,module,exports){
 "use strict";
 module.exports = function() {
 var makeSelfResolutionError = function () {
@@ -22372,7 +13949,7 @@ require('./any.js')(Promise);
 
 };
 
-},{"./any.js":203,"./async":204,"./bind":205,"./call_get.js":207,"./cancel":208,"./catch_filter":209,"./context":210,"./debuggability":211,"./direct_resolve":212,"./each.js":213,"./errors":214,"./es5":215,"./filter.js":216,"./finally":217,"./generators.js":218,"./join":219,"./map.js":220,"./method":221,"./nodeback":222,"./nodeify.js":223,"./promise_array":225,"./promisify.js":226,"./props.js":227,"./race.js":229,"./reduce.js":230,"./settle.js":232,"./some.js":233,"./synchronous_inspection":234,"./thenables":235,"./timers.js":236,"./using.js":237,"./util":238}],225:[function(require,module,exports){
+},{"./any.js":78,"./async":79,"./bind":80,"./call_get.js":82,"./cancel":83,"./catch_filter":84,"./context":85,"./debuggability":86,"./direct_resolve":87,"./each.js":88,"./errors":89,"./es5":90,"./filter.js":91,"./finally":92,"./generators.js":93,"./join":94,"./map.js":95,"./method":96,"./nodeback":97,"./nodeify.js":98,"./promise_array":100,"./promisify.js":101,"./props.js":102,"./race.js":104,"./reduce.js":105,"./settle.js":107,"./some.js":108,"./synchronous_inspection":109,"./thenables":110,"./timers.js":111,"./using.js":112,"./util":113}],100:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL, tryConvertToPromise,
     apiRejection, Proxyable) {
@@ -22559,7 +14136,7 @@ PromiseArray.prototype.getActualLength = function (len) {
 return PromiseArray;
 };
 
-},{"./util":238}],226:[function(require,module,exports){
+},{"./util":113}],101:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var THIS = {};
@@ -22875,7 +14452,7 @@ Promise.promisifyAll = function (target, options) {
 };
 
 
-},{"./errors":214,"./nodeback":222,"./util":238}],227:[function(require,module,exports){
+},{"./errors":89,"./nodeback":97,"./util":113}],102:[function(require,module,exports){
 "use strict";
 module.exports = function(
     Promise, PromiseArray, tryConvertToPromise, apiRejection) {
@@ -22995,7 +14572,7 @@ Promise.props = function (promises) {
 };
 };
 
-},{"./es5":215,"./util":238}],228:[function(require,module,exports){
+},{"./es5":90,"./util":113}],103:[function(require,module,exports){
 "use strict";
 function arrayMove(src, srcIndex, dst, dstIndex, len) {
     for (var j = 0; j < len; ++j) {
@@ -23070,7 +14647,7 @@ Queue.prototype._resizeTo = function (capacity) {
 
 module.exports = Queue;
 
-},{}],229:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 "use strict";
 module.exports = function(
     Promise, INTERNAL, tryConvertToPromise, apiRejection) {
@@ -23121,7 +14698,7 @@ Promise.prototype.race = function () {
 
 };
 
-},{"./util":238}],230:[function(require,module,exports){
+},{"./util":113}],105:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise,
                           PromiseArray,
@@ -23295,7 +14872,7 @@ function gotValue(value) {
 }
 };
 
-},{"./util":238}],231:[function(require,module,exports){
+},{"./util":113}],106:[function(require,module,exports){
 "use strict";
 var util = require("./util");
 var schedule;
@@ -23358,7 +14935,7 @@ if (util.isNode && typeof MutationObserver === "undefined") {
 }
 module.exports = schedule;
 
-},{"./util":238}],232:[function(require,module,exports){
+},{"./util":113}],107:[function(require,module,exports){
 "use strict";
 module.exports =
     function(Promise, PromiseArray, debug) {
@@ -23403,7 +14980,7 @@ Promise.prototype.settle = function () {
 };
 };
 
-},{"./util":238}],233:[function(require,module,exports){
+},{"./util":113}],108:[function(require,module,exports){
 "use strict";
 module.exports =
 function(Promise, PromiseArray, apiRejection) {
@@ -23553,7 +15130,7 @@ Promise.prototype.some = function (howMany) {
 Promise._SomePromiseArray = SomePromiseArray;
 };
 
-},{"./errors":214,"./util":238}],234:[function(require,module,exports){
+},{"./errors":89,"./util":113}],109:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise) {
 function PromiseInspection(promise) {
@@ -23658,7 +15235,7 @@ Promise.prototype._reason = function() {
 Promise.PromiseInspection = PromiseInspection;
 };
 
-},{}],235:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL) {
 var util = require("./util");
@@ -23746,7 +15323,7 @@ function doThenable(x, then, context) {
 return tryConvertToPromise;
 };
 
-},{"./util":238}],236:[function(require,module,exports){
+},{"./util":113}],111:[function(require,module,exports){
 "use strict";
 module.exports = function(Promise, INTERNAL, debug) {
 var util = require("./util");
@@ -23841,7 +15418,7 @@ Promise.prototype.timeout = function (ms, message) {
 
 };
 
-},{"./util":238}],237:[function(require,module,exports){
+},{"./util":113}],112:[function(require,module,exports){
 "use strict";
 module.exports = function (Promise, apiRejection, tryConvertToPromise,
     createContext, INTERNAL, debug) {
@@ -24069,7 +15646,7 @@ module.exports = function (Promise, apiRejection, tryConvertToPromise,
 
 };
 
-},{"./errors":214,"./util":238}],238:[function(require,module,exports){
+},{"./errors":89,"./util":113}],113:[function(require,module,exports){
 "use strict";
 var es5 = require("./es5");
 var canEvaluate = typeof navigator == "undefined";
@@ -24451,7 +16028,7 @@ if (ret.isNode) ret.toFastProperties(process);
 try {throw new Error(); } catch (e) {ret.lastLineError = e;}
 module.exports = ret;
 
-},{"./es5":215}],239:[function(require,module,exports){
+},{"./es5":90}],114:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -24610,7 +16187,7 @@ function loadParser (parserName) {
   return (parsers[parserName] = parser)
 }
 
-},{"./lib/types/json":241,"./lib/types/raw":242,"./lib/types/text":243,"./lib/types/urlencoded":244,"depd":270}],240:[function(require,module,exports){
+},{"./lib/types/json":116,"./lib/types/raw":117,"./lib/types/text":118,"./lib/types/urlencoded":119,"depd":145}],115:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -24793,7 +16370,7 @@ function contentstream (req, debug, inflate) {
   return stream
 }
 
-},{"http-errors":357,"iconv-lite":383,"on-finished":447,"raw-body":463,"zlib":undefined}],241:[function(require,module,exports){
+},{"http-errors":231,"iconv-lite":257,"on-finished":321,"raw-body":462,"zlib":undefined}],116:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014 Jonathan Ong
@@ -25027,7 +16604,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"content-type":258,"debug":247,"http-errors":357,"type-is":557}],242:[function(require,module,exports){
+},{"../read":115,"bytes":127,"content-type":133,"debug":122,"http-errors":231,"type-is":556}],117:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -25130,7 +16707,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"debug":247,"type-is":557}],243:[function(require,module,exports){
+},{"../read":115,"bytes":127,"debug":122,"type-is":556}],118:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -25253,7 +16830,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"content-type":258,"debug":247,"type-is":557}],244:[function(require,module,exports){
+},{"../read":115,"bytes":127,"content-type":133,"debug":122,"type-is":556}],119:[function(require,module,exports){
 /*!
  * body-parser
  * Copyright(c) 2014 Jonathan Ong
@@ -25539,7 +17116,7 @@ function typeChecker (type) {
   }
 }
 
-},{"../read":240,"bytes":252,"content-type":258,"debug":247,"depd":270,"http-errors":357,"qs":458,"querystring":undefined,"type-is":557}],245:[function(require,module,exports){
+},{"../read":115,"bytes":127,"content-type":133,"debug":122,"depd":145,"http-errors":231,"qs":332,"querystring":undefined,"type-is":556}],120:[function(require,module,exports){
 /**
  * This is the web browser implementation of `debug()`.
  *
@@ -25726,7 +17303,7 @@ function localstorage() {
   } catch (e) {}
 }
 
-},{"./debug":246}],246:[function(require,module,exports){
+},{"./debug":121}],121:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -25930,7 +17507,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":439}],247:[function(require,module,exports){
+},{"ms":313}],122:[function(require,module,exports){
 /**
  * Detect Electron renderer process, which is node, but we should
  * treat as a browser.
@@ -25942,7 +17519,7 @@ if (typeof process !== 'undefined' && process.type === 'renderer') {
   module.exports = require('./node.js');
 }
 
-},{"./browser.js":245,"./node.js":248}],248:[function(require,module,exports){
+},{"./browser.js":120,"./node.js":123}],123:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -26192,7 +17769,7 @@ function init (debug) {
 
 exports.enable(load());
 
-},{"./debug":246,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],249:[function(require,module,exports){
+},{"./debug":121,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],124:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -26627,7 +18204,7 @@ exports.badImplementation = function (message, data) {
     return err;
 };
 
-},{"hoek":356}],250:[function(require,module,exports){
+},{"hoek":230}],125:[function(require,module,exports){
 var concatMap = require('concat-map');
 var balanced = require('balanced-match');
 
@@ -26830,7 +18407,7 @@ function expand(str, isTop) {
 }
 
 
-},{"balanced-match":199,"concat-map":256}],251:[function(require,module,exports){
+},{"balanced-match":74,"concat-map":131}],126:[function(require,module,exports){
 var Buffer = require('buffer').Buffer;
 
 var CRC_TABLE = [
@@ -26943,7 +18520,7 @@ crc32.unsigned = function () {
 
 module.exports = crc32;
 
-},{"buffer":undefined}],252:[function(require,module,exports){
+},{"buffer":undefined}],127:[function(require,module,exports){
 /*!
  * bytes
  * Copyright(c) 2012-2014 TJ Holowaychuk
@@ -27104,7 +18681,7 @@ function parse(val) {
   return Math.floor(map[unit] * floatValue);
 }
 
-},{}],253:[function(require,module,exports){
+},{}],128:[function(require,module,exports){
 function Caseless (dict) {
   this.dict = dict || {}
 }
@@ -27173,7 +18750,7 @@ module.exports.httpify = function (resp, headers) {
   return c
 }
 
-},{}],254:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 
 /**
  * slice() reference.
@@ -27412,7 +18989,7 @@ function isObject(val) {
   return Object == val.constructor;
 }
 
-},{}],255:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 var util = require('util');
 var Stream = require('stream').Stream;
 var DelayedStream = require('delayed-stream');
@@ -27602,7 +19179,7 @@ CombinedStream.prototype._emitError = function(err) {
   this.emit('error', err);
 };
 
-},{"delayed-stream":269,"stream":undefined,"util":undefined}],256:[function(require,module,exports){
+},{"delayed-stream":144,"stream":undefined,"util":undefined}],131:[function(require,module,exports){
 module.exports = function (xs, fn) {
     var res = [];
     for (var i = 0; i < xs.length; i++) {
@@ -27617,7 +19194,7 @@ var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],257:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 /*!
  * content-disposition
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -28064,7 +19641,7 @@ function ContentDisposition (type, parameters) {
   this.parameters = parameters
 }
 
-},{"path":undefined}],258:[function(require,module,exports){
+},{"path":undefined}],133:[function(require,module,exports){
 /*!
  * content-type
  * Copyright(c) 2015 Douglas Christopher Wilson
@@ -28288,7 +19865,7 @@ function ContentType (type) {
   this.type = type
 }
 
-},{}],259:[function(require,module,exports){
+},{}],134:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -28341,7 +19918,7 @@ function sha1(str){
   return crypto.createHash('sha1').update(str).digest('hex');
 }
 
-},{"crypto":undefined}],260:[function(require,module,exports){
+},{"crypto":undefined}],135:[function(require,module,exports){
 /*!
  * cookie
  * Copyright(c) 2012-2014 Roman Shtylman
@@ -28538,7 +20115,7 @@ function tryDecode(str, decode) {
   }
 }
 
-},{}],261:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -28647,7 +20224,7 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-},{}],262:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -28737,7 +20314,7 @@ exports.fixedTimeComparison = function (a, b) {
     return (mismatch === 0);
 };
 
-},{"boom":263,"crypto":undefined}],263:[function(require,module,exports){
+},{"boom":138,"crypto":undefined}],138:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -29196,7 +20773,7 @@ exports.badImplementation = function (message, data) {
     return err;
 };
 
-},{"hoek":356}],264:[function(require,module,exports){
+},{"hoek":230}],139:[function(require,module,exports){
 // css2json transform CSS to JSON.
 //
 // css2json is a <a href="http://www.opensource.org/licenses/mit-license.php">open source</a>
@@ -29291,7 +20868,7 @@ module.exports = function(css) {
   return json;
 }
 
-},{}],265:[function(require,module,exports){
+},{}],140:[function(require,module,exports){
 /**
  * This is the web browser implementation of `debug()`.
  *
@@ -29488,7 +21065,7 @@ function localstorage() {
   } catch (e) {}
 }
 
-},{"./debug":266}],266:[function(require,module,exports){
+},{"./debug":141}],141:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -29715,7 +21292,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":439}],267:[function(require,module,exports){
+},{"ms":313}],142:[function(require,module,exports){
 /**
  * Detect Electron renderer process, which is node, but we should
  * treat as a browser.
@@ -29727,7 +21304,7 @@ if (typeof process === 'undefined' || process.type === 'renderer') {
   module.exports = require('./node.js');
 }
 
-},{"./browser.js":265,"./node.js":268}],268:[function(require,module,exports){
+},{"./browser.js":140,"./node.js":143}],143:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -29915,7 +21492,7 @@ function init (debug) {
 
 exports.enable(load());
 
-},{"./debug":266,"supports-color":521,"tty":undefined,"util":undefined}],269:[function(require,module,exports){
+},{"./debug":141,"supports-color":520,"tty":undefined,"util":undefined}],144:[function(require,module,exports){
 var Stream = require('stream').Stream;
 var util = require('util');
 
@@ -30024,7 +21601,7 @@ DelayedStream.prototype._checkIfMaxDataSizeExceeded = function() {
   this.emit('error', new Error(message));
 };
 
-},{"stream":undefined,"util":undefined}],270:[function(require,module,exports){
+},{"stream":undefined,"util":undefined}],145:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -30546,7 +22123,7 @@ function DeprecationError (namespace, message, stack) {
   return error
 }
 
-},{"./lib/compat":273,"path":undefined}],271:[function(require,module,exports){
+},{"./lib/compat":148,"path":undefined}],146:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -30651,7 +22228,7 @@ function getConstructorName (obj) {
   return (receiver.constructor && receiver.constructor.name) || null
 }
 
-},{}],272:[function(require,module,exports){
+},{}],147:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2015 Douglas Christopher Wilson
@@ -30675,7 +22252,7 @@ function eventListenerCount (emitter, type) {
   return emitter.listeners(type).length
 }
 
-},{}],273:[function(require,module,exports){
+},{}],148:[function(require,module,exports){
 /*!
  * depd
  * Copyright(c) 2014-2015 Douglas Christopher Wilson
@@ -30756,7 +22333,7 @@ function toString (obj) {
   return obj.toString()
 }
 
-},{"./callsite-tostring":271,"./event-listener-count":272,"events":undefined}],274:[function(require,module,exports){
+},{"./callsite-tostring":146,"./event-listener-count":147,"events":undefined}],149:[function(require,module,exports){
 /*!
  * destroy
  * Copyright(c) 2014 Jonathan Ong
@@ -30833,7 +22410,7 @@ function onOpenClose() {
   }
 }
 
-},{"fs":undefined,"stream":undefined}],275:[function(require,module,exports){
+},{"fs":undefined,"stream":undefined}],150:[function(require,module,exports){
 var crypto = require("crypto");
 var BigInteger = require("jsbn").BigInteger;
 var ECPointFp = require("./lib/ec.js").ECPointFp;
@@ -30892,7 +22469,7 @@ exports.ECKey = function(curve, key, isPublic)
 }
 
 
-},{"./lib/ec.js":276,"./lib/sec.js":277,"crypto":undefined,"jsbn":405}],276:[function(require,module,exports){
+},{"./lib/ec.js":151,"./lib/sec.js":152,"crypto":undefined,"jsbn":279}],151:[function(require,module,exports){
 // Basic Javascript Elliptic Curve implementation
 // Ported loosely from BouncyCastle's Java EC code
 // Only Fp curves implemented for now
@@ -31455,7 +23032,7 @@ var exports = {
 
 module.exports = exports
 
-},{"jsbn":405}],277:[function(require,module,exports){
+},{"jsbn":279}],152:[function(require,module,exports){
 // Named EC curves
 
 // Requires ec.js, jsbn.js, and jsbn2.js
@@ -31627,7 +23204,7 @@ module.exports = {
   "secp256r1":secp256r1
 }
 
-},{"./ec.js":276,"jsbn":405}],278:[function(require,module,exports){
+},{"./ec.js":151,"jsbn":279}],153:[function(require,module,exports){
 /*!
  * ee-first
  * Copyright(c) 2014 Jonathan Ong
@@ -31724,7 +23301,7 @@ function listener(event, done) {
   }
 }
 
-},{}],279:[function(require,module,exports){
+},{}],154:[function(require,module,exports){
 /*!
  * encodeurl
  * Copyright(c) 2016 Douglas Christopher Wilson
@@ -31786,7 +23363,7 @@ function encodeUrl (url) {
     .replace(ENCODE_CHARS_REGEXP, encodeURI)
 }
 
-},{}],280:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 'use strict';
 
 function createError(msg, code, props) {
@@ -31810,7 +23387,7 @@ function createError(msg, code, props) {
 
 module.exports = createError;
 
-},{}],281:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 /*!
  * escape-html
  * Copyright(c) 2012-2013 TJ Holowaychuk
@@ -31890,7 +23467,7 @@ function escapeHtml(string) {
     : html;
 }
 
-},{}],282:[function(require,module,exports){
+},{}],157:[function(require,module,exports){
 /*!
  * etag
  * Copyright(c) 2014-2016 Douglas Christopher Wilson
@@ -32023,7 +23600,7 @@ function stattag (stat) {
   return '"' + size + '-' + mtime + '"'
 }
 
-},{"crypto":undefined,"fs":undefined}],283:[function(require,module,exports){
+},{"crypto":undefined,"fs":undefined}],158:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32036,7 +23613,7 @@ function stattag (stat) {
 
 module.exports = require('./lib/express');
 
-},{"./lib/express":285}],284:[function(require,module,exports){
+},{"./lib/express":160}],159:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32682,7 +24259,7 @@ function tryRender(view, options, callback) {
   }
 }
 
-},{"./middleware/init":286,"./middleware/query":287,"./router":290,"./utils":293,"./view":294,"array-flatten":178,"debug":297,"depd":270,"finalhandler":313,"http":undefined,"methods":426,"path":undefined,"setprototypeof":491,"utils-merge":565}],285:[function(require,module,exports){
+},{"./middleware/init":161,"./middleware/query":162,"./router":165,"./utils":168,"./view":169,"array-flatten":53,"debug":172,"depd":145,"finalhandler":188,"http":undefined,"methods":300,"path":undefined,"setprototypeof":490,"utils-merge":564}],160:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32796,7 +24373,7 @@ exports.urlencoded = bodyParser.urlencoded
   });
 });
 
-},{"./application":284,"./middleware/query":287,"./request":288,"./response":289,"./router":290,"./router/route":292,"body-parser":239,"events":undefined,"merge-descriptors":425,"serve-static":490}],286:[function(require,module,exports){
+},{"./application":159,"./middleware/query":162,"./request":163,"./response":164,"./router":165,"./router/route":167,"body-parser":114,"events":undefined,"merge-descriptors":299,"serve-static":489}],161:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32841,7 +24418,7 @@ exports.init = function(app){
 };
 
 
-},{"setprototypeof":491}],287:[function(require,module,exports){
+},{"setprototypeof":490}],162:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -32890,7 +24467,7 @@ module.exports = function query(options) {
   };
 };
 
-},{"parseurl":450,"qs":458,"utils-merge":565}],288:[function(require,module,exports){
+},{"parseurl":324,"qs":332,"utils-merge":564}],163:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -33413,7 +24990,7 @@ function defineGetter(obj, name, getter) {
   });
 }
 
-},{"accepts":137,"depd":270,"fresh":322,"http":undefined,"net":undefined,"parseurl":450,"proxy-addr":456,"range-parser":462,"type-is":557}],289:[function(require,module,exports){
+},{"accepts":12,"depd":145,"fresh":197,"http":undefined,"net":undefined,"parseurl":324,"proxy-addr":330,"range-parser":461,"type-is":556}],164:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -34552,7 +26129,7 @@ function stringify (value, replacer, spaces, escape) {
   return json
 }
 
-},{"./utils":293,"content-disposition":257,"cookie":260,"cookie-signature":259,"depd":270,"encodeurl":279,"escape-html":281,"http":undefined,"on-finished":447,"path":undefined,"safe-buffer":484,"send":485,"statuses":518,"utils-merge":565,"vary":571}],290:[function(require,module,exports){
+},{"./utils":168,"content-disposition":132,"cookie":135,"cookie-signature":134,"depd":145,"encodeurl":154,"escape-html":156,"http":undefined,"on-finished":321,"path":undefined,"safe-buffer":483,"send":484,"statuses":517,"utils-merge":564,"vary":570}],165:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -35216,7 +26793,7 @@ function wrap(old, fn) {
   };
 }
 
-},{"./layer":291,"./route":292,"array-flatten":178,"debug":297,"depd":270,"methods":426,"parseurl":450,"setprototypeof":491,"utils-merge":565}],291:[function(require,module,exports){
+},{"./layer":166,"./route":167,"array-flatten":53,"debug":172,"depd":145,"methods":300,"parseurl":324,"setprototypeof":490,"utils-merge":564}],166:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -35399,7 +26976,7 @@ function decode_param(val) {
   }
 }
 
-},{"debug":297,"path-to-regexp":451}],292:[function(require,module,exports){
+},{"debug":172,"path-to-regexp":325}],167:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -35617,7 +27194,7 @@ methods.forEach(function(method){
   };
 });
 
-},{"./layer":291,"array-flatten":178,"debug":297,"methods":426}],293:[function(require,module,exports){
+},{"./layer":166,"array-flatten":53,"debug":172,"methods":300}],168:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -35925,7 +27502,7 @@ function newObject() {
   return {};
 }
 
-},{"array-flatten":178,"content-disposition":257,"content-type":258,"depd":270,"etag":282,"proxy-addr":456,"qs":458,"querystring":undefined,"safe-buffer":484,"send":485}],294:[function(require,module,exports){
+},{"array-flatten":53,"content-disposition":132,"content-type":133,"depd":145,"etag":157,"proxy-addr":330,"qs":332,"querystring":undefined,"safe-buffer":483,"send":484}],169:[function(require,module,exports){
 /*!
  * express
  * Copyright(c) 2009-2013 TJ Holowaychuk
@@ -36109,15 +27686,15 @@ function tryStat(path) {
   }
 }
 
-},{"debug":297,"fs":undefined,"path":undefined}],295:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":296,"dup":245}],296:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],297:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":295,"./node.js":298,"dup":247}],298:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":296,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],299:[function(require,module,exports){
+},{"debug":172,"fs":undefined,"path":undefined}],170:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":171,"dup":120}],171:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],172:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":170,"./node.js":173,"dup":122}],173:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":171,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],174:[function(require,module,exports){
 'use strict';
 
 var hasOwn = Object.prototype.hasOwnProperty;
@@ -36205,7 +27782,7 @@ module.exports = function extend() {
 	return target;
 };
 
-},{}],300:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 /*
  * extsprintf.js: extended POSIX-style sprintf
  */
@@ -36390,7 +27967,7 @@ function dumpException(ex)
 	return (ret);
 }
 
-},{"assert":undefined,"util":undefined}],301:[function(require,module,exports){
+},{"assert":undefined,"util":undefined}],176:[function(require,module,exports){
 'use strict';
 
 module.exports = function equal(a, b) {
@@ -36435,7 +28012,7 @@ module.exports = function equal(a, b) {
   return false;
 };
 
-},{}],302:[function(require,module,exports){
+},{}],177:[function(require,module,exports){
 'use strict';
 
 module.exports = function (data, opts) {
@@ -36496,7 +28073,7 @@ module.exports = function (data, opts) {
     })(data);
 };
 
-},{}],303:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 var fs = require('fs');
 var util = require('util');
 var stream = require('stream');
@@ -36775,10 +28352,10 @@ function createFromFd(fd, options) {
   return new FdSlicer(fd, options);
 }
 
-},{"events":undefined,"fs":undefined,"pend":452,"stream":undefined,"util":undefined}],304:[function(require,module,exports){
+},{"events":undefined,"fs":undefined,"pend":326,"stream":undefined,"util":undefined}],179:[function(require,module,exports){
 module.exports = require('./lib/file.js');
 
-},{"./lib/file.js":305}],305:[function(require,module,exports){
+},{"./lib/file.js":180}],180:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -37455,7 +29032,7 @@ var File = function () {
 }();
 
 module.exports.create = File.create;
-},{"./fsp":306,"./lock":307,"bluebird":206,"minimatch":432,"path":undefined}],306:[function(require,module,exports){
+},{"./fsp":181,"./lock":182,"bluebird":81,"minimatch":306,"path":undefined}],181:[function(require,module,exports){
 'use strict';
 
 var _fs = require('fs');
@@ -37469,7 +29046,7 @@ var _bluebird2 = _interopRequireDefault(_bluebird);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 module.exports = _bluebird2.default.promisifyAll(_fs2.default);
-},{"bluebird":206,"fs":undefined}],307:[function(require,module,exports){
+},{"bluebird":81,"fs":undefined}],182:[function(require,module,exports){
 'use strict';
 
 var _properLockfile = require('proper-lockfile');
@@ -37483,10 +29060,10 @@ var _bluebird2 = _interopRequireDefault(_bluebird);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 module.exports = _bluebird2.default.promisifyAll(_properLockfile2.default);
-},{"bluebird":206,"proper-lockfile":454}],308:[function(require,module,exports){
+},{"bluebird":81,"proper-lockfile":328}],183:[function(require,module,exports){
 module.exports = require('./lib/filehound').default;
 
-},{"./lib/filehound":310}],309:[function(require,module,exports){
+},{"./lib/filehound":185}],184:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37515,7 +29092,7 @@ function from(_arguments) {
 function fromFirst(_arguments) {
   return [_arguments[0]];
 }
-},{"lodash":423}],310:[function(require,module,exports){
+},{"lodash":297}],185:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38286,7 +29863,7 @@ var FileHound = function (_EventEmitter) {
 }(_events.EventEmitter);
 
 exports.default = FileHound;
-},{"./arrays":309,"./files":311,"./functions":312,"bluebird":206,"events":undefined,"file-js":304,"lodash":423,"path":undefined,"unit-compare":558}],311:[function(require,module,exports){
+},{"./arrays":184,"./files":186,"./functions":187,"bluebird":81,"events":undefined,"file-js":179,"lodash":297,"path":undefined,"unit-compare":557}],186:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38366,7 +29943,7 @@ function reducePaths(searchPaths) {
   var subDirs = findSubDirectories(searchPaths.sort());
   return searchPaths.filter(notSubDirectory(subDirs));
 }
-},{"lodash":423,"os":undefined,"path":undefined}],312:[function(require,module,exports){
+},{"lodash":297,"os":undefined,"path":undefined}],187:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38398,7 +29975,7 @@ function compose(args) {
     return match;
   };
 }
-},{"lodash":423}],313:[function(require,module,exports){
+},{"lodash":297}],188:[function(require,module,exports){
 /*!
  * finalhandler
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -38714,15 +30291,15 @@ function setHeaders (res, headers) {
   }
 }
 
-},{"debug":316,"encodeurl":279,"escape-html":281,"on-finished":447,"parseurl":450,"statuses":518,"unpipe":564}],314:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":315,"dup":245}],315:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],316:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":314,"./node.js":317,"dup":247}],317:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":315,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],318:[function(require,module,exports){
+},{"debug":191,"encodeurl":154,"escape-html":156,"on-finished":321,"parseurl":324,"statuses":517,"unpipe":563}],189:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":190,"dup":120}],190:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],191:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":189,"./node.js":192,"dup":122}],192:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":190,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],193:[function(require,module,exports){
 module.exports = ForeverAgent
 ForeverAgent.SSL = ForeverAgentSSL
 
@@ -38862,7 +30439,7 @@ function createConnectionSSL (port, host, options) {
   return tls.connect(options);
 }
 
-},{"http":undefined,"https":undefined,"net":undefined,"tls":undefined,"util":undefined}],319:[function(require,module,exports){
+},{"http":undefined,"https":undefined,"net":undefined,"tls":undefined,"util":undefined}],194:[function(require,module,exports){
 var CombinedStream = require('combined-stream');
 var util = require('util');
 var path = require('path');
@@ -39321,7 +30898,7 @@ FormData.prototype.toString = function () {
   return '[object FormData]';
 };
 
-},{"./populate.js":320,"asynckit":186,"combined-stream":255,"fs":undefined,"http":undefined,"https":undefined,"mime-types":429,"path":undefined,"url":undefined,"util":undefined}],320:[function(require,module,exports){
+},{"./populate.js":195,"asynckit":61,"combined-stream":130,"fs":undefined,"http":undefined,"https":undefined,"mime-types":303,"path":undefined,"url":undefined,"util":undefined}],195:[function(require,module,exports){
 // populates missing values
 module.exports = function(dst, src) {
 
@@ -39333,7 +30910,7 @@ module.exports = function(dst, src) {
   return dst;
 };
 
-},{}],321:[function(require,module,exports){
+},{}],196:[function(require,module,exports){
 /*!
  * forwarded
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -39411,7 +30988,7 @@ function parse (header) {
   return list
 }
 
-},{}],322:[function(require,module,exports){
+},{}],197:[function(require,module,exports){
 /*!
  * fresh
  * Copyright(c) 2012 TJ Holowaychuk
@@ -39550,7 +31127,7 @@ function parseTokenList (str) {
   return list
 }
 
-},{}],323:[function(require,module,exports){
+},{}],198:[function(require,module,exports){
 'use strict'
 
 var fs = require('fs')
@@ -39573,7 +31150,7 @@ function clone (obj) {
   return copy
 }
 
-},{"fs":undefined}],324:[function(require,module,exports){
+},{"fs":undefined}],199:[function(require,module,exports){
 var fs = require('fs')
 var polyfills = require('./polyfills.js')
 var legacy = require('./legacy-streams.js')
@@ -39837,7 +31414,7 @@ function retry () {
   }
 }
 
-},{"./fs.js":323,"./legacy-streams.js":325,"./polyfills.js":326,"assert":undefined,"fs":undefined,"util":undefined}],325:[function(require,module,exports){
+},{"./fs.js":198,"./legacy-streams.js":200,"./polyfills.js":201,"assert":undefined,"fs":undefined,"util":undefined}],200:[function(require,module,exports){
 var Stream = require('stream').Stream
 
 module.exports = legacy
@@ -39957,7 +31534,7 @@ function legacy (fs) {
   }
 }
 
-},{"stream":undefined}],326:[function(require,module,exports){
+},{"stream":undefined}],201:[function(require,module,exports){
 var fs = require('./fs.js')
 var constants = require('constants')
 
@@ -40289,7 +31866,7 @@ function chownErOk (er) {
   return false
 }
 
-},{"./fs.js":323,"constants":undefined}],327:[function(require,module,exports){
+},{"./fs.js":198,"constants":undefined}],202:[function(require,module,exports){
 module.exports={
   "$id": "afterRequest.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40321,7 +31898,7 @@ module.exports={
   }
 }
 
-},{}],328:[function(require,module,exports){
+},{}],203:[function(require,module,exports){
 module.exports={
   "$id": "beforeRequest.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40353,7 +31930,7 @@ module.exports={
   }
 }
 
-},{}],329:[function(require,module,exports){
+},{}],204:[function(require,module,exports){
 module.exports={
   "$id": "browser.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40375,7 +31952,7 @@ module.exports={
   }
 }
 
-},{}],330:[function(require,module,exports){
+},{}],205:[function(require,module,exports){
 module.exports={
   "$id": "cache.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40398,7 +31975,7 @@ module.exports={
   }
 }
 
-},{}],331:[function(require,module,exports){
+},{}],206:[function(require,module,exports){
 module.exports={
   "$id": "content.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40429,7 +32006,7 @@ module.exports={
   }
 }
 
-},{}],332:[function(require,module,exports){
+},{}],207:[function(require,module,exports){
 module.exports={
   "$id": "cookie.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40467,7 +32044,7 @@ module.exports={
   }
 }
 
-},{}],333:[function(require,module,exports){
+},{}],208:[function(require,module,exports){
 module.exports={
   "$id": "creator.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40489,7 +32066,7 @@ module.exports={
   }
 }
 
-},{}],334:[function(require,module,exports){
+},{}],209:[function(require,module,exports){
 module.exports={
   "$id": "entry.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40544,7 +32121,7 @@ module.exports={
   }
 }
 
-},{}],335:[function(require,module,exports){
+},{}],210:[function(require,module,exports){
 module.exports={
   "$id": "har.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40559,7 +32136,7 @@ module.exports={
   }
 }
 
-},{}],336:[function(require,module,exports){
+},{}],211:[function(require,module,exports){
 module.exports={
   "$id": "header.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40581,7 +32158,7 @@ module.exports={
   }
 }
 
-},{}],337:[function(require,module,exports){
+},{}],212:[function(require,module,exports){
 'use strict'
 
 module.exports = {
@@ -40605,7 +32182,7 @@ module.exports = {
   timings: require('./timings.json')
 }
 
-},{"./afterRequest.json":327,"./beforeRequest.json":328,"./browser.json":329,"./cache.json":330,"./content.json":331,"./cookie.json":332,"./creator.json":333,"./entry.json":334,"./har.json":335,"./header.json":336,"./log.json":338,"./page.json":339,"./pageTimings.json":340,"./postData.json":341,"./query.json":342,"./request.json":343,"./response.json":344,"./timings.json":345}],338:[function(require,module,exports){
+},{"./afterRequest.json":202,"./beforeRequest.json":203,"./browser.json":204,"./cache.json":205,"./content.json":206,"./cookie.json":207,"./creator.json":208,"./entry.json":209,"./har.json":210,"./header.json":211,"./log.json":213,"./page.json":214,"./pageTimings.json":215,"./postData.json":216,"./query.json":217,"./request.json":218,"./response.json":219,"./timings.json":220}],213:[function(require,module,exports){
 module.exports={
   "$id": "log.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40643,7 +32220,7 @@ module.exports={
   }
 }
 
-},{}],339:[function(require,module,exports){
+},{}],214:[function(require,module,exports){
 module.exports={
   "$id": "page.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40677,7 +32254,7 @@ module.exports={
   }
 }
 
-},{}],340:[function(require,module,exports){
+},{}],215:[function(require,module,exports){
 module.exports={
   "$id": "pageTimings.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40697,7 +32274,7 @@ module.exports={
   }
 }
 
-},{}],341:[function(require,module,exports){
+},{}],216:[function(require,module,exports){
 module.exports={
   "$id": "postData.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40742,7 +32319,7 @@ module.exports={
   }
 }
 
-},{}],342:[function(require,module,exports){
+},{}],217:[function(require,module,exports){
 module.exports={
   "$id": "query.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40764,7 +32341,7 @@ module.exports={
   }
 }
 
-},{}],343:[function(require,module,exports){
+},{}],218:[function(require,module,exports){
 module.exports={
   "$id": "request.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40823,7 +32400,7 @@ module.exports={
   }
 }
 
-},{}],344:[function(require,module,exports){
+},{}],219:[function(require,module,exports){
 module.exports={
   "$id": "response.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40879,7 +32456,7 @@ module.exports={
   }
 }
 
-},{}],345:[function(require,module,exports){
+},{}],220:[function(require,module,exports){
 module.exports={
   "$id": "timings.json#",
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -40923,7 +32500,7 @@ module.exports={
   }
 }
 
-},{}],346:[function(require,module,exports){
+},{}],221:[function(require,module,exports){
 function HARError (errors) {
   var message = 'validation failed'
 
@@ -40942,7 +32519,7 @@ HARError.prototype = Error.prototype
 
 module.exports = HARError
 
-},{}],347:[function(require,module,exports){
+},{}],222:[function(require,module,exports){
 var Ajv = require('ajv')
 var HARError = require('./error')
 var schemas = require('har-schema')
@@ -41039,19 +32616,7 @@ exports.timings = function (data) {
   return validate('timings', data)
 }
 
-},{"./error":346,"ajv":139,"har-schema":337}],348:[function(require,module,exports){
-'use strict';
-module.exports = function (flag, argv) {
-	argv = argv || process.argv;
-
-	var terminatorPos = argv.indexOf('--');
-	var prefix = /^-{1,2}/.test(flag) ? '' : '--';
-	var pos = argv.indexOf(prefix + flag);
-
-	return pos !== -1 && (terminatorPos === -1 ? true : pos < terminatorPos);
-};
-
-},{}],349:[function(require,module,exports){
+},{"./error":221,"ajv":14,"har-schema":212}],223:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -41447,7 +33012,7 @@ exports.message = function (host, port, message, options) {
 
 
 
-},{"./crypto":350,"./utils":353,"cryptiles":262,"hoek":356,"url":undefined}],350:[function(require,module,exports){
+},{"./crypto":224,"./utils":227,"cryptiles":137,"hoek":230,"url":undefined}],224:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -41577,7 +33142,7 @@ exports.timestampMessage = function (credentials, localtimeOffsetMsec) {
     return { ts: now, tsm };
 };
 
-},{"./utils":353,"crypto":undefined,"url":undefined}],351:[function(require,module,exports){
+},{"./utils":227,"crypto":undefined,"url":undefined}],225:[function(require,module,exports){
 'use strict';
 
 // Export sub-modules
@@ -41596,7 +33161,7 @@ exports.uri = {
 };
 
 
-},{"./client":349,"./crypto":350,"./server":352,"./utils":353,"boom":249,"sntp":493}],352:[function(require,module,exports){
+},{"./client":223,"./crypto":224,"./server":226,"./utils":227,"boom":124,"sntp":492}],226:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -42148,7 +33713,7 @@ internals.nonceFunc = function (key, nonce, ts, nonceCallback) {
     return nonceCallback();         // No validation
 };
 
-},{"./crypto":350,"./utils":353,"boom":249,"cryptiles":262,"hoek":356}],353:[function(require,module,exports){
+},{"./crypto":224,"./utils":227,"boom":124,"cryptiles":137,"hoek":230}],227:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -42336,7 +33901,7 @@ exports.unauthorized = function (message, attributes) {
 };
 
 
-},{"../package.json":354,"boom":249,"sntp":493}],354:[function(require,module,exports){
+},{"../package.json":228,"boom":124,"sntp":492}],228:[function(require,module,exports){
 module.exports={
   "_from": "hawk@~6.0.2",
   "_id": "hawk@6.0.2",
@@ -42416,7 +33981,7 @@ module.exports={
   "version": "6.0.2"
 }
 
-},{}],355:[function(require,module,exports){
+},{}],229:[function(require,module,exports){
 'use strict';
 
 // Declare internals
@@ -42586,7 +34151,7 @@ internals.safeCharCodes = (function () {
     return safe;
 }());
 
-},{}],356:[function(require,module,exports){
+},{}],230:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -43562,7 +35127,7 @@ exports.shallow = function (source) {
     return target;
 };
 
-},{"./escape":355,"crypto":undefined,"path":undefined,"util":undefined}],357:[function(require,module,exports){
+},{"./escape":229,"crypto":undefined,"path":undefined,"util":undefined}],231:[function(require,module,exports){
 /*!
  * http-errors
  * Copyright(c) 2014 Jonathan Ong
@@ -43824,7 +35389,7 @@ function toIdentifier (str) {
   }).join('').replace(/[^ _0-9a-z]/gi, '')
 }
 
-},{"depd":270,"inherits":400,"setprototypeof":358,"statuses":518}],358:[function(require,module,exports){
+},{"depd":145,"inherits":274,"setprototypeof":232,"statuses":517}],232:[function(require,module,exports){
 module.exports = Object.setPrototypeOf || ({__proto__:[]} instanceof Array ? setProtoOf : mixinProperties);
 
 function setProtoOf(obj, proto) {
@@ -43841,7 +35406,7 @@ function mixinProperties(obj, proto) {
 	return obj;
 }
 
-},{}],359:[function(require,module,exports){
+},{}],233:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var parser = require('./parser');
@@ -43872,7 +35437,7 @@ module.exports = {
   verifyHMAC: verify.verifyHMAC
 };
 
-},{"./parser":360,"./signer":361,"./utils":362,"./verify":363}],360:[function(require,module,exports){
+},{"./parser":234,"./signer":235,"./utils":236,"./verify":237}],234:[function(require,module,exports){
 // Copyright 2012 Joyent, Inc.  All rights reserved.
 
 var assert = require('assert-plus');
@@ -44189,7 +35754,7 @@ module.exports = {
 
 };
 
-},{"./utils":362,"assert-plus":185,"util":undefined}],361:[function(require,module,exports){
+},{"./utils":236,"assert-plus":60,"util":undefined}],235:[function(require,module,exports){
 // Copyright 2012 Joyent, Inc.  All rights reserved.
 
 var assert = require('assert-plus');
@@ -44592,7 +36157,7 @@ module.exports = {
 
 };
 
-},{"./utils":362,"assert-plus":185,"crypto":undefined,"http":undefined,"jsprim":410,"sshpk":511,"util":undefined}],362:[function(require,module,exports){
+},{"./utils":236,"assert-plus":60,"crypto":undefined,"http":undefined,"jsprim":284,"sshpk":510,"util":undefined}],236:[function(require,module,exports){
 // Copyright 2012 Joyent, Inc.  All rights reserved.
 
 var assert = require('assert-plus');
@@ -44706,7 +36271,7 @@ module.exports = {
   }
 };
 
-},{"assert-plus":185,"sshpk":511,"util":undefined}],363:[function(require,module,exports){
+},{"assert-plus":60,"sshpk":510,"util":undefined}],237:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var assert = require('assert-plus');
@@ -44796,7 +36361,7 @@ module.exports = {
   }
 };
 
-},{"./utils":362,"assert-plus":185,"crypto":undefined,"sshpk":511}],364:[function(require,module,exports){
+},{"./utils":236,"assert-plus":60,"crypto":undefined,"sshpk":510}],238:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -45353,7 +36918,7 @@ function findIdx(table, val) {
 }
 
 
-},{"buffer":undefined}],365:[function(require,module,exports){
+},{"buffer":undefined}],239:[function(require,module,exports){
 "use strict";
 
 // Description of supported double byte encodings and aliases.
@@ -45531,7 +37096,7 @@ module.exports = {
     'xxbig5': 'big5hkscs',
 };
 
-},{"./tables/big5-added.json":371,"./tables/cp936.json":372,"./tables/cp949.json":373,"./tables/cp950.json":374,"./tables/eucjp.json":375,"./tables/gb18030-ranges.json":376,"./tables/gbk-added.json":377,"./tables/shiftjis.json":378}],366:[function(require,module,exports){
+},{"./tables/big5-added.json":245,"./tables/cp936.json":246,"./tables/cp949.json":247,"./tables/cp950.json":248,"./tables/eucjp.json":249,"./tables/gb18030-ranges.json":250,"./tables/gbk-added.json":251,"./tables/shiftjis.json":252}],240:[function(require,module,exports){
 "use strict";
 
 // Update this array if you add/rename/remove files in this directory.
@@ -45555,7 +37120,7 @@ for (var i = 0; i < modules.length; i++) {
             exports[enc] = module[enc];
 }
 
-},{"./dbcs-codec":364,"./dbcs-data":365,"./internal":367,"./sbcs-codec":368,"./sbcs-data":370,"./sbcs-data-generated":369,"./utf16":379,"./utf7":380}],367:[function(require,module,exports){
+},{"./dbcs-codec":238,"./dbcs-data":239,"./internal":241,"./sbcs-codec":242,"./sbcs-data":244,"./sbcs-data-generated":243,"./utf16":253,"./utf7":254}],241:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -45745,7 +37310,7 @@ InternalDecoderCesu8.prototype.end = function() {
     return res;
 }
 
-},{"buffer":undefined,"string_decoder":undefined}],368:[function(require,module,exports){
+},{"buffer":undefined,"string_decoder":undefined}],242:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -45820,7 +37385,7 @@ SBCSDecoder.prototype.write = function(buf) {
 SBCSDecoder.prototype.end = function() {
 }
 
-},{"buffer":undefined}],369:[function(require,module,exports){
+},{"buffer":undefined}],243:[function(require,module,exports){
 "use strict";
 
 // Generated data for sbcs codec. Don't edit manually. Regenerate using generation/gen-sbcs.js script.
@@ -46272,7 +37837,7 @@ module.exports = {
     "chars": "���������������������������������กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรฤลฦวศษสหฬอฮฯะัาำิีึืฺุู����฿เแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙๚๛����"
   }
 }
-},{}],370:[function(require,module,exports){
+},{}],244:[function(require,module,exports){
 "use strict";
 
 // Manually added data to be used by sbcs codec in addition to generated one.
@@ -46443,7 +38008,7 @@ module.exports = {
 };
 
 
-},{}],371:[function(require,module,exports){
+},{}],245:[function(require,module,exports){
 module.exports=[
 ["8740","䏰䰲䘃䖦䕸𧉧䵷䖳𧲱䳢𧳅㮕䜶䝄䱇䱀𤊿𣘗𧍒𦺋𧃒䱗𪍑䝏䗚䲅𧱬䴇䪤䚡𦬣爥𥩔𡩣𣸆𣽡晍囻"],
 ["8767","綕夝𨮹㷴霴𧯯寛𡵞媤㘥𩺰嫑宷峼杮薓𩥅瑡璝㡵𡵓𣚞𦀡㻬"],
@@ -46567,7 +38132,7 @@ module.exports=[
 ["fea1","𤅟𤩹𨮏孆𨰃𡢞瓈𡦈甎瓩甞𨻙𡩋寗𨺬鎅畍畊畧畮𤾂㼄𤴓疎瑝疞疴瘂瘬癑癏癯癶𦏵皐臯㟸𦤑𦤎皡皥皷盌𦾟葢𥂝𥅽𡸜眞眦着撯𥈠睘𣊬瞯𨥤𨥨𡛁矴砉𡍶𤨒棊碯磇磓隥礮𥗠磗礴碱𧘌辸袄𨬫𦂃𢘜禆褀椂禀𥡗禝𧬹礼禩渪𧄦㺨秆𩄍秔"]
 ]
 
-},{}],372:[function(require,module,exports){
+},{}],246:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127,"€"],
 ["8140","丂丄丅丆丏丒丗丟丠両丣並丩丮丯丱丳丵丷丼乀乁乂乄乆乊乑乕乗乚乛乢乣乤乥乧乨乪",5,"乲乴",9,"乿",6,"亇亊"],
@@ -46833,7 +38398,7 @@ module.exports=[
 ["fe40","兀嗀﨎﨏﨑﨓﨔礼﨟蘒﨡﨣﨤﨧﨨﨩"]
 ]
 
-},{}],373:[function(require,module,exports){
+},{}],247:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127],
 ["8141","갂갃갅갆갋",4,"갘갞갟갡갢갣갥",6,"갮갲갳갴"],
@@ -47023,7 +38588,7 @@ module.exports=[
 ["bc41","퍪",17,"퍾퍿펁펂펃펅펆펇"],
 ["bc61","펈펉펊펋펎펒",5,"펚펛펝펞펟펡",6,"펪펬펮"],
 ["bc81","펯",4,"펵펶펷펹펺펻펽",6,"폆폇폊",5,"폑",5,"샥샨샬샴샵샷샹섀섄섈섐섕서",4,"섣설섦섧섬섭섯섰성섶세섹센셀셈셉셋셌셍셔셕션셜셤셥셧셨셩셰셴셸솅소속솎손솔솖솜솝솟송솥솨솩솬솰솽쇄쇈쇌쇔쇗쇘쇠쇤쇨쇰쇱쇳쇼쇽숀숄숌숍숏숑수숙순숟술숨숩숫숭"],
-["bd41","폗��",7,"폢폤",7,"폮폯폱폲폳폵폶폷"],
+["bd41","폗폙",7,"폢폤",7,"폮폯폱폲폳폵폶폷"],
 ["bd61","폸폹폺폻폾퐀퐂",5,"퐉",13],
 ["bd81","퐗",5,"퐞",25,"숯숱숲숴쉈쉐쉑쉔쉘쉠쉥쉬쉭쉰쉴쉼쉽쉿슁슈슉슐슘슛슝스슥슨슬슭슴습슷승시식신싣실싫심십싯싱싶싸싹싻싼쌀쌈쌉쌌쌍쌓쌔쌕쌘쌜쌤쌥쌨쌩썅써썩썬썰썲썸썹썼썽쎄쎈쎌쏀쏘쏙쏜쏟쏠쏢쏨쏩쏭쏴쏵쏸쐈쐐쐤쐬쐰"],
 ["be41","퐸",7,"푁푂푃푅",14],
@@ -47108,7 +38673,7 @@ module.exports=[
 ["fda1","爻肴酵驍侯候厚后吼喉嗅帿後朽煦珝逅勛勳塤壎焄熏燻薰訓暈薨喧暄煊萱卉喙毁彙徽揮暉煇諱輝麾休携烋畦虧恤譎鷸兇凶匈洶胸黑昕欣炘痕吃屹紇訖欠欽歆吸恰洽翕興僖凞喜噫囍姬嬉希憙憘戱晞曦熙熹熺犧禧稀羲詰"]
 ]
 
-},{}],374:[function(require,module,exports){
+},{}],248:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127],
 ["a140","　，、。．‧；：？！︰…‥﹐﹑﹒·﹔﹕﹖﹗｜–︱—︳╴︴﹏（）︵︶｛｝︷︸〔〕︹︺【】︻︼《》︽︾〈〉︿﹀「」﹁﹂『』﹃﹄﹙﹚"],
@@ -47155,7 +38720,7 @@ module.exports=[
 ["b540","溉渙湎湣湄湲湩湟焙焚焦焰無然煮焜牌犄犀猶猥猴猩琺琪琳琢琥琵琶琴琯琛琦琨甥甦畫番痢痛痣痙痘痞痠登發皖皓皴盜睏短硝硬硯稍稈程稅稀窘"],
 ["b5a1","窗窖童竣等策筆筐筒答筍筋筏筑粟粥絞結絨絕紫絮絲絡給絢絰絳善翔翕耋聒肅腕腔腋腑腎脹腆脾腌腓腴舒舜菩萃菸萍菠菅萋菁華菱菴著萊菰萌菌菽菲菊萸萎萄菜萇菔菟虛蛟蛙蛭蛔蛛蛤蛐蛞街裁裂袱覃視註詠評詞証詁"],
 ["b640","詔詛詐詆訴診訶詖象貂貯貼貳貽賁費賀貴買貶貿貸越超趁跎距跋跚跑跌跛跆軻軸軼辜逮逵週逸進逶鄂郵鄉郾酣酥量鈔鈕鈣鈉鈞鈍鈐鈇鈑閔閏開閑"],
-["b6a1","間閒閎隊階隋陽隅隆隍陲隄雁雅雄集雇雯雲韌項順須飧飪飯飩飲飭馮馭黃黍黑亂傭債傲傳僅傾催傷傻傯僇剿剷剽募勦勤勢勣匯嗟嗨嗓嗦嗎嗜嗇嗑嗣嗤嗯嗚嗡嗅嗆嗥嗉園圓塞塑塘塗塚塔填塌塭塊塢塒塋奧嫁嫉嫌媾媽媼"],
+["b6a1","間閒閎隊階隋陽隅隆隍陲隄雁雅雄集雇雯��韌項順須飧飪飯飩飲飭馮馭黃黍黑亂傭債傲傳僅傾催傷傻傯僇剿剷剽募勦勤勢勣匯嗟嗨嗓嗦嗎嗜嗇嗑嗣嗤嗯嗚嗡嗅嗆嗥嗉園圓塞塑塘塗塚塔填塌塭塊塢塒塋奧嫁嫉嫌媾媽媼"],
 ["b740","媳嫂媲嵩嵯幌幹廉廈弒彙徬微愚意慈感想愛惹愁愈慎慌慄慍愾愴愧愍愆愷戡戢搓搾搞搪搭搽搬搏搜搔損搶搖搗搆敬斟新暗暉暇暈暖暄暘暍會榔業"],
 ["b7a1","楚楷楠楔極椰概楊楨楫楞楓楹榆楝楣楛歇歲毀殿毓毽溢溯滓溶滂源溝滇滅溥溘溼溺溫滑準溜滄滔溪溧溴煎煙煩煤煉照煜煬煦煌煥煞煆煨煖爺牒猷獅猿猾瑯瑚瑕瑟瑞瑁琿瑙瑛瑜當畸瘀痰瘁痲痱痺痿痴痳盞盟睛睫睦睞督"],
 ["b840","睹睪睬睜睥睨睢矮碎碰碗碘碌碉硼碑碓硿祺祿禁萬禽稜稚稠稔稟稞窟窠筷節筠筮筧粱粳粵經絹綑綁綏絛置罩罪署義羨群聖聘肆肄腱腰腸腥腮腳腫"],
@@ -47287,7 +38852,7 @@ module.exports=[
 ["f9a1","龤灨灥糷虪蠾蠽蠿讞貜躩軉靋顳顴飌饡馫驤驦驧鬤鸕鸗齈戇欞爧虌躨钂钀钁驩驨鬮鸙爩虋讟钃鱹麷癵驫鱺鸝灩灪麤齾齉龘碁銹裏墻恒粧嫺╔╦╗╠╬╣╚╩╝╒╤╕╞╪╡╘╧╛╓╥╖╟╫╢╙╨╜║═╭╮╰╯▓"]
 ]
 
-},{}],375:[function(require,module,exports){
+},{}],249:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",127],
 ["8ea1","｡",62],
@@ -47317,7 +38882,7 @@ module.exports=[
 ["b3a1","魁晦械海灰界皆絵芥蟹開階貝凱劾外咳害崖慨概涯碍蓋街該鎧骸浬馨蛙垣柿蛎鈎劃嚇各廓拡撹格核殻獲確穫覚角赫較郭閣隔革学岳楽額顎掛笠樫橿梶鰍潟割喝恰括活渇滑葛褐轄且鰹叶椛樺鞄株兜竃蒲釜鎌噛鴨栢茅萱"],
 ["b4a1","粥刈苅瓦乾侃冠寒刊勘勧巻喚堪姦完官寛干幹患感慣憾換敢柑桓棺款歓汗漢澗潅環甘監看竿管簡緩缶翰肝艦莞観諌貫還鑑間閑関陥韓館舘丸含岸巌玩癌眼岩翫贋雁頑顔願企伎危喜器基奇嬉寄岐希幾忌揮机旗既期棋棄"],
 ["b5a1","機帰毅気汽畿祈季稀紀徽規記貴起軌輝飢騎鬼亀偽儀妓宜戯技擬欺犠疑祇義蟻誼議掬菊鞠吉吃喫桔橘詰砧杵黍却客脚虐逆丘久仇休及吸宮弓急救朽求汲泣灸球究窮笈級糾給旧牛去居巨拒拠挙渠虚許距鋸漁禦魚亨享京"],
-["b6a1","供侠僑兇競共凶���匡卿叫喬境峡強彊怯恐恭挟教橋況狂狭矯胸脅興蕎郷鏡響饗驚仰凝尭暁業局曲極玉桐粁僅勤均巾錦斤欣欽琴禁禽筋緊芹菌衿襟謹近金吟銀九倶句区狗玖矩苦躯駆駈駒具愚虞喰空偶寓遇隅串櫛釧屑屈"],
+["b6a1","供侠僑兇競共凶協匡卿叫喬境峡強彊怯恐恭挟教橋況狂狭矯胸脅興蕎郷鏡響饗驚仰凝尭暁業局曲極玉桐粁僅勤均巾錦斤欣欽琴禁禽筋緊芹菌衿襟謹近金吟銀九倶句区狗玖矩苦躯駆駈駒具愚虞喰空偶寓遇隅串櫛釧屑屈"],
 ["b7a1","掘窟沓靴轡窪熊隈粂栗繰桑鍬勲君薫訓群軍郡卦袈祁係傾刑兄啓圭珪型契形径恵慶慧憩掲携敬景桂渓畦稽系経継繋罫茎荊蛍計詣警軽頚鶏芸迎鯨劇戟撃激隙桁傑欠決潔穴結血訣月件倹倦健兼券剣喧圏堅嫌建憲懸拳捲"],
 ["b8a1","検権牽犬献研硯絹県肩見謙賢軒遣鍵険顕験鹸元原厳幻弦減源玄現絃舷言諺限乎個古呼固姑孤己庫弧戸故枯湖狐糊袴股胡菰虎誇跨鈷雇顧鼓五互伍午呉吾娯後御悟梧檎瑚碁語誤護醐乞鯉交佼侯候倖光公功効勾厚口向"],
 ["b9a1","后喉坑垢好孔孝宏工巧巷幸広庚康弘恒慌抗拘控攻昂晃更杭校梗構江洪浩港溝甲皇硬稿糠紅紘絞綱耕考肯肱腔膏航荒行衡講貢購郊酵鉱砿鋼閤降項香高鴻剛劫号合壕拷濠豪轟麹克刻告国穀酷鵠黒獄漉腰甑忽惚骨狛込"],
@@ -47471,9 +39036,9 @@ module.exports=[
 ["8feda1","黸黿鼂鼃鼉鼏鼐鼑鼒鼔鼖鼗鼙鼚鼛鼟鼢鼦鼪鼫鼯鼱鼲鼴鼷鼹鼺鼼鼽鼿齁齃",4,"齓齕齖齗齘齚齝齞齨齩齭",4,"齳齵齺齽龏龐龑龒龔龖龗龞龡龢龣龥"]
 ]
 
-},{}],376:[function(require,module,exports){
+},{}],250:[function(require,module,exports){
 module.exports={"uChars":[128,165,169,178,184,216,226,235,238,244,248,251,253,258,276,284,300,325,329,334,364,463,465,467,469,471,473,475,477,506,594,610,712,716,730,930,938,962,970,1026,1104,1106,8209,8215,8218,8222,8231,8241,8244,8246,8252,8365,8452,8454,8458,8471,8482,8556,8570,8596,8602,8713,8720,8722,8726,8731,8737,8740,8742,8748,8751,8760,8766,8777,8781,8787,8802,8808,8816,8854,8858,8870,8896,8979,9322,9372,9548,9588,9616,9622,9634,9652,9662,9672,9676,9680,9702,9735,9738,9793,9795,11906,11909,11913,11917,11928,11944,11947,11951,11956,11960,11964,11979,12284,12292,12312,12319,12330,12351,12436,12447,12535,12543,12586,12842,12850,12964,13200,13215,13218,13253,13263,13267,13270,13384,13428,13727,13839,13851,14617,14703,14801,14816,14964,15183,15471,15585,16471,16736,17208,17325,17330,17374,17623,17997,18018,18212,18218,18301,18318,18760,18811,18814,18820,18823,18844,18848,18872,19576,19620,19738,19887,40870,59244,59336,59367,59413,59417,59423,59431,59437,59443,59452,59460,59478,59493,63789,63866,63894,63976,63986,64016,64018,64021,64025,64034,64037,64042,65074,65093,65107,65112,65127,65132,65375,65510,65536],"gbChars":[0,36,38,45,50,81,89,95,96,100,103,104,105,109,126,133,148,172,175,179,208,306,307,308,309,310,311,312,313,341,428,443,544,545,558,741,742,749,750,805,819,820,7922,7924,7925,7927,7934,7943,7944,7945,7950,8062,8148,8149,8152,8164,8174,8236,8240,8262,8264,8374,8380,8381,8384,8388,8390,8392,8393,8394,8396,8401,8406,8416,8419,8424,8437,8439,8445,8482,8485,8496,8521,8603,8936,8946,9046,9050,9063,9066,9076,9092,9100,9108,9111,9113,9131,9162,9164,9218,9219,11329,11331,11334,11336,11346,11361,11363,11366,11370,11372,11375,11389,11682,11686,11687,11692,11694,11714,11716,11723,11725,11730,11736,11982,11989,12102,12336,12348,12350,12384,12393,12395,12397,12510,12553,12851,12962,12973,13738,13823,13919,13933,14080,14298,14585,14698,15583,15847,16318,16434,16438,16481,16729,17102,17122,17315,17320,17402,17418,17859,17909,17911,17915,17916,17936,17939,17961,18664,18703,18814,18962,19043,33469,33470,33471,33484,33485,33490,33497,33501,33505,33513,33520,33536,33550,37845,37921,37948,38029,38038,38064,38065,38066,38069,38075,38076,38078,39108,39109,39113,39114,39115,39116,39265,39394,189000]}
-},{}],377:[function(require,module,exports){
+},{}],251:[function(require,module,exports){
 module.exports=[
 ["a140","",62],
 ["a180","",32],
@@ -47530,7 +39095,7 @@ module.exports=[
 ["fe80","䜣䜩䝼䞍⻊䥇䥺䥽䦂䦃䦅䦆䦟䦛䦷䦶䲣䲟䲠䲡䱷䲢䴓",6,"䶮",93]
 ]
 
-},{}],378:[function(require,module,exports){
+},{}],252:[function(require,module,exports){
 module.exports=[
 ["0","\u0000",128],
 ["a1","｡",62],
@@ -47653,11 +39218,11 @@ module.exports=[
 ["fa40","ⅰ",9,"Ⅰ",9,"￢￤＇＂㈱№℡∵纊褜鍈銈蓜俉炻昱棈鋹曻彅丨仡仼伀伃伹佖侒侊侚侔俍偀倢俿倞偆偰偂傔僴僘兊"],
 ["fa80","兤冝冾凬刕劜劦勀勛匀匇匤卲厓厲叝﨎咜咊咩哿喆坙坥垬埈埇﨏塚增墲夋奓奛奝奣妤妺孖寀甯寘寬尞岦岺峵崧嵓﨑嵂嵭嶸嶹巐弡弴彧德忞恝悅悊惞惕愠惲愑愷愰憘戓抦揵摠撝擎敎昀昕昻昉昮昞昤晥晗晙晴晳暙暠暲暿曺朎朗杦枻桒柀栁桄棏﨓楨﨔榘槢樰橫橆橳橾櫢櫤毖氿汜沆汯泚洄涇浯"],
 ["fb40","涖涬淏淸淲淼渹湜渧渼溿澈澵濵瀅瀇瀨炅炫焏焄煜煆煇凞燁燾犱犾猤猪獷玽珉珖珣珒琇珵琦琪琩琮瑢璉璟甁畯皂皜皞皛皦益睆劯砡硎硤硺礰礼神"],
-["fb80","祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈼鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕���顥飯飼餧館馞驎髙"],
+["fb80","祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈼鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕顗顥飯飼餧館馞驎髙"],
 ["fc40","髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑"]
 ]
 
-},{}],379:[function(require,module,exports){
+},{}],253:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -47836,7 +39401,7 @@ function detectEncoding(buf, defaultEncoding) {
 
 
 
-},{"buffer":undefined}],380:[function(require,module,exports){
+},{"buffer":undefined}],254:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -48128,7 +39693,7 @@ Utf7IMAPDecoder.prototype.end = function() {
 
 
 
-},{"buffer":undefined}],381:[function(require,module,exports){
+},{"buffer":undefined}],255:[function(require,module,exports){
 "use strict";
 
 var BOMChar = '\uFEFF';
@@ -48182,7 +39747,7 @@ StripBOMWrapper.prototype.end = function() {
 }
 
 
-},{}],382:[function(require,module,exports){
+},{}],256:[function(require,module,exports){
 "use strict";
 var Buffer = require("buffer").Buffer;
 
@@ -48399,7 +39964,7 @@ module.exports = function (iconv) {
     }
 }
 
-},{"buffer":undefined,"stream":undefined}],383:[function(require,module,exports){
+},{"buffer":undefined,"stream":undefined}],257:[function(require,module,exports){
 "use strict";
 
 // Some environments don't have global Buffer (e.g. React Native).
@@ -48549,7 +40114,7 @@ if ("Ā" != "\u0100") {
     console.error("iconv-lite warning: javascript files use encoding different from utf-8. See https://github.com/ashtuchkin/iconv-lite/wiki/Javascript-source-file-encodings for more info.");
 }
 
-},{"../encodings":366,"./bom-handling":381,"./extend-node":382,"./streams":384,"buffer":undefined}],384:[function(require,module,exports){
+},{"../encodings":240,"./bom-handling":255,"./extend-node":256,"./streams":258,"buffer":undefined}],258:[function(require,module,exports){
 "use strict";
 
 var Buffer = require("buffer").Buffer,
@@ -48672,7 +40237,7 @@ IconvLiteDecoderStream.prototype.collect = function(cb) {
 }
 
 
-},{"buffer":undefined,"stream":undefined}],385:[function(require,module,exports){
+},{"buffer":undefined,"stream":undefined}],259:[function(require,module,exports){
 'use strict';
 
 var typeHandlers = require('./types');
@@ -48687,7 +40252,7 @@ module.exports = function (buffer, filepath) {
   }
 };
 
-},{"./types":388}],386:[function(require,module,exports){
+},{"./types":262}],260:[function(require,module,exports){
 'use strict';
 
 var fs = require('fs');
@@ -48815,7 +40380,7 @@ module.exports = function (input, callback) {
 
 module.exports.types = Object.keys(typeHandlers);
 
-},{"./detector":385,"./types":388,"fs":undefined,"path":undefined}],387:[function(require,module,exports){
+},{"./detector":259,"./types":262,"fs":undefined,"path":undefined}],261:[function(require,module,exports){
 'use strict';
 
 // Abstract reading multi-byte unsigned integers
@@ -48828,7 +40393,7 @@ function readUInt (buffer, bits, offset, isBigEndian) {
 
 module.exports = readUInt;
 
-},{}],388:[function(require,module,exports){
+},{}],262:[function(require,module,exports){
 'use strict';
 
 // load all available handlers for browserify support
@@ -48848,7 +40413,7 @@ var typeHandlers = {
 
 module.exports = typeHandlers;
 
-},{"./types/bmp":389,"./types/cur":390,"./types/dds":391,"./types/gif":392,"./types/ico":393,"./types/jpg":394,"./types/png":395,"./types/psd":396,"./types/svg":397,"./types/tiff":398,"./types/webp":399}],389:[function(require,module,exports){
+},{"./types/bmp":263,"./types/cur":264,"./types/dds":265,"./types/gif":266,"./types/ico":267,"./types/jpg":268,"./types/png":269,"./types/psd":270,"./types/svg":271,"./types/tiff":272,"./types/webp":273}],263:[function(require,module,exports){
 'use strict';
 
 function isBMP (buffer) {
@@ -48867,7 +40432,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],390:[function(require,module,exports){
+},{}],264:[function(require,module,exports){
 'use strict';
 
 var TYPE_CURSOR = 2;
@@ -48886,7 +40451,7 @@ module.exports = {
   'calculate': require('./ico').calculate
 };
 
-},{"./ico":393}],391:[function(require,module,exports){
+},{"./ico":267}],265:[function(require,module,exports){
 'use strict';
 
 function isDDS(buffer){
@@ -48906,7 +40471,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],392:[function(require,module,exports){
+},{}],266:[function(require,module,exports){
 'use strict';
 
 var gifRegexp = /^GIF8[79]a/;
@@ -48927,7 +40492,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],393:[function(require,module,exports){
+},{}],267:[function(require,module,exports){
 'use strict';
 
 var TYPE_ICON = 1;
@@ -49010,7 +40575,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],394:[function(require,module,exports){
+},{}],268:[function(require,module,exports){
 'use strict';
 
 // NOTE: we only support baseline and progressive JPGs here
@@ -49074,7 +40639,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],395:[function(require,module,exports){
+},{}],269:[function(require,module,exports){
 'use strict';
 
 var pngSignature = 'PNG\r\n\x1a\n';
@@ -49114,7 +40679,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],396:[function(require,module,exports){
+},{}],270:[function(require,module,exports){
 'use strict';
 
 function isPSD (buffer) {
@@ -49133,7 +40698,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],397:[function(require,module,exports){
+},{}],271:[function(require,module,exports){
 'use strict';
 
 var svgReg = /<svg[^>]+[^>]*>/;
@@ -49213,7 +40778,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],398:[function(require,module,exports){
+},{}],272:[function(require,module,exports){
 'use strict';
 
 // based on http://www.compix.com/fileformattif.htm
@@ -49333,7 +40898,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{"../readUInt":387,"fs":undefined}],399:[function(require,module,exports){
+},{"../readUInt":261,"fs":undefined}],273:[function(require,module,exports){
 'use strict';
 
 // based on https://developers.google.com/speed/webp/docs/riff_container
@@ -49404,7 +40969,7 @@ module.exports = {
   'calculate': calculate
 };
 
-},{}],400:[function(require,module,exports){
+},{}],274:[function(require,module,exports){
 try {
   var util = require('util');
   if (typeof util.inherits !== 'function') throw '';
@@ -49413,7 +40978,7 @@ try {
   module.exports = require('./inherits_browser.js');
 }
 
-},{"./inherits_browser.js":401,"util":undefined}],401:[function(require,module,exports){
+},{"./inherits_browser.js":275,"util":undefined}],275:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -49438,7 +41003,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],402:[function(require,module,exports){
+},{}],276:[function(require,module,exports){
 (function() {
   var expandIPv6, ipaddr, ipv4Part, ipv4Regexes, ipv6Part, ipv6Regexes, matchCIDR, root, zoneIndex;
 
@@ -50118,7 +41683,7 @@ if (typeof Object.create === 'function') {
 
 }).call(this);
 
-},{}],403:[function(require,module,exports){
+},{}],277:[function(require,module,exports){
 module.exports      = isTypedArray
 isTypedArray.strict = isStrictTypedArray
 isTypedArray.loose  = isLooseTypedArray
@@ -50161,7 +41726,7 @@ function isLooseTypedArray(arr) {
   return names[toString.call(arr)]
 }
 
-},{}],404:[function(require,module,exports){
+},{}],278:[function(require,module,exports){
 var stream = require('stream')
 
 
@@ -50190,7 +41755,7 @@ module.exports.isReadable = isReadable
 module.exports.isWritable = isWritable
 module.exports.isDuplex   = isDuplex
 
-},{"stream":undefined}],405:[function(require,module,exports){
+},{"stream":undefined}],279:[function(require,module,exports){
 (function(){
 
     // Copyright (c) 2005  Tom Wu
@@ -51549,7 +43114,7 @@ module.exports.isDuplex   = isDuplex
 
 }).call(this);
 
-},{}],406:[function(require,module,exports){
+},{}],280:[function(require,module,exports){
 'use strict'
 
 var INDENT = '    '
@@ -51647,7 +43212,7 @@ module.exports = function (doc, styleFile) {
   return '<div ' + style('json-markup') + '>' + visit(doc) + '</div>'
 }
 
-},{}],407:[function(require,module,exports){
+},{}],281:[function(require,module,exports){
 'use strict';
 
 var traverse = module.exports = function (schema, opts, cb) {
@@ -51730,7 +43295,7 @@ function escapeJsonPtr(str) {
   return str.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
-},{}],408:[function(require,module,exports){
+},{}],282:[function(require,module,exports){
 /**
  * JSONSchema Validator - Validates JavaScript objects using JSON Schemas
  *	(http://www.json.com/json-schema-proposal/)
@@ -52005,7 +43570,7 @@ exports.mustBeValid = function(result){
 return exports;
 }));
 
-},{}],409:[function(require,module,exports){
+},{}],283:[function(require,module,exports){
 exports = module.exports = stringify
 exports.getSerialize = serializer
 
@@ -52034,7 +43599,7 @@ function serializer(replacer, cycleReplacer) {
   }
 }
 
-},{}],410:[function(require,module,exports){
+},{}],284:[function(require,module,exports){
 /*
  * lib/jsprim.js: utilities for primitive JavaScript types
  */
@@ -52771,7 +44336,7 @@ function mergeObjects(provided, overrides, defaults)
 	return (rv);
 }
 
-},{"assert-plus":185,"extsprintf":300,"json-schema":408,"util":undefined,"verror":572}],411:[function(require,module,exports){
+},{"assert-plus":60,"extsprintf":175,"json-schema":282,"util":undefined,"verror":571}],285:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -52779,7 +44344,7 @@ var Symbol = root.Symbol;
 
 module.exports = Symbol;
 
-},{"./_root":416}],412:[function(require,module,exports){
+},{"./_root":290}],286:[function(require,module,exports){
 var Symbol = require('./_Symbol'),
     getRawTag = require('./_getRawTag'),
     objectToString = require('./_objectToString');
@@ -52809,13 +44374,13 @@ function baseGetTag(value) {
 
 module.exports = baseGetTag;
 
-},{"./_Symbol":411,"./_getRawTag":414,"./_objectToString":415}],413:[function(require,module,exports){
+},{"./_Symbol":285,"./_getRawTag":288,"./_objectToString":289}],287:[function(require,module,exports){
 /** Detect free variable `global` from Node.js. */
 var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
 
 module.exports = freeGlobal;
 
-},{}],414:[function(require,module,exports){
+},{}],288:[function(require,module,exports){
 var Symbol = require('./_Symbol');
 
 /** Used for built-in method references. */
@@ -52863,7 +44428,7 @@ function getRawTag(value) {
 
 module.exports = getRawTag;
 
-},{"./_Symbol":411}],415:[function(require,module,exports){
+},{"./_Symbol":285}],289:[function(require,module,exports){
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -52887,7 +44452,7 @@ function objectToString(value) {
 
 module.exports = objectToString;
 
-},{}],416:[function(require,module,exports){
+},{}],290:[function(require,module,exports){
 var freeGlobal = require('./_freeGlobal');
 
 /** Detect free variable `self`. */
@@ -52898,7 +44463,7 @@ var root = freeGlobal || freeSelf || Function('return this')();
 
 module.exports = root;
 
-},{"./_freeGlobal":413}],417:[function(require,module,exports){
+},{"./_freeGlobal":287}],291:[function(require,module,exports){
 /**
  * Checks if `value` is classified as an `Array` object.
  *
@@ -52926,7 +44491,7 @@ var isArray = Array.isArray;
 
 module.exports = isArray;
 
-},{}],418:[function(require,module,exports){
+},{}],292:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isObject = require('./isObject');
 
@@ -52965,7 +44530,7 @@ function isFunction(value) {
 
 module.exports = isFunction;
 
-},{"./_baseGetTag":412,"./isObject":419}],419:[function(require,module,exports){
+},{"./_baseGetTag":286,"./isObject":293}],293:[function(require,module,exports){
 /**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
@@ -52998,7 +44563,7 @@ function isObject(value) {
 
 module.exports = isObject;
 
-},{}],420:[function(require,module,exports){
+},{}],294:[function(require,module,exports){
 /**
  * Checks if `value` is object-like. A value is object-like if it's not `null`
  * and has a `typeof` result of "object".
@@ -53029,7 +44594,7 @@ function isObjectLike(value) {
 
 module.exports = isObjectLike;
 
-},{}],421:[function(require,module,exports){
+},{}],295:[function(require,module,exports){
 var baseGetTag = require('./_baseGetTag'),
     isArray = require('./isArray'),
     isObjectLike = require('./isObjectLike');
@@ -53061,7 +44626,7 @@ function isString(value) {
 
 module.exports = isString;
 
-},{"./_baseGetTag":412,"./isArray":417,"./isObjectLike":420}],422:[function(require,module,exports){
+},{"./_baseGetTag":286,"./isArray":291,"./isObjectLike":294}],296:[function(require,module,exports){
 /**
  * Checks if `value` is `undefined`.
  *
@@ -53085,7 +44650,7 @@ function isUndefined(value) {
 
 module.exports = isUndefined;
 
-},{}],423:[function(require,module,exports){
+},{}],297:[function(require,module,exports){
 /**
  * @license
  * Lodash <https://lodash.com/>
@@ -70171,7 +61736,7 @@ module.exports = isUndefined;
   }
 }.call(this));
 
-},{}],424:[function(require,module,exports){
+},{}],298:[function(require,module,exports){
 /*!
  * media-typer
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -70443,7 +62008,7 @@ function splitType(string) {
   return obj
 }
 
-},{}],425:[function(require,module,exports){
+},{}],299:[function(require,module,exports){
 /*!
  * merge-descriptors
  * Copyright(c) 2014 Jonathan Ong
@@ -70505,7 +62070,7 @@ function merge(dest, src, redefine) {
   return dest
 }
 
-},{}],426:[function(require,module,exports){
+},{}],300:[function(require,module,exports){
 /*!
  * methods
  * Copyright(c) 2013-2014 TJ Holowaychuk
@@ -70576,7 +62141,7 @@ function getBasicNodeMethods() {
   ];
 }
 
-},{"http":undefined}],427:[function(require,module,exports){
+},{"http":undefined}],301:[function(require,module,exports){
 module.exports={
   "application/1d-interleaved-parityfec": {
     "source": "iana"
@@ -77544,7 +69109,7 @@ module.exports={
   }
 }
 
-},{}],428:[function(require,module,exports){
+},{}],302:[function(require,module,exports){
 /*!
  * mime-db
  * Copyright(c) 2014 Jonathan Ong
@@ -77557,7 +69122,7 @@ module.exports={
 
 module.exports = require('./db.json')
 
-},{"./db.json":427}],429:[function(require,module,exports){
+},{"./db.json":301}],303:[function(require,module,exports){
 /*!
  * mime-types
  * Copyright(c) 2014 Jonathan Ong
@@ -77747,7 +69312,7 @@ function populateMaps (extensions, types) {
   })
 }
 
-},{"mime-db":428,"path":undefined}],430:[function(require,module,exports){
+},{"mime-db":302,"path":undefined}],304:[function(require,module,exports){
 var path = require('path');
 var fs = require('fs');
 
@@ -77857,10 +69422,10 @@ mime.charsets = {
 
 module.exports = mime;
 
-},{"./types.json":431,"fs":undefined,"path":undefined}],431:[function(require,module,exports){
+},{"./types.json":305,"fs":undefined,"path":undefined}],305:[function(require,module,exports){
 module.exports={"application/andrew-inset":["ez"],"application/applixware":["aw"],"application/atom+xml":["atom"],"application/atomcat+xml":["atomcat"],"application/atomsvc+xml":["atomsvc"],"application/bdoc":["bdoc"],"application/ccxml+xml":["ccxml"],"application/cdmi-capability":["cdmia"],"application/cdmi-container":["cdmic"],"application/cdmi-domain":["cdmid"],"application/cdmi-object":["cdmio"],"application/cdmi-queue":["cdmiq"],"application/cu-seeme":["cu"],"application/dash+xml":["mpd"],"application/davmount+xml":["davmount"],"application/docbook+xml":["dbk"],"application/dssc+der":["dssc"],"application/dssc+xml":["xdssc"],"application/ecmascript":["ecma"],"application/emma+xml":["emma"],"application/epub+zip":["epub"],"application/exi":["exi"],"application/font-tdpfr":["pfr"],"application/font-woff":["woff"],"application/font-woff2":["woff2"],"application/geo+json":["geojson"],"application/gml+xml":["gml"],"application/gpx+xml":["gpx"],"application/gxf":["gxf"],"application/gzip":["gz"],"application/hyperstudio":["stk"],"application/inkml+xml":["ink","inkml"],"application/ipfix":["ipfix"],"application/java-archive":["jar","war","ear"],"application/java-serialized-object":["ser"],"application/java-vm":["class"],"application/javascript":["js","mjs"],"application/json":["json","map"],"application/json5":["json5"],"application/jsonml+json":["jsonml"],"application/ld+json":["jsonld"],"application/lost+xml":["lostxml"],"application/mac-binhex40":["hqx"],"application/mac-compactpro":["cpt"],"application/mads+xml":["mads"],"application/manifest+json":["webmanifest"],"application/marc":["mrc"],"application/marcxml+xml":["mrcx"],"application/mathematica":["ma","nb","mb"],"application/mathml+xml":["mathml"],"application/mbox":["mbox"],"application/mediaservercontrol+xml":["mscml"],"application/metalink+xml":["metalink"],"application/metalink4+xml":["meta4"],"application/mets+xml":["mets"],"application/mods+xml":["mods"],"application/mp21":["m21","mp21"],"application/mp4":["mp4s","m4p"],"application/msword":["doc","dot"],"application/mxf":["mxf"],"application/octet-stream":["bin","dms","lrf","mar","so","dist","distz","pkg","bpk","dump","elc","deploy","exe","dll","deb","dmg","iso","img","msi","msp","msm","buffer"],"application/oda":["oda"],"application/oebps-package+xml":["opf"],"application/ogg":["ogx"],"application/omdoc+xml":["omdoc"],"application/onenote":["onetoc","onetoc2","onetmp","onepkg"],"application/oxps":["oxps"],"application/patch-ops-error+xml":["xer"],"application/pdf":["pdf"],"application/pgp-encrypted":["pgp"],"application/pgp-signature":["asc","sig"],"application/pics-rules":["prf"],"application/pkcs10":["p10"],"application/pkcs7-mime":["p7m","p7c"],"application/pkcs7-signature":["p7s"],"application/pkcs8":["p8"],"application/pkix-attr-cert":["ac"],"application/pkix-cert":["cer"],"application/pkix-crl":["crl"],"application/pkix-pkipath":["pkipath"],"application/pkixcmp":["pki"],"application/pls+xml":["pls"],"application/postscript":["ai","eps","ps"],"application/prs.cww":["cww"],"application/pskc+xml":["pskcxml"],"application/rdf+xml":["rdf"],"application/reginfo+xml":["rif"],"application/relax-ng-compact-syntax":["rnc"],"application/resource-lists+xml":["rl"],"application/resource-lists-diff+xml":["rld"],"application/rls-services+xml":["rs"],"application/rpki-ghostbusters":["gbr"],"application/rpki-manifest":["mft"],"application/rpki-roa":["roa"],"application/rsd+xml":["rsd"],"application/rss+xml":["rss"],"application/rtf":["rtf"],"application/sbml+xml":["sbml"],"application/scvp-cv-request":["scq"],"application/scvp-cv-response":["scs"],"application/scvp-vp-request":["spq"],"application/scvp-vp-response":["spp"],"application/sdp":["sdp"],"application/set-payment-initiation":["setpay"],"application/set-registration-initiation":["setreg"],"application/shf+xml":["shf"],"application/smil+xml":["smi","smil"],"application/sparql-query":["rq"],"application/sparql-results+xml":["srx"],"application/srgs":["gram"],"application/srgs+xml":["grxml"],"application/sru+xml":["sru"],"application/ssdl+xml":["ssdl"],"application/ssml+xml":["ssml"],"application/tei+xml":["tei","teicorpus"],"application/thraud+xml":["tfi"],"application/timestamped-data":["tsd"],"application/vnd.3gpp.pic-bw-large":["plb"],"application/vnd.3gpp.pic-bw-small":["psb"],"application/vnd.3gpp.pic-bw-var":["pvb"],"application/vnd.3gpp2.tcap":["tcap"],"application/vnd.3m.post-it-notes":["pwn"],"application/vnd.accpac.simply.aso":["aso"],"application/vnd.accpac.simply.imp":["imp"],"application/vnd.acucobol":["acu"],"application/vnd.acucorp":["atc","acutc"],"application/vnd.adobe.air-application-installer-package+zip":["air"],"application/vnd.adobe.formscentral.fcdt":["fcdt"],"application/vnd.adobe.fxp":["fxp","fxpl"],"application/vnd.adobe.xdp+xml":["xdp"],"application/vnd.adobe.xfdf":["xfdf"],"application/vnd.ahead.space":["ahead"],"application/vnd.airzip.filesecure.azf":["azf"],"application/vnd.airzip.filesecure.azs":["azs"],"application/vnd.amazon.ebook":["azw"],"application/vnd.americandynamics.acc":["acc"],"application/vnd.amiga.ami":["ami"],"application/vnd.android.package-archive":["apk"],"application/vnd.anser-web-certificate-issue-initiation":["cii"],"application/vnd.anser-web-funds-transfer-initiation":["fti"],"application/vnd.antix.game-component":["atx"],"application/vnd.apple.installer+xml":["mpkg"],"application/vnd.apple.mpegurl":["m3u8"],"application/vnd.apple.pkpass":["pkpass"],"application/vnd.aristanetworks.swi":["swi"],"application/vnd.astraea-software.iota":["iota"],"application/vnd.audiograph":["aep"],"application/vnd.blueice.multipass":["mpm"],"application/vnd.bmi":["bmi"],"application/vnd.businessobjects":["rep"],"application/vnd.chemdraw+xml":["cdxml"],"application/vnd.chipnuts.karaoke-mmd":["mmd"],"application/vnd.cinderella":["cdy"],"application/vnd.claymore":["cla"],"application/vnd.cloanto.rp9":["rp9"],"application/vnd.clonk.c4group":["c4g","c4d","c4f","c4p","c4u"],"application/vnd.cluetrust.cartomobile-config":["c11amc"],"application/vnd.cluetrust.cartomobile-config-pkg":["c11amz"],"application/vnd.commonspace":["csp"],"application/vnd.contact.cmsg":["cdbcmsg"],"application/vnd.cosmocaller":["cmc"],"application/vnd.crick.clicker":["clkx"],"application/vnd.crick.clicker.keyboard":["clkk"],"application/vnd.crick.clicker.palette":["clkp"],"application/vnd.crick.clicker.template":["clkt"],"application/vnd.crick.clicker.wordbank":["clkw"],"application/vnd.criticaltools.wbs+xml":["wbs"],"application/vnd.ctc-posml":["pml"],"application/vnd.cups-ppd":["ppd"],"application/vnd.curl.car":["car"],"application/vnd.curl.pcurl":["pcurl"],"application/vnd.dart":["dart"],"application/vnd.data-vision.rdz":["rdz"],"application/vnd.dece.data":["uvf","uvvf","uvd","uvvd"],"application/vnd.dece.ttml+xml":["uvt","uvvt"],"application/vnd.dece.unspecified":["uvx","uvvx"],"application/vnd.dece.zip":["uvz","uvvz"],"application/vnd.denovo.fcselayout-link":["fe_launch"],"application/vnd.dna":["dna"],"application/vnd.dolby.mlp":["mlp"],"application/vnd.dpgraph":["dpg"],"application/vnd.dreamfactory":["dfac"],"application/vnd.ds-keypoint":["kpxx"],"application/vnd.dvb.ait":["ait"],"application/vnd.dvb.service":["svc"],"application/vnd.dynageo":["geo"],"application/vnd.ecowin.chart":["mag"],"application/vnd.enliven":["nml"],"application/vnd.epson.esf":["esf"],"application/vnd.epson.msf":["msf"],"application/vnd.epson.quickanime":["qam"],"application/vnd.epson.salt":["slt"],"application/vnd.epson.ssf":["ssf"],"application/vnd.eszigno3+xml":["es3","et3"],"application/vnd.ezpix-album":["ez2"],"application/vnd.ezpix-package":["ez3"],"application/vnd.fdf":["fdf"],"application/vnd.fdsn.mseed":["mseed"],"application/vnd.fdsn.seed":["seed","dataless"],"application/vnd.flographit":["gph"],"application/vnd.fluxtime.clip":["ftc"],"application/vnd.framemaker":["fm","frame","maker","book"],"application/vnd.frogans.fnc":["fnc"],"application/vnd.frogans.ltf":["ltf"],"application/vnd.fsc.weblaunch":["fsc"],"application/vnd.fujitsu.oasys":["oas"],"application/vnd.fujitsu.oasys2":["oa2"],"application/vnd.fujitsu.oasys3":["oa3"],"application/vnd.fujitsu.oasysgp":["fg5"],"application/vnd.fujitsu.oasysprs":["bh2"],"application/vnd.fujixerox.ddd":["ddd"],"application/vnd.fujixerox.docuworks":["xdw"],"application/vnd.fujixerox.docuworks.binder":["xbd"],"application/vnd.fuzzysheet":["fzs"],"application/vnd.genomatix.tuxedo":["txd"],"application/vnd.geogebra.file":["ggb"],"application/vnd.geogebra.tool":["ggt"],"application/vnd.geometry-explorer":["gex","gre"],"application/vnd.geonext":["gxt"],"application/vnd.geoplan":["g2w"],"application/vnd.geospace":["g3w"],"application/vnd.gmx":["gmx"],"application/vnd.google-apps.document":["gdoc"],"application/vnd.google-apps.presentation":["gslides"],"application/vnd.google-apps.spreadsheet":["gsheet"],"application/vnd.google-earth.kml+xml":["kml"],"application/vnd.google-earth.kmz":["kmz"],"application/vnd.grafeq":["gqf","gqs"],"application/vnd.groove-account":["gac"],"application/vnd.groove-help":["ghf"],"application/vnd.groove-identity-message":["gim"],"application/vnd.groove-injector":["grv"],"application/vnd.groove-tool-message":["gtm"],"application/vnd.groove-tool-template":["tpl"],"application/vnd.groove-vcard":["vcg"],"application/vnd.hal+xml":["hal"],"application/vnd.handheld-entertainment+xml":["zmm"],"application/vnd.hbci":["hbci"],"application/vnd.hhe.lesson-player":["les"],"application/vnd.hp-hpgl":["hpgl"],"application/vnd.hp-hpid":["hpid"],"application/vnd.hp-hps":["hps"],"application/vnd.hp-jlyt":["jlt"],"application/vnd.hp-pcl":["pcl"],"application/vnd.hp-pclxl":["pclxl"],"application/vnd.hydrostatix.sof-data":["sfd-hdstx"],"application/vnd.ibm.minipay":["mpy"],"application/vnd.ibm.modcap":["afp","listafp","list3820"],"application/vnd.ibm.rights-management":["irm"],"application/vnd.ibm.secure-container":["sc"],"application/vnd.iccprofile":["icc","icm"],"application/vnd.igloader":["igl"],"application/vnd.immervision-ivp":["ivp"],"application/vnd.immervision-ivu":["ivu"],"application/vnd.insors.igm":["igm"],"application/vnd.intercon.formnet":["xpw","xpx"],"application/vnd.intergeo":["i2g"],"application/vnd.intu.qbo":["qbo"],"application/vnd.intu.qfx":["qfx"],"application/vnd.ipunplugged.rcprofile":["rcprofile"],"application/vnd.irepository.package+xml":["irp"],"application/vnd.is-xpr":["xpr"],"application/vnd.isac.fcs":["fcs"],"application/vnd.jam":["jam"],"application/vnd.jcp.javame.midlet-rms":["rms"],"application/vnd.jisp":["jisp"],"application/vnd.joost.joda-archive":["joda"],"application/vnd.kahootz":["ktz","ktr"],"application/vnd.kde.karbon":["karbon"],"application/vnd.kde.kchart":["chrt"],"application/vnd.kde.kformula":["kfo"],"application/vnd.kde.kivio":["flw"],"application/vnd.kde.kontour":["kon"],"application/vnd.kde.kpresenter":["kpr","kpt"],"application/vnd.kde.kspread":["ksp"],"application/vnd.kde.kword":["kwd","kwt"],"application/vnd.kenameaapp":["htke"],"application/vnd.kidspiration":["kia"],"application/vnd.kinar":["kne","knp"],"application/vnd.koan":["skp","skd","skt","skm"],"application/vnd.kodak-descriptor":["sse"],"application/vnd.las.las+xml":["lasxml"],"application/vnd.llamagraphics.life-balance.desktop":["lbd"],"application/vnd.llamagraphics.life-balance.exchange+xml":["lbe"],"application/vnd.lotus-1-2-3":["123"],"application/vnd.lotus-approach":["apr"],"application/vnd.lotus-freelance":["pre"],"application/vnd.lotus-notes":["nsf"],"application/vnd.lotus-organizer":["org"],"application/vnd.lotus-screencam":["scm"],"application/vnd.lotus-wordpro":["lwp"],"application/vnd.macports.portpkg":["portpkg"],"application/vnd.mcd":["mcd"],"application/vnd.medcalcdata":["mc1"],"application/vnd.mediastation.cdkey":["cdkey"],"application/vnd.mfer":["mwf"],"application/vnd.mfmp":["mfm"],"application/vnd.micrografx.flo":["flo"],"application/vnd.micrografx.igx":["igx"],"application/vnd.mif":["mif"],"application/vnd.mobius.daf":["daf"],"application/vnd.mobius.dis":["dis"],"application/vnd.mobius.mbk":["mbk"],"application/vnd.mobius.mqy":["mqy"],"application/vnd.mobius.msl":["msl"],"application/vnd.mobius.plc":["plc"],"application/vnd.mobius.txf":["txf"],"application/vnd.mophun.application":["mpn"],"application/vnd.mophun.certificate":["mpc"],"application/vnd.mozilla.xul+xml":["xul"],"application/vnd.ms-artgalry":["cil"],"application/vnd.ms-cab-compressed":["cab"],"application/vnd.ms-excel":["xls","xlm","xla","xlc","xlt","xlw"],"application/vnd.ms-excel.addin.macroenabled.12":["xlam"],"application/vnd.ms-excel.sheet.binary.macroenabled.12":["xlsb"],"application/vnd.ms-excel.sheet.macroenabled.12":["xlsm"],"application/vnd.ms-excel.template.macroenabled.12":["xltm"],"application/vnd.ms-fontobject":["eot"],"application/vnd.ms-htmlhelp":["chm"],"application/vnd.ms-ims":["ims"],"application/vnd.ms-lrm":["lrm"],"application/vnd.ms-officetheme":["thmx"],"application/vnd.ms-outlook":["msg"],"application/vnd.ms-pki.seccat":["cat"],"application/vnd.ms-pki.stl":["stl"],"application/vnd.ms-powerpoint":["ppt","pps","pot"],"application/vnd.ms-powerpoint.addin.macroenabled.12":["ppam"],"application/vnd.ms-powerpoint.presentation.macroenabled.12":["pptm"],"application/vnd.ms-powerpoint.slide.macroenabled.12":["sldm"],"application/vnd.ms-powerpoint.slideshow.macroenabled.12":["ppsm"],"application/vnd.ms-powerpoint.template.macroenabled.12":["potm"],"application/vnd.ms-project":["mpp","mpt"],"application/vnd.ms-word.document.macroenabled.12":["docm"],"application/vnd.ms-word.template.macroenabled.12":["dotm"],"application/vnd.ms-works":["wps","wks","wcm","wdb"],"application/vnd.ms-wpl":["wpl"],"application/vnd.ms-xpsdocument":["xps"],"application/vnd.mseq":["mseq"],"application/vnd.musician":["mus"],"application/vnd.muvee.style":["msty"],"application/vnd.mynfc":["taglet"],"application/vnd.neurolanguage.nlu":["nlu"],"application/vnd.nitf":["ntf","nitf"],"application/vnd.noblenet-directory":["nnd"],"application/vnd.noblenet-sealer":["nns"],"application/vnd.noblenet-web":["nnw"],"application/vnd.nokia.n-gage.data":["ngdat"],"application/vnd.nokia.n-gage.symbian.install":["n-gage"],"application/vnd.nokia.radio-preset":["rpst"],"application/vnd.nokia.radio-presets":["rpss"],"application/vnd.novadigm.edm":["edm"],"application/vnd.novadigm.edx":["edx"],"application/vnd.novadigm.ext":["ext"],"application/vnd.oasis.opendocument.chart":["odc"],"application/vnd.oasis.opendocument.chart-template":["otc"],"application/vnd.oasis.opendocument.database":["odb"],"application/vnd.oasis.opendocument.formula":["odf"],"application/vnd.oasis.opendocument.formula-template":["odft"],"application/vnd.oasis.opendocument.graphics":["odg"],"application/vnd.oasis.opendocument.graphics-template":["otg"],"application/vnd.oasis.opendocument.image":["odi"],"application/vnd.oasis.opendocument.image-template":["oti"],"application/vnd.oasis.opendocument.presentation":["odp"],"application/vnd.oasis.opendocument.presentation-template":["otp"],"application/vnd.oasis.opendocument.spreadsheet":["ods"],"application/vnd.oasis.opendocument.spreadsheet-template":["ots"],"application/vnd.oasis.opendocument.text":["odt"],"application/vnd.oasis.opendocument.text-master":["odm"],"application/vnd.oasis.opendocument.text-template":["ott"],"application/vnd.oasis.opendocument.text-web":["oth"],"application/vnd.olpc-sugar":["xo"],"application/vnd.oma.dd2+xml":["dd2"],"application/vnd.openofficeorg.extension":["oxt"],"application/vnd.openxmlformats-officedocument.presentationml.presentation":["pptx"],"application/vnd.openxmlformats-officedocument.presentationml.slide":["sldx"],"application/vnd.openxmlformats-officedocument.presentationml.slideshow":["ppsx"],"application/vnd.openxmlformats-officedocument.presentationml.template":["potx"],"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":["xlsx"],"application/vnd.openxmlformats-officedocument.spreadsheetml.template":["xltx"],"application/vnd.openxmlformats-officedocument.wordprocessingml.document":["docx"],"application/vnd.openxmlformats-officedocument.wordprocessingml.template":["dotx"],"application/vnd.osgeo.mapguide.package":["mgp"],"application/vnd.osgi.dp":["dp"],"application/vnd.osgi.subsystem":["esa"],"application/vnd.palm":["pdb","pqa","oprc"],"application/vnd.pawaafile":["paw"],"application/vnd.pg.format":["str"],"application/vnd.pg.osasli":["ei6"],"application/vnd.picsel":["efif"],"application/vnd.pmi.widget":["wg"],"application/vnd.pocketlearn":["plf"],"application/vnd.powerbuilder6":["pbd"],"application/vnd.previewsystems.box":["box"],"application/vnd.proteus.magazine":["mgz"],"application/vnd.publishare-delta-tree":["qps"],"application/vnd.pvi.ptid1":["ptid"],"application/vnd.quark.quarkxpress":["qxd","qxt","qwd","qwt","qxl","qxb"],"application/vnd.realvnc.bed":["bed"],"application/vnd.recordare.musicxml":["mxl"],"application/vnd.recordare.musicxml+xml":["musicxml"],"application/vnd.rig.cryptonote":["cryptonote"],"application/vnd.rim.cod":["cod"],"application/vnd.rn-realmedia":["rm"],"application/vnd.rn-realmedia-vbr":["rmvb"],"application/vnd.route66.link66+xml":["link66"],"application/vnd.sailingtracker.track":["st"],"application/vnd.seemail":["see"],"application/vnd.sema":["sema"],"application/vnd.semd":["semd"],"application/vnd.semf":["semf"],"application/vnd.shana.informed.formdata":["ifm"],"application/vnd.shana.informed.formtemplate":["itp"],"application/vnd.shana.informed.interchange":["iif"],"application/vnd.shana.informed.package":["ipk"],"application/vnd.simtech-mindmapper":["twd","twds"],"application/vnd.smaf":["mmf"],"application/vnd.smart.teacher":["teacher"],"application/vnd.solent.sdkm+xml":["sdkm","sdkd"],"application/vnd.spotfire.dxp":["dxp"],"application/vnd.spotfire.sfs":["sfs"],"application/vnd.stardivision.calc":["sdc"],"application/vnd.stardivision.draw":["sda"],"application/vnd.stardivision.impress":["sdd"],"application/vnd.stardivision.math":["smf"],"application/vnd.stardivision.writer":["sdw","vor"],"application/vnd.stardivision.writer-global":["sgl"],"application/vnd.stepmania.package":["smzip"],"application/vnd.stepmania.stepchart":["sm"],"application/vnd.sun.wadl+xml":["wadl"],"application/vnd.sun.xml.calc":["sxc"],"application/vnd.sun.xml.calc.template":["stc"],"application/vnd.sun.xml.draw":["sxd"],"application/vnd.sun.xml.draw.template":["std"],"application/vnd.sun.xml.impress":["sxi"],"application/vnd.sun.xml.impress.template":["sti"],"application/vnd.sun.xml.math":["sxm"],"application/vnd.sun.xml.writer":["sxw"],"application/vnd.sun.xml.writer.global":["sxg"],"application/vnd.sun.xml.writer.template":["stw"],"application/vnd.sus-calendar":["sus","susp"],"application/vnd.svd":["svd"],"application/vnd.symbian.install":["sis","sisx"],"application/vnd.syncml+xml":["xsm"],"application/vnd.syncml.dm+wbxml":["bdm"],"application/vnd.syncml.dm+xml":["xdm"],"application/vnd.tao.intent-module-archive":["tao"],"application/vnd.tcpdump.pcap":["pcap","cap","dmp"],"application/vnd.tmobile-livetv":["tmo"],"application/vnd.trid.tpt":["tpt"],"application/vnd.triscape.mxs":["mxs"],"application/vnd.trueapp":["tra"],"application/vnd.ufdl":["ufd","ufdl"],"application/vnd.uiq.theme":["utz"],"application/vnd.umajin":["umj"],"application/vnd.unity":["unityweb"],"application/vnd.uoml+xml":["uoml"],"application/vnd.vcx":["vcx"],"application/vnd.visio":["vsd","vst","vss","vsw"],"application/vnd.visionary":["vis"],"application/vnd.vsf":["vsf"],"application/vnd.wap.wbxml":["wbxml"],"application/vnd.wap.wmlc":["wmlc"],"application/vnd.wap.wmlscriptc":["wmlsc"],"application/vnd.webturbo":["wtb"],"application/vnd.wolfram.player":["nbp"],"application/vnd.wordperfect":["wpd"],"application/vnd.wqd":["wqd"],"application/vnd.wt.stf":["stf"],"application/vnd.xara":["xar"],"application/vnd.xfdl":["xfdl"],"application/vnd.yamaha.hv-dic":["hvd"],"application/vnd.yamaha.hv-script":["hvs"],"application/vnd.yamaha.hv-voice":["hvp"],"application/vnd.yamaha.openscoreformat":["osf"],"application/vnd.yamaha.openscoreformat.osfpvg+xml":["osfpvg"],"application/vnd.yamaha.smaf-audio":["saf"],"application/vnd.yamaha.smaf-phrase":["spf"],"application/vnd.yellowriver-custom-menu":["cmp"],"application/vnd.zul":["zir","zirz"],"application/vnd.zzazz.deck+xml":["zaz"],"application/voicexml+xml":["vxml"],"application/widget":["wgt"],"application/winhlp":["hlp"],"application/wsdl+xml":["wsdl"],"application/wspolicy+xml":["wspolicy"],"application/x-7z-compressed":["7z"],"application/x-abiword":["abw"],"application/x-ace-compressed":["ace"],"application/x-apple-diskimage":["dmg"],"application/x-arj":["arj"],"application/x-authorware-bin":["aab","x32","u32","vox"],"application/x-authorware-map":["aam"],"application/x-authorware-seg":["aas"],"application/x-bcpio":["bcpio"],"application/x-bdoc":["bdoc"],"application/x-bittorrent":["torrent"],"application/x-blorb":["blb","blorb"],"application/x-bzip":["bz"],"application/x-bzip2":["bz2","boz"],"application/x-cbr":["cbr","cba","cbt","cbz","cb7"],"application/x-cdlink":["vcd"],"application/x-cfs-compressed":["cfs"],"application/x-chat":["chat"],"application/x-chess-pgn":["pgn"],"application/x-chrome-extension":["crx"],"application/x-cocoa":["cco"],"application/x-conference":["nsc"],"application/x-cpio":["cpio"],"application/x-csh":["csh"],"application/x-debian-package":["deb","udeb"],"application/x-dgc-compressed":["dgc"],"application/x-director":["dir","dcr","dxr","cst","cct","cxt","w3d","fgd","swa"],"application/x-doom":["wad"],"application/x-dtbncx+xml":["ncx"],"application/x-dtbook+xml":["dtb"],"application/x-dtbresource+xml":["res"],"application/x-dvi":["dvi"],"application/x-envoy":["evy"],"application/x-eva":["eva"],"application/x-font-bdf":["bdf"],"application/x-font-ghostscript":["gsf"],"application/x-font-linux-psf":["psf"],"application/x-font-otf":["otf"],"application/x-font-pcf":["pcf"],"application/x-font-snf":["snf"],"application/x-font-ttf":["ttf","ttc"],"application/x-font-type1":["pfa","pfb","pfm","afm"],"application/x-freearc":["arc"],"application/x-futuresplash":["spl"],"application/x-gca-compressed":["gca"],"application/x-glulx":["ulx"],"application/x-gnumeric":["gnumeric"],"application/x-gramps-xml":["gramps"],"application/x-gtar":["gtar"],"application/x-hdf":["hdf"],"application/x-httpd-php":["php"],"application/x-install-instructions":["install"],"application/x-iso9660-image":["iso"],"application/x-java-archive-diff":["jardiff"],"application/x-java-jnlp-file":["jnlp"],"application/x-latex":["latex"],"application/x-lua-bytecode":["luac"],"application/x-lzh-compressed":["lzh","lha"],"application/x-makeself":["run"],"application/x-mie":["mie"],"application/x-mobipocket-ebook":["prc","mobi"],"application/x-ms-application":["application"],"application/x-ms-shortcut":["lnk"],"application/x-ms-wmd":["wmd"],"application/x-ms-wmz":["wmz"],"application/x-ms-xbap":["xbap"],"application/x-msaccess":["mdb"],"application/x-msbinder":["obd"],"application/x-mscardfile":["crd"],"application/x-msclip":["clp"],"application/x-msdos-program":["exe"],"application/x-msdownload":["exe","dll","com","bat","msi"],"application/x-msmediaview":["mvb","m13","m14"],"application/x-msmetafile":["wmf","wmz","emf","emz"],"application/x-msmoney":["mny"],"application/x-mspublisher":["pub"],"application/x-msschedule":["scd"],"application/x-msterminal":["trm"],"application/x-mswrite":["wri"],"application/x-netcdf":["nc","cdf"],"application/x-ns-proxy-autoconfig":["pac"],"application/x-nzb":["nzb"],"application/x-perl":["pl","pm"],"application/x-pilot":["prc","pdb"],"application/x-pkcs12":["p12","pfx"],"application/x-pkcs7-certificates":["p7b","spc"],"application/x-pkcs7-certreqresp":["p7r"],"application/x-rar-compressed":["rar"],"application/x-redhat-package-manager":["rpm"],"application/x-research-info-systems":["ris"],"application/x-sea":["sea"],"application/x-sh":["sh"],"application/x-shar":["shar"],"application/x-shockwave-flash":["swf"],"application/x-silverlight-app":["xap"],"application/x-sql":["sql"],"application/x-stuffit":["sit"],"application/x-stuffitx":["sitx"],"application/x-subrip":["srt"],"application/x-sv4cpio":["sv4cpio"],"application/x-sv4crc":["sv4crc"],"application/x-t3vm-image":["t3"],"application/x-tads":["gam"],"application/x-tar":["tar"],"application/x-tcl":["tcl","tk"],"application/x-tex":["tex"],"application/x-tex-tfm":["tfm"],"application/x-texinfo":["texinfo","texi"],"application/x-tgif":["obj"],"application/x-ustar":["ustar"],"application/x-virtualbox-hdd":["hdd"],"application/x-virtualbox-ova":["ova"],"application/x-virtualbox-ovf":["ovf"],"application/x-virtualbox-vbox":["vbox"],"application/x-virtualbox-vbox-extpack":["vbox-extpack"],"application/x-virtualbox-vdi":["vdi"],"application/x-virtualbox-vhd":["vhd"],"application/x-virtualbox-vmdk":["vmdk"],"application/x-wais-source":["src"],"application/x-web-app-manifest+json":["webapp"],"application/x-x509-ca-cert":["der","crt","pem"],"application/x-xfig":["fig"],"application/x-xliff+xml":["xlf"],"application/x-xpinstall":["xpi"],"application/x-xz":["xz"],"application/x-zmachine":["z1","z2","z3","z4","z5","z6","z7","z8"],"application/xaml+xml":["xaml"],"application/xcap-diff+xml":["xdf"],"application/xenc+xml":["xenc"],"application/xhtml+xml":["xhtml","xht"],"application/xml":["xml","xsl","xsd","rng"],"application/xml-dtd":["dtd"],"application/xop+xml":["xop"],"application/xproc+xml":["xpl"],"application/xslt+xml":["xslt"],"application/xspf+xml":["xspf"],"application/xv+xml":["mxml","xhvml","xvml","xvm"],"application/yang":["yang"],"application/yin+xml":["yin"],"application/zip":["zip"],"audio/3gpp":["3gpp"],"audio/adpcm":["adp"],"audio/basic":["au","snd"],"audio/midi":["mid","midi","kar","rmi"],"audio/mp3":["mp3"],"audio/mp4":["m4a","mp4a"],"audio/mpeg":["mpga","mp2","mp2a","mp3","m2a","m3a"],"audio/ogg":["oga","ogg","spx"],"audio/s3m":["s3m"],"audio/silk":["sil"],"audio/vnd.dece.audio":["uva","uvva"],"audio/vnd.digital-winds":["eol"],"audio/vnd.dra":["dra"],"audio/vnd.dts":["dts"],"audio/vnd.dts.hd":["dtshd"],"audio/vnd.lucent.voice":["lvp"],"audio/vnd.ms-playready.media.pya":["pya"],"audio/vnd.nuera.ecelp4800":["ecelp4800"],"audio/vnd.nuera.ecelp7470":["ecelp7470"],"audio/vnd.nuera.ecelp9600":["ecelp9600"],"audio/vnd.rip":["rip"],"audio/wav":["wav"],"audio/wave":["wav"],"audio/webm":["weba"],"audio/x-aac":["aac"],"audio/x-aiff":["aif","aiff","aifc"],"audio/x-caf":["caf"],"audio/x-flac":["flac"],"audio/x-m4a":["m4a"],"audio/x-matroska":["mka"],"audio/x-mpegurl":["m3u"],"audio/x-ms-wax":["wax"],"audio/x-ms-wma":["wma"],"audio/x-pn-realaudio":["ram","ra"],"audio/x-pn-realaudio-plugin":["rmp"],"audio/x-realaudio":["ra"],"audio/x-wav":["wav"],"audio/xm":["xm"],"chemical/x-cdx":["cdx"],"chemical/x-cif":["cif"],"chemical/x-cmdf":["cmdf"],"chemical/x-cml":["cml"],"chemical/x-csml":["csml"],"chemical/x-xyz":["xyz"],"font/otf":["otf"],"image/apng":["apng"],"image/bmp":["bmp"],"image/cgm":["cgm"],"image/g3fax":["g3"],"image/gif":["gif"],"image/ief":["ief"],"image/jpeg":["jpeg","jpg","jpe"],"image/ktx":["ktx"],"image/png":["png"],"image/prs.btif":["btif"],"image/sgi":["sgi"],"image/svg+xml":["svg","svgz"],"image/tiff":["tiff","tif"],"image/vnd.adobe.photoshop":["psd"],"image/vnd.dece.graphic":["uvi","uvvi","uvg","uvvg"],"image/vnd.djvu":["djvu","djv"],"image/vnd.dvb.subtitle":["sub"],"image/vnd.dwg":["dwg"],"image/vnd.dxf":["dxf"],"image/vnd.fastbidsheet":["fbs"],"image/vnd.fpx":["fpx"],"image/vnd.fst":["fst"],"image/vnd.fujixerox.edmics-mmr":["mmr"],"image/vnd.fujixerox.edmics-rlc":["rlc"],"image/vnd.ms-modi":["mdi"],"image/vnd.ms-photo":["wdp"],"image/vnd.net-fpx":["npx"],"image/vnd.wap.wbmp":["wbmp"],"image/vnd.xiff":["xif"],"image/webp":["webp"],"image/x-3ds":["3ds"],"image/x-cmu-raster":["ras"],"image/x-cmx":["cmx"],"image/x-freehand":["fh","fhc","fh4","fh5","fh7"],"image/x-icon":["ico"],"image/x-jng":["jng"],"image/x-mrsid-image":["sid"],"image/x-ms-bmp":["bmp"],"image/x-pcx":["pcx"],"image/x-pict":["pic","pct"],"image/x-portable-anymap":["pnm"],"image/x-portable-bitmap":["pbm"],"image/x-portable-graymap":["pgm"],"image/x-portable-pixmap":["ppm"],"image/x-rgb":["rgb"],"image/x-tga":["tga"],"image/x-xbitmap":["xbm"],"image/x-xpixmap":["xpm"],"image/x-xwindowdump":["xwd"],"message/rfc822":["eml","mime"],"model/gltf+json":["gltf"],"model/gltf-binary":["glb"],"model/iges":["igs","iges"],"model/mesh":["msh","mesh","silo"],"model/vnd.collada+xml":["dae"],"model/vnd.dwf":["dwf"],"model/vnd.gdl":["gdl"],"model/vnd.gtw":["gtw"],"model/vnd.mts":["mts"],"model/vnd.vtu":["vtu"],"model/vrml":["wrl","vrml"],"model/x3d+binary":["x3db","x3dbz"],"model/x3d+vrml":["x3dv","x3dvz"],"model/x3d+xml":["x3d","x3dz"],"text/cache-manifest":["appcache","manifest"],"text/calendar":["ics","ifb"],"text/coffeescript":["coffee","litcoffee"],"text/css":["css"],"text/csv":["csv"],"text/hjson":["hjson"],"text/html":["html","htm","shtml"],"text/jade":["jade"],"text/jsx":["jsx"],"text/less":["less"],"text/markdown":["markdown","md"],"text/mathml":["mml"],"text/n3":["n3"],"text/plain":["txt","text","conf","def","list","log","in","ini"],"text/prs.lines.tag":["dsc"],"text/richtext":["rtx"],"text/rtf":["rtf"],"text/sgml":["sgml","sgm"],"text/slim":["slim","slm"],"text/stylus":["stylus","styl"],"text/tab-separated-values":["tsv"],"text/troff":["t","tr","roff","man","me","ms"],"text/turtle":["ttl"],"text/uri-list":["uri","uris","urls"],"text/vcard":["vcard"],"text/vnd.curl":["curl"],"text/vnd.curl.dcurl":["dcurl"],"text/vnd.curl.mcurl":["mcurl"],"text/vnd.curl.scurl":["scurl"],"text/vnd.dvb.subtitle":["sub"],"text/vnd.fly":["fly"],"text/vnd.fmi.flexstor":["flx"],"text/vnd.graphviz":["gv"],"text/vnd.in3d.3dml":["3dml"],"text/vnd.in3d.spot":["spot"],"text/vnd.sun.j2me.app-descriptor":["jad"],"text/vnd.wap.wml":["wml"],"text/vnd.wap.wmlscript":["wmls"],"text/vtt":["vtt"],"text/x-asm":["s","asm"],"text/x-c":["c","cc","cxx","cpp","h","hh","dic"],"text/x-component":["htc"],"text/x-fortran":["f","for","f77","f90"],"text/x-handlebars-template":["hbs"],"text/x-java-source":["java"],"text/x-lua":["lua"],"text/x-markdown":["mkd"],"text/x-nfo":["nfo"],"text/x-opml":["opml"],"text/x-org":["org"],"text/x-pascal":["p","pas"],"text/x-processing":["pde"],"text/x-sass":["sass"],"text/x-scss":["scss"],"text/x-setext":["etx"],"text/x-sfv":["sfv"],"text/x-suse-ymp":["ymp"],"text/x-uuencode":["uu"],"text/x-vcalendar":["vcs"],"text/x-vcard":["vcf"],"text/xml":["xml"],"text/yaml":["yaml","yml"],"video/3gpp":["3gp","3gpp"],"video/3gpp2":["3g2"],"video/h261":["h261"],"video/h263":["h263"],"video/h264":["h264"],"video/jpeg":["jpgv"],"video/jpm":["jpm","jpgm"],"video/mj2":["mj2","mjp2"],"video/mp2t":["ts"],"video/mp4":["mp4","mp4v","mpg4"],"video/mpeg":["mpeg","mpg","mpe","m1v","m2v"],"video/ogg":["ogv"],"video/quicktime":["qt","mov"],"video/vnd.dece.hd":["uvh","uvvh"],"video/vnd.dece.mobile":["uvm","uvvm"],"video/vnd.dece.pd":["uvp","uvvp"],"video/vnd.dece.sd":["uvs","uvvs"],"video/vnd.dece.video":["uvv","uvvv"],"video/vnd.dvb.file":["dvb"],"video/vnd.fvt":["fvt"],"video/vnd.mpegurl":["mxu","m4u"],"video/vnd.ms-playready.media.pyv":["pyv"],"video/vnd.uvvu.mp4":["uvu","uvvu"],"video/vnd.vivo":["viv"],"video/webm":["webm"],"video/x-f4v":["f4v"],"video/x-fli":["fli"],"video/x-flv":["flv"],"video/x-m4v":["m4v"],"video/x-matroska":["mkv","mk3d","mks"],"video/x-mng":["mng"],"video/x-ms-asf":["asf","asx"],"video/x-ms-vob":["vob"],"video/x-ms-wm":["wm"],"video/x-ms-wmv":["wmv"],"video/x-ms-wmx":["wmx"],"video/x-ms-wvx":["wvx"],"video/x-msvideo":["avi"],"video/x-sgi-movie":["movie"],"video/x-smv":["smv"],"x-conference/x-cooltalk":["ice"]}
 
-},{}],432:[function(require,module,exports){
+},{}],306:[function(require,module,exports){
 module.exports = minimatch
 minimatch.Minimatch = Minimatch
 
@@ -78785,7 +70350,7 @@ function regExpEscape (s) {
   return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 }
 
-},{"brace-expansion":250,"path":undefined}],433:[function(require,module,exports){
+},{"brace-expansion":125,"path":undefined}],307:[function(require,module,exports){
 //! moment.js
 //! version : 2.20.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
@@ -83322,7 +74887,7 @@ return hooks;
 
 })));
 
-},{}],434:[function(require,module,exports){
+},{}],308:[function(require,module,exports){
 /*!
  * morgan
  * Copyright(c) 2010 Sencha Inc.
@@ -83846,15 +75411,15 @@ function token (name, fn) {
   return this
 }
 
-},{"basic-auth":200,"debug":437,"depd":270,"on-finished":447,"on-headers":448}],435:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":436,"dup":245}],436:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],437:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":435,"./node.js":438,"dup":247}],438:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":436,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],439:[function(require,module,exports){
+},{"basic-auth":75,"debug":311,"depd":145,"on-finished":321,"on-headers":322}],309:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":310,"dup":120}],310:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],311:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":309,"./node.js":312,"dup":122}],312:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":310,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],313:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -84008,7 +75573,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],440:[function(require,module,exports){
+},{}],314:[function(require,module,exports){
 /*!
  * negotiator
  * Copyright(c) 2012 Federico Romero
@@ -84134,7 +75699,7 @@ function loadModule(moduleName) {
   return module;
 }
 
-},{"./lib/charset":441,"./lib/encoding":442,"./lib/language":443,"./lib/mediaType":444}],441:[function(require,module,exports){
+},{"./lib/charset":315,"./lib/encoding":316,"./lib/language":317,"./lib/mediaType":318}],315:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -84305,7 +75870,7 @@ function isQuality(spec) {
   return spec.q > 0;
 }
 
-},{}],442:[function(require,module,exports){
+},{}],316:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -84491,7 +76056,7 @@ function isQuality(spec) {
   return spec.q > 0;
 }
 
-},{}],443:[function(require,module,exports){
+},{}],317:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -84672,7 +76237,7 @@ function isQuality(spec) {
   return spec.q > 0;
 }
 
-},{}],444:[function(require,module,exports){
+},{}],318:[function(require,module,exports){
 /**
  * negotiator
  * Copyright(c) 2012 Isaac Z. Schlueter
@@ -84968,7 +76533,7 @@ function splitParameters(str) {
   return parameters;
 }
 
-},{}],445:[function(require,module,exports){
+},{}],319:[function(require,module,exports){
 /**
  * @license node-stream-zip | (c) 2015 Antelle | https://github.com/antelle/node-stream-zip/blob/master/MIT-LICENSE.txt
  * Portions copyright https://github.com/cthackers/adm-zip | https://raw.githubusercontent.com/cthackers/adm-zip/master/MIT-LICENSE.txt
@@ -85981,7 +77546,7 @@ module.exports = StreamZip;
 
 // endregion
 
-},{"events":undefined,"fs":undefined,"path":undefined,"stream":undefined,"util":undefined,"zlib":undefined}],446:[function(require,module,exports){
+},{"events":undefined,"fs":undefined,"path":undefined,"stream":undefined,"util":undefined,"zlib":undefined}],320:[function(require,module,exports){
 var crypto = require('crypto')
   , qs = require('querystring')
   ;
@@ -86119,7 +77684,7 @@ exports.rfc3986 = rfc3986
 exports.generateBase = generateBase
 
 
-},{"crypto":undefined,"querystring":undefined}],447:[function(require,module,exports){
+},{"crypto":undefined,"querystring":undefined}],321:[function(require,module,exports){
 /*!
  * on-finished
  * Copyright(c) 2013 Jonathan Ong
@@ -86317,7 +77882,7 @@ function patchAssignSocket(res, callback) {
   }
 }
 
-},{"ee-first":278}],448:[function(require,module,exports){
+},{"ee-first":153}],322:[function(require,module,exports){
 /*!
  * on-headers
  * Copyright(c) 2014 Douglas Christopher Wilson
@@ -86412,7 +77977,7 @@ function setWriteHeadHeaders(statusCode) {
   return args
 }
 
-},{}],449:[function(require,module,exports){
+},{}],323:[function(require,module,exports){
 'use strict';
 var isWindows = process.platform === 'win32';
 var trailingSlashRe = isWindows ? /[^:]\\$/ : /.\/$/;
@@ -86439,7 +78004,7 @@ module.exports = function () {
 	return path;
 };
 
-},{}],450:[function(require,module,exports){
+},{}],324:[function(require,module,exports){
 /*!
  * parseurl
  * Copyright(c) 2014 Jonathan Ong
@@ -86595,7 +78160,7 @@ function fresh (url, parsedUrl) {
     parsedUrl._raw === url
 }
 
-},{"url":undefined}],451:[function(require,module,exports){
+},{"url":undefined}],325:[function(require,module,exports){
 /**
  * Expose `pathtoRegexp`.
  */
@@ -86726,7 +78291,7 @@ function pathtoRegexp(path, keys, options) {
   return new RegExp(path, flags);
 };
 
-},{}],452:[function(require,module,exports){
+},{}],326:[function(require,module,exports){
 module.exports = Pend;
 
 function Pend() {
@@ -86783,7 +78348,7 @@ function pendGo(self, fn) {
   fn(pendHold(self));
 }
 
-},{}],453:[function(require,module,exports){
+},{}],327:[function(require,module,exports){
 // Generated by CoffeeScript 1.12.2
 (function() {
   var getNanoSeconds, hrtime, loadTime, moduleLoadTime, nodeLoadTime, upTime;
@@ -86821,7 +78386,7 @@ function pendGo(self, fn) {
 
 
 
-},{}],454:[function(require,module,exports){
+},{}],328:[function(require,module,exports){
 'use strict';
 
 var fs = require('graceful-fs');
@@ -87202,7 +78767,7 @@ module.exports.unlockSync = unlockSync;
 module.exports.check = check;
 module.exports.checkSync = checkSync;
 
-},{"./lib/syncFs":455,"err-code":280,"extend":299,"graceful-fs":324,"path":undefined,"retry":481}],455:[function(require,module,exports){
+},{"./lib/syncFs":329,"err-code":155,"extend":174,"graceful-fs":199,"path":undefined,"retry":480}],329:[function(require,module,exports){
 'use strict';
 
 function makeSync(fs, name) {
@@ -87245,7 +78810,7 @@ function syncFs(fs) {
 
 module.exports = syncFs;
 
-},{}],456:[function(require,module,exports){
+},{}],330:[function(require,module,exports){
 /*!
  * proxy-addr
  * Copyright(c) 2014-2016 Douglas Christopher Wilson
@@ -87574,7 +79139,7 @@ function trustSingle (subnet) {
   }
 }
 
-},{"forwarded":321,"ipaddr.js":402}],457:[function(require,module,exports){
+},{"forwarded":196,"ipaddr.js":276}],331:[function(require,module,exports){
 'use strict';
 
 var replace = String.prototype.replace;
@@ -87594,7 +79159,7 @@ module.exports = {
     RFC3986: 'RFC3986'
 };
 
-},{}],458:[function(require,module,exports){
+},{}],332:[function(require,module,exports){
 'use strict';
 
 var stringify = require('./stringify');
@@ -87607,7 +79172,7 @@ module.exports = {
     stringify: stringify
 };
 
-},{"./formats":457,"./parse":459,"./stringify":460}],459:[function(require,module,exports){
+},{"./formats":331,"./parse":333,"./stringify":334}],333:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -87783,7 +79348,7 @@ module.exports = function (str, opts) {
     return utils.compact(obj);
 };
 
-},{"./utils":461}],460:[function(require,module,exports){
+},{"./utils":335}],334:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -87995,7 +79560,7 @@ module.exports = function (object, opts) {
     return joined.length > 0 ? prefix + joined : '';
 };
 
-},{"./formats":457,"./utils":461}],461:[function(require,module,exports){
+},{"./formats":331,"./utils":335}],335:[function(require,module,exports){
 'use strict';
 
 var has = Object.prototype.hasOwnProperty;
@@ -88199,7 +79764,8430 @@ exports.isBuffer = function isBuffer(obj) {
     return !!(obj.constructor && obj.constructor.isBuffer && obj.constructor.isBuffer(obj));
 };
 
-},{}],462:[function(require,module,exports){
+},{}],336:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function sortObject(obj) {
+    if (obj instanceof Array) {
+        for (var i = 0; i < obj.length; i++) {
+            obj[i] = sortObject(obj[i]);
+        }
+        return obj;
+    }
+    else if (typeof obj !== "object") {
+        return obj;
+    }
+    var newObj = {};
+    Object.keys(obj).sort().forEach(function (key) {
+        newObj[key] = sortObject(obj[key]);
+    });
+    return newObj;
+}
+exports.sortObject = sortObject;
+function traverseJsonObjects_(parent, keyInParent, obj, func) {
+    func(obj, parent, keyInParent);
+    if (obj instanceof Array) {
+        for (var index = 0; index < obj.length; index++) {
+            var item = obj[index];
+            if (typeof item !== "undefined") {
+                traverseJsonObjects_(obj, index, item, func);
+            }
+        }
+    }
+    else if (typeof obj === "object") {
+        Object.keys(obj).forEach(function (key) {
+            if (obj.hasOwnProperty(key)) {
+                var item = obj[key];
+                if (typeof item !== "undefined") {
+                    traverseJsonObjects_(obj, key, item, func);
+                }
+            }
+        });
+    }
+}
+function traverseJsonObjects(obj, func) {
+    traverseJsonObjects_(undefined, undefined, obj, func);
+}
+exports.traverseJsonObjects = traverseJsonObjects;
+
+},{}],337:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function parseRangeHeader(rangeHeader) {
+    var ranges = [];
+    if (!rangeHeader) {
+        return ranges;
+    }
+    var rHeader;
+    if (rangeHeader instanceof Array) {
+        rHeader = rangeHeader;
+    }
+    else {
+        rHeader = [rangeHeader];
+    }
+    rHeader.forEach(function (rh) {
+        var arr = parseRangeHeader_(rh);
+        ranges = ranges.concat(arr);
+    });
+    return ranges;
+}
+exports.parseRangeHeader = parseRangeHeader;
+function parseRangeHeader_(rangeHeader) {
+    var ranges = [];
+    var iEqual = rangeHeader.indexOf("=");
+    if (iEqual <= 0) {
+        return ranges;
+    }
+    var rangesStr = rangeHeader.substr(iEqual + 1);
+    var rangeStrArray = rangesStr.split(",");
+    rangeStrArray.forEach(function (rangeStr) {
+        var beginEndArray = rangeStr.split("-");
+        var beginStr = beginEndArray[0];
+        var endStr = beginEndArray[1];
+        var begin = -1;
+        if (beginStr && beginStr.length) {
+            begin = parseInt(beginStr, 10);
+        }
+        var end = -1;
+        if (endStr && endStr.length) {
+            end = parseInt(endStr, 10);
+        }
+        var rangeObj = { begin: begin, end: end };
+        ranges.push(rangeObj);
+    });
+    return ranges;
+}
+function combineRanges(ranges) {
+    var orderedRanges = ranges
+        .map(function (range, index) {
+        return {
+            begin: range.begin,
+            end: range.end,
+            index: index,
+        };
+    })
+        .sort(function (a, b) {
+        return a.begin - b.begin;
+    });
+    var j = 0;
+    var i = 1;
+    for (j = 0, i = 1; i < orderedRanges.length; i++) {
+        var orderedRange = orderedRanges[i];
+        var currentRange = orderedRanges[j];
+        if (orderedRange.begin > currentRange.end + 1) {
+            orderedRanges[++j] = orderedRange;
+        }
+        else if (orderedRange.end > currentRange.end) {
+            currentRange.end = orderedRange.end;
+            currentRange.index = Math.min(currentRange.index, orderedRange.index);
+        }
+    }
+    orderedRanges.length = j + 1;
+    return orderedRanges
+        .sort(function (a, b) {
+        return a.index - b.index;
+    })
+        .map(function (range) {
+        return {
+            begin: range.begin,
+            end: range.end,
+        };
+    });
+}
+exports.combineRanges = combineRanges;
+
+},{}],338:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var path = require("path");
+var querystring = require("querystring");
+function isHTTP(urlOrPath) {
+    return urlOrPath.indexOf("http") === 0;
+}
+exports.isHTTP = isHTTP;
+function encodeURIComponent_RFC3986(str) {
+    return encodeURIComponent(str)
+        .replace(/[!'()*]/g, function (c) {
+        return "%" + c.charCodeAt(0).toString(16);
+    });
+}
+exports.encodeURIComponent_RFC3986 = encodeURIComponent_RFC3986;
+function encodeURIComponent_RFC5987(str) {
+    return encodeURIComponent(str).
+        replace(/['()]/g, querystring.escape).
+        replace(/\*/g, "%2A").
+        replace(/%(?:7C|60|5E)/g, querystring.unescape);
+}
+exports.encodeURIComponent_RFC5987 = encodeURIComponent_RFC5987;
+function ensureAbsolute(rootUrl, linkHref) {
+    var url = linkHref;
+    if (!isHTTP(url) && url.indexOf("data:") !== 0) {
+        if (url.indexOf("//") === 0) {
+            if (rootUrl.indexOf("https://") === 0) {
+                url = "https:" + url;
+            }
+            else {
+                url = "http:" + url;
+            }
+            return url;
+        }
+        if (url[0] === "/") {
+            var j = rootUrl.replace(/:\/\//g, ":__").indexOf("/");
+            var rootUrlOrigin = rootUrl.substr(0, j);
+            url = path.join(rootUrlOrigin, url);
+        }
+        else {
+            var i = rootUrl.indexOf("?");
+            var rootUrlWithoutQuery = rootUrl;
+            if (i >= 0) {
+                rootUrlWithoutQuery = rootUrlWithoutQuery.substr(0, i);
+            }
+            if (rootUrlWithoutQuery.substr(-1) === "/") {
+                url = path.join(rootUrlWithoutQuery, url);
+            }
+            else {
+                url = path.join(path.dirname(rootUrlWithoutQuery), url);
+            }
+        }
+        url = url.replace(/\\/g, "/").replace(/^https:\//g, "https:\/\/").replace(/^http:\//g, "http:\/\/");
+    }
+    return url;
+}
+exports.ensureAbsolute = ensureAbsolute;
+
+},{"path":undefined,"querystring":undefined}],339:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var stream_1 = require("stream");
+var BufferReadableStream = (function (_super) {
+    tslib_1.__extends(BufferReadableStream, _super);
+    function BufferReadableStream(buffer) {
+        var _this = _super.call(this) || this;
+        _this.buffer = buffer;
+        _this.alreadyRead = 0;
+        return _this;
+    }
+    BufferReadableStream.prototype._read = function (size) {
+        if (this.alreadyRead >= this.buffer.length) {
+            this.push(null);
+            return;
+        }
+        var chunk = this.alreadyRead ?
+            this.buffer.slice(this.alreadyRead) :
+            this.buffer;
+        if (size) {
+            var l = size;
+            if (size > chunk.length) {
+                l = chunk.length;
+            }
+            chunk = chunk.slice(0, l);
+        }
+        this.alreadyRead += chunk.length;
+        this.push(chunk);
+    };
+    return BufferReadableStream;
+}(stream_1.Readable));
+exports.BufferReadableStream = BufferReadableStream;
+
+},{"stream":undefined,"tslib":553}],340:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var BufferReadableStream_1 = require("./BufferReadableStream");
+function bufferToStream(buffer) {
+    return new BufferReadableStream_1.BufferReadableStream(buffer);
+}
+exports.bufferToStream = bufferToStream;
+function streamToBufferPromise_READABLE(readStream) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__generator(this, function (_a) {
+            return [2, new Promise(function (resolve, reject) {
+                    var buffers = [];
+                    readStream.on("error", reject);
+                    readStream.on("readable", function () {
+                        var chunk;
+                        do {
+                            chunk = readStream.read();
+                            if (chunk) {
+                                buffers.push(chunk);
+                            }
+                        } while (chunk);
+                    });
+                    readStream.on("end", function () {
+                        resolve(Buffer.concat(buffers));
+                    });
+                })];
+        });
+    });
+}
+exports.streamToBufferPromise_READABLE = streamToBufferPromise_READABLE;
+function streamToBufferPromise(readStream) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__generator(this, function (_a) {
+            return [2, new Promise(function (resolve, reject) {
+                    var buffers = [];
+                    readStream.on("error", reject);
+                    readStream.on("data", function (data) {
+                        buffers.push(data);
+                    });
+                    readStream.on("end", function () {
+                        resolve(Buffer.concat(buffers));
+                    });
+                })];
+        });
+    });
+}
+exports.streamToBufferPromise = streamToBufferPromise;
+
+},{"./BufferReadableStream":339,"tslib":553}],341:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var debug_ = require("debug");
+var stream_1 = require("stream");
+var debug = debug_("r2:RangeStream");
+var RangeStream = (function (_super) {
+    tslib_1.__extends(RangeStream, _super);
+    function RangeStream(streamBegin, streamEnd, streamLength) {
+        var _this = _super.call(this) || this;
+        _this.streamBegin = streamBegin;
+        _this.streamEnd = streamEnd;
+        _this.streamLength = streamLength;
+        _this.bytesReceived = 0;
+        _this.finished = false;
+        _this.closed = false;
+        _this.on("end", function () {
+        });
+        _this.on("finish", function () {
+        });
+        return _this;
+    }
+    RangeStream.prototype._flush = function (callback) {
+        callback();
+    };
+    RangeStream.prototype._transform = function (chunk, _encoding, callback) {
+        this.bytesReceived += chunk.length;
+        if (this.finished) {
+            if (!this.closed) {
+                debug("???? CLOSING...");
+                this.closed = true;
+                this.push(null);
+            }
+            else {
+                debug("???? STILL PIPE CALLING _transform ??!");
+                this.end();
+            }
+        }
+        else {
+            if (this.bytesReceived > this.streamBegin) {
+                var chunkBegin = 0;
+                var chunkEnd = chunk.length - 1;
+                chunkBegin = this.streamBegin - (this.bytesReceived - chunk.length);
+                if (chunkBegin < 0) {
+                    chunkBegin = 0;
+                }
+                if (this.bytesReceived > this.streamEnd) {
+                    this.finished = true;
+                    chunkEnd = chunk.length - (this.bytesReceived - this.streamEnd);
+                }
+                this.push(chunk.slice(chunkBegin, chunkEnd + 1));
+                if (this.finished) {
+                    this.closed = true;
+                    this.push(null);
+                    this.end();
+                }
+            }
+            else {
+            }
+        }
+        callback();
+    };
+    return RangeStream;
+}(stream_1.Transform));
+exports.RangeStream = RangeStream;
+
+},{"debug":142,"stream":undefined,"tslib":553}],342:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var JsonDateConverter = (function () {
+    function JsonDateConverter() {
+    }
+    JsonDateConverter.prototype.serialize = function (property) {
+        return property.toISOString();
+    };
+    JsonDateConverter.prototype.deserialize = function (value) {
+        return new Date(value);
+    };
+    JsonDateConverter.prototype.collapseArrayWithSingleItem = function () {
+        return false;
+    };
+    return JsonDateConverter;
+}());
+exports.JsonDateConverter = JsonDateConverter;
+
+},{}],343:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var JsonStringConverter = (function () {
+    function JsonStringConverter() {
+    }
+    JsonStringConverter.prototype.serialize = function (property) {
+        return property;
+    };
+    JsonStringConverter.prototype.deserialize = function (value) {
+        return value;
+    };
+    JsonStringConverter.prototype.collapseArrayWithSingleItem = function () {
+        return true;
+    };
+    return JsonStringConverter;
+}());
+exports.JsonStringConverter = JsonStringConverter;
+
+},{}],344:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var property_definition_1 = require("./property-definition");
+var ObjectDefinition = (function () {
+    function ObjectDefinition() {
+        this.ctr = function () { return undefined; };
+        this.beforeDeserialized = function () { return undefined; };
+        this.onDeserialized = function () { return undefined; };
+        this.properties = new Map();
+    }
+    ObjectDefinition.prototype.getProperty = function (key) {
+        var property = this.properties.get(key);
+        if (!property) {
+            property = new property_definition_1.PropertyDefinition();
+            this.properties.set(key, property);
+        }
+        return property;
+    };
+    return ObjectDefinition;
+}());
+exports.ObjectDefinition = ObjectDefinition;
+exports.objectDefinitions = new Map();
+function getDefinition(objectType) {
+    var definition = exports.objectDefinitions.get(objectType);
+    if (!definition) {
+        definition = new ObjectDefinition();
+        exports.objectDefinitions.set(objectType, definition);
+    }
+    return definition;
+}
+exports.getDefinition = getDefinition;
+function getInheritanceChain(objectType) {
+    if (!objectType) {
+        return [];
+    }
+    var parent = Object.getPrototypeOf(objectType);
+    return [objectType.constructor].concat(getInheritanceChain(parent));
+}
+exports.getInheritanceChain = getInheritanceChain;
+function getChildObjectTypeDefinitions(parentObjectType) {
+    var childDefs = [];
+    exports.objectDefinitions.forEach(function (def, objectType) {
+        var superObjectType = Object.getPrototypeOf(objectType.prototype).constructor;
+        if (superObjectType === parentObjectType) {
+            childDefs.push({ functionType: objectType, objectDefinition: def });
+        }
+    });
+    return childDefs;
+}
+function getTypedInheritanceChain(objectType, objectInstance) {
+    var parentDef = exports.objectDefinitions.get(objectType);
+    var childDefs = [];
+    if (objectInstance && parentDef && parentDef.discriminatorProperty) {
+        childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType));
+    }
+    var actualObjectType;
+    while (childDefs.length !== 0 && !actualObjectType) {
+        var ifo = childDefs.shift();
+        var objectType2 = ifo ? ifo.functionType : undefined;
+        var def = ifo ? ifo.objectDefinition : undefined;
+        if (def && def.hasOwnProperty("discriminatorValue")) {
+            if (objectInstance
+                && parentDef
+                && def.discriminatorValue === objectInstance[parentDef.discriminatorProperty]) {
+                if (def.hasOwnProperty("discriminatorProperty")) {
+                    return getTypedInheritanceChain(objectType2, objectInstance);
+                }
+                actualObjectType = objectType2;
+            }
+        }
+        else {
+            childDefs = childDefs.concat(getChildObjectTypeDefinitions(objectType2));
+        }
+    }
+    if (!actualObjectType) {
+        actualObjectType = objectType;
+    }
+    var inheritanceChain = new Set(getInheritanceChain(Object.create(actualObjectType.prototype)));
+    return Array.from(inheritanceChain).filter(function (t) { return exports.objectDefinitions.has(t); });
+}
+exports.getTypedInheritanceChain = getTypedInheritanceChain;
+
+},{"./property-definition":345}],345:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var PropertyDefinition = (function () {
+    function PropertyDefinition() {
+        this.array = false;
+        this.set = false;
+        this.readonly = false;
+        this.writeonly = false;
+    }
+    return PropertyDefinition;
+}());
+exports.PropertyDefinition = PropertyDefinition;
+
+},{}],346:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var BufferConverter = (function () {
+    function BufferConverter() {
+        this.encoding = "utf8";
+    }
+    BufferConverter.prototype.serialize = function (property) {
+        return property.toString(this.encoding);
+    };
+    BufferConverter.prototype.deserialize = function (value) {
+        return Buffer.from(value, this.encoding);
+    };
+    BufferConverter.prototype.collapseArrayWithSingleItem = function () {
+        return false;
+    };
+    return BufferConverter;
+}());
+exports.BufferConverter = BufferConverter;
+
+},{}],347:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var buffer_converter_1 = require("./buffer-converter");
+var date_converter_1 = require("./date-converter");
+exports.propertyConverters = new Map();
+exports.propertyConverters.set(Buffer, new buffer_converter_1.BufferConverter());
+exports.propertyConverters.set(Date, new date_converter_1.DateConverter());
+
+},{"./buffer-converter":346,"./date-converter":348}],348:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var DateConverter = (function () {
+    function DateConverter() {
+    }
+    DateConverter.prototype.serialize = function (property) {
+        return property.toISOString();
+    };
+    DateConverter.prototype.deserialize = function (value) {
+        return new Date(value);
+    };
+    DateConverter.prototype.collapseArrayWithSingleItem = function () {
+        return false;
+    };
+    return DateConverter;
+}());
+exports.DateConverter = DateConverter;
+
+},{}],349:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+tslib_1.__exportStar(require("./converter"), exports);
+tslib_1.__exportStar(require("./buffer-converter"), exports);
+tslib_1.__exportStar(require("./date-converter"), exports);
+
+},{"./buffer-converter":346,"./converter":347,"./date-converter":348,"tslib":553}],350:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function BeforeDeserialized() {
+    return function (target, key) {
+        var definition = object_definition_1.getDefinition(target.constructor);
+        definition.beforeDeserialized = target[key];
+    };
+}
+exports.BeforeDeserialized = BeforeDeserialized;
+
+},{"../classes/object-definition":344}],351:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+tslib_1.__exportStar(require("./xml-object"), exports);
+tslib_1.__exportStar(require("./xml-xpathselector"), exports);
+tslib_1.__exportStar(require("./xml-type"), exports);
+tslib_1.__exportStar(require("./xml-item-type"), exports);
+tslib_1.__exportStar(require("./xml-converter"), exports);
+tslib_1.__exportStar(require("./xml-readonly"), exports);
+tslib_1.__exportStar(require("./xml-writeonly"), exports);
+tslib_1.__exportStar(require("./xml-discriminator-property"), exports);
+tslib_1.__exportStar(require("./xml-discriminator-value"), exports);
+tslib_1.__exportStar(require("./xml-constructor"), exports);
+tslib_1.__exportStar(require("./before-deserialized"), exports);
+tslib_1.__exportStar(require("./on-deserialized"), exports);
+
+},{"./before-deserialized":350,"./on-deserialized":352,"./xml-constructor":353,"./xml-converter":354,"./xml-discriminator-property":355,"./xml-discriminator-value":356,"./xml-item-type":357,"./xml-object":358,"./xml-readonly":359,"./xml-type":360,"./xml-writeonly":361,"./xml-xpathselector":362,"tslib":553}],352:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function OnDeserialized() {
+    return function (target, key) {
+        var definition = object_definition_1.getDefinition(target.constructor);
+        definition.onDeserialized = target[key];
+    };
+}
+exports.OnDeserialized = OnDeserialized;
+
+},{"../classes/object-definition":344}],353:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlConstructor() {
+    return function (target, key) {
+        var definition = object_definition_1.getDefinition(target.constructor);
+        definition.ctr = target[key];
+    };
+}
+exports.XmlConstructor = XmlConstructor;
+
+},{"../classes/object-definition":344}],354:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlConverter(converter) {
+    return function (target, key) {
+        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        if (typeof converter === "function") {
+            property.converter = new converter();
+        }
+        else {
+            property.converter = converter;
+        }
+    };
+}
+exports.XmlConverter = XmlConverter;
+
+},{"../classes/object-definition":344}],355:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlDiscriminatorProperty(property) {
+    return function (objectType) {
+        object_definition_1.getDefinition(objectType).discriminatorProperty = property;
+    };
+}
+exports.XmlDiscriminatorProperty = XmlDiscriminatorProperty;
+
+},{"../classes/object-definition":344}],356:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlDiscriminatorValue(value) {
+    return function (objectType) {
+        object_definition_1.getDefinition(objectType).discriminatorValue = value;
+    };
+}
+exports.XmlDiscriminatorValue = XmlDiscriminatorValue;
+
+},{"../classes/object-definition":344}],357:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlItemType(objectType) {
+    return function (target, key) {
+        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.objectType = objectType;
+    };
+}
+exports.XmlItemType = XmlItemType;
+
+},{"../classes/object-definition":344}],358:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlObject(namespaces) {
+    return function (objectType) {
+        var def = object_definition_1.getDefinition(objectType);
+        if (namespaces) {
+            def.namespaces = namespaces;
+        }
+        if (def.namespaces && def.properties) {
+            def.properties.forEach(function (propDef) {
+                if (def.namespaces) {
+                    for (var prop in def.namespaces) {
+                        if (def.namespaces.hasOwnProperty(prop)) {
+                            if (!propDef.namespaces || !propDef.namespaces[prop]) {
+                                if (!propDef.namespaces) {
+                                    propDef.namespaces = {};
+                                }
+                                propDef.namespaces[prop] = def.namespaces[prop];
+                            }
+                        }
+                    }
+                    if (propDef.xpathSelectorParsed) {
+                        propDef.xpathSelectorParsed.forEach(function (xp) {
+                            if (xp.namespacePrefix && !xp.namespaceUri) {
+                                xp.namespaceUri = propDef.namespaces ?
+                                    propDef.namespaces[xp.namespacePrefix] :
+                                    undefined;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    };
+}
+exports.XmlObject = XmlObject;
+
+},{"../classes/object-definition":344}],359:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlReadonly() {
+    return function (target, key) {
+        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.readonly = true;
+    };
+}
+exports.XmlReadonly = XmlReadonly;
+
+},{"../classes/object-definition":344}],360:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlType(objectType) {
+    return function (target, key) {
+        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.objectType = objectType;
+    };
+}
+exports.XmlType = XmlType;
+
+},{"../classes/object-definition":344}],361:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var object_definition_1 = require("../classes/object-definition");
+function XmlWriteonly() {
+    return function (target, key) {
+        var property = object_definition_1.getDefinition(target.constructor).getProperty(key);
+        property.writeonly = true;
+    };
+}
+exports.XmlWriteonly = XmlWriteonly;
+
+},{"../classes/object-definition":344}],362:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+require("reflect-metadata");
+var object_definition_1 = require("../classes/object-definition");
+function XmlXPathSelector(selector, namespaces) {
+    return function (target, key) {
+        var objectType = Reflect.getMetadata("design:type", target, key);
+        var objDef = object_definition_1.getDefinition(target.constructor);
+        var property = objDef.getProperty(key);
+        property.xpathSelector = selector;
+        if (namespaces) {
+            property.namespaces = namespaces;
+        }
+        property.array = objectType === Array;
+        property.set = objectType === Set;
+        if (!property.array && !property.set && !property.objectType) {
+            property.objectType = objectType;
+        }
+        if (property.xpathSelector.indexOf("|") < 0
+            && property.xpathSelector.indexOf(">") < 0
+            && property.xpathSelector.indexOf("*") < 0
+            && property.xpathSelector.indexOf("||") < 0
+            && property.xpathSelector.indexOf("[") < 0
+            && property.xpathSelector.indexOf("]") < 0) {
+            property.xpathSelectorParsed = [];
+            var items = property.xpathSelector.split("/");
+            items.forEach(function (item) {
+                if (!item.length) {
+                    return;
+                }
+                var subitems = item.split(":");
+                var isAttribute = item[0] === "@";
+                var isText = item === "text()";
+                var localName = subitems.length > 1 ?
+                    subitems[1] :
+                    (isAttribute ? subitems[0].substr(1) : subitems[0]);
+                var namespacePrefix = subitems.length > 1 ?
+                    (isAttribute ? subitems[0].substr(1) : subitems[0]) :
+                    undefined;
+                var namespaceUri = namespacePrefix ?
+                    (namespaces ? namespaces[namespacePrefix] : undefined) :
+                    undefined;
+                var xItem = {
+                    isAttribute: isAttribute,
+                    isText: isText,
+                    localName: localName,
+                    namespacePrefix: namespacePrefix,
+                    namespaceUri: namespaceUri,
+                };
+                property.xpathSelectorParsed.push(xItem);
+            });
+        }
+    };
+}
+exports.XmlXPathSelector = XmlXPathSelector;
+
+},{"../classes/object-definition":344,"reflect-metadata":463}],363:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+tslib_1.__exportStar(require("./xml"), exports);
+tslib_1.__exportStar(require("./decorators"), exports);
+tslib_1.__exportStar(require("./converters"), exports);
+
+},{"./converters":349,"./decorators":351,"./xml":365,"tslib":553}],364:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xpath = require("xpath");
+var object_definition_1 = require("../classes/object-definition");
+var converter_1 = require("../converters/converter");
+function deserialize(objectInstance, objectType, options) {
+    if (options === void 0) { options = { runConstructor: false }; }
+    return deserializeRootObject(objectInstance, objectType, options);
+}
+exports.deserialize = deserialize;
+function deserializeRootObject(objectInstance, objectType, options) {
+    if (objectType === void 0) { objectType = Object; }
+    if (!object_definition_1.objectDefinitions.has(objectType)) {
+        return undefined;
+    }
+    var _a = object_definition_1.getTypedInheritanceChain(objectType, objectInstance), objectType2 = _a[0], superTypes = _a.slice(1);
+    var output = Object.create(objectType2.prototype);
+    var definitions = superTypes.reverse().concat([objectType2]).map(function (t) { return object_definition_1.objectDefinitions.get(t); })
+        .filter(function (t) { return !!t; });
+    definitions.forEach(function (d) {
+        if (!d) {
+            return;
+        }
+        if (options.runConstructor) {
+            d.ctr.call(output);
+        }
+        d.beforeDeserialized.call(output);
+        d.properties.forEach(function (p, key) {
+            if (!p.objectType) {
+                throw new Error("Cannot deserialize property \"" + key + "\" without type!");
+            }
+            if (p.readonly) {
+                return;
+            }
+            if (p.xpathSelectorParsed) {
+                var xpathMatched_1 = [];
+                var currentNodes_1 = [objectInstance];
+                p.xpathSelectorParsed.forEach(function (item, index) {
+                    var nextCurrentNodes = [];
+                    currentNodes_1.forEach(function (currentNode) {
+                        if (item.isText) {
+                            var textNode = currentNode.firstChild;
+                            if (currentNode.childNodes && currentNode.childNodes.length) {
+                                for (var i = 0; i < currentNode.childNodes.length; i++) {
+                                    var childNode = currentNode.childNodes.item(i);
+                                    if (childNode.nodeType === 3) {
+                                        textNode = childNode;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (textNode) {
+                                xpathMatched_1.push(textNode);
+                            }
+                        }
+                        else if (item.isAttribute) {
+                            if (currentNode.attributes) {
+                                var attr = item.namespaceUri ?
+                                    currentNode.attributes.getNamedItemNS(item.namespaceUri, item.localName) :
+                                    currentNode.attributes.getNamedItem(item.localName);
+                                if (attr) {
+                                    xpathMatched_1.push(attr);
+                                }
+                            }
+                        }
+                        else {
+                            if (currentNode.childNodes && currentNode.childNodes.length) {
+                                for (var i = 0; i < currentNode.childNodes.length; i++) {
+                                    var childNode = currentNode.childNodes.item(i);
+                                    if (childNode.nodeType !== 1) {
+                                        continue;
+                                    }
+                                    if (childNode.localName !== item.localName) {
+                                        continue;
+                                    }
+                                    if (item.namespaceUri && item.namespaceUri !== childNode.namespaceURI) {
+                                        continue;
+                                    }
+                                    nextCurrentNodes.push(childNode);
+                                }
+                            }
+                        }
+                    });
+                    currentNodes_1 = nextCurrentNodes;
+                    if (index === p.xpathSelectorParsed.length - 1) {
+                        currentNodes_1.forEach(function (node) {
+                            xpathMatched_1.push(node);
+                        });
+                    }
+                });
+                if (xpathMatched_1 && xpathMatched_1.length) {
+                    if (p.array || p.set) {
+                        output[key] = [];
+                        xpathMatched_1.forEach(function (item) {
+                            output[key].push(deserializeObject(item, p, options));
+                        });
+                        if (p.set) {
+                            output[key] = new Set(output[key]);
+                        }
+                        return;
+                    }
+                    output[key] = deserializeObject(xpathMatched_1[0], p, options);
+                }
+            }
+            else {
+                var select = xpath.useNamespaces(p.namespaces || {});
+                var xPathSelected = select(p.xpathSelector, objectInstance);
+                if (xPathSelected && xPathSelected.length) {
+                    var xpathMatched_2 = [];
+                    if (!(xPathSelected instanceof Array)) {
+                        xpathMatched_2.push(xPathSelected);
+                    }
+                    else {
+                        xPathSelected.forEach(function (item) {
+                            xpathMatched_2.push(item);
+                        });
+                    }
+                    if (p.array || p.set) {
+                        output[key] = [];
+                        xpathMatched_2.forEach(function (item) {
+                            output[key].push(deserializeObject(item, p, options));
+                        });
+                        if (p.set) {
+                            output[key] = new Set(output[key]);
+                        }
+                        return;
+                    }
+                    output[key] = deserializeObject(xpathMatched_2[0], p, options);
+                }
+            }
+        });
+        d.onDeserialized.call(output);
+    });
+    return output;
+}
+function deserializeObject(objectInstance, definition, _options) {
+    var primitive = definition.objectType === String
+        || definition.objectType === Boolean
+        || definition.objectType === Number;
+    var value = objectInstance.nodeType === 3 ?
+        objectInstance.data :
+        (objectInstance.nodeType === 2 ?
+            objectInstance.value :
+            (objectInstance.nodeType === 1 ?
+                objectInstance.localName :
+                objectInstance.nodeValue));
+    var converter = definition.converter || converter_1.propertyConverters.get(definition.objectType);
+    if (converter) {
+        return converter.deserialize(value);
+    }
+    if (!primitive) {
+        var objDefinition = object_definition_1.objectDefinitions.get(definition.objectType);
+        if (objDefinition) {
+            return deserialize(objectInstance, definition.objectType);
+        }
+    }
+    return value;
+}
+
+},{"../classes/object-definition":344,"../converters/converter":347,"xpath":575}],365:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var deserialize_1 = require("./methods/deserialize");
+var XML = (function () {
+    function XML() {
+    }
+    XML.deserialize = function (objectInstance, objectType, options) {
+        if (objectInstance.nodeType === 9) {
+            objectInstance = objectInstance.documentElement;
+        }
+        return deserialize_1.deserialize(objectInstance, objectType, options);
+    };
+    return XML;
+}());
+exports.XML = XML;
+
+},{"./methods/deserialize":364}],366:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var RangeStream_1 = require("../stream/RangeStream");
+var Zip = (function () {
+    function Zip() {
+    }
+    Zip.prototype.entryStreamRangePromise = function (entryPath, begin, end) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var streamAndLength, err_1, b, e, stream, sal;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4, this.entryStreamPromise(entryPath)];
+                    case 1:
+                        streamAndLength = _a.sent();
+                        return [3, 3];
+                    case 2:
+                        err_1 = _a.sent();
+                        console.log(err_1);
+                        return [2, Promise.reject(err_1)];
+                    case 3:
+                        streamAndLength = streamAndLength;
+                        b = begin < 0 ? 0 : begin;
+                        e = end < 0 ? (streamAndLength.length - 1) : end;
+                        stream = new RangeStream_1.RangeStream(b, e, streamAndLength.length);
+                        streamAndLength.stream.pipe(stream);
+                        sal = {
+                            length: streamAndLength.length,
+                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                return tslib_1.__generator(this, function (_a) {
+                                    return [2, this.entryStreamRangePromise(entryPath, begin, end)];
+                                });
+                            }); },
+                            stream: stream,
+                        };
+                        return [2, sal];
+                }
+            });
+        });
+    };
+    return Zip;
+}());
+exports.Zip = Zip;
+
+},{"../stream/RangeStream":341,"tslib":553}],367:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var debug_ = require("debug");
+var StreamZip = require("node-stream-zip");
+var zip_1 = require("./zip");
+var debug = debug_("r2:zip1");
+var Zip1 = (function (_super) {
+    tslib_1.__extends(Zip1, _super);
+    function Zip1(filePath, zip) {
+        var _this = _super.call(this) || this;
+        _this.filePath = filePath;
+        _this.zip = zip;
+        return _this;
+    }
+    Zip1.loadPromise = function (filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
+                return [2, new Promise(function (resolve, reject) {
+                        var zip = new StreamZip({
+                            file: filePath,
+                            storeEntries: true,
+                        });
+                        zip.on("error", function (err) {
+                            debug("--ZIP error: " + filePath);
+                            debug(err);
+                            reject(err);
+                        });
+                        zip.on("entry", function (_entry) {
+                        });
+                        zip.on("extract", function (entry, file) {
+                            debug("--ZIP extract:");
+                            debug(entry.name);
+                            debug(file);
+                        });
+                        zip.on("ready", function () {
+                            resolve(new Zip1(filePath, zip));
+                        });
+                    })];
+            });
+        });
+    };
+    Zip1.prototype.freeDestroy = function () {
+        debug("freeDestroy: Zip1 -- " + this.filePath);
+        if (this.zip) {
+            this.zip.close();
+        }
+    };
+    Zip1.prototype.entriesCount = function () {
+        return this.zip.entriesCount;
+    };
+    Zip1.prototype.hasEntries = function () {
+        return this.entriesCount() > 0;
+    };
+    Zip1.prototype.hasEntry = function (entryPath) {
+        return this.hasEntries()
+            && this.zip.entries()[entryPath];
+    };
+    Zip1.prototype.forEachEntry = function (callback) {
+        if (!this.hasEntries()) {
+            return;
+        }
+        Object.keys(this.zip.entries()).forEach(function (entryName) {
+            callback(entryName);
+        });
+    };
+    Zip1.prototype.entryStreamPromise = function (entryPath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return tslib_1.__generator(this, function (_a) {
+                if (!this.hasEntries() || !this.hasEntry(entryPath)) {
+                    return [2, Promise.reject("no such path in zip: " + entryPath)];
+                }
+                return [2, new Promise(function (resolve, reject) {
+                        _this.zip.stream(entryPath, function (err, stream) {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            var entry = _this.zip.entries()[entryPath];
+                            var streamAndLength = {
+                                length: entry.size,
+                                reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                    return tslib_1.__generator(this, function (_a) {
+                                        return [2, this.entryStreamPromise(entryPath)];
+                                    });
+                                }); },
+                                stream: stream,
+                            };
+                            resolve(streamAndLength);
+                        });
+                    })];
+            });
+        });
+    };
+    return Zip1;
+}(zip_1.Zip));
+exports.Zip1 = Zip1;
+
+},{"./zip":366,"debug":142,"node-stream-zip":319,"tslib":553}],368:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var debug_ = require("debug");
+var request = require("request");
+var requestPromise = require("request-promise-native");
+var yauzl = require("yauzl");
+var UrlUtils_1 = require("../http/UrlUtils");
+var BufferUtils_1 = require("../stream/BufferUtils");
+var zip_1 = require("./zip");
+var zip2RandomAccessReader_Http_1 = require("./zip2RandomAccessReader_Http");
+var debug = debug_("r2:zip2");
+var Zip2 = (function (_super) {
+    tslib_1.__extends(Zip2, _super);
+    function Zip2(filePath, zip) {
+        var _this = _super.call(this) || this;
+        _this.filePath = filePath;
+        _this.zip = zip;
+        _this.entries = {};
+        return _this;
+    }
+    Zip2.loadPromise = function (filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
+                if (UrlUtils_1.isHTTP(filePath)) {
+                    return [2, Zip2.loadPromiseHTTP(filePath)];
+                }
+                return [2, new Promise(function (resolve, reject) {
+                        yauzl.open(filePath, { lazyEntries: true, autoClose: false }, function (err, zip) {
+                            if (err) {
+                                debug("yauzl init ERROR");
+                                debug(err);
+                                reject(err);
+                                return;
+                            }
+                            var zip2 = new Zip2(filePath, zip);
+                            zip.on("error", function (erro) {
+                                debug("yauzl ERROR");
+                                debug(erro);
+                                reject(erro);
+                            });
+                            zip.readEntry();
+                            zip.on("entry", function (entry) {
+                                if (entry.fileName[entry.fileName.length - 1] === "/") {
+                                }
+                                else {
+                                    zip2.addEntry(entry);
+                                }
+                                zip.readEntry();
+                            });
+                            zip.on("end", function () {
+                                debug("yauzl END");
+                                resolve(zip2);
+                            });
+                            zip.on("close", function () {
+                                debug("yauzl CLOSE");
+                            });
+                        });
+                    })];
+            });
+        });
+    };
+    Zip2.loadPromiseHTTP = function (filePath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var needsStreamingResponse;
+            return tslib_1.__generator(this, function (_a) {
+                needsStreamingResponse = true;
+                return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                        var _this = this;
+                        var failure, success, res, err_1;
+                        return tslib_1.__generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    failure = function (err) {
+                                        debug(err);
+                                        reject(err);
+                                    };
+                                    success = function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                        var _this = this;
+                                        var httpZipByteLength, failure_1, success_, ress, err_2, httpZipReader;
+                                        return tslib_1.__generator(this, function (_a) {
+                                            switch (_a.label) {
+                                                case 0:
+                                                    if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                                                        failure("HTTP CODE " + res.statusCode);
+                                                        return [2];
+                                                    }
+                                                    debug(filePath);
+                                                    debug(res.headers);
+                                                    if (!res.headers["content-length"]) {
+                                                        reject("content-length not supported!");
+                                                        return [2];
+                                                    }
+                                                    httpZipByteLength = parseInt(res.headers["content-length"], 10);
+                                                    debug("Content-Length: " + httpZipByteLength);
+                                                    if (!(!res.headers["accept-ranges"]
+                                                        || res.headers["accept-ranges"] !== "bytes")) return [3, 8];
+                                                    if (httpZipByteLength > (2 * 1024 * 1024)) {
+                                                        reject("accept-ranges not supported, file too big to download: " + httpZipByteLength);
+                                                        return [2];
+                                                    }
+                                                    debug("Downloading: " + filePath);
+                                                    failure_1 = function (err) {
+                                                        debug(err);
+                                                        reject(err);
+                                                    };
+                                                    success_ = function (ress) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                                        var buffer, err_3;
+                                                        return tslib_1.__generator(this, function (_a) {
+                                                            switch (_a.label) {
+                                                                case 0:
+                                                                    if (ress.statusCode && (ress.statusCode < 200 || ress.statusCode >= 300)) {
+                                                                        failure_1("HTTP CODE " + ress.statusCode);
+                                                                        return [2];
+                                                                    }
+                                                                    _a.label = 1;
+                                                                case 1:
+                                                                    _a.trys.push([1, 3, , 4]);
+                                                                    return [4, BufferUtils_1.streamToBufferPromise(ress)];
+                                                                case 2:
+                                                                    buffer = _a.sent();
+                                                                    return [3, 4];
+                                                                case 3:
+                                                                    err_3 = _a.sent();
+                                                                    debug(err_3);
+                                                                    reject(err_3);
+                                                                    return [2];
+                                                                case 4:
+                                                                    yauzl.fromBuffer(buffer, { lazyEntries: true }, function (err, zip) {
+                                                                        if (err) {
+                                                                            debug("yauzl init ERROR");
+                                                                            debug(err);
+                                                                            reject(err);
+                                                                            return;
+                                                                        }
+                                                                        var zip2 = new Zip2(filePath, zip);
+                                                                        zip.on("error", function (erro) {
+                                                                            debug("yauzl ERROR");
+                                                                            debug(erro);
+                                                                            reject(erro);
+                                                                        });
+                                                                        zip.readEntry();
+                                                                        zip.on("entry", function (entry) {
+                                                                            if (entry.fileName[entry.fileName.length - 1] === "/") {
+                                                                            }
+                                                                            else {
+                                                                                zip2.addEntry(entry);
+                                                                            }
+                                                                            zip.readEntry();
+                                                                        });
+                                                                        zip.on("end", function () {
+                                                                            debug("yauzl END");
+                                                                            resolve(zip2);
+                                                                        });
+                                                                        zip.on("close", function () {
+                                                                            debug("yauzl CLOSE");
+                                                                        });
+                                                                    });
+                                                                    return [2];
+                                                            }
+                                                        });
+                                                    }); };
+                                                    if (!needsStreamingResponse) return [3, 1];
+                                                    request.get({
+                                                        headers: {},
+                                                        method: "GET",
+                                                        uri: filePath,
+                                                    })
+                                                        .on("response", success_)
+                                                        .on("error", failure_1);
+                                                    return [3, 7];
+                                                case 1:
+                                                    ress = void 0;
+                                                    _a.label = 2;
+                                                case 2:
+                                                    _a.trys.push([2, 4, , 5]);
+                                                    return [4, requestPromise({
+                                                            headers: {},
+                                                            method: "GET",
+                                                            resolveWithFullResponse: true,
+                                                            uri: filePath,
+                                                        })];
+                                                case 3:
+                                                    ress = _a.sent();
+                                                    return [3, 5];
+                                                case 4:
+                                                    err_2 = _a.sent();
+                                                    failure_1(err_2);
+                                                    return [2];
+                                                case 5: return [4, success_(ress)];
+                                                case 6:
+                                                    _a.sent();
+                                                    _a.label = 7;
+                                                case 7: return [2];
+                                                case 8:
+                                                    httpZipReader = new zip2RandomAccessReader_Http_1.HttpZipReader(filePath, httpZipByteLength);
+                                                    yauzl.fromRandomAccessReader(httpZipReader, httpZipByteLength, { lazyEntries: true, autoClose: false }, function (err, zip) {
+                                                        if (err) {
+                                                            debug("yauzl init ERROR");
+                                                            debug(err);
+                                                            reject(err);
+                                                            return;
+                                                        }
+                                                        zip.httpZipReader = httpZipReader;
+                                                        var zip2 = new Zip2(filePath, zip);
+                                                        zip.on("error", function (erro) {
+                                                            debug("yauzl ERROR");
+                                                            debug(erro);
+                                                            reject(erro);
+                                                        });
+                                                        zip.readEntry();
+                                                        zip.on("entry", function (entry) {
+                                                            if (entry.fileName[entry.fileName.length - 1] === "/") {
+                                                            }
+                                                            else {
+                                                                zip2.addEntry(entry);
+                                                            }
+                                                            zip.readEntry();
+                                                        });
+                                                        zip.on("end", function () {
+                                                            debug("yauzl END");
+                                                            resolve(zip2);
+                                                        });
+                                                        zip.on("close", function () {
+                                                            debug("yauzl CLOSE");
+                                                        });
+                                                    });
+                                                    return [2];
+                                            }
+                                        });
+                                    }); };
+                                    if (!needsStreamingResponse) return [3, 1];
+                                    request.get({
+                                        headers: {},
+                                        method: "HEAD",
+                                        uri: filePath,
+                                    })
+                                        .on("response", success)
+                                        .on("error", failure);
+                                    return [3, 7];
+                                case 1:
+                                    res = void 0;
+                                    _a.label = 2;
+                                case 2:
+                                    _a.trys.push([2, 4, , 5]);
+                                    return [4, requestPromise({
+                                            headers: {},
+                                            method: "HEAD",
+                                            resolveWithFullResponse: true,
+                                            uri: filePath,
+                                        })];
+                                case 3:
+                                    res = _a.sent();
+                                    return [3, 5];
+                                case 4:
+                                    err_1 = _a.sent();
+                                    failure(err_1);
+                                    return [2];
+                                case 5: return [4, success(res)];
+                                case 6:
+                                    _a.sent();
+                                    _a.label = 7;
+                                case 7: return [2];
+                            }
+                        });
+                    }); })];
+            });
+        });
+    };
+    Zip2.prototype.freeDestroy = function () {
+        debug("freeDestroy: Zip2 -- " + this.filePath);
+        if (this.zip) {
+            this.zip.close();
+        }
+    };
+    Zip2.prototype.entriesCount = function () {
+        return this.zip.entryCount;
+    };
+    Zip2.prototype.hasEntries = function () {
+        return this.entriesCount() > 0;
+    };
+    Zip2.prototype.hasEntry = function (entryPath) {
+        return this.hasEntries() && this.entries[entryPath];
+    };
+    Zip2.prototype.forEachEntry = function (callback) {
+        if (!this.hasEntries()) {
+            return;
+        }
+        Object.keys(this.entries).forEach(function (entryName) {
+            callback(entryName);
+        });
+    };
+    Zip2.prototype.entryStreamPromise = function (entryPath) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var entry;
+            return tslib_1.__generator(this, function (_a) {
+                if (!this.hasEntries() || !this.hasEntry(entryPath)) {
+                    return [2, Promise.reject("no such path in zip: " + entryPath)];
+                }
+                entry = this.entries[entryPath];
+                return [2, new Promise(function (resolve, reject) {
+                        _this.zip.openReadStream(entry, function (err, stream) {
+                            if (err) {
+                                debug("yauzl openReadStream ERROR");
+                                debug(err);
+                                reject(err);
+                                return;
+                            }
+                            var streamAndLength = {
+                                length: entry.uncompressedSize,
+                                reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                    return tslib_1.__generator(this, function (_a) {
+                                        return [2, this.entryStreamPromise(entryPath)];
+                                    });
+                                }); },
+                                stream: stream,
+                            };
+                            resolve(streamAndLength);
+                        });
+                    })];
+            });
+        });
+    };
+    Zip2.prototype.addEntry = function (entry) {
+        this.entries[entry.fileName] = entry;
+    };
+    return Zip2;
+}(zip_1.Zip));
+exports.Zip2 = Zip2;
+
+},{"../http/UrlUtils":338,"../stream/BufferUtils":340,"./zip":366,"./zip2RandomAccessReader_Http":369,"debug":142,"request":468,"request-promise-native":467,"tslib":553,"yauzl":576}],369:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var stream_1 = require("stream");
+var util = require("util");
+var debug_ = require("debug");
+var request = require("request");
+var requestPromise = require("request-promise-native");
+var yauzl = require("yauzl");
+var BufferUtils_1 = require("../stream/BufferUtils");
+var debug = debug_("r2:httpStream");
+var HttpZipReader = (function () {
+    function HttpZipReader(url, byteLength) {
+        this.url = url;
+        this.byteLength = byteLength;
+        this.firstBuffer = undefined;
+        this.firstBufferStart = 0;
+        this.firstBufferEnd = 0;
+        yauzl.RandomAccessReader.call(this);
+    }
+    HttpZipReader.prototype._readStreamForRange = function (start, end) {
+        var _this = this;
+        if (this.firstBuffer && start >= this.firstBufferStart && end <= this.firstBufferEnd) {
+            var begin = start - this.firstBufferStart;
+            var stop_1 = end - this.firstBufferStart;
+            return BufferUtils_1.bufferToStream(this.firstBuffer.slice(begin, stop_1));
+        }
+        var stream = new stream_1.PassThrough();
+        var lastByteIndex = end - 1;
+        var range = start + "-" + lastByteIndex;
+        var failure = function (err) {
+            debug(err);
+        };
+        var success = function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+            var buffer, err_1;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+                            failure("HTTP CODE " + res.statusCode);
+                            return [2];
+                        }
+                        if (!this.firstBuffer) return [3, 1];
+                        res.pipe(stream);
+                        return [3, 6];
+                    case 1:
+                        buffer = void 0;
+                        _a.label = 2;
+                    case 2:
+                        _a.trys.push([2, 4, , 5]);
+                        return [4, BufferUtils_1.streamToBufferPromise(res)];
+                    case 3:
+                        buffer = _a.sent();
+                        return [3, 5];
+                    case 4:
+                        err_1 = _a.sent();
+                        debug(err_1);
+                        stream.end();
+                        return [2];
+                    case 5:
+                        this.firstBuffer = buffer;
+                        this.firstBufferStart = start;
+                        this.firstBufferEnd = end;
+                        stream.write(buffer);
+                        stream.end();
+                        _a.label = 6;
+                    case 6: return [2];
+                }
+            });
+        }); };
+        var needsStreamingResponse = true;
+        if (needsStreamingResponse) {
+            request.get({
+                headers: { Range: "bytes=" + range },
+                method: "GET",
+                uri: this.url,
+            })
+                .on("response", success)
+                .on("error", failure);
+        }
+        else {
+            (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                var res, err_2;
+                return tslib_1.__generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            _a.trys.push([0, 2, , 3]);
+                            return [4, requestPromise({
+                                    headers: { Range: "bytes=" + range },
+                                    method: "GET",
+                                    resolveWithFullResponse: true,
+                                    uri: this.url,
+                                })];
+                        case 1:
+                            res = _a.sent();
+                            return [3, 3];
+                        case 2:
+                            err_2 = _a.sent();
+                            failure(err_2);
+                            return [2];
+                        case 3: return [4, success(res)];
+                        case 4:
+                            _a.sent();
+                            return [2];
+                    }
+                });
+            }); })();
+        }
+        return stream;
+    };
+    return HttpZipReader;
+}());
+exports.HttpZipReader = HttpZipReader;
+util.inherits(HttpZipReader, yauzl.RandomAccessReader);
+
+},{"../stream/BufferUtils":340,"debug":142,"request":468,"request-promise-native":467,"stream":undefined,"tslib":553,"util":undefined,"yauzl":576}],370:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var UrlUtils_1 = require("../http/UrlUtils");
+var zip1_1 = require("./zip1");
+var zip2_1 = require("./zip2");
+function zipLoadPromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return tslib_1.__generator(this, function (_a) {
+            if (UrlUtils_1.isHTTP(filePath)) {
+                return [2, zip2_1.Zip2.loadPromise(filePath)];
+            }
+            return [2, zip1_1.Zip1.loadPromise(filePath)];
+        });
+    });
+}
+exports.zipLoadPromise = zipLoadPromise;
+
+},{"../http/UrlUtils":338,"./zip1":367,"./zip2":368,"tslib":553}],371:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var metadata_collection_1 = require("./models/metadata-collection");
+var metadata_collection_json_converter_1 = require("./models/metadata-collection-json-converter");
+var metadata_contributor_1 = require("./models/metadata-contributor");
+var metadata_contributor_json_converter_1 = require("./models/metadata-contributor-json-converter");
+var opds2_collection_1 = require("./opds/opds2/opds2-collection");
+var opds2_collection_json_converter_1 = require("./opds/opds2/opds2-collection-json-converter");
+var ta_json_date_converter_1 = require("./_utils/ta-json-date-converter");
+var xml_js_mapper_1 = require("./_utils/xml-js-mapper");
+var ta_json_1 = require("ta-json");
+function initGlobals() {
+    ta_json_1.propertyConverters.set(Buffer, new ta_json_1.BufferConverter());
+    ta_json_1.propertyConverters.set(Date, new ta_json_date_converter_1.JsonDateConverter());
+    ta_json_1.propertyConverters.set(metadata_contributor_1.Contributor, new metadata_contributor_json_converter_1.JsonContributorConverter());
+    ta_json_1.propertyConverters.set(metadata_collection_1.Collection, new metadata_collection_json_converter_1.JsonCollectionConverter());
+    ta_json_1.propertyConverters.set(opds2_collection_1.OPDSCollection, new opds2_collection_json_converter_1.JsonOPDSCollectionConverter());
+    xml_js_mapper_1.propertyConverters.set(Buffer, new xml_js_mapper_1.BufferConverter());
+    xml_js_mapper_1.propertyConverters.set(Date, new xml_js_mapper_1.DateConverter());
+}
+exports.initGlobals = initGlobals;
+
+},{"./_utils/ta-json-date-converter":342,"./_utils/xml-js-mapper":363,"./models/metadata-collection":375,"./models/metadata-collection-json-converter":374,"./models/metadata-contributor":377,"./models/metadata-contributor-json-converter":376,"./opds/opds2/opds2-collection":395,"./opds/opds2/opds2-collection-json-converter":394,"ta-json":540}],372:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+function timeStrToSeconds(timeStr) {
+    if (!timeStr) {
+        return 0;
+    }
+    var hours = 0;
+    var minutes = 0;
+    var seconds = 0;
+    try {
+        var iMin = timeStr.indexOf("min");
+        if (iMin > 0) {
+            var minsStr = timeStr.substr(0, iMin);
+            minutes = parseFloat(minsStr);
+        }
+        else {
+            var iMs = timeStr.indexOf("ms");
+            if (iMs > 0) {
+                var msStr = timeStr.substr(0, iMs);
+                var ms = parseFloat(msStr);
+                seconds = ms / 1000;
+            }
+            else {
+                var iS = timeStr.indexOf("s");
+                if (iS > 0) {
+                    var sStr = timeStr.substr(0, iS);
+                    seconds = parseFloat(sStr);
+                }
+                else {
+                    var iH = timeStr.indexOf("h");
+                    if (iH > 0) {
+                        var hStr = timeStr.substr(0, iH);
+                        hours = parseFloat(hStr);
+                    }
+                    else {
+                        var arr = timeStr.split(":");
+                        if (arr.length === 1) {
+                            seconds = parseFloat(arr[0]);
+                        }
+                        else if (arr.length === 2) {
+                            minutes = parseFloat(arr[0]);
+                            seconds = parseFloat(arr[1]);
+                        }
+                        else if (arr.length === 3) {
+                            hours = parseFloat(arr[0]);
+                            minutes = parseFloat(arr[1]);
+                            seconds = parseFloat(arr[2]);
+                        }
+                        else {
+                            console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR ??");
+                            console.log(timeStr);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        console.log("SMIL TIME CLOCK SYNTAX PARSING ERROR!");
+        console.log(timeStr);
+        return 0;
+    }
+    return (hours * 3600) + (minutes * 60) + seconds;
+}
+exports.timeStrToSeconds = timeStrToSeconds;
+var MediaOverlayNode = (function () {
+    function MediaOverlayNode() {
+    }
+    MediaOverlayNode_1 = MediaOverlayNode;
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("text"),
+        tslib_1.__metadata("design:type", String)
+    ], MediaOverlayNode.prototype, "Text", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("audio"),
+        tslib_1.__metadata("design:type", String)
+    ], MediaOverlayNode.prototype, "Audio", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("role"),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], MediaOverlayNode.prototype, "Role", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("children"),
+        ta_json_1.JsonElementType(MediaOverlayNode_1),
+        tslib_1.__metadata("design:type", Array)
+    ], MediaOverlayNode.prototype, "Children", void 0);
+    MediaOverlayNode = MediaOverlayNode_1 = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], MediaOverlayNode);
+    return MediaOverlayNode;
+    var MediaOverlayNode_1;
+}());
+exports.MediaOverlayNode = MediaOverlayNode;
+
+},{"ta-json":540,"tslib":553}],373:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var metadata_collection_1 = require("./metadata-collection");
+var BelongsTo = (function () {
+    function BelongsTo() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("series"),
+        ta_json_1.JsonElementType(metadata_collection_1.Collection),
+        tslib_1.__metadata("design:type", Array)
+    ], BelongsTo.prototype, "Series", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("collection"),
+        ta_json_1.JsonElementType(metadata_collection_1.Collection),
+        tslib_1.__metadata("design:type", Array)
+    ], BelongsTo.prototype, "Collection", void 0);
+    BelongsTo = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], BelongsTo);
+    return BelongsTo;
+}());
+exports.BelongsTo = BelongsTo;
+
+},{"./metadata-collection":375,"ta-json":540,"tslib":553}],374:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var ta_json_1 = require("ta-json");
+var metadata_collection_1 = require("./metadata-collection");
+var JsonCollectionConverter = (function () {
+    function JsonCollectionConverter() {
+    }
+    JsonCollectionConverter.prototype.serialize = function (property) {
+        return ta_json_1.JSON.serialize(property);
+    };
+    JsonCollectionConverter.prototype.deserialize = function (value) {
+        if (typeof value === "string") {
+            var c = new metadata_collection_1.Collection();
+            c.Name = value;
+            return c;
+        }
+        else {
+            return ta_json_1.JSON.deserialize(value, metadata_collection_1.Collection);
+        }
+    };
+    JsonCollectionConverter.prototype.collapseArrayWithSingleItem = function () {
+        return true;
+    };
+    return JsonCollectionConverter;
+}());
+exports.JsonCollectionConverter = JsonCollectionConverter;
+
+},{"./metadata-collection":375,"ta-json":540}],375:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Collection = (function () {
+    function Collection() {
+    }
+    Collection.prototype._OnDeserialized = function () {
+        if (!this.Name) {
+            console.log("Collection.Name is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", String)
+    ], Collection.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        tslib_1.__metadata("design:type", String)
+    ], Collection.prototype, "SortAs", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], Collection.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("position"),
+        tslib_1.__metadata("design:type", Number)
+    ], Collection.prototype, "Position", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], Collection.prototype, "_OnDeserialized", null);
+    Collection = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Collection);
+    return Collection;
+}());
+exports.Collection = Collection;
+
+},{"ta-json":540,"tslib":553}],376:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var ta_json_1 = require("ta-json");
+var metadata_contributor_1 = require("./metadata-contributor");
+var JsonContributorConverter = (function () {
+    function JsonContributorConverter() {
+    }
+    JsonContributorConverter.prototype.serialize = function (property) {
+        return ta_json_1.JSON.serialize(property);
+    };
+    JsonContributorConverter.prototype.deserialize = function (value) {
+        if (typeof value === "string") {
+            var c = new metadata_contributor_1.Contributor();
+            c.Name = value;
+            return c;
+        }
+        else {
+            return ta_json_1.JSON.deserialize(value, metadata_contributor_1.Contributor);
+        }
+    };
+    JsonContributorConverter.prototype.collapseArrayWithSingleItem = function () {
+        return true;
+    };
+    return JsonContributorConverter;
+}());
+exports.JsonContributorConverter = JsonContributorConverter;
+
+},{"./metadata-contributor":377,"ta-json":540}],377:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Contributor = (function () {
+    function Contributor() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", Object)
+    ], Contributor.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        tslib_1.__metadata("design:type", String)
+    ], Contributor.prototype, "SortAs", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], Contributor.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("role"),
+        tslib_1.__metadata("design:type", String)
+    ], Contributor.prototype, "Role", void 0);
+    Contributor = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Contributor);
+    return Contributor;
+}());
+exports.Contributor = Contributor;
+
+},{"ta-json":540,"tslib":553}],378:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Encrypted = (function () {
+    function Encrypted() {
+        this.DecryptedLengthBeforeInflate = -1;
+        this.CypherBlockPadding = -1;
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("scheme"),
+        tslib_1.__metadata("design:type", String)
+    ], Encrypted.prototype, "Scheme", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("profile"),
+        tslib_1.__metadata("design:type", String)
+    ], Encrypted.prototype, "Profile", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        tslib_1.__metadata("design:type", String)
+    ], Encrypted.prototype, "Algorithm", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("compression"),
+        tslib_1.__metadata("design:type", String)
+    ], Encrypted.prototype, "Compression", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("original-length"),
+        tslib_1.__metadata("design:type", Number)
+    ], Encrypted.prototype, "OriginalLength", void 0);
+    Encrypted = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Encrypted);
+    return Encrypted;
+}());
+exports.Encrypted = Encrypted;
+
+},{"ta-json":540,"tslib":553}],379:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var MediaOverlay = (function () {
+    function MediaOverlay() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("active-class"),
+        tslib_1.__metadata("design:type", String)
+    ], MediaOverlay.prototype, "ActiveClass", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("playback-active-class"),
+        tslib_1.__metadata("design:type", String)
+    ], MediaOverlay.prototype, "PlaybackActiveClass", void 0);
+    MediaOverlay = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], MediaOverlay);
+    return MediaOverlay;
+}());
+exports.MediaOverlay = MediaOverlay;
+
+},{"ta-json":540,"tslib":553}],380:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var metadata_encrypted_1 = require("./metadata-encrypted");
+var Properties = (function () {
+    function Properties() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("contains"),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Properties.prototype, "Contains", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("layout"),
+        tslib_1.__metadata("design:type", String)
+    ], Properties.prototype, "Layout", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("media-overlay"),
+        tslib_1.__metadata("design:type", String)
+    ], Properties.prototype, "MediaOverlay", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("orientation"),
+        tslib_1.__metadata("design:type", String)
+    ], Properties.prototype, "Orientation", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("overflow"),
+        tslib_1.__metadata("design:type", String)
+    ], Properties.prototype, "Overflow", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("page"),
+        tslib_1.__metadata("design:type", String)
+    ], Properties.prototype, "Page", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("spread"),
+        tslib_1.__metadata("design:type", String)
+    ], Properties.prototype, "Spread", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("encrypted"),
+        tslib_1.__metadata("design:type", metadata_encrypted_1.Encrypted)
+    ], Properties.prototype, "Encrypted", void 0);
+    Properties = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Properties);
+    return Properties;
+}());
+exports.Properties = Properties;
+
+},{"./metadata-encrypted":378,"ta-json":540,"tslib":553}],381:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Subject = (function () {
+    function Subject() {
+    }
+    Subject.prototype._OnDeserialized = function () {
+        if (!this.Name) {
+            console.log("Subject.Name is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "SortAs", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("scheme"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Scheme", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("code"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Code", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], Subject.prototype, "_OnDeserialized", null);
+    Subject = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Subject);
+    return Subject;
+}());
+exports.Subject = Subject;
+
+},{"ta-json":540,"tslib":553}],382:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var metadata_belongsto_1 = require("./metadata-belongsto");
+var metadata_contributor_1 = require("./metadata-contributor");
+var metadata_media_overlay_1 = require("./metadata-media-overlay");
+var metadata_properties_1 = require("./metadata-properties");
+var metadata_subject_1 = require("./metadata-subject");
+var Metadata = (function () {
+    function Metadata() {
+    }
+    Metadata.prototype._OnDeserialized = function () {
+        if (!this.Title) {
+            console.log("Metadata.Title is not set!");
+        }
+        if (!this.Identifier) {
+            console.log("Metadata.Identifier is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], Metadata.prototype, "RDFType", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("title"),
+        tslib_1.__metadata("design:type", Object)
+    ], Metadata.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], Metadata.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("author"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Author", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("translator"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Translator", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("editor"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Editor", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("artist"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Artist", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("illustrator"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Illustrator", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("letterer"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Letterer", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("penciler"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Penciler", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("colorist"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Colorist", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("inker"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Inker", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("narrator"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Narrator", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("contributor"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Contributor", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("publisher"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Publisher", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("imprint"),
+        ta_json_1.JsonElementType(metadata_contributor_1.Contributor),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Imprint", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("language"),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Language", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("modified"),
+        tslib_1.__metadata("design:type", Date)
+    ], Metadata.prototype, "Modified", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("published"),
+        tslib_1.__metadata("design:type", Date)
+    ], Metadata.prototype, "PublicationDate", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("description"),
+        tslib_1.__metadata("design:type", String)
+    ], Metadata.prototype, "Description", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("direction"),
+        tslib_1.__metadata("design:type", String)
+    ], Metadata.prototype, "Direction", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rendition"),
+        tslib_1.__metadata("design:type", metadata_properties_1.Properties)
+    ], Metadata.prototype, "Rendition", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("source"),
+        tslib_1.__metadata("design:type", String)
+    ], Metadata.prototype, "Source", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("epub-type"),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "EpubType", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rights"),
+        tslib_1.__metadata("design:type", String)
+    ], Metadata.prototype, "Rights", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("subject"),
+        ta_json_1.JsonElementType(metadata_subject_1.Subject),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Subject", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("belongs_to"),
+        tslib_1.__metadata("design:type", metadata_belongsto_1.BelongsTo)
+    ], Metadata.prototype, "BelongsTo", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("duration"),
+        tslib_1.__metadata("design:type", Number)
+    ], Metadata.prototype, "Duration", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("media-overlay"),
+        tslib_1.__metadata("design:type", metadata_media_overlay_1.MediaOverlay)
+    ], Metadata.prototype, "MediaOverlay", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], Metadata.prototype, "_OnDeserialized", null);
+    Metadata = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Metadata);
+    return Metadata;
+}());
+exports.Metadata = Metadata;
+
+},{"./metadata-belongsto":373,"./metadata-contributor":377,"./metadata-media-overlay":379,"./metadata-properties":380,"./metadata-subject":381,"ta-json":540,"tslib":553}],383:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
+var ta_json_1 = require("ta-json");
+var metadata_properties_1 = require("./metadata-properties");
+var Link = (function () {
+    function Link() {
+    }
+    Link_1 = Link;
+    Link.prototype.AddRels = function (rels) {
+        var _this = this;
+        rels.forEach(function (rel) {
+            _this.AddRel(rel);
+        });
+    };
+    Link.prototype.AddRel = function (rel) {
+        if (this.HasRel(rel)) {
+            return;
+        }
+        if (!this.Rel) {
+            this.Rel = [rel];
+        }
+        else {
+            this.Rel.push(rel);
+        }
+    };
+    Link.prototype.HasRel = function (rel) {
+        return this.Rel && this.Rel.indexOf(rel) >= 0;
+    };
+    Link.prototype._OnDeserialized = function () {
+        if (!this.Href) {
+            console.log("Link.Href is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("href"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Href", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("type"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "TypeLink", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("height"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "Height", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("width"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "Width", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("title"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("properties"),
+        tslib_1.__metadata("design:type", metadata_properties_1.Properties)
+    ], Link.prototype, "Properties", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("duration"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "Duration", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("bitrate"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "Bitrate", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("templated"),
+        tslib_1.__metadata("design:type", Boolean)
+    ], Link.prototype, "Templated", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("children"),
+        ta_json_1.JsonElementType(Link_1),
+        tslib_1.__metadata("design:type", Array)
+    ], Link.prototype, "Children", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rel"),
+        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Link.prototype, "Rel", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], Link.prototype, "_OnDeserialized", null);
+    Link = Link_1 = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Link);
+    return Link;
+    var Link_1;
+}());
+exports.Link = Link;
+
+},{"../_utils/ta-json-string-converter":343,"./metadata-properties":380,"ta-json":540,"tslib":553}],384:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_string_converter_1 = require("../_utils/ta-json-string-converter");
+var ta_json_1 = require("ta-json");
+var metadata_1 = require("./metadata");
+var publication_link_1 = require("./publication-link");
+var Publication = (function () {
+    function Publication() {
+    }
+    Publication.prototype.freeDestroy = function () {
+        console.log("freeDestroy: Publication");
+        if (this.Internal) {
+            var zipInternal = this.findFromInternal("zip");
+            if (zipInternal) {
+                var zip = zipInternal.Value;
+                zip.freeDestroy();
+            }
+        }
+    };
+    Publication.prototype.findFromInternal = function (key) {
+        if (this.Internal) {
+            var found = this.Internal.find(function (internal) {
+                return internal.Name === key;
+            });
+            if (found) {
+                return found;
+            }
+        }
+        return undefined;
+    };
+    Publication.prototype.AddToInternal = function (key, value) {
+        var existing = this.findFromInternal(key);
+        if (existing) {
+            existing.Value = value;
+        }
+        else {
+            if (!this.Internal) {
+                this.Internal = [];
+            }
+            var internal = { Name: key, Value: value };
+            this.Internal.push(internal);
+        }
+    };
+    Publication.prototype.GetCover = function () {
+        return this.searchLinkByRel("cover");
+    };
+    Publication.prototype.GetNavDoc = function () {
+        return this.searchLinkByRel("contents");
+    };
+    Publication.prototype.searchLinkByRel = function (rel) {
+        if (this.Resources) {
+            var ll = this.Resources.find(function (link) {
+                return link.HasRel(rel);
+            });
+            if (ll) {
+                return ll;
+            }
+        }
+        if (this.Spine) {
+            var ll = this.Spine.find(function (link) {
+                return link.HasRel(rel);
+            });
+            if (ll) {
+                return ll;
+            }
+        }
+        if (this.Links) {
+            var ll = this.Links.find(function (link) {
+                return link.HasRel(rel);
+            });
+            if (ll) {
+                return ll;
+            }
+        }
+        return undefined;
+    };
+    Publication.prototype.AddLink = function (typeLink, rel, url, templated) {
+        var link = new publication_link_1.Link();
+        link.AddRels(rel);
+        link.Href = url;
+        link.TypeLink = typeLink;
+        link.Templated = templated;
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(link);
+    };
+    Publication.prototype.GetPreFetchResources = function () {
+        var links = [];
+        if (this.Resources) {
+            var mediaTypes_1 = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
+            this.Resources.forEach(function (link) {
+                mediaTypes_1.forEach(function (mediaType) {
+                    if (link.TypeLink === mediaType) {
+                        links.push(link);
+                    }
+                });
+            });
+        }
+        return links;
+    };
+    Publication.prototype._OnDeserialized = function () {
+        if (!this.Metadata) {
+            console.log("Publication.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("Publication.Links is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("@context"),
+        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "Context", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("metadata"),
+        tslib_1.__metadata("design:type", metadata_1.Metadata)
+    ], Publication.prototype, "Metadata", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("spine"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "Spine", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("resources"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "Resources", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("toc"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "TOC", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("page-list"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "PageList", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("landmarks"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "Landmarks", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("loi"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "LOI", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("loa"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "LOA", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("lov"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "LOV", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("lot"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "LOT", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("images"),
+        ta_json_1.JsonElementType(publication_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Publication.prototype, "Images", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], Publication.prototype, "_OnDeserialized", null);
+    Publication = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Publication);
+    return Publication;
+}());
+exports.Publication = Publication;
+
+},{"../_utils/ta-json-string-converter":343,"./metadata":382,"./publication-link":383,"ta-json":540,"tslib":553}],385:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var opds2_1 = require("./opds2/opds2");
+var opds2_belongsTo_1 = require("./opds2/opds2-belongsTo");
+var opds2_collection_1 = require("./opds2/opds2-collection");
+var opds2_contributor_1 = require("./opds2/opds2-contributor");
+var opds2_indirectAcquisition_1 = require("./opds2/opds2-indirectAcquisition");
+var opds2_link_1 = require("./opds2/opds2-link");
+var opds2_metadata_1 = require("./opds2/opds2-metadata");
+var opds2_price_1 = require("./opds2/opds2-price");
+var opds2_properties_1 = require("./opds2/opds2-properties");
+var opds2_publication_1 = require("./opds2/opds2-publication");
+var opds2_publicationMetadata_1 = require("./opds2/opds2-publicationMetadata");
+var opds2_subject_1 = require("./opds2/opds2-subject");
+function convertOpds1ToOpds2(feed) {
+    var opds2feed = new opds2_1.OPDSFeed();
+    opds2feed.Metadata = new opds2_metadata_1.OPDSMetadata();
+    opds2feed.Metadata.Title = feed.Title;
+    opds2feed.Metadata.Modified = feed.Updated;
+    if (feed.OpensearchTotalResults) {
+        opds2feed.Metadata.NumberOfItems = feed.OpensearchTotalResults;
+    }
+    if (feed.OpensearchItemsPerPage) {
+        opds2feed.Metadata.ItemsPerPage = feed.OpensearchItemsPerPage;
+    }
+    if (feed.Authors) {
+        feed.Authors.forEach(function (aut) {
+            var cont = new opds2_contributor_1.OPDSContributor();
+            cont.Name = aut.Name;
+            cont.Identifier = aut.Uri;
+            if (!opds2feed.Metadata.Author) {
+                opds2feed.Metadata.Author = [];
+            }
+            opds2feed.Metadata.Author.push(cont);
+        });
+    }
+    if (feed.Entries) {
+        feed.Entries.forEach(function (entry) {
+            var isAnNavigation = true;
+            var collLink = new opds2_link_1.OPDSLink();
+            if (entry.Links) {
+                entry.Links.forEach(function (l) {
+                    if (l.HasRel("http://opds-spec.org/acquisition")) {
+                        isAnNavigation = false;
+                    }
+                    if (l.HasRel("collection") || l.HasRel("http://opds-spec.org/group")) {
+                        collLink.AddRel("collection");
+                        collLink.Href = l.Href;
+                        collLink.Title = l.Title;
+                    }
+                });
+            }
+            if (!isAnNavigation) {
+                var p_1 = new opds2_publication_1.OPDSPublication();
+                p_1.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+                p_1.Metadata.Title = entry.Title;
+                if (entry.DcIdentifier) {
+                    p_1.Metadata.Identifier = entry.DcIdentifier;
+                }
+                else {
+                    p_1.Metadata.Identifier = entry.Id;
+                }
+                p_1.Metadata.Language = [entry.DcLanguage];
+                p_1.Metadata.Modified = entry.Updated;
+                p_1.Metadata.PublicationDate = entry.Published;
+                p_1.Metadata.Rights = entry.DcRights;
+                if (entry.Series) {
+                    entry.Series.forEach(function (s) {
+                        var coll = new opds2_collection_1.OPDSCollection();
+                        coll.Name = s.Name;
+                        coll.Position = s.Position;
+                        var link = new opds2_link_1.OPDSLink();
+                        link.Href = s.Url;
+                        coll.Links = [];
+                        coll.Links.push(link);
+                        if (!p_1.Metadata.BelongsTo) {
+                            p_1.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+                        }
+                        if (!p_1.Metadata.BelongsTo.Series) {
+                            p_1.Metadata.BelongsTo.Series = [];
+                        }
+                        p_1.Metadata.BelongsTo.Series.push(coll);
+                    });
+                }
+                if (entry.DcPublisher) {
+                    var c = new opds2_contributor_1.OPDSContributor();
+                    c.Name = entry.DcPublisher;
+                    if (!p_1.Metadata.Publisher) {
+                        p_1.Metadata.Publisher = [];
+                    }
+                    p_1.Metadata.Publisher.push(c);
+                }
+                if (entry.Categories) {
+                    entry.Categories.forEach(function (cat) {
+                        var subj = new opds2_subject_1.OPDSSubject();
+                        subj.Code = cat.Term;
+                        subj.Name = cat.Label;
+                        subj.Scheme = cat.Scheme;
+                        if (!p_1.Metadata.Subject) {
+                            p_1.Metadata.Subject = [];
+                        }
+                        p_1.Metadata.Subject.push(subj);
+                    });
+                }
+                if (entry.Authors) {
+                    entry.Authors.forEach(function (aut) {
+                        var cont = new opds2_contributor_1.OPDSContributor();
+                        cont.Name = aut.Name;
+                        cont.Identifier = aut.Uri;
+                        if (!p_1.Metadata.Author) {
+                            p_1.Metadata.Author = [];
+                        }
+                        p_1.Metadata.Author.push(cont);
+                    });
+                }
+                if (entry.Content) {
+                    p_1.Metadata.Description = entry.Content;
+                }
+                else if (entry.Summary) {
+                    p_1.Metadata.Description = entry.Summary;
+                }
+                if (entry.Links) {
+                    entry.Links.forEach(function (link) {
+                        var l = new opds2_link_1.OPDSLink();
+                        l.Href = link.Href;
+                        l.TypeLink = link.Type;
+                        l.AddRel(link.Rel);
+                        l.Title = link.Title;
+                        if (link.OpdsIndirectAcquisitions && link.OpdsIndirectAcquisitions.length) {
+                            if (!l.Properties) {
+                                l.Properties = new opds2_properties_1.OPDSProperties();
+                            }
+                            link.OpdsIndirectAcquisitions.forEach(function (ia) {
+                                var ind = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
+                                ind.TypeAcquisition = ia.OpdsIndirectAcquisitionType;
+                                if (ia.OpdsIndirectAcquisitions && ia.OpdsIndirectAcquisitions.length) {
+                                    ia.OpdsIndirectAcquisitions.forEach(function (iac) {
+                                        var cia = new opds2_indirectAcquisition_1.OPDSIndirectAcquisition();
+                                        cia.TypeAcquisition = iac.OpdsIndirectAcquisitionType;
+                                        if (!ind.Children) {
+                                            ind.Children = [];
+                                        }
+                                        ind.Children.push(cia);
+                                    });
+                                }
+                                if (!l.Properties.IndirectAcquisitions) {
+                                    l.Properties.IndirectAcquisitions = [];
+                                }
+                                l.Properties.IndirectAcquisitions.push(ind);
+                            });
+                        }
+                        if (link.OpdsPrice && link.OpdsPriceCurrencyCode) {
+                            if (!l.Properties) {
+                                l.Properties = new opds2_properties_1.OPDSProperties();
+                            }
+                            l.Properties.Price = new opds2_price_1.OPDSPrice();
+                            l.Properties.Price.Currency = link.OpdsPriceCurrencyCode;
+                            l.Properties.Price.Value = link.OpdsPrice;
+                        }
+                        if (link.HasRel("collection") || link.HasRel("http://opds-spec.org/group")) {
+                        }
+                        else if (link.HasRel("http://opds-spec.org/image") ||
+                            link.HasRel("http://opds-spec.org/image/thumbnail")) {
+                            if (!p_1.Images) {
+                                p_1.Images = [];
+                            }
+                            p_1.Images.push(l);
+                        }
+                        else {
+                            if (!p_1.Links) {
+                                p_1.Links = [];
+                            }
+                            p_1.Links.push(l);
+                        }
+                    });
+                }
+                if (collLink.Href) {
+                    opds2feed.AddPublicationInGroup(p_1, collLink);
+                }
+                else {
+                    if (!opds2feed.Publications) {
+                        opds2feed.Publications = [];
+                    }
+                    opds2feed.Publications.push(p_1);
+                }
+            }
+            else {
+                var linkNav = new opds2_link_1.OPDSLink();
+                linkNav.Title = entry.Title;
+                if (entry.Links && entry.Links[0]) {
+                    linkNav.AddRel(entry.Links[0].Rel);
+                    linkNav.TypeLink = entry.Links[0].Type;
+                    linkNav.Href = entry.Links[0].Href;
+                }
+                if (collLink.Href) {
+                    opds2feed.AddNavigationInGroup(linkNav, collLink);
+                }
+                else {
+                    if (!opds2feed.Navigation) {
+                        opds2feed.Navigation = [];
+                    }
+                    opds2feed.Navigation.push(linkNav);
+                }
+            }
+        });
+    }
+    if (feed.Links) {
+        feed.Links.forEach(function (l) {
+            var linkFeed = new opds2_link_1.OPDSLink();
+            linkFeed.Href = l.Href;
+            linkFeed.AddRel(l.Rel);
+            linkFeed.TypeLink = l.Type;
+            linkFeed.Title = l.Title;
+            if (l.HasRel("http://opds-spec.org/facet")) {
+                linkFeed.Properties = new opds2_properties_1.OPDSProperties();
+                linkFeed.Properties.NumberOfItems = l.ThrCount;
+                opds2feed.AddFacet(linkFeed, l.FacetGroup);
+            }
+            else {
+                if (!opds2feed.Links) {
+                    opds2feed.Links = [];
+                }
+                opds2feed.Links.push(linkFeed);
+            }
+        });
+    }
+    return opds2feed;
+}
+exports.convertOpds1ToOpds2 = convertOpds1ToOpds2;
+
+},{"./opds2/opds2":407,"./opds2/opds2-belongsTo":393,"./opds2/opds2-collection":395,"./opds2/opds2-contributor":396,"./opds2/opds2-indirectAcquisition":399,"./opds2/opds2-link":400,"./opds2/opds2-metadata":401,"./opds2/opds2-price":402,"./opds2/opds2-properties":403,"./opds2/opds2-publication":404,"./opds2/opds2-publicationMetadata":405,"./opds2/opds2-subject":406}],386:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Author = (function () {
+    function Author() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:name/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:uri/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "Uri", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:email/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "Email", void 0);
+    Author = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Author);
+    return Author;
+}());
+exports.Author = Author;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],387:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Category = (function () {
+    function Category() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@term"),
+        tslib_1.__metadata("design:type", String)
+    ], Category.prototype, "Term", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@scheme"),
+        tslib_1.__metadata("design:type", String)
+    ], Category.prototype, "Scheme", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@label"),
+        tslib_1.__metadata("design:type", String)
+    ], Category.prototype, "Label", void 0);
+    Category = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Category);
+    return Category;
+}());
+exports.Category = Category;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],388:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var opds_author_1 = require("./opds-author");
+var opds_category_1 = require("./opds-category");
+var opds_link_1 = require("./opds-link");
+var opds_serie_1 = require("./opds-serie");
+var Entry = (function () {
+    function Entry() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:ratingValue"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "SchemaRatingValue", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("schema:Rating/@schema:additionalType"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "SchemaRatingAdditionalType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@schema:additionalType"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "SchemaAdditionalType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:author"),
+        xml_js_mapper_1.XmlItemType(opds_author_1.Author),
+        tslib_1.__metadata("design:type", Array)
+    ], Entry.prototype, "Authors", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "Id", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:summary/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "Summary", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:summary/@type"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "SummaryType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:language/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcLanguage", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:extent/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcExtent", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:publisher/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcPublisher", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:rights/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcRights", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:issued/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcIssued", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcIdentifier", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dcterms:identifier/@xsi:type"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "DcIdentifierType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("bibframe:distribution/@bibframe:ProviderName"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "BibFrameDistributionProviderName", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:category"),
+        xml_js_mapper_1.XmlItemType(opds_category_1.Category),
+        tslib_1.__metadata("design:type", Array)
+    ], Entry.prototype, "Categories", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:content/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "Content", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:content/@type"),
+        tslib_1.__metadata("design:type", String)
+    ], Entry.prototype, "ContentType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
+        tslib_1.__metadata("design:type", Date)
+    ], Entry.prototype, "Updated", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:published/text()"),
+        tslib_1.__metadata("design:type", Date)
+    ], Entry.prototype, "Published", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:link"),
+        xml_js_mapper_1.XmlItemType(opds_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], Entry.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("schema:Series"),
+        xml_js_mapper_1.XmlItemType(opds_serie_1.Serie),
+        tslib_1.__metadata("design:type", Array)
+    ], Entry.prototype, "Series", void 0);
+    Entry = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Entry);
+    return Entry;
+}());
+exports.Entry = Entry;
+
+},{"../../_utils/xml-js-mapper":363,"./opds-author":386,"./opds-category":387,"./opds-link":390,"./opds-serie":391,"tslib":553}],389:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var IndirectAcquisition = (function () {
+    function IndirectAcquisition() {
+    }
+    IndirectAcquisition_1 = IndirectAcquisition;
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], IndirectAcquisition.prototype, "OpdsIndirectAcquisitionType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
+        xml_js_mapper_1.XmlItemType(IndirectAcquisition_1),
+        tslib_1.__metadata("design:type", Array)
+    ], IndirectAcquisition.prototype, "OpdsIndirectAcquisitions", void 0);
+    IndirectAcquisition = IndirectAcquisition_1 = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], IndirectAcquisition);
+    return IndirectAcquisition;
+    var IndirectAcquisition_1;
+}());
+exports.IndirectAcquisition = IndirectAcquisition;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],390:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var opds_indirectAcquisition_1 = require("./opds-indirectAcquisition");
+var Link = (function () {
+    function Link() {
+    }
+    Link.prototype.HasRel = function (rel) {
+        return this.Rel === rel;
+    };
+    Link.prototype.SetRel = function (rel) {
+        this.Rel = rel;
+    };
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opds:price/text()"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "OpdsPrice", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opds:price/@currencycode"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "OpdsPriceCurrencyCode", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opds:indirectAcquisition"),
+        xml_js_mapper_1.XmlItemType(opds_indirectAcquisition_1.IndirectAcquisition),
+        tslib_1.__metadata("design:type", Array)
+    ], Link.prototype, "OpdsIndirectAcquisitions", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Type", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@thr:count"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "ThrCount", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@opds:facetGroup"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "FacetGroup", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@href"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Href", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@title"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@rel"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Rel", void 0);
+    Link = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Link);
+    return Link;
+}());
+exports.Link = Link;
+
+},{"../../_utils/xml-js-mapper":363,"./opds-indirectAcquisition":389,"tslib":553}],391:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Serie = (function () {
+    function Serie() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@schema:name"),
+        tslib_1.__metadata("design:type", String)
+    ], Serie.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@schema:url"),
+        tslib_1.__metadata("design:type", String)
+    ], Serie.prototype, "Url", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@schema:position"),
+        tslib_1.__metadata("design:type", Number)
+    ], Serie.prototype, "Position", void 0);
+    Serie = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Serie);
+    return Serie;
+}());
+exports.Serie = Serie;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],392:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var opds_author_1 = require("./opds-author");
+var opds_entry_1 = require("./opds-entry");
+var opds_link_1 = require("./opds-link");
+var OPDS = (function () {
+    function OPDS() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opensearch:totalResults/text()"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDS.prototype, "OpensearchTotalResults", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opensearch:itemsPerPage/text()"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDS.prototype, "OpensearchItemsPerPage", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:id/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDS.prototype, "Id", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:title/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDS.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:subtitle/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDS.prototype, "SubTitle", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:updated/text()"),
+        tslib_1.__metadata("design:type", Date)
+    ], OPDS.prototype, "Updated", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:icon/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDS.prototype, "Icon", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:author"),
+        xml_js_mapper_1.XmlItemType(opds_author_1.Author),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDS.prototype, "Authors", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDS.prototype, "Lang", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:link"),
+        xml_js_mapper_1.XmlItemType(opds_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDS.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("atom:entry"),
+        xml_js_mapper_1.XmlItemType(opds_entry_1.Entry),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDS.prototype, "Entries", void 0);
+    OPDS = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            app: "http://www.w3.org/2007/app",
+            atom: "http://www.w3.org/2005/Atom",
+            bibframe: "http://bibframe.org/vocab/",
+            dcterms: "http://purl.org/dc/terms/",
+            odl: "http://opds-spec.org/odl",
+            opds: "http://opds-spec.org/2010/catalog",
+            opensearch: "http://a9.com/-/spec/opensearch/1.1/",
+            relevance: "http://a9.com/-/opensearch/extensions/relevance/1.0/",
+            schema: "http://schema.org",
+            thr: "http://purl.org/syndication/thread/1.0",
+            xml: "http://www.w3.org/XML/1998/namespace",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], OPDS);
+    return OPDS;
+}());
+exports.OPDS = OPDS;
+
+},{"../../_utils/xml-js-mapper":363,"./opds-author":386,"./opds-entry":388,"./opds-link":390,"tslib":553}],393:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_collection_1 = require("./opds2-collection");
+var OPDSBelongsTo = (function () {
+    function OPDSBelongsTo() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("series"),
+        ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSBelongsTo.prototype, "Series", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("collection"),
+        ta_json_1.JsonElementType(opds2_collection_1.OPDSCollection),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSBelongsTo.prototype, "Collection", void 0);
+    OPDSBelongsTo = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSBelongsTo);
+    return OPDSBelongsTo;
+}());
+exports.OPDSBelongsTo = OPDSBelongsTo;
+
+},{"./opds2-collection":395,"ta-json":540,"tslib":553}],394:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var ta_json_1 = require("ta-json");
+var opds2_collection_1 = require("./opds2-collection");
+var JsonOPDSCollectionConverter = (function () {
+    function JsonOPDSCollectionConverter() {
+    }
+    JsonOPDSCollectionConverter.prototype.serialize = function (property) {
+        return ta_json_1.JSON.serialize(property);
+    };
+    JsonOPDSCollectionConverter.prototype.deserialize = function (value) {
+        if (typeof value === "string") {
+            var c = new opds2_collection_1.OPDSCollection();
+            c.Name = value;
+            return c;
+        }
+        else {
+            return ta_json_1.JSON.deserialize(value, opds2_collection_1.OPDSCollection);
+        }
+    };
+    JsonOPDSCollectionConverter.prototype.collapseArrayWithSingleItem = function () {
+        return true;
+    };
+    return JsonOPDSCollectionConverter;
+}());
+exports.JsonOPDSCollectionConverter = JsonOPDSCollectionConverter;
+
+},{"./opds2-collection":395,"ta-json":540}],395:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_link_1 = require("./opds2-link");
+var OPDSCollection = (function () {
+    function OPDSCollection() {
+    }
+    OPDSCollection.prototype._OnDeserialized = function () {
+        if (!this.Name) {
+            console.log("OPDSCollection.Name is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSCollection.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSCollection.prototype, "SortAs", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSCollection.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("position"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSCollection.prototype, "Position", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSCollection.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSCollection.prototype, "_OnDeserialized", null);
+    OPDSCollection = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSCollection);
+    return OPDSCollection;
+}());
+exports.OPDSCollection = OPDSCollection;
+
+},{"./opds2-link":400,"ta-json":540,"tslib":553}],396:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_link_1 = require("./opds2-link");
+var OPDSContributor = (function () {
+    function OPDSContributor() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", Object)
+    ], OPDSContributor.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSContributor.prototype, "SortAs", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSContributor.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("role"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSContributor.prototype, "Role", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSContributor.prototype, "Links", void 0);
+    OPDSContributor = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSContributor);
+    return OPDSContributor;
+}());
+exports.OPDSContributor = OPDSContributor;
+
+},{"./opds2-link":400,"ta-json":540,"tslib":553}],397:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_link_1 = require("./opds2-link");
+var opds2_metadata_1 = require("./opds2-metadata");
+var OPDSFacet = (function () {
+    function OPDSFacet() {
+    }
+    OPDSFacet.prototype._OnDeserialized = function () {
+        if (!this.Metadata) {
+            console.log("OPDSFacet.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("OPDSFacet.Links is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("metadata"),
+        tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
+    ], OPDSFacet.prototype, "Metadata", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFacet.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSFacet.prototype, "_OnDeserialized", null);
+    OPDSFacet = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSFacet);
+    return OPDSFacet;
+}());
+exports.OPDSFacet = OPDSFacet;
+
+},{"./opds2-link":400,"./opds2-metadata":401,"ta-json":540,"tslib":553}],398:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_link_1 = require("./opds2-link");
+var opds2_metadata_1 = require("./opds2-metadata");
+var opds2_publication_1 = require("./opds2-publication");
+var OPDSGroup = (function () {
+    function OPDSGroup() {
+    }
+    OPDSGroup.prototype._OnDeserialized = function () {
+        if (!this.Metadata) {
+            console.log("OPDSGroup.Metadata is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("metadata"),
+        tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
+    ], OPDSGroup.prototype, "Metadata", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("publications"),
+        ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSGroup.prototype, "Publications", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSGroup.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("navigation"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSGroup.prototype, "Navigation", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSGroup.prototype, "_OnDeserialized", null);
+    OPDSGroup = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSGroup);
+    return OPDSGroup;
+}());
+exports.OPDSGroup = OPDSGroup;
+
+},{"./opds2-link":400,"./opds2-metadata":401,"./opds2-publication":404,"ta-json":540,"tslib":553}],399:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var OPDSIndirectAcquisition = (function () {
+    function OPDSIndirectAcquisition() {
+    }
+    OPDSIndirectAcquisition_1 = OPDSIndirectAcquisition;
+    OPDSIndirectAcquisition.prototype._OnDeserialized = function () {
+        if (!this.TypeAcquisition) {
+            console.log("OPDSIndirectAcquisition.TypeAcquisition is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("type"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSIndirectAcquisition.prototype, "TypeAcquisition", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("child"),
+        ta_json_1.JsonElementType(OPDSIndirectAcquisition_1),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSIndirectAcquisition.prototype, "Children", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSIndirectAcquisition.prototype, "_OnDeserialized", null);
+    OPDSIndirectAcquisition = OPDSIndirectAcquisition_1 = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSIndirectAcquisition);
+    return OPDSIndirectAcquisition;
+    var OPDSIndirectAcquisition_1;
+}());
+exports.OPDSIndirectAcquisition = OPDSIndirectAcquisition;
+
+},{"ta-json":540,"tslib":553}],400:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
+var ta_json_1 = require("ta-json");
+var opds2_properties_1 = require("./opds2-properties");
+var OPDSLink = (function () {
+    function OPDSLink() {
+    }
+    OPDSLink_1 = OPDSLink;
+    OPDSLink.prototype.AddRels = function (rels) {
+        var _this = this;
+        rels.forEach(function (rel) {
+            _this.AddRel(rel);
+        });
+    };
+    OPDSLink.prototype.AddRel = function (rel) {
+        if (this.HasRel(rel)) {
+            return;
+        }
+        if (!this.Rel) {
+            this.Rel = [rel];
+        }
+        else {
+            this.Rel.push(rel);
+        }
+    };
+    OPDSLink.prototype.HasRel = function (rel) {
+        return this.Rel && this.Rel.indexOf(rel) >= 0;
+    };
+    OPDSLink.prototype._OnDeserialized = function () {
+        if (!this.Href) {
+            console.log("Link.Href is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("href"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSLink.prototype, "Href", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("type"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSLink.prototype, "TypeLink", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("height"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSLink.prototype, "Height", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("width"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSLink.prototype, "Width", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("title"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSLink.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("properties"),
+        tslib_1.__metadata("design:type", opds2_properties_1.OPDSProperties)
+    ], OPDSLink.prototype, "Properties", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("duration"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSLink.prototype, "Duration", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("templated"),
+        tslib_1.__metadata("design:type", Boolean)
+    ], OPDSLink.prototype, "Templated", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("children"),
+        ta_json_1.JsonElementType(OPDSLink_1),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSLink.prototype, "Children", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("bitrate"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSLink.prototype, "Bitrate", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rel"),
+        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSLink.prototype, "Rel", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSLink.prototype, "_OnDeserialized", null);
+    OPDSLink = OPDSLink_1 = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSLink);
+    return OPDSLink;
+    var OPDSLink_1;
+}());
+exports.OPDSLink = OPDSLink;
+
+},{"../../_utils/ta-json-string-converter":343,"./opds2-properties":403,"ta-json":540,"tslib":553}],401:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_contributor_1 = require("./opds2-contributor");
+var OPDSMetadata = (function () {
+    function OPDSMetadata() {
+    }
+    OPDSMetadata.prototype._OnDeserialized = function () {
+        if (!this.Title) {
+            console.log("OPDSMetadata.Title is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("author"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSMetadata.prototype, "Author", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSMetadata.prototype, "RDFType", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("title"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSMetadata.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("numberOfItems"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSMetadata.prototype, "NumberOfItems", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("itemsPerPage"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSMetadata.prototype, "ItemsPerPage", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("currentPage"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSMetadata.prototype, "CurrentPage", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("modified"),
+        tslib_1.__metadata("design:type", Date)
+    ], OPDSMetadata.prototype, "Modified", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSMetadata.prototype, "_OnDeserialized", null);
+    OPDSMetadata = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSMetadata);
+    return OPDSMetadata;
+}());
+exports.OPDSMetadata = OPDSMetadata;
+
+},{"./opds2-contributor":396,"ta-json":540,"tslib":553}],402:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var OPDSPrice = (function () {
+    function OPDSPrice() {
+    }
+    OPDSPrice.prototype._OnDeserialized = function () {
+        if (!this.Currency) {
+            console.log("OPDSPrice.Currency is not set!");
+        }
+        if (!this.Value) {
+            console.log("OPDSPrice.Value is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("currency"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSPrice.prototype, "Currency", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("value"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSPrice.prototype, "Value", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSPrice.prototype, "_OnDeserialized", null);
+    OPDSPrice = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSPrice);
+    return OPDSPrice;
+}());
+exports.OPDSPrice = OPDSPrice;
+
+},{"ta-json":540,"tslib":553}],403:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_indirectAcquisition_1 = require("./opds2-indirectAcquisition");
+var opds2_price_1 = require("./opds2-price");
+var OPDSProperties = (function () {
+    function OPDSProperties() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("numberOfItems"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSProperties.prototype, "NumberOfItems", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("price"),
+        tslib_1.__metadata("design:type", opds2_price_1.OPDSPrice)
+    ], OPDSProperties.prototype, "Price", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("indirectAcquisition"),
+        ta_json_1.JsonElementType(opds2_indirectAcquisition_1.OPDSIndirectAcquisition),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSProperties.prototype, "IndirectAcquisitions", void 0);
+    OPDSProperties = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSProperties);
+    return OPDSProperties;
+}());
+exports.OPDSProperties = OPDSProperties;
+
+},{"./opds2-indirectAcquisition":399,"./opds2-price":402,"ta-json":540,"tslib":553}],404:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_belongsTo_1 = require("./opds2-belongsTo");
+var opds2_collection_1 = require("./opds2-collection");
+var opds2_contributor_1 = require("./opds2-contributor");
+var opds2_link_1 = require("./opds2-link");
+var opds2_publicationMetadata_1 = require("./opds2-publicationMetadata");
+var OPDSPublication = (function () {
+    function OPDSPublication() {
+    }
+    OPDSPublication.prototype.findFirstLinkByRel = function (rel) {
+        return this.Links ? this.Links.find(function (l) {
+            return l.HasRel(rel);
+        }) : undefined;
+    };
+    OPDSPublication.prototype.AddImage = function (href, typeImage, height, width) {
+        var i = new opds2_link_1.OPDSLink();
+        i.Href = href;
+        i.TypeLink = typeImage;
+        if (height) {
+            i.Height = height;
+        }
+        if (width) {
+            i.Width = width;
+        }
+        if (!this.Images) {
+            this.Images = [];
+        }
+        this.Images.push(i);
+    };
+    OPDSPublication.prototype.AddLink = function (href, typeLink, rel, title) {
+        var l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.TypeLink = typeLink;
+        if (rel) {
+            l.AddRel(rel);
+        }
+        if (title) {
+            l.Title = title;
+        }
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(l);
+    };
+    OPDSPublication.prototype.AddAuthor = function (name, identifier, sortAs, href, typeLink) {
+        var c = new opds2_contributor_1.OPDSContributor();
+        c.Name = name;
+        if (identifier) {
+            c.Identifier = identifier;
+        }
+        if (sortAs) {
+            c.SortAs = sortAs;
+        }
+        var l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.Author) {
+            this.Metadata.Author = [];
+        }
+        this.Metadata.Author.push(c);
+    };
+    OPDSPublication.prototype.AddSerie = function (name, position, href, typeLink) {
+        var c = new opds2_collection_1.OPDSCollection();
+        c.Name = name;
+        c.Position = position;
+        var l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.BelongsTo) {
+            this.Metadata.BelongsTo = new opds2_belongsTo_1.OPDSBelongsTo();
+        }
+        if (!this.Metadata.BelongsTo.Series) {
+            this.Metadata.BelongsTo.Series = [];
+        }
+        this.Metadata.BelongsTo.Series.push(c);
+    };
+    OPDSPublication.prototype.AddPublisher = function (name, href, typeLink) {
+        var c = new opds2_contributor_1.OPDSContributor();
+        c.Name = name;
+        var l = new opds2_link_1.OPDSLink();
+        if (href) {
+            l.Href = href;
+        }
+        if (typeLink) {
+            l.TypeLink = typeLink;
+        }
+        if (href) {
+            c.Links = [];
+            c.Links.push(l);
+        }
+        if (!this.Metadata) {
+            this.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
+        }
+        if (!this.Metadata.Publisher) {
+            this.Metadata.Publisher = [];
+        }
+        this.Metadata.Publisher.push(c);
+    };
+    OPDSPublication.prototype._OnDeserialized = function () {
+        if (!this.Metadata) {
+            console.log("OPDSPublication.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("OPDSPublication.Links is not set!");
+        }
+        if (!this.Images) {
+            console.log("OPDSPublication.Images is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("metadata"),
+        tslib_1.__metadata("design:type", opds2_publicationMetadata_1.OPDSPublicationMetadata)
+    ], OPDSPublication.prototype, "Metadata", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublication.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("images"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublication.prototype, "Images", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSPublication.prototype, "_OnDeserialized", null);
+    OPDSPublication = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSPublication);
+    return OPDSPublication;
+}());
+exports.OPDSPublication = OPDSPublication;
+
+},{"./opds2-belongsTo":393,"./opds2-collection":395,"./opds2-contributor":396,"./opds2-link":400,"./opds2-publicationMetadata":405,"ta-json":540,"tslib":553}],405:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var opds2_belongsTo_1 = require("./opds2-belongsTo");
+var opds2_contributor_1 = require("./opds2-contributor");
+var opds2_subject_1 = require("./opds2-subject");
+var OPDSPublicationMetadata = (function () {
+    function OPDSPublicationMetadata() {
+    }
+    OPDSPublicationMetadata.prototype._OnDeserialized = function () {
+        if (!this.Title) {
+            console.log("OPDSPublicationMetadata.Title is not set!");
+        }
+        if (!this.Identifier) {
+            console.log("OPDSPublicationMetadata.Identifier is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSPublicationMetadata.prototype, "RDFType", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("title"),
+        tslib_1.__metadata("design:type", Object)
+    ], OPDSPublicationMetadata.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSPublicationMetadata.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("author"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Author", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("translator"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Translator", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("editor"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Editor", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("artist"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Artist", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("illustrator"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Illustrator", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("letterer"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Letterer", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("penciler"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Penciler", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("colorist"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Colorist", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("inker"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Inker", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("narrator"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Narrator", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("contributor"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "OPDSContributor", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("publisher"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Publisher", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("imprint"),
+        ta_json_1.JsonElementType(opds2_contributor_1.OPDSContributor),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Imprint", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("language"),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Language", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("modified"),
+        tslib_1.__metadata("design:type", Date)
+    ], OPDSPublicationMetadata.prototype, "Modified", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("published"),
+        tslib_1.__metadata("design:type", Date)
+    ], OPDSPublicationMetadata.prototype, "PublicationDate", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("description"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSPublicationMetadata.prototype, "Description", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("source"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSPublicationMetadata.prototype, "Source", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rights"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSPublicationMetadata.prototype, "Rights", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("subject"),
+        ta_json_1.JsonElementType(opds2_subject_1.OPDSSubject),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSPublicationMetadata.prototype, "Subject", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("belongs_to"),
+        tslib_1.__metadata("design:type", opds2_belongsTo_1.OPDSBelongsTo)
+    ], OPDSPublicationMetadata.prototype, "BelongsTo", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("duration"),
+        tslib_1.__metadata("design:type", Number)
+    ], OPDSPublicationMetadata.prototype, "Duration", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSPublicationMetadata.prototype, "_OnDeserialized", null);
+    OPDSPublicationMetadata = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSPublicationMetadata);
+    return OPDSPublicationMetadata;
+}());
+exports.OPDSPublicationMetadata = OPDSPublicationMetadata;
+
+},{"./opds2-belongsTo":393,"./opds2-contributor":396,"./opds2-subject":406,"ta-json":540,"tslib":553}],406:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var OPDSSubject = (function () {
+    function OPDSSubject() {
+    }
+    OPDSSubject.prototype._OnDeserialized = function () {
+        if (!this.Name) {
+            console.log("OPDSSubject.Name is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSSubject.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("sort_as"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSSubject.prototype, "SortAs", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("scheme"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSSubject.prototype, "Scheme", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("code"),
+        tslib_1.__metadata("design:type", String)
+    ], OPDSSubject.prototype, "Code", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSSubject.prototype, "_OnDeserialized", null);
+    OPDSSubject = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSSubject);
+    return OPDSSubject;
+}());
+exports.OPDSSubject = OPDSSubject;
+
+},{"ta-json":540,"tslib":553}],407:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_string_converter_1 = require("../../_utils/ta-json-string-converter");
+var ta_json_1 = require("ta-json");
+var opds2_facet_1 = require("./opds2-facet");
+var opds2_group_1 = require("./opds2-group");
+var opds2_link_1 = require("./opds2-link");
+var opds2_metadata_1 = require("./opds2-metadata");
+var opds2_publication_1 = require("./opds2-publication");
+var OPDSFeed = (function () {
+    function OPDSFeed() {
+    }
+    OPDSFeed.prototype.findFirstLinkByRel = function (rel) {
+        return this.Links ? this.Links.find(function (l) {
+            return l.HasRel(rel);
+        }) : undefined;
+    };
+    OPDSFeed.prototype.AddLink = function (href, rel, typeLink, templated) {
+        var l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.AddRel(rel);
+        l.TypeLink = typeLink;
+        if (templated) {
+            l.Templated = true;
+        }
+        if (!this.Links) {
+            this.Links = [];
+        }
+        this.Links.push(l);
+    };
+    OPDSFeed.prototype.AddNavigation = function (title, href, rel, typeLink) {
+        var l = new opds2_link_1.OPDSLink();
+        l.Href = href;
+        l.TypeLink = typeLink;
+        l.AddRel(rel);
+        if (title) {
+            l.Title = title;
+        }
+        if (!this.Navigation) {
+            this.Navigation = [];
+        }
+        this.Navigation.push(l);
+    };
+    OPDSFeed.prototype.AddPagination = function (numberItems, itemsPerPage, currentPage, nextLink, prevLink, firstLink, lastLink) {
+        if (!this.Metadata) {
+            this.Metadata = new opds2_metadata_1.OPDSMetadata();
+        }
+        this.Metadata.CurrentPage = currentPage;
+        this.Metadata.ItemsPerPage = itemsPerPage;
+        this.Metadata.NumberOfItems = numberItems;
+        if (nextLink) {
+            this.AddLink(nextLink, "next", "application/opds+json", false);
+        }
+        if (prevLink) {
+            this.AddLink(prevLink, "previous", "application/opds+json", false);
+        }
+        if (firstLink) {
+            this.AddLink(firstLink, "first", "application/opds+json", false);
+        }
+        if (lastLink) {
+            this.AddLink(lastLink, "last", "application/opds+json", false);
+        }
+    };
+    OPDSFeed.prototype.AddFacet = function (link, group) {
+        if (this.Facets) {
+            var found = this.Facets.find(function (f) {
+                if (f.Metadata && f.Metadata.Title === group) {
+                    if (!f.Links) {
+                        f.Links = [];
+                    }
+                    f.Links.push(link);
+                    return true;
+                }
+                return false;
+            });
+            if (found) {
+                return;
+            }
+        }
+        var facet = new opds2_facet_1.OPDSFacet();
+        facet.Metadata = new opds2_metadata_1.OPDSMetadata();
+        facet.Metadata.Title = group;
+        facet.Links = [];
+        facet.Links.push(link);
+        if (!this.Facets) {
+            this.Facets = [];
+        }
+        this.Facets.push(facet);
+    };
+    OPDSFeed.prototype.AddPublicationInGroup = function (publication, collLink) {
+        if (this.Groups) {
+            var found1 = this.Groups.find(function (g) {
+                if (g.Links) {
+                    var found2 = g.Links.find(function (l) {
+                        if (l.Href === collLink.Href) {
+                            if (!g.Publications) {
+                                g.Publications = [];
+                            }
+                            g.Publications.push(publication);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (found2) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (found1) {
+                return;
+            }
+        }
+        var group = new opds2_group_1.OPDSGroup();
+        group.Metadata = new opds2_metadata_1.OPDSMetadata();
+        group.Metadata.Title = collLink.Title;
+        group.Publications = [];
+        group.Publications.push(publication);
+        var linkSelf = new opds2_link_1.OPDSLink();
+        linkSelf.AddRel("self");
+        linkSelf.Title = collLink.Title;
+        linkSelf.Href = collLink.Href;
+        group.Links = [];
+        group.Links.push(linkSelf);
+        if (!this.Groups) {
+            this.Groups = [];
+        }
+        this.Groups.push(group);
+    };
+    OPDSFeed.prototype.AddNavigationInGroup = function (link, collLink) {
+        if (this.Groups) {
+            var found1 = this.Groups.find(function (g) {
+                if (g.Links) {
+                    var found2 = g.Links.find(function (l) {
+                        if (l.Href === collLink.Href) {
+                            if (!g.Navigation) {
+                                g.Navigation = [];
+                            }
+                            g.Navigation.push(link);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (found2) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            if (found1) {
+                return;
+            }
+        }
+        var group = new opds2_group_1.OPDSGroup();
+        group.Metadata = new opds2_metadata_1.OPDSMetadata();
+        group.Metadata.Title = collLink.Title;
+        group.Navigation = [];
+        group.Navigation.push(link);
+        var linkSelf = new opds2_link_1.OPDSLink();
+        linkSelf.AddRel("self");
+        linkSelf.Title = collLink.Title;
+        linkSelf.Href = collLink.Href;
+        group.Links = [];
+        group.Links.push(link);
+        if (!this.Groups) {
+            this.Groups = [];
+        }
+        this.Groups.push(group);
+    };
+    OPDSFeed.prototype._OnDeserialized = function () {
+        if (!this.Metadata) {
+            console.log("OPDS2Feed.Metadata is not set!");
+        }
+        if (!this.Links) {
+            console.log("OPDS2Feed.Links is not set!");
+        }
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("@context"),
+        ta_json_1.JsonConverter(ta_json_string_converter_1.JsonStringConverter),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Context", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("metadata"),
+        tslib_1.__metadata("design:type", opds2_metadata_1.OPDSMetadata)
+    ], OPDSFeed.prototype, "Metadata", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Links", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("publications"),
+        ta_json_1.JsonElementType(opds2_publication_1.OPDSPublication),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Publications", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("navigation"),
+        ta_json_1.JsonElementType(opds2_link_1.OPDSLink),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Navigation", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("facets"),
+        ta_json_1.JsonElementType(opds2_facet_1.OPDSFacet),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Facets", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("groups"),
+        ta_json_1.JsonElementType(opds2_group_1.OPDSGroup),
+        tslib_1.__metadata("design:type", Array)
+    ], OPDSFeed.prototype, "Groups", void 0);
+    tslib_1.__decorate([
+        ta_json_1.OnDeserialized(),
+        tslib_1.__metadata("design:type", Function),
+        tslib_1.__metadata("design:paramtypes", []),
+        tslib_1.__metadata("design:returntype", void 0)
+    ], OPDSFeed.prototype, "_OnDeserialized", null);
+    OPDSFeed = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], OPDSFeed);
+    return OPDSFeed;
+}());
+exports.OPDSFeed = OPDSFeed;
+
+},{"../../_utils/ta-json-string-converter":343,"./opds2-facet":397,"./opds2-group":398,"./opds2-link":400,"./opds2-metadata":401,"./opds2-publication":404,"ta-json":540,"tslib":553}],408:[function(require,module,exports){
+"use strict";
+var _this = this;
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var path = require("path");
+var metadata_1 = require("../models/metadata");
+var metadata_contributor_1 = require("../models/metadata-contributor");
+var publication_1 = require("../models/publication");
+var publication_link_1 = require("../models/publication-link");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+var zipFactory_1 = require("../_utils/zip/zipFactory");
+var mime = require("mime-types");
+var slugify = require("slugify");
+var xmldom = require("xmldom");
+var comicrack_1 = require("./comicrack/comicrack");
+var epub_1 = require("./epub");
+function CbzParsePromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var zip, err_1, publication, comicInfoEntryName, _b, err_2;
+        return tslib_1.__generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4, zipFactory_1.zipLoadPromise(filePath)];
+                case 1:
+                    zip = _a.sent();
+                    return [3, 3];
+                case 2:
+                    err_1 = _a.sent();
+                    return [2, Promise.reject(err_1)];
+                case 3:
+                    if (!zip.hasEntries()) {
+                        return [2, Promise.reject("CBZ zip empty")];
+                    }
+                    publication = new publication_1.Publication();
+                    publication.Context = ["http://readium.org/webpub/default.jsonld"];
+                    publication.Metadata = new metadata_1.Metadata();
+                    publication.Metadata.RDFType = "http://schema.org/ComicIssue";
+                    publication.Metadata.Identifier = filePathToTitle(filePath);
+                    publication.AddToInternal("type", "cbz");
+                    publication.AddToInternal("zip", zip);
+                    zip.forEachEntry(function (entryName) {
+                        var link = new publication_link_1.Link();
+                        link.Href = entryName;
+                        var mediaType = mime.lookup(entryName);
+                        if (mediaType) {
+                            link.TypeLink = mediaType;
+                        }
+                        else {
+                            console.log("!!!!!! NO MEDIA TYPE?!");
+                        }
+                        if (link.TypeLink && link.TypeLink.startsWith("image/")) {
+                            if (!publication.Spine) {
+                                publication.Spine = [];
+                            }
+                            publication.Spine.push(link);
+                        }
+                        else if (entryName.endsWith("ComicInfo.xml")) {
+                            comicInfoEntryName = entryName;
+                        }
+                    });
+                    if (!publication.Metadata.Title) {
+                        publication.Metadata.Title = path.basename(filePath);
+                    }
+                    if (!comicInfoEntryName) return [3, 7];
+                    _a.label = 4;
+                case 4:
+                    _a.trys.push([4, 6, , 7]);
+                    return [4, comicRackMetadata(zip, comicInfoEntryName, publication)];
+                case 5:
+                    _b = _a.sent();
+                    console.log(_b);
+                    return [3, 7];
+                case 6:
+                    err_2 = _a.sent();
+                    console.log(err_2);
+                    return [3, 7];
+                case 7: return [2, publication];
+            }
+        });
+    });
+}
+exports.CbzParsePromise = CbzParsePromise;
+var filePathToTitle = function (filePath) {
+    var fileName = path.basename(filePath);
+    return slugify(fileName, "_").replace(/[\.]/g, "_");
+};
+var comicRackMetadata = function (zip, entryName, publication) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var comicZipStream_, err_3, comicZipStream, comicZipData, err_4, comicXmlStr, comicXmlDoc, comicMeta, cont, cont, cont, cont, title, _i, _a, p, l;
+    return tslib_1.__generator(this, function (_c) {
+        switch (_c.label) {
+            case 0:
+                _c.trys.push([0, 2, , 3]);
+                return [4, zip.entryStreamPromise(entryName)];
+            case 1:
+                comicZipStream_ = _c.sent();
+                return [3, 3];
+            case 2:
+                err_3 = _c.sent();
+                console.log(err_3);
+                return [2];
+            case 3:
+                comicZipStream = comicZipStream_.stream;
+                _c.label = 4;
+            case 4:
+                _c.trys.push([4, 6, , 7]);
+                return [4, BufferUtils_1.streamToBufferPromise(comicZipStream)];
+            case 5:
+                comicZipData = _c.sent();
+                return [3, 7];
+            case 6:
+                err_4 = _c.sent();
+                console.log(err_4);
+                return [2];
+            case 7:
+                comicXmlStr = comicZipData.toString("utf8");
+                comicXmlDoc = new xmldom.DOMParser().parseFromString(comicXmlStr);
+                comicMeta = xml_js_mapper_1.XML.deserialize(comicXmlDoc, comicrack_1.ComicInfo);
+                comicMeta.ZipPath = entryName;
+                if (!publication.Metadata) {
+                    publication.Metadata = new metadata_1.Metadata();
+                }
+                if (comicMeta.Writer) {
+                    cont = new metadata_contributor_1.Contributor();
+                    cont.Name = comicMeta.Writer;
+                    if (!publication.Metadata.Author) {
+                        publication.Metadata.Author = [];
+                    }
+                    publication.Metadata.Author.push(cont);
+                }
+                if (comicMeta.Penciller) {
+                    cont = new metadata_contributor_1.Contributor();
+                    cont.Name = comicMeta.Writer;
+                    if (!publication.Metadata.Penciler) {
+                        publication.Metadata.Penciler = [];
+                    }
+                    publication.Metadata.Penciler.push(cont);
+                }
+                if (comicMeta.Colorist) {
+                    cont = new metadata_contributor_1.Contributor();
+                    cont.Name = comicMeta.Writer;
+                    if (!publication.Metadata.Colorist) {
+                        publication.Metadata.Colorist = [];
+                    }
+                    publication.Metadata.Colorist.push(cont);
+                }
+                if (comicMeta.Inker) {
+                    cont = new metadata_contributor_1.Contributor();
+                    cont.Name = comicMeta.Writer;
+                    if (!publication.Metadata.Inker) {
+                        publication.Metadata.Inker = [];
+                    }
+                    publication.Metadata.Inker.push(cont);
+                }
+                if (comicMeta.Title) {
+                    publication.Metadata.Title = comicMeta.Title;
+                }
+                if (!publication.Metadata.Title) {
+                    if (comicMeta.Series) {
+                        title = comicMeta.Series;
+                        if (comicMeta.Number) {
+                            title = title + " - " + comicMeta.Number;
+                        }
+                        publication.Metadata.Title = title;
+                    }
+                }
+                if (!comicMeta.Pages) return [3, 12];
+                _i = 0, _a = comicMeta.Pages;
+                _c.label = 8;
+            case 8:
+                if (!(_i < _a.length)) return [3, 12];
+                p = _a[_i];
+                l = new publication_link_1.Link();
+                if (!(p.Type === "FrontCover")) return [3, 10];
+                l.AddRel("cover");
+                return [4, epub_1.addCoverDimensions(publication, l)];
+            case 9:
+                _c.sent();
+                _c.label = 10;
+            case 10:
+                l.Href = publication.Spine[p.Image].Href;
+                if (p.ImageHeight) {
+                    l.Height = p.ImageHeight;
+                }
+                if (p.ImageWidth) {
+                    l.Width = p.ImageWidth;
+                }
+                if (p.Bookmark) {
+                    l.Title = p.Bookmark;
+                }
+                if (!publication.TOC) {
+                    publication.TOC = [];
+                }
+                publication.TOC.push(l);
+                _c.label = 11;
+            case 11:
+                _i++;
+                return [3, 8];
+            case 12: return [2];
+        }
+    });
+}); };
+
+},{"../_utils/stream/BufferUtils":340,"../_utils/xml-js-mapper":363,"../_utils/zip/zipFactory":370,"../models/metadata":382,"../models/metadata-contributor":377,"../models/publication":384,"../models/publication-link":383,"./comicrack/comicrack":410,"./epub":411,"mime-types":303,"path":undefined,"slugify":491,"tslib":553,"xmldom":572}],409:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Page = (function () {
+    function Page() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Image"),
+        tslib_1.__metadata("design:type", Number)
+    ], Page.prototype, "Image", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Bookmark"),
+        tslib_1.__metadata("design:type", String)
+    ], Page.prototype, "Bookmark", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Type"),
+        tslib_1.__metadata("design:type", String)
+    ], Page.prototype, "Type", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@ImageSize"),
+        tslib_1.__metadata("design:type", Number)
+    ], Page.prototype, "ImageSize", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@ImageWidth"),
+        tslib_1.__metadata("design:type", Number)
+    ], Page.prototype, "ImageWidth", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@ImageHeight"),
+        tslib_1.__metadata("design:type", Number)
+    ], Page.prototype, "ImageHeight", void 0);
+    Page = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            xsd: "http://www.w3.org/2001/XMLSchema",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], Page);
+    return Page;
+}());
+exports.Page = Page;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],410:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var comicrack_page_1 = require("./comicrack-page");
+var ComicInfo = (function () {
+    function ComicInfo() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Title"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Series"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Series", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Volume"),
+        tslib_1.__metadata("design:type", Number)
+    ], ComicInfo.prototype, "Volume", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Number"),
+        tslib_1.__metadata("design:type", Number)
+    ], ComicInfo.prototype, "Number", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Writer"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Writer", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Penciller"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Penciller", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Inker"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Inker", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Colorist"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Colorist", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ScanInformation"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "ScanInformation", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Summary"),
+        tslib_1.__metadata("design:type", String)
+    ], ComicInfo.prototype, "Summary", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Year"),
+        tslib_1.__metadata("design:type", Number)
+    ], ComicInfo.prototype, "Year", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("PageCount"),
+        tslib_1.__metadata("design:type", Number)
+    ], ComicInfo.prototype, "PageCount", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("Pages/Page"),
+        xml_js_mapper_1.XmlItemType(comicrack_page_1.Page),
+        tslib_1.__metadata("design:type", Array)
+    ], ComicInfo.prototype, "Pages", void 0);
+    ComicInfo = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            xsd: "http://www.w3.org/2001/XMLSchema",
+            xsi: "http://www.w3.org/2001/XMLSchema-instance",
+        })
+    ], ComicInfo);
+    return ComicInfo;
+}());
+exports.ComicInfo = ComicInfo;
+
+},{"../../_utils/xml-js-mapper":363,"./comicrack-page":409,"tslib":553}],411:[function(require,module,exports){
+"use strict";
+var _this = this;
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var path = require("path");
+var querystring = require("querystring");
+var media_overlay_1 = require("../models/media-overlay");
+var metadata_1 = require("../models/metadata");
+var metadata_belongsto_1 = require("../models/metadata-belongsto");
+var metadata_collection_1 = require("../models/metadata-collection");
+var metadata_contributor_1 = require("../models/metadata-contributor");
+var metadata_encrypted_1 = require("../models/metadata-encrypted");
+var metadata_media_overlay_1 = require("../models/metadata-media-overlay");
+var metadata_properties_1 = require("../models/metadata-properties");
+var metadata_subject_1 = require("../models/metadata-subject");
+var publication_1 = require("../models/publication");
+var publication_link_1 = require("../models/publication-link");
+var transformer_1 = require("../transform/transformer");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var xml_js_mapper_1 = require("../_utils/xml-js-mapper");
+var zipFactory_1 = require("../_utils/zip/zipFactory");
+var debug_ = require("debug");
+var sizeOf = require("image-size");
+var moment = require("moment");
+var ta_json_1 = require("ta-json");
+var xmldom = require("xmldom");
+var xpath = require("xpath");
+var container_1 = require("./epub/container");
+var encryption_1 = require("./epub/encryption");
+var lcp_1 = require("./epub/lcp");
+var ncx_1 = require("./epub/ncx");
+var opf_1 = require("./epub/opf");
+var opf_author_1 = require("./epub/opf-author");
+var smil_1 = require("./epub/smil");
+var smil_seq_1 = require("./epub/smil-seq");
+var debug = debug_("r2:epub");
+var epub3 = "3.0";
+var epub301 = "3.0.1";
+var epub31 = "3.1";
+var autoMeta = "auto";
+var noneMeta = "none";
+var reflowableMeta = "reflowable";
+exports.mediaOverlayURLPath = "media-overlay.json";
+exports.mediaOverlayURLParam = "resource";
+exports.addCoverDimensions = function (publication, coverLink) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var zipInternal, zip, zipStream, err_1, zipData, imageInfo, err_2;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                zipInternal = publication.findFromInternal("zip");
+                if (!zipInternal) return [3, 8];
+                zip = zipInternal.Value;
+                if (!zip.hasEntry(coverLink.Href)) return [3, 8];
+                zipStream = void 0;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4, zip.entryStreamPromise(coverLink.Href)];
+            case 2:
+                zipStream = _a.sent();
+                return [3, 4];
+            case 3:
+                err_1 = _a.sent();
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
+                debug(err_1);
+                return [2];
+            case 4:
+                zipData = void 0;
+                _a.label = 5;
+            case 5:
+                _a.trys.push([5, 7, , 8]);
+                return [4, BufferUtils_1.streamToBufferPromise(zipStream.stream)];
+            case 6:
+                zipData = _a.sent();
+                imageInfo = sizeOf(zipData);
+                if (imageInfo) {
+                    coverLink.Width = imageInfo.width;
+                    coverLink.Height = imageInfo.height;
+                    if (coverLink.TypeLink &&
+                        coverLink.TypeLink.replace("jpeg", "jpg").replace("+xml", "")
+                            !== ("image/" + imageInfo.type)) {
+                        debug("Wrong image type? " + coverLink.TypeLink + " -- " + imageInfo.type);
+                    }
+                }
+                return [3, 8];
+            case 7:
+                err_2 = _a.sent();
+                debug(coverLink.Href);
+                debug(coverLink.TypeLink);
+                debug(err_2);
+                return [3, 8];
+            case 8: return [2];
+        }
+    });
+}); };
+function EpubParsePromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var zip, err_3, publication, lcpl, lcplZipPath, lcplZipStream_, err_4, lcplZipStream, lcplZipData, err_5, lcplStr, lcplJson, encryption, encZipPath, encryptionXmlZipStream_, err_6, encryptionXmlZipStream, encryptionXmlZipData, err_7, encryptionXmlStr, encryptionXmlDoc, containerZipPath, containerXmlZipStream_, err_8, containerXmlZipStream, containerXmlZipData, err_9, containerXmlStr, containerXmlDoc, container, rootfile, opfZipStream_, err_10, opfZipStream, opfZipData, err_11, opfStr, opfDoc, opf, ncx, ncxManItem, ncxFilePath, ncxZipStream_, err_12, ncxZipStream, ncxZipData, err_13, ncxStr, ncxDoc, metasDuration_1, metasNarrator_1, metasActiveClass_1, metasPlaybackActiveClass_1;
+        return tslib_1.__generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4, zipFactory_1.zipLoadPromise(filePath)];
+                case 1:
+                    zip = _a.sent();
+                    return [3, 3];
+                case 2:
+                    err_3 = _a.sent();
+                    debug(err_3);
+                    return [2, Promise.reject(err_3)];
+                case 3:
+                    if (!zip.hasEntries()) {
+                        return [2, Promise.reject("EPUB zip empty")];
+                    }
+                    publication = new publication_1.Publication();
+                    publication.Context = ["http://readium.org/webpub/default.jsonld"];
+                    publication.Metadata = new metadata_1.Metadata();
+                    publication.Metadata.RDFType = "http://schema.org/Book";
+                    publication.Metadata.Modified = moment(Date.now()).toDate();
+                    publication.AddToInternal("filename", path.basename(filePath));
+                    publication.AddToInternal("type", "epub");
+                    publication.AddToInternal("zip", zip);
+                    lcplZipPath = "META-INF/license.lcpl";
+                    if (!zip.hasEntry(lcplZipPath)) return [3, 12];
+                    lcplZipStream_ = void 0;
+                    _a.label = 4;
+                case 4:
+                    _a.trys.push([4, 6, , 7]);
+                    return [4, zip.entryStreamPromise(lcplZipPath)];
+                case 5:
+                    lcplZipStream_ = _a.sent();
+                    return [3, 7];
+                case 6:
+                    err_4 = _a.sent();
+                    debug(err_4);
+                    return [2, Promise.reject(err_4)];
+                case 7:
+                    lcplZipStream = lcplZipStream_.stream;
+                    lcplZipData = void 0;
+                    _a.label = 8;
+                case 8:
+                    _a.trys.push([8, 10, , 11]);
+                    return [4, BufferUtils_1.streamToBufferPromise(lcplZipStream)];
+                case 9:
+                    lcplZipData = _a.sent();
+                    return [3, 11];
+                case 10:
+                    err_5 = _a.sent();
+                    debug(err_5);
+                    return [2, Promise.reject(err_5)];
+                case 11:
+                    lcplStr = lcplZipData.toString("utf8");
+                    lcplJson = global.JSON.parse(lcplStr);
+                    debug(lcplJson);
+                    lcpl = ta_json_1.JSON.deserialize(lcplJson, lcp_1.LCP);
+                    lcpl.ZipPath = lcplZipPath;
+                    lcpl.JsonSource = lcplStr;
+                    lcpl.init();
+                    publication.LCP = lcpl;
+                    publication.AddLink("application/vnd.readium.lcp.license-1.0+json", ["license"], lcpl.ZipPath, false);
+                    _a.label = 12;
+                case 12:
+                    encZipPath = "META-INF/encryption.xml";
+                    if (!zip.hasEntry(encZipPath)) return [3, 21];
+                    encryptionXmlZipStream_ = void 0;
+                    _a.label = 13;
+                case 13:
+                    _a.trys.push([13, 15, , 16]);
+                    return [4, zip.entryStreamPromise(encZipPath)];
+                case 14:
+                    encryptionXmlZipStream_ = _a.sent();
+                    return [3, 16];
+                case 15:
+                    err_6 = _a.sent();
+                    debug(err_6);
+                    return [2, Promise.reject(err_6)];
+                case 16:
+                    encryptionXmlZipStream = encryptionXmlZipStream_.stream;
+                    encryptionXmlZipData = void 0;
+                    _a.label = 17;
+                case 17:
+                    _a.trys.push([17, 19, , 20]);
+                    return [4, BufferUtils_1.streamToBufferPromise(encryptionXmlZipStream)];
+                case 18:
+                    encryptionXmlZipData = _a.sent();
+                    return [3, 20];
+                case 19:
+                    err_7 = _a.sent();
+                    debug(err_7);
+                    return [2, Promise.reject(err_7)];
+                case 20:
+                    encryptionXmlStr = encryptionXmlZipData.toString("utf8");
+                    encryptionXmlDoc = new xmldom.DOMParser().parseFromString(encryptionXmlStr);
+                    encryption = xml_js_mapper_1.XML.deserialize(encryptionXmlDoc, encryption_1.Encryption);
+                    encryption.ZipPath = encZipPath;
+                    _a.label = 21;
+                case 21:
+                    containerZipPath = "META-INF/container.xml";
+                    _a.label = 22;
+                case 22:
+                    _a.trys.push([22, 24, , 25]);
+                    return [4, zip.entryStreamPromise(containerZipPath)];
+                case 23:
+                    containerXmlZipStream_ = _a.sent();
+                    return [3, 25];
+                case 24:
+                    err_8 = _a.sent();
+                    debug(err_8);
+                    return [2, Promise.reject(err_8)];
+                case 25:
+                    containerXmlZipStream = containerXmlZipStream_.stream;
+                    _a.label = 26;
+                case 26:
+                    _a.trys.push([26, 28, , 29]);
+                    return [4, BufferUtils_1.streamToBufferPromise(containerXmlZipStream)];
+                case 27:
+                    containerXmlZipData = _a.sent();
+                    return [3, 29];
+                case 28:
+                    err_9 = _a.sent();
+                    debug(err_9);
+                    return [2, Promise.reject(err_9)];
+                case 29:
+                    containerXmlStr = containerXmlZipData.toString("utf8");
+                    containerXmlDoc = new xmldom.DOMParser().parseFromString(containerXmlStr);
+                    container = xml_js_mapper_1.XML.deserialize(containerXmlDoc, container_1.Container);
+                    container.ZipPath = containerZipPath;
+                    rootfile = container.Rootfile[0];
+                    _a.label = 30;
+                case 30:
+                    _a.trys.push([30, 32, , 33]);
+                    return [4, zip.entryStreamPromise(rootfile.Path)];
+                case 31:
+                    opfZipStream_ = _a.sent();
+                    return [3, 33];
+                case 32:
+                    err_10 = _a.sent();
+                    debug(err_10);
+                    return [2, Promise.reject(err_10)];
+                case 33:
+                    opfZipStream = opfZipStream_.stream;
+                    _a.label = 34;
+                case 34:
+                    _a.trys.push([34, 36, , 37]);
+                    return [4, BufferUtils_1.streamToBufferPromise(opfZipStream)];
+                case 35:
+                    opfZipData = _a.sent();
+                    return [3, 37];
+                case 36:
+                    err_11 = _a.sent();
+                    debug(err_11);
+                    return [2, Promise.reject(err_11)];
+                case 37:
+                    opfStr = opfZipData.toString("utf8");
+                    opfDoc = new xmldom.DOMParser().parseFromString(opfStr);
+                    opf = xml_js_mapper_1.XML.deserialize(opfDoc, opf_1.OPF);
+                    opf.ZipPath = rootfile.Path;
+                    if (!opf.Spine.Toc) return [3, 46];
+                    ncxManItem = opf.Manifest.find(function (manifestItem) {
+                        return manifestItem.ID === opf.Spine.Toc;
+                    });
+                    if (!ncxManItem) return [3, 46];
+                    ncxFilePath = path.join(path.dirname(opf.ZipPath), ncxManItem.Href)
+                        .replace(/\\/g, "/");
+                    ncxZipStream_ = void 0;
+                    _a.label = 38;
+                case 38:
+                    _a.trys.push([38, 40, , 41]);
+                    return [4, zip.entryStreamPromise(ncxFilePath)];
+                case 39:
+                    ncxZipStream_ = _a.sent();
+                    return [3, 41];
+                case 40:
+                    err_12 = _a.sent();
+                    debug(err_12);
+                    return [2, Promise.reject(err_12)];
+                case 41:
+                    ncxZipStream = ncxZipStream_.stream;
+                    ncxZipData = void 0;
+                    _a.label = 42;
+                case 42:
+                    _a.trys.push([42, 44, , 45]);
+                    return [4, BufferUtils_1.streamToBufferPromise(ncxZipStream)];
+                case 43:
+                    ncxZipData = _a.sent();
+                    return [3, 45];
+                case 44:
+                    err_13 = _a.sent();
+                    debug(err_13);
+                    return [2, Promise.reject(err_13)];
+                case 45:
+                    ncxStr = ncxZipData.toString("utf8");
+                    ncxDoc = new xmldom.DOMParser().parseFromString(ncxStr);
+                    ncx = xml_js_mapper_1.XML.deserialize(ncxDoc, ncx_1.NCX);
+                    ncx.ZipPath = ncxFilePath;
+                    _a.label = 46;
+                case 46:
+                    addTitle(publication, rootfile, opf);
+                    addIdentifier(publication, rootfile, opf);
+                    if (opf.Metadata) {
+                        if (opf.Metadata.Language) {
+                            publication.Metadata.Language = opf.Metadata.Language;
+                        }
+                        if (opf.Metadata.Rights && opf.Metadata.Rights.length) {
+                            publication.Metadata.Rights = opf.Metadata.Rights.join(" ");
+                        }
+                        if (opf.Metadata.Description && opf.Metadata.Description.length) {
+                            publication.Metadata.Description = opf.Metadata.Description[0];
+                        }
+                        if (opf.Metadata.Publisher && opf.Metadata.Publisher.length) {
+                            publication.Metadata.Publisher = [];
+                            opf.Metadata.Publisher.forEach(function (pub) {
+                                var contrib = new metadata_contributor_1.Contributor();
+                                contrib.Name = pub;
+                                publication.Metadata.Publisher.push(contrib);
+                            });
+                        }
+                        if (opf.Metadata.Source && opf.Metadata.Source.length) {
+                            publication.Metadata.Source = opf.Metadata.Source[0];
+                        }
+                        if (opf.Metadata.Contributor && opf.Metadata.Contributor.length) {
+                            opf.Metadata.Contributor.forEach(function (cont) {
+                                addContributor(publication, rootfile, opf, cont, undefined);
+                            });
+                        }
+                        if (opf.Metadata.Creator && opf.Metadata.Creator.length) {
+                            opf.Metadata.Creator.forEach(function (cont) {
+                                addContributor(publication, rootfile, opf, cont, "aut");
+                            });
+                        }
+                        if (opf.Metadata.Meta) {
+                            metasDuration_1 = [];
+                            metasNarrator_1 = [];
+                            metasActiveClass_1 = [];
+                            metasPlaybackActiveClass_1 = [];
+                            opf.Metadata.Meta.forEach(function (metaTag) {
+                                if (metaTag.Property === "media:duration") {
+                                    metasDuration_1.push(metaTag);
+                                }
+                                if (metaTag.Property === "media:narrator") {
+                                    metasNarrator_1.push(metaTag);
+                                }
+                                if (metaTag.Property === "media:active-class") {
+                                    metasActiveClass_1.push(metaTag);
+                                }
+                                if (metaTag.Property === "media:playback-active-class") {
+                                    metasPlaybackActiveClass_1.push(metaTag);
+                                }
+                            });
+                            if (metasDuration_1.length) {
+                                publication.Metadata.Duration = media_overlay_1.timeStrToSeconds(metasDuration_1[0].Data);
+                            }
+                            if (metasNarrator_1.length) {
+                                if (!publication.Metadata.Narrator) {
+                                    publication.Metadata.Narrator = [];
+                                }
+                                metasNarrator_1.forEach(function (metaNarrator) {
+                                    var cont = new metadata_contributor_1.Contributor();
+                                    cont.Name = metaNarrator.Data;
+                                    publication.Metadata.Narrator.push(cont);
+                                });
+                            }
+                            if (metasActiveClass_1.length) {
+                                if (!publication.Metadata.MediaOverlay) {
+                                    publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
+                                }
+                                publication.Metadata.MediaOverlay.ActiveClass = metasActiveClass_1[0].Data;
+                            }
+                            if (metasPlaybackActiveClass_1.length) {
+                                if (!publication.Metadata.MediaOverlay) {
+                                    publication.Metadata.MediaOverlay = new metadata_media_overlay_1.MediaOverlay();
+                                }
+                                publication.Metadata.MediaOverlay.PlaybackActiveClass = metasPlaybackActiveClass_1[0].Data;
+                            }
+                        }
+                    }
+                    if (opf.Spine && opf.Spine.PageProgression) {
+                        publication.Metadata.Direction = opf.Spine.PageProgression;
+                    }
+                    if (isEpub3OrMore(rootfile, opf)) {
+                        findContributorInMeta(publication, rootfile, opf);
+                    }
+                    return [4, fillSpineAndResource(publication, rootfile, opf)];
+                case 47:
+                    _a.sent();
+                    addRendition(publication, rootfile, opf);
+                    return [4, addCoverRel(publication, rootfile, opf)];
+                case 48:
+                    _a.sent();
+                    if (encryption) {
+                        fillEncryptionInfo(publication, rootfile, opf, encryption, lcpl);
+                    }
+                    return [4, fillTOCFromNavDoc(publication, rootfile, opf, zip)];
+                case 49:
+                    _a.sent();
+                    if (!publication.TOC || !publication.TOC.length) {
+                        if (ncx) {
+                            fillTOCFromNCX(publication, rootfile, opf, ncx);
+                            fillPageListFromNCX(publication, rootfile, opf, ncx);
+                        }
+                        fillLandmarksFromGuide(publication, rootfile, opf);
+                    }
+                    fillCalibreSerieInfo(publication, rootfile, opf);
+                    fillSubject(publication, rootfile, opf);
+                    fillPublicationDate(publication, rootfile, opf);
+                    return [4, fillMediaOverlay(publication, rootfile, opf, zip)];
+                case 50:
+                    _a.sent();
+                    return [2, publication];
+            }
+        });
+    });
+}
+exports.EpubParsePromise = EpubParsePromise;
+function getAllMediaOverlays(publication) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var mos, _a, _b, link, _c, _d, mo, err_14;
+        return tslib_1.__generator(this, function (_e) {
+            switch (_e.label) {
+                case 0:
+                    mos = [];
+                    if (!publication.Spine) return [3, 9];
+                    _a = 0, _b = publication.Spine;
+                    _e.label = 1;
+                case 1:
+                    if (!(_a < _b.length)) return [3, 9];
+                    link = _b[_a];
+                    if (!link.MediaOverlays) return [3, 8];
+                    _c = 0, _d = link.MediaOverlays;
+                    _e.label = 2;
+                case 2:
+                    if (!(_c < _d.length)) return [3, 8];
+                    mo = _d[_c];
+                    _e.label = 3;
+                case 3:
+                    _e.trys.push([3, 5, , 6]);
+                    return [4, fillMediaOverlayParse(publication, mo)];
+                case 4:
+                    _e.sent();
+                    return [3, 6];
+                case 5:
+                    err_14 = _e.sent();
+                    return [2, Promise.reject(err_14)];
+                case 6:
+                    mos.push(mo);
+                    _e.label = 7;
+                case 7:
+                    _c++;
+                    return [3, 2];
+                case 8:
+                    _a++;
+                    return [3, 1];
+                case 9: return [2, Promise.resolve(mos)];
+            }
+        });
+    });
+}
+exports.getAllMediaOverlays = getAllMediaOverlays;
+function getMediaOverlay(publication, spineHref) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var mos, _a, _b, link, _c, _d, mo, err_15;
+        return tslib_1.__generator(this, function (_e) {
+            switch (_e.label) {
+                case 0:
+                    mos = [];
+                    if (!publication.Spine) return [3, 9];
+                    _a = 0, _b = publication.Spine;
+                    _e.label = 1;
+                case 1:
+                    if (!(_a < _b.length)) return [3, 9];
+                    link = _b[_a];
+                    if (!(link.MediaOverlays && link.Href.indexOf(spineHref) >= 0)) return [3, 8];
+                    _c = 0, _d = link.MediaOverlays;
+                    _e.label = 2;
+                case 2:
+                    if (!(_c < _d.length)) return [3, 8];
+                    mo = _d[_c];
+                    _e.label = 3;
+                case 3:
+                    _e.trys.push([3, 5, , 6]);
+                    return [4, fillMediaOverlayParse(publication, mo)];
+                case 4:
+                    _e.sent();
+                    return [3, 6];
+                case 5:
+                    err_15 = _e.sent();
+                    return [2, Promise.reject(err_15)];
+                case 6:
+                    mos.push(mo);
+                    _e.label = 7;
+                case 7:
+                    _c++;
+                    return [3, 2];
+                case 8:
+                    _a++;
+                    return [3, 1];
+                case 9: return [2, Promise.resolve(mos)];
+            }
+        });
+    });
+}
+exports.getMediaOverlay = getMediaOverlay;
+var fillMediaOverlayParse = function (publication, mo) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var link, relativePath_1, err, zipInternal, zip, smilZipStream_, err_16, decryptFail, transformedStream, err_17, err, smilZipStream, smilZipData, err_18, smilStr, smilXmlDoc, smil, zipPath;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (mo.initialized) {
+                    return [2];
+                }
+                if (publication.Resources) {
+                    relativePath_1 = mo.SmilPathInZip;
+                    if (publication.Resources) {
+                        link = publication.Resources.find(function (l) {
+                            if (l.Href === relativePath_1) {
+                                return true;
+                            }
+                            return false;
+                        });
+                    }
+                    if (!link) {
+                        if (publication.Spine) {
+                            link = publication.Spine.find(function (l) {
+                                if (l.Href === relativePath_1) {
+                                    return true;
+                                }
+                                return false;
+                            });
+                        }
+                    }
+                    if (!link) {
+                        err = "Asset not declared in publication spine/resources! " + relativePath_1;
+                        debug(err);
+                        return [2, Promise.reject(err)];
+                    }
+                }
+                zipInternal = publication.findFromInternal("zip");
+                if (!zipInternal) {
+                    return [2];
+                }
+                zip = zipInternal.Value;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4, zip.entryStreamPromise(mo.SmilPathInZip)];
+            case 2:
+                smilZipStream_ = _a.sent();
+                return [3, 4];
+            case 3:
+                err_16 = _a.sent();
+                debug(err_16);
+                return [2, Promise.reject(err_16)];
+            case 4:
+                if (!(link && link.Properties && link.Properties.Encrypted)) return [3, 9];
+                decryptFail = false;
+                transformedStream = void 0;
+                _a.label = 5;
+            case 5:
+                _a.trys.push([5, 7, , 8]);
+                return [4, transformer_1.Transformers.tryStream(publication, link, smilZipStream_, false, 0, 0)];
+            case 6:
+                transformedStream = _a.sent();
+                return [3, 8];
+            case 7:
+                err_17 = _a.sent();
+                debug(err_17);
+                return [2, Promise.reject(err_17)];
+            case 8:
+                if (transformedStream) {
+                    smilZipStream_ = transformedStream;
+                }
+                else {
+                    decryptFail = true;
+                }
+                if (decryptFail) {
+                    err = "Encryption scheme not supported.";
+                    debug(err);
+                    return [2, Promise.reject(err)];
+                }
+                _a.label = 9;
+            case 9:
+                smilZipStream = smilZipStream_.stream;
+                _a.label = 10;
+            case 10:
+                _a.trys.push([10, 12, , 13]);
+                return [4, BufferUtils_1.streamToBufferPromise(smilZipStream)];
+            case 11:
+                smilZipData = _a.sent();
+                return [3, 13];
+            case 12:
+                err_18 = _a.sent();
+                debug(err_18);
+                return [2, Promise.reject(err_18)];
+            case 13:
+                smilStr = smilZipData.toString("utf8");
+                smilXmlDoc = new xmldom.DOMParser().parseFromString(smilStr);
+                smil = xml_js_mapper_1.XML.deserialize(smilXmlDoc, smil_1.SMIL);
+                smil.ZipPath = mo.SmilPathInZip;
+                mo.initialized = true;
+                debug("PARSED SMIL: " + mo.SmilPathInZip);
+                mo.Role = [];
+                mo.Role.push("section");
+                if (smil.Body) {
+                    if (smil.Body.EpubType) {
+                        smil.Body.EpubType.trim().split(" ").forEach(function (role) {
+                            if (!role.length) {
+                                return;
+                            }
+                            if (mo.Role.indexOf(role) < 0) {
+                                mo.Role.push(role);
+                            }
+                        });
+                    }
+                    if (smil.Body.TextRef) {
+                        zipPath = path.join(path.dirname(smil.ZipPath), smil.Body.TextRef)
+                            .replace(/\\/g, "/");
+                        mo.Text = zipPath;
+                    }
+                    if (smil.Body.Children && smil.Body.Children.length) {
+                        smil.Body.Children.forEach(function (seqChild) {
+                            if (!mo.Children) {
+                                mo.Children = [];
+                            }
+                            addSeqToMediaOverlay(smil, publication, mo, mo.Children, seqChild);
+                        });
+                    }
+                }
+                return [2];
+        }
+    });
+}); };
+var fillMediaOverlay = function (publication, rootfile, opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var _loop_1, _a, _b, item;
+    return tslib_1.__generator(this, function (_c) {
+        if (!publication.Resources) {
+            return [2];
+        }
+        _loop_1 = function (item) {
+            if (item.TypeLink !== "application/smil+xml") {
+                return "continue";
+            }
+            if (!zip.hasEntry(item.Href)) {
+                return "continue";
+            }
+            var manItemsHtmlWithSmil = [];
+            opf.Manifest.forEach(function (manItemHtmlWithSmil) {
+                if (manItemHtmlWithSmil.MediaOverlay) {
+                    var manItemSmil = opf.Manifest.find(function (mi) {
+                        if (mi.ID === manItemHtmlWithSmil.MediaOverlay) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (manItemSmil) {
+                        var smilFilePath2 = path.join(path.dirname(opf.ZipPath), manItemSmil.Href)
+                            .replace(/\\/g, "/");
+                        if (smilFilePath2 === item.Href) {
+                            manItemsHtmlWithSmil.push(manItemHtmlWithSmil);
+                        }
+                    }
+                }
+            });
+            var mo = new media_overlay_1.MediaOverlayNode();
+            mo.SmilPathInZip = item.Href;
+            mo.initialized = false;
+            manItemsHtmlWithSmil.forEach(function (manItemHtmlWithSmil) {
+                var htmlPathInZip = path.join(path.dirname(opf.ZipPath), manItemHtmlWithSmil.Href)
+                    .replace(/\\/g, "/");
+                var link = findLinKByHref(publication, rootfile, opf, htmlPathInZip);
+                if (link) {
+                    if (!link.MediaOverlays) {
+                        link.MediaOverlays = [];
+                    }
+                    var alreadyExists = link.MediaOverlays.find(function (moo) {
+                        if (item.Href === moo.SmilPathInZip) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (!alreadyExists) {
+                        link.MediaOverlays.push(mo);
+                    }
+                    if (!link.Properties) {
+                        link.Properties = new metadata_properties_1.Properties();
+                    }
+                    link.Properties.MediaOverlay = exports.mediaOverlayURLPath + "?" +
+                        exports.mediaOverlayURLParam + "=" + querystring.escape(link.Href);
+                }
+            });
+            if (item.Properties && item.Properties.Encrypted) {
+                debug("ENCRYPTED SMIL MEDIA OVERLAY: " + item.Href);
+                return "continue";
+            }
+        };
+        for (_a = 0, _b = publication.Resources; _a < _b.length; _a++) {
+            item = _b[_a];
+            _loop_1(item);
+        }
+        return [2];
+    });
+}); };
+var addSeqToMediaOverlay = function (smil, publication, rootMO, mo, seqChild) {
+    var moc = new media_overlay_1.MediaOverlayNode();
+    moc.initialized = rootMO.initialized;
+    mo.push(moc);
+    if (seqChild instanceof smil_seq_1.Seq) {
+        moc.Role = [];
+        moc.Role.push("section");
+        var seq = seqChild;
+        if (seq.EpubType) {
+            seq.EpubType.trim().split(" ").forEach(function (role) {
+                if (!role.length) {
+                    return;
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
+        if (seq.TextRef) {
+            var zipPath = path.join(path.dirname(smil.ZipPath), seq.TextRef)
+                .replace(/\\/g, "/");
+            moc.Text = zipPath;
+        }
+        if (seq.Children && seq.Children.length) {
+            seq.Children.forEach(function (child) {
+                if (!moc.Children) {
+                    moc.Children = [];
+                }
+                addSeqToMediaOverlay(smil, publication, rootMO, moc.Children, child);
+            });
+        }
+    }
+    else {
+        var par = seqChild;
+        if (par.EpubType) {
+            par.EpubType.trim().split(" ").forEach(function (role) {
+                if (!role.length) {
+                    return;
+                }
+                if (!moc.Role) {
+                    moc.Role = [];
+                }
+                if (moc.Role.indexOf(role) < 0) {
+                    moc.Role.push(role);
+                }
+            });
+        }
+        if (par.Text && par.Text.Src) {
+            var zipPath = path.join(path.dirname(smil.ZipPath), par.Text.Src)
+                .replace(/\\/g, "/");
+            moc.Text = zipPath;
+        }
+        if (par.Audio && par.Audio.Src) {
+            var zipPath = path.join(path.dirname(smil.ZipPath), par.Audio.Src)
+                .replace(/\\/g, "/");
+            moc.Audio = zipPath;
+            moc.Audio += "#t=";
+            moc.Audio += par.Audio.ClipBegin ? media_overlay_1.timeStrToSeconds(par.Audio.ClipBegin) : "0";
+            if (par.Audio.ClipEnd) {
+                moc.Audio += ",";
+                moc.Audio += media_overlay_1.timeStrToSeconds(par.Audio.ClipEnd);
+            }
+        }
+    }
+};
+var fillPublicationDate = function (publication, rootfile, opf) {
+    if (opf.Metadata && opf.Metadata.Date && opf.Metadata.Date.length) {
+        if (isEpub3OrMore(rootfile, opf) && opf.Metadata.Date[0] && opf.Metadata.Date[0].Data) {
+            publication.Metadata.PublicationDate = moment(opf.Metadata.Date[0].Data).toDate();
+            return;
+        }
+        opf.Metadata.Date.forEach(function (date) {
+            if (date.Data && date.Event && date.Event.indexOf("publication") >= 0) {
+                publication.Metadata.PublicationDate = moment(date.Data).toDate();
+            }
+        });
+    }
+};
+var findContributorInMeta = function (publication, rootfile, opf) {
+    if (opf.Metadata && opf.Metadata.Meta) {
+        opf.Metadata.Meta.forEach(function (meta) {
+            if (meta.Property === "dcterms:creator" || meta.Property === "dcterms:contributor") {
+                var cont = new opf_author_1.Author();
+                cont.Data = meta.Data;
+                cont.ID = meta.ID;
+                addContributor(publication, rootfile, opf, cont, undefined);
+            }
+        });
+    }
+};
+var addContributor = function (publication, rootfile, opf, cont, forcedRole) {
+    var contributor = new metadata_contributor_1.Contributor();
+    var role;
+    if (isEpub3OrMore(rootfile, opf)) {
+        var meta = findMetaByRefineAndProperty(rootfile, opf, cont.ID, "role");
+        if (meta && meta.Property === "role") {
+            role = meta.Data;
+        }
+        if (!role && forcedRole) {
+            role = forcedRole;
+        }
+        var metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, cont.ID, "alternate-script");
+        if (metaAlt && metaAlt.length) {
+            contributor.Name = {};
+            if (publication.Metadata &&
+                publication.Metadata.Language &&
+                publication.Metadata.Language.length) {
+                contributor.Name[publication.Metadata.Language[0].toLowerCase()] = cont.Data;
+            }
+            metaAlt.forEach(function (m) {
+                if (m.Lang) {
+                    contributor.Name[m.Lang] = m.Data;
+                }
+            });
+        }
+        else {
+            contributor.Name = cont.Data;
+        }
+    }
+    else {
+        contributor.Name = cont.Data;
+        role = cont.Role;
+        if (!role && forcedRole) {
+            role = forcedRole;
+        }
+    }
+    if (role) {
+        switch (role) {
+            case "aut": {
+                if (!publication.Metadata.Author) {
+                    publication.Metadata.Author = [];
+                }
+                publication.Metadata.Author.push(contributor);
+                break;
+            }
+            case "trl": {
+                if (!publication.Metadata.Translator) {
+                    publication.Metadata.Translator = [];
+                }
+                publication.Metadata.Translator.push(contributor);
+                break;
+            }
+            case "art": {
+                if (!publication.Metadata.Artist) {
+                    publication.Metadata.Artist = [];
+                }
+                publication.Metadata.Artist.push(contributor);
+                break;
+            }
+            case "edt": {
+                if (!publication.Metadata.Editor) {
+                    publication.Metadata.Editor = [];
+                }
+                publication.Metadata.Editor.push(contributor);
+                break;
+            }
+            case "ill": {
+                if (!publication.Metadata.Illustrator) {
+                    publication.Metadata.Illustrator = [];
+                }
+                publication.Metadata.Illustrator.push(contributor);
+                break;
+            }
+            case "ltr": {
+                if (!publication.Metadata.Letterer) {
+                    publication.Metadata.Letterer = [];
+                }
+                publication.Metadata.Letterer.push(contributor);
+                break;
+            }
+            case "pen": {
+                if (!publication.Metadata.Penciler) {
+                    publication.Metadata.Penciler = [];
+                }
+                publication.Metadata.Penciler.push(contributor);
+                break;
+            }
+            case "clr": {
+                if (!publication.Metadata.Colorist) {
+                    publication.Metadata.Colorist = [];
+                }
+                publication.Metadata.Colorist.push(contributor);
+                break;
+            }
+            case "ink": {
+                if (!publication.Metadata.Inker) {
+                    publication.Metadata.Inker = [];
+                }
+                publication.Metadata.Inker.push(contributor);
+                break;
+            }
+            case "nrt": {
+                if (!publication.Metadata.Narrator) {
+                    publication.Metadata.Narrator = [];
+                }
+                publication.Metadata.Narrator.push(contributor);
+                break;
+            }
+            case "pbl": {
+                if (!publication.Metadata.Publisher) {
+                    publication.Metadata.Publisher = [];
+                }
+                publication.Metadata.Publisher.push(contributor);
+                break;
+            }
+            default: {
+                contributor.Role = role;
+                if (!publication.Metadata.Contributor) {
+                    publication.Metadata.Contributor = [];
+                }
+                publication.Metadata.Contributor.push(contributor);
+            }
+        }
+    }
+};
+var addIdentifier = function (publication, _rootfile, opf) {
+    if (opf.Metadata && opf.Metadata.Identifier) {
+        if (opf.UniqueIdentifier && opf.Metadata.Identifier.length > 1) {
+            opf.Metadata.Identifier.forEach(function (iden) {
+                if (iden.ID === opf.UniqueIdentifier) {
+                    publication.Metadata.Identifier = iden.Data;
+                }
+            });
+        }
+        else if (opf.Metadata.Identifier.length > 0) {
+            publication.Metadata.Identifier = opf.Metadata.Identifier[0].Data;
+        }
+    }
+};
+var addTitle = function (publication, rootfile, opf) {
+    if (isEpub3OrMore(rootfile, opf)) {
+        var mainTitle = void 0;
+        if (opf.Metadata &&
+            opf.Metadata.Title &&
+            opf.Metadata.Title.length) {
+            if (opf.Metadata.Meta) {
+                var tt = opf.Metadata.Title.find(function (title) {
+                    var refineID = "#" + title.ID;
+                    var m = opf.Metadata.Meta.find(function (meta) {
+                        if (meta.Data === "main" && meta.Refine === refineID) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (m) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (tt) {
+                    mainTitle = tt;
+                }
+            }
+            if (!mainTitle) {
+                mainTitle = opf.Metadata.Title[0];
+            }
+        }
+        if (mainTitle) {
+            var metaAlt = findAllMetaByRefineAndProperty(rootfile, opf, mainTitle.ID, "alternate-script");
+            if (metaAlt && metaAlt.length) {
+                publication.Metadata.Title = {};
+                if (mainTitle.Lang) {
+                    publication.Metadata.Title[mainTitle.Lang.toLowerCase()] = mainTitle.Data;
+                }
+                metaAlt.forEach(function (m) {
+                    if (m.Lang) {
+                        publication.Metadata.Title[m.Lang.toLowerCase()] = m.Data;
+                    }
+                });
+            }
+            else {
+                publication.Metadata.Title = mainTitle.Data;
+            }
+        }
+    }
+    else {
+        if (opf.Metadata &&
+            opf.Metadata.Title &&
+            opf.Metadata.Title.length) {
+            publication.Metadata.Title = opf.Metadata.Title[0].Data;
+        }
+    }
+};
+var addRelAndPropertiesToLink = function (publication, link, linkEpub, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var spineProperties;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (!linkEpub.Properties) return [3, 2];
+                return [4, addToLinkFromProperties(publication, link, linkEpub.Properties)];
+            case 1:
+                _a.sent();
+                _a.label = 2;
+            case 2:
+                spineProperties = findPropertiesInSpineForManifest(linkEpub, rootfile, opf);
+                if (!spineProperties) return [3, 4];
+                return [4, addToLinkFromProperties(publication, link, spineProperties)];
+            case 3:
+                _a.sent();
+                _a.label = 4;
+            case 4: return [2];
+        }
+    });
+}); };
+var addToLinkFromProperties = function (publication, link, propertiesString) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var properties, propertiesStruct, _a, properties_1, p, _b;
+    return tslib_1.__generator(this, function (_c) {
+        switch (_c.label) {
+            case 0:
+                properties = propertiesString.trim().split(" ");
+                propertiesStruct = new metadata_properties_1.Properties();
+                _a = 0, properties_1 = properties;
+                _c.label = 1;
+            case 1:
+                if (!(_a < properties_1.length)) return [3, 31];
+                p = properties_1[_a];
+                _b = p;
+                switch (_b) {
+                    case "cover-image": return [3, 2];
+                    case "nav": return [3, 4];
+                    case "scripted": return [3, 5];
+                    case "mathml": return [3, 6];
+                    case "onix-record": return [3, 7];
+                    case "svg": return [3, 8];
+                    case "xmp-record": return [3, 9];
+                    case "remote-resources": return [3, 10];
+                    case "page-spread-left": return [3, 11];
+                    case "page-spread-right": return [3, 12];
+                    case "page-spread-center": return [3, 13];
+                    case "rendition:spread-none": return [3, 14];
+                    case "rendition:spread-auto": return [3, 15];
+                    case "rendition:spread-landscape": return [3, 16];
+                    case "rendition:spread-portrait": return [3, 17];
+                    case "rendition:spread-both": return [3, 18];
+                    case "rendition:layout-reflowable": return [3, 19];
+                    case "rendition:layout-pre-paginated": return [3, 20];
+                    case "rendition:orientation-auto": return [3, 21];
+                    case "rendition:orientation-landscape": return [3, 22];
+                    case "rendition:orientation-portrait": return [3, 23];
+                    case "rendition:flow-auto": return [3, 24];
+                    case "rendition:flow-paginated": return [3, 25];
+                    case "rendition:flow-scrolled-continuous": return [3, 26];
+                    case "rendition:flow-scrolled-doc": return [3, 27];
+                }
+                return [3, 28];
+            case 2:
+                link.AddRel("cover");
+                return [4, exports.addCoverDimensions(publication, link)];
+            case 3:
+                _c.sent();
+                return [3, 29];
+            case 4:
+                {
+                    link.AddRel("contents");
+                    return [3, 29];
+                }
+                _c.label = 5;
+            case 5:
+                {
+                    if (!propertiesStruct.Contains) {
+                        propertiesStruct.Contains = [];
+                    }
+                    propertiesStruct.Contains.push("js");
+                    return [3, 29];
+                }
+                _c.label = 6;
+            case 6:
+                {
+                    if (!propertiesStruct.Contains) {
+                        propertiesStruct.Contains = [];
+                    }
+                    propertiesStruct.Contains.push("mathml");
+                    return [3, 29];
+                }
+                _c.label = 7;
+            case 7:
+                {
+                    if (!propertiesStruct.Contains) {
+                        propertiesStruct.Contains = [];
+                    }
+                    propertiesStruct.Contains.push("onix");
+                    return [3, 29];
+                }
+                _c.label = 8;
+            case 8:
+                {
+                    if (!propertiesStruct.Contains) {
+                        propertiesStruct.Contains = [];
+                    }
+                    propertiesStruct.Contains.push("svg");
+                    return [3, 29];
+                }
+                _c.label = 9;
+            case 9:
+                {
+                    if (!propertiesStruct.Contains) {
+                        propertiesStruct.Contains = [];
+                    }
+                    propertiesStruct.Contains.push("xmp");
+                    return [3, 29];
+                }
+                _c.label = 10;
+            case 10:
+                {
+                    if (!propertiesStruct.Contains) {
+                        propertiesStruct.Contains = [];
+                    }
+                    propertiesStruct.Contains.push("remote-resources");
+                    return [3, 29];
+                }
+                _c.label = 11;
+            case 11:
+                {
+                    propertiesStruct.Page = "left";
+                    return [3, 29];
+                }
+                _c.label = 12;
+            case 12:
+                {
+                    propertiesStruct.Page = "right";
+                    return [3, 29];
+                }
+                _c.label = 13;
+            case 13:
+                {
+                    propertiesStruct.Page = "center";
+                    return [3, 29];
+                }
+                _c.label = 14;
+            case 14:
+                {
+                    propertiesStruct.Spread = noneMeta;
+                    return [3, 29];
+                }
+                _c.label = 15;
+            case 15:
+                {
+                    propertiesStruct.Spread = autoMeta;
+                    return [3, 29];
+                }
+                _c.label = 16;
+            case 16:
+                {
+                    propertiesStruct.Spread = "landscape";
+                    return [3, 29];
+                }
+                _c.label = 17;
+            case 17:
+                {
+                    propertiesStruct.Spread = "portrait";
+                    return [3, 29];
+                }
+                _c.label = 18;
+            case 18:
+                {
+                    propertiesStruct.Spread = "both";
+                    return [3, 29];
+                }
+                _c.label = 19;
+            case 19:
+                {
+                    propertiesStruct.Layout = reflowableMeta;
+                    return [3, 29];
+                }
+                _c.label = 20;
+            case 20:
+                {
+                    propertiesStruct.Layout = "fixed";
+                    return [3, 29];
+                }
+                _c.label = 21;
+            case 21:
+                {
+                    propertiesStruct.Orientation = "auto";
+                    return [3, 29];
+                }
+                _c.label = 22;
+            case 22:
+                {
+                    propertiesStruct.Orientation = "landscape";
+                    return [3, 29];
+                }
+                _c.label = 23;
+            case 23:
+                {
+                    propertiesStruct.Orientation = "portrait";
+                    return [3, 29];
+                }
+                _c.label = 24;
+            case 24:
+                {
+                    propertiesStruct.Overflow = autoMeta;
+                    return [3, 29];
+                }
+                _c.label = 25;
+            case 25:
+                {
+                    propertiesStruct.Overflow = "paginated";
+                    return [3, 29];
+                }
+                _c.label = 26;
+            case 26:
+                {
+                    propertiesStruct.Overflow = "scrolled-continuous";
+                    return [3, 29];
+                }
+                _c.label = 27;
+            case 27:
+                {
+                    propertiesStruct.Overflow = "scrolled";
+                    return [3, 29];
+                }
+                _c.label = 28;
+            case 28:
+                {
+                    return [3, 29];
+                }
+                _c.label = 29;
+            case 29:
+                if (propertiesStruct.Layout ||
+                    propertiesStruct.Orientation ||
+                    propertiesStruct.Overflow ||
+                    propertiesStruct.Page ||
+                    propertiesStruct.Spread ||
+                    (propertiesStruct.Contains && propertiesStruct.Contains.length)) {
+                    link.Properties = propertiesStruct;
+                }
+                _c.label = 30;
+            case 30:
+                _a++;
+                return [3, 1];
+            case 31: return [2];
+        }
+    });
+}); };
+var addMediaOverlay = function (link, linkEpub, rootfile, opf) {
+    if (linkEpub.MediaOverlay) {
+        var meta = findMetaByRefineAndProperty(rootfile, opf, linkEpub.MediaOverlay, "media:duration");
+        if (meta) {
+            link.Duration = media_overlay_1.timeStrToSeconds(meta.Data);
+        }
+    }
+};
+var findInManifestByID = function (publication, rootfile, opf, ID) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var item, linkItem, zipPath;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (!(opf.Manifest && opf.Manifest.length)) return [3, 2];
+                item = opf.Manifest.find(function (manItem) {
+                    if (manItem.ID === ID) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (!item) return [3, 2];
+                linkItem = new publication_link_1.Link();
+                linkItem.TypeLink = item.MediaType;
+                zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
+                    .replace(/\\/g, "/");
+                linkItem.Href = zipPath;
+                return [4, addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf)];
+            case 1:
+                _a.sent();
+                addMediaOverlay(linkItem, item, rootfile, opf);
+                return [2, linkItem];
+            case 2: return [2, Promise.reject(ID + " not found")];
+        }
+    });
+}); };
+var addRendition = function (publication, _rootfile, opf) {
+    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
+        var rendition_1 = new metadata_properties_1.Properties();
+        opf.Metadata.Meta.forEach(function (meta) {
+            switch (meta.Property) {
+                case "rendition:layout": {
+                    if (meta.Data === "pre-paginated") {
+                        rendition_1.Layout = "fixed";
+                    }
+                    else if (meta.Data === "reflowable") {
+                        rendition_1.Layout = "reflowable";
+                    }
+                    break;
+                }
+                case "rendition:orientation": {
+                    rendition_1.Orientation = meta.Data;
+                    break;
+                }
+                case "rendition:spread": {
+                    rendition_1.Spread = meta.Data;
+                    break;
+                }
+                case "rendition:flow": {
+                    rendition_1.Overflow = meta.Data;
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
+        });
+        if (rendition_1.Layout || rendition_1.Orientation || rendition_1.Overflow || rendition_1.Page || rendition_1.Spread) {
+            publication.Metadata.Rendition = rendition_1;
+        }
+    }
+};
+var fillSpineAndResource = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var _a, _b, item, linkItem, err_19, _c, _d, item, zipPath, linkSpine, linkItem;
+    return tslib_1.__generator(this, function (_e) {
+        switch (_e.label) {
+            case 0:
+                if (!(opf.Spine && opf.Spine.Items && opf.Spine.Items.length)) return [3, 7];
+                _a = 0, _b = opf.Spine.Items;
+                _e.label = 1;
+            case 1:
+                if (!(_a < _b.length)) return [3, 7];
+                item = _b[_a];
+                if (!(!item.Linear || item.Linear === "yes")) return [3, 6];
+                linkItem = void 0;
+                _e.label = 2;
+            case 2:
+                _e.trys.push([2, 4, , 5]);
+                return [4, findInManifestByID(publication, rootfile, opf, item.IDref)];
+            case 3:
+                linkItem = _e.sent();
+                return [3, 5];
+            case 4:
+                err_19 = _e.sent();
+                debug(err_19);
+                return [3, 6];
+            case 5:
+                if (linkItem && linkItem.Href) {
+                    if (!publication.Spine) {
+                        publication.Spine = [];
+                    }
+                    publication.Spine.push(linkItem);
+                }
+                _e.label = 6;
+            case 6:
+                _a++;
+                return [3, 1];
+            case 7:
+                if (!(opf.Manifest && opf.Manifest.length)) return [3, 11];
+                _c = 0, _d = opf.Manifest;
+                _e.label = 8;
+            case 8:
+                if (!(_c < _d.length)) return [3, 11];
+                item = _d[_c];
+                zipPath = path.join(path.dirname(opf.ZipPath), item.Href)
+                    .replace(/\\/g, "/");
+                linkSpine = findInSpineByHref(publication, zipPath);
+                if (!(!linkSpine || !linkSpine.Href)) return [3, 10];
+                linkItem = new publication_link_1.Link();
+                linkItem.TypeLink = item.MediaType;
+                linkItem.Href = zipPath;
+                return [4, addRelAndPropertiesToLink(publication, linkItem, item, rootfile, opf)];
+            case 9:
+                _e.sent();
+                addMediaOverlay(linkItem, item, rootfile, opf);
+                if (!publication.Resources) {
+                    publication.Resources = [];
+                }
+                publication.Resources.push(linkItem);
+                _e.label = 10;
+            case 10:
+                _c++;
+                return [3, 8];
+            case 11: return [2];
+        }
+    });
+}); };
+var fillEncryptionInfo = function (publication, _rootfile, _opf, encryption, lcp) {
+    encryption.EncryptedData.forEach(function (encInfo) {
+        var encrypted = new metadata_encrypted_1.Encrypted();
+        encrypted.Algorithm = encInfo.EncryptionMethod.Algorithm;
+        if (lcp &&
+            encrypted.Algorithm !== "http://www.idpf.org/2008/embedding" &&
+            encrypted.Algorithm !== "http://ns.adobe.com/pdf/enc#RC") {
+            encrypted.Profile = lcp.Encryption.Profile;
+            encrypted.Scheme = "http://readium.org/2014/01/lcp";
+        }
+        if (encInfo.EncryptionProperties && encInfo.EncryptionProperties.length) {
+            encInfo.EncryptionProperties.forEach(function (prop) {
+                if (prop.Compression) {
+                    if (prop.Compression.OriginalLength) {
+                        encrypted.OriginalLength = parseFloat(prop.Compression.OriginalLength);
+                    }
+                    if (prop.Compression.Method === "8") {
+                        encrypted.Compression = "deflate";
+                    }
+                    else {
+                        encrypted.Compression = "none";
+                    }
+                }
+            });
+        }
+        publication.Resources.forEach(function (l, _i, _arr) {
+            var filePath = l.Href;
+            if (filePath === encInfo.CipherData.CipherReference.URI) {
+                if (!l.Properties) {
+                    l.Properties = new metadata_properties_1.Properties();
+                }
+                l.Properties.Encrypted = encrypted;
+            }
+        });
+        publication.Spine.forEach(function (l, _i, _arr) {
+            var filePath = l.Href;
+            if (filePath === encInfo.CipherData.CipherReference.URI) {
+                if (!l.Properties) {
+                    l.Properties = new metadata_properties_1.Properties();
+                }
+                l.Properties.Encrypted = encrypted;
+            }
+        });
+    });
+};
+var fillPageListFromNCX = function (publication, _rootfile, _opf, ncx) {
+    if (ncx.PageList && ncx.PageList.PageTarget && ncx.PageList.PageTarget.length) {
+        ncx.PageList.PageTarget.forEach(function (pageTarget) {
+            var link = new publication_link_1.Link();
+            var zipPath = path.join(path.dirname(ncx.ZipPath), pageTarget.Content.Src)
+                .replace(/\\/g, "/");
+            link.Href = zipPath;
+            link.Title = pageTarget.Text;
+            if (!publication.PageList) {
+                publication.PageList = [];
+            }
+            publication.PageList.push(link);
+        });
+    }
+};
+var fillTOCFromNCX = function (publication, rootfile, opf, ncx) {
+    if (ncx.Points && ncx.Points.length) {
+        ncx.Points.forEach(function (point) {
+            if (!publication.TOC) {
+                publication.TOC = [];
+            }
+            fillTOCFromNavPoint(publication, rootfile, opf, ncx, point, publication.TOC);
+        });
+    }
+};
+var fillLandmarksFromGuide = function (publication, _rootfile, opf) {
+    if (opf.Guide && opf.Guide.length) {
+        opf.Guide.forEach(function (ref) {
+            if (ref.Href) {
+                var link = new publication_link_1.Link();
+                var zipPath = path.join(path.dirname(opf.ZipPath), ref.Href)
+                    .replace(/\\/g, "/");
+                link.Href = zipPath;
+                link.Title = ref.Title;
+                if (!publication.Landmarks) {
+                    publication.Landmarks = [];
+                }
+                publication.Landmarks.push(link);
+            }
+        });
+    }
+};
+var fillTOCFromNavPoint = function (publication, rootfile, opf, ncx, point, node) {
+    var link = new publication_link_1.Link();
+    var zipPath = path.join(path.dirname(ncx.ZipPath), point.Content.Src)
+        .replace(/\\/g, "/");
+    link.Href = zipPath;
+    link.Title = point.Text;
+    if (point.Points && point.Points.length) {
+        point.Points.forEach(function (p) {
+            if (!link.Children) {
+                link.Children = [];
+            }
+            fillTOCFromNavPoint(publication, rootfile, opf, ncx, p, link.Children);
+        });
+    }
+    node.push(link);
+};
+var fillSubject = function (publication, _rootfile, opf) {
+    if (opf.Metadata && opf.Metadata.Subject && opf.Metadata.Subject.length) {
+        opf.Metadata.Subject.forEach(function (s) {
+            var sub = new metadata_subject_1.Subject();
+            sub.Name = s.Data;
+            sub.Code = s.Term;
+            sub.Scheme = s.Authority;
+            if (!publication.Metadata.Subject) {
+                publication.Metadata.Subject = [];
+            }
+            publication.Metadata.Subject.push(sub);
+        });
+    }
+};
+var fillCalibreSerieInfo = function (publication, _rootfile, opf) {
+    var serie;
+    var seriePosition;
+    if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
+        opf.Metadata.Meta.forEach(function (m) {
+            if (m.Name === "calibre:series") {
+                serie = m.Content;
+            }
+            if (m.Name === "calibre:series_index") {
+                seriePosition = parseFloat(m.Content);
+            }
+        });
+    }
+    if (serie) {
+        var collection = new metadata_collection_1.Collection();
+        collection.Name = serie;
+        if (seriePosition) {
+            collection.Position = seriePosition;
+        }
+        if (!publication.Metadata.BelongsTo) {
+            publication.Metadata.BelongsTo = new metadata_belongsto_1.BelongsTo();
+        }
+        if (!publication.Metadata.BelongsTo.Series) {
+            publication.Metadata.BelongsTo.Series = [];
+        }
+        publication.Metadata.BelongsTo.Series.push(collection);
+    }
+};
+var fillTOCFromNavDoc = function (publication, _rootfile, _opf, zip) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var navLink, navDocFilePath, navDocZipStream_, err_20, navDocZipStream, navDocZipData, err_21, navDocStr, navXmlDoc, select, navs;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                navLink = publication.GetNavDoc();
+                if (!navLink) {
+                    return [2];
+                }
+                navDocFilePath = navLink.Href;
+                if (!zip.hasEntry(navDocFilePath)) {
+                    return [2];
+                }
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4, zip.entryStreamPromise(navDocFilePath)];
+            case 2:
+                navDocZipStream_ = _a.sent();
+                return [3, 4];
+            case 3:
+                err_20 = _a.sent();
+                debug(err_20);
+                return [2, Promise.reject(err_20)];
+            case 4:
+                navDocZipStream = navDocZipStream_.stream;
+                _a.label = 5;
+            case 5:
+                _a.trys.push([5, 7, , 8]);
+                return [4, BufferUtils_1.streamToBufferPromise(navDocZipStream)];
+            case 6:
+                navDocZipData = _a.sent();
+                return [3, 8];
+            case 7:
+                err_21 = _a.sent();
+                debug(err_21);
+                return [2, Promise.reject(err_21)];
+            case 8:
+                navDocStr = navDocZipData.toString("utf8");
+                navXmlDoc = new xmldom.DOMParser().parseFromString(navDocStr);
+                select = xpath.useNamespaces({
+                    epub: "http://www.idpf.org/2007/ops",
+                    xhtml: "http://www.w3.org/1999/xhtml",
+                });
+                navs = select("/xhtml:html/xhtml:body//xhtml:nav", navXmlDoc);
+                if (navs && navs.length) {
+                    navs.forEach(function (navElement) {
+                        var typeNav = select("@epub:type", navElement);
+                        if (typeNav && typeNav.length) {
+                            var olElem = select("xhtml:ol", navElement);
+                            var roles = typeNav[0].value;
+                            var role = roles.trim().split(" ")[0];
+                            switch (role) {
+                                case "toc": {
+                                    publication.TOC = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.TOC, navLink.Href);
+                                    break;
+                                }
+                                case "page-list": {
+                                    publication.PageList = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.PageList, navLink.Href);
+                                    break;
+                                }
+                                case "landmarks": {
+                                    publication.Landmarks = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.Landmarks, navLink.Href);
+                                    break;
+                                }
+                                case "lot": {
+                                    publication.LOT = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOT, navLink.Href);
+                                    break;
+                                }
+                                case "loa": {
+                                    publication.LOA = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOA, navLink.Href);
+                                    break;
+                                }
+                                case "loi": {
+                                    publication.LOI = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOI, navLink.Href);
+                                    break;
+                                }
+                                case "lov": {
+                                    publication.LOV = [];
+                                    fillTOCFromNavDocWithOL(select, olElem, publication.LOV, navLink.Href);
+                                    break;
+                                }
+                                default: {
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                }
+                return [2];
+        }
+    });
+}); };
+var fillTOCFromNavDocWithOL = function (select, olElems, node, navDocPath) {
+    olElems.forEach(function (olElem) {
+        var liElems = select("xhtml:li", olElem);
+        if (liElems && liElems.length) {
+            liElems.forEach(function (liElem) {
+                var link = new publication_link_1.Link();
+                node.push(link);
+                var aElems = select("xhtml:a", liElem);
+                if (aElems && aElems.length > 0) {
+                    var aHref = select("@href", aElems[0]);
+                    if (aHref && aHref.length) {
+                        var val = aHref[0].value;
+                        if (val[0] === "#") {
+                            val = path.basename(navDocPath) + val;
+                        }
+                        var zipPath = path.join(path.dirname(navDocPath), val)
+                            .replace(/\\/g, "/");
+                        link.Href = zipPath;
+                    }
+                    var aText = aElems[0].textContent;
+                    if (aText && aText.length) {
+                        aText = aText.trim();
+                        aText = aText.replace(/\s\s+/g, " ");
+                        link.Title = aText;
+                    }
+                }
+                else {
+                    var liFirstChild = select("xhtml:*[1]", liElem);
+                    if (liFirstChild && liFirstChild.length && liFirstChild[0].textContent) {
+                        link.Title = liFirstChild[0].textContent.trim();
+                    }
+                }
+                var olElemsNext = select("xhtml:ol", liElem);
+                if (olElemsNext && olElemsNext.length) {
+                    if (!link.Children) {
+                        link.Children = [];
+                    }
+                    fillTOCFromNavDocWithOL(select, olElemsNext, link.Children, navDocPath);
+                }
+            });
+        }
+    });
+};
+var addCoverRel = function (publication, rootfile, opf) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    var coverID, manifestInfo, err_22, href_1, linky;
+    return tslib_1.__generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (opf.Metadata && opf.Metadata.Meta && opf.Metadata.Meta.length) {
+                    opf.Metadata.Meta.find(function (meta) {
+                        if (meta.Name === "cover") {
+                            coverID = meta.Content;
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+                if (!coverID) return [3, 6];
+                manifestInfo = void 0;
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4, findInManifestByID(publication, rootfile, opf, coverID)];
+            case 2:
+                manifestInfo = _a.sent();
+                return [3, 4];
+            case 3:
+                err_22 = _a.sent();
+                debug(err_22);
+                return [2];
+            case 4:
+                if (!(manifestInfo && manifestInfo.Href && publication.Resources && publication.Resources.length)) return [3, 6];
+                href_1 = manifestInfo.Href;
+                linky = publication.Resources.find(function (item, _i, _arr) {
+                    if (item.Href === href_1) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (!linky) return [3, 6];
+                linky.AddRel("cover");
+                return [4, exports.addCoverDimensions(publication, linky)];
+            case 5:
+                _a.sent();
+                _a.label = 6;
+            case 6: return [2];
+        }
+    });
+}); };
+var findPropertiesInSpineForManifest = function (linkEpub, _rootfile, opf) {
+    if (opf.Spine && opf.Spine.Items && opf.Spine.Items.length) {
+        var it = opf.Spine.Items.find(function (item) {
+            if (item.IDref === linkEpub.ID) {
+                return true;
+            }
+            return false;
+        });
+        if (it && it.Properties) {
+            return it.Properties;
+        }
+    }
+    return undefined;
+};
+var findInSpineByHref = function (publication, href) {
+    if (publication.Spine && publication.Spine.length) {
+        var ll = publication.Spine.find(function (l) {
+            if (l.Href === href) {
+                return true;
+            }
+            return false;
+        });
+        if (ll) {
+            return ll;
+        }
+    }
+    return undefined;
+};
+var findMetaByRefineAndProperty = function (rootfile, opf, ID, property) {
+    var ret = findAllMetaByRefineAndProperty(rootfile, opf, ID, property);
+    if (ret.length) {
+        return ret[0];
+    }
+    return undefined;
+};
+var findAllMetaByRefineAndProperty = function (_rootfile, opf, ID, property) {
+    var metas = [];
+    var refineID = "#" + ID;
+    if (opf.Metadata && opf.Metadata.Meta) {
+        opf.Metadata.Meta.forEach(function (metaTag) {
+            if (metaTag.Refine === refineID && metaTag.Property === property) {
+                metas.push(metaTag);
+            }
+        });
+    }
+    return metas;
+};
+var getEpubVersion = function (rootfile, opf) {
+    if (rootfile.Version) {
+        return rootfile.Version;
+    }
+    else if (opf.Version) {
+        return opf.Version;
+    }
+    return undefined;
+};
+var isEpub3OrMore = function (rootfile, opf) {
+    var version = getEpubVersion(rootfile, opf);
+    return (version === epub3 || version === epub301 || version === epub31);
+};
+var findLinKByHref = function (publication, _rootfile, _opf, href) {
+    if (publication.Spine && publication.Spine.length) {
+        var ll = publication.Spine.find(function (l) {
+            var pathInZip = l.Href;
+            if (href === pathInZip) {
+                return true;
+            }
+            return false;
+        });
+        if (ll) {
+            return ll;
+        }
+    }
+    return undefined;
+};
+
+},{"../_utils/stream/BufferUtils":340,"../_utils/xml-js-mapper":363,"../_utils/zip/zipFactory":370,"../models/media-overlay":372,"../models/metadata":382,"../models/metadata-belongsto":373,"../models/metadata-collection":375,"../models/metadata-contributor":377,"../models/metadata-encrypted":378,"../models/metadata-media-overlay":379,"../models/metadata-properties":380,"../models/metadata-subject":381,"../models/publication":384,"../models/publication-link":383,"../transform/transformer":460,"./epub/container":413,"./epub/encryption":422,"./epub/lcp":431,"./epub/ncx":436,"./epub/opf":448,"./epub/opf-author":437,"./epub/smil":455,"./epub/smil-seq":453,"debug":142,"image-size":260,"moment":307,"path":undefined,"querystring":undefined,"ta-json":540,"tslib":553,"xmldom":572,"xpath":575}],412:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Rootfile = (function () {
+    function Rootfile() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@full-path"),
+        tslib_1.__metadata("design:type", String)
+    ], Rootfile.prototype, "Path", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-type"),
+        tslib_1.__metadata("design:type", String)
+    ], Rootfile.prototype, "Type", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@version"),
+        tslib_1.__metadata("design:type", String)
+    ], Rootfile.prototype, "Version", void 0);
+    Rootfile = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject()
+    ], Rootfile);
+    return Rootfile;
+}());
+exports.Rootfile = Rootfile;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],413:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var container_rootfile_1 = require("./container-rootfile");
+var Container = (function () {
+    function Container() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("epub:rootfiles/epub:rootfile", {
+            epub: "urn:oasis:names:tc:opendocument:xmlns:container",
+            rendition: "http://www.idpf.org/2013/rendition",
+        }),
+        xml_js_mapper_1.XmlItemType(container_rootfile_1.Rootfile),
+        tslib_1.__metadata("design:type", Array)
+    ], Container.prototype, "Rootfile", void 0);
+    Container = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dummyNS: "dummyURI",
+            epub: "wrong2",
+            rendition: "wrong1",
+        })
+    ], Container);
+    return Container;
+}());
+exports.Container = Container;
+
+},{"../../_utils/xml-js-mapper":363,"./container-rootfile":412,"tslib":553}],414:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Compression = (function () {
+    function Compression() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Method"),
+        tslib_1.__metadata("design:type", String)
+    ], Compression.prototype, "Method", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@OriginalLength"),
+        tslib_1.__metadata("design:type", String)
+    ], Compression.prototype, "OriginalLength", void 0);
+    Compression = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], Compression);
+    return Compression;
+}());
+exports.Compression = Compression;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],415:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var encryption_cypherreference_1 = require("./encryption-cypherreference");
+var CipherData = (function () {
+    function CipherData() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:CipherReference"),
+        tslib_1.__metadata("design:type", encryption_cypherreference_1.CipherReference)
+    ], CipherData.prototype, "CipherReference", void 0);
+    CipherData = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], CipherData);
+    return CipherData;
+}());
+exports.CipherData = CipherData;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-cypherreference":416,"tslib":553}],416:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var CipherReference = (function () {
+    function CipherReference() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@URI"),
+        tslib_1.__metadata("design:type", String)
+    ], CipherReference.prototype, "URI", void 0);
+    CipherReference = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], CipherReference);
+    return CipherReference;
+}());
+exports.CipherReference = CipherReference;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],417:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var encryption_cypherdata_1 = require("./encryption-cypherdata");
+var encryption_keyinfo_1 = require("./encryption-keyinfo");
+var encryption_method_1 = require("./encryption-method");
+var encryption_property_1 = require("./encryption-property");
+var EncryptedData = (function () {
+    function EncryptedData() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:EncryptionMethod"),
+        tslib_1.__metadata("design:type", encryption_method_1.EncryptionMethod)
+    ], EncryptedData.prototype, "EncryptionMethod", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ds:KeyInfo"),
+        tslib_1.__metadata("design:type", encryption_keyinfo_1.KeyInfo)
+    ], EncryptedData.prototype, "KeyInfo", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:CipherData"),
+        tslib_1.__metadata("design:type", encryption_cypherdata_1.CipherData)
+    ], EncryptedData.prototype, "CipherData", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:EncryptionProperties/enc:EncryptionProperty"),
+        xml_js_mapper_1.XmlItemType(encryption_property_1.EncryptionProperty),
+        tslib_1.__metadata("design:type", Array)
+    ], EncryptedData.prototype, "EncryptionProperties", void 0);
+    EncryptedData = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], EncryptedData);
+    return EncryptedData;
+}());
+exports.EncryptedData = EncryptedData;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-cypherdata":415,"./encryption-keyinfo":418,"./encryption-method":419,"./encryption-property":420,"tslib":553}],418:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var encryption_retrievalmethod_1 = require("./encryption-retrievalmethod");
+var KeyInfo = (function () {
+    function KeyInfo() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ds:RetrievalMethod"),
+        tslib_1.__metadata("design:type", encryption_retrievalmethod_1.RetrievalMethod)
+    ], KeyInfo.prototype, "RetrievalMethod", void 0);
+    KeyInfo = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], KeyInfo);
+    return KeyInfo;
+}());
+exports.KeyInfo = KeyInfo;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-retrievalmethod":421,"tslib":553}],419:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var EncryptionMethod = (function () {
+    function EncryptionMethod() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Algorithm"),
+        tslib_1.__metadata("design:type", String)
+    ], EncryptionMethod.prototype, "Algorithm", void 0);
+    EncryptionMethod = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], EncryptionMethod);
+    return EncryptionMethod;
+}());
+exports.EncryptionMethod = EncryptionMethod;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],420:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var encryption_compression_1 = require("./encryption-compression");
+var EncryptionProperty = (function () {
+    function EncryptionProperty() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ns:Compression"),
+        tslib_1.__metadata("design:type", encryption_compression_1.Compression)
+    ], EncryptionProperty.prototype, "Compression", void 0);
+    EncryptionProperty = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], EncryptionProperty);
+    return EncryptionProperty;
+}());
+exports.EncryptionProperty = EncryptionProperty;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-compression":414,"tslib":553}],421:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var RetrievalMethod = (function () {
+    function RetrievalMethod() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@URI"),
+        tslib_1.__metadata("design:type", String)
+    ], RetrievalMethod.prototype, "URI", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@Type"),
+        tslib_1.__metadata("design:type", String)
+    ], RetrievalMethod.prototype, "Type", void 0);
+    RetrievalMethod = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], RetrievalMethod);
+    return RetrievalMethod;
+}());
+exports.RetrievalMethod = RetrievalMethod;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],422:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var encryption_data_1 = require("./encryption-data");
+var Encryption = (function () {
+    function Encryption() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("enc:EncryptedData"),
+        xml_js_mapper_1.XmlItemType(encryption_data_1.EncryptedData),
+        tslib_1.__metadata("design:type", Array)
+    ], Encryption.prototype, "EncryptedData", void 0);
+    Encryption = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ds: "http://www.w3.org/2000/09/xmldsig#",
+            enc: "http://www.w3.org/2001/04/xmlenc#",
+            encryption: "urn:oasis:names:tc:opendocument:xmlns:container",
+            ns: "http://www.idpf.org/2016/encryption#compression",
+        })
+    ], Encryption);
+    return Encryption;
+}());
+exports.Encryption = Encryption;
+
+},{"../../_utils/xml-js-mapper":363,"./encryption-data":417,"tslib":553}],423:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LCPCertificateBasicProfile = "-----BEGIN CERTIFICATE-----\nMIIFZzCCA0+gAwIBAgIJAMWdQaWkExQEMA0GCSqGSIb3DQEBCwUAMGcxCzAJBgNV\nBAYTAkZSMQ4wDAYDVQQHEwVQYXJpczEPMA0GA1UEChMGRURSTGFiMRIwEAYDVQQL\nEwlMQ1AgVGVzdHMxIzAhBgNVBAMTGkVEUkxhYiBSZWFkaXVtIExDUCB0ZXN0IENB\nMB4XDTE2MDMyNDIyNTc1OVoXDTM4MDExODIyNTc1OVowZzELMAkGA1UEBhMCRlIx\nDjAMBgNVBAcTBVBhcmlzMQ8wDQYDVQQKEwZFRFJMYWIxEjAQBgNVBAsTCUxDUCBU\nZXN0czEjMCEGA1UEAxMaRURSTGFiIFJlYWRpdW0gTENQIHRlc3QgQ0EwggIiMA0G\nCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDfxfveCISAmGDhXcZj+q6cXD3zQDr/\nkRG4fnqBm1rxFN1nshI0ObSMNwcV98c3D2swewQ6qFa+4INRakrF4ObtPtiQ7Tti\n/qYWf41rez/8x5M+DFeca8SIuf4Wi2u310EoplQm4JX3Qnvax7I/ivl+BtSzDY1h\n4bkA9dPPrp/vGa8dh0rIYaclJ9UEW/i4jyQkry36BfGKboOMYZioqPJfOFIIiSTb\n0nvHERssaS2MobWACinRRwL7Mih4mUV/v9Vhry3jN+wfxMKA+J/zcsY6p9HVgIhE\nkmyDIH4/vw+mLMcUQ4YFQeIOKRBRLHYcLHOUQNNIDw2gJAK/G/rfOeW3zu/tYCpk\nhT8PWrhd4zM+TdegpeFkidnNSvYFlKrojWhJisty3HuD+BXQ6ArjikIj4dCYc2BM\nZVUH50FEwl1ZpndQAySMCceOX8t6RX4jqbvhbyXjqR/Nr5SaN8G6gHemX/5LWdOa\n5D8dUwOGbQjR7igLQy+4UNefjvFp8Z5/No/vLD/3Ziwau+wFjcGXs9UdpqKgIzfW\nKAu77vPVb0vUvDczOU4HRx4bB3eAb4gI6meBYHKroogIpteDOfco48zhweiMGasz\nHwBU4rylW/seV/2l5IunsGNRSlVtT4z5xL7kn5fcYy5ZtStJrrOKZSJWaH+3Mvmb\nsgwPqlZYMNAoiwIDAQABoxYwFDASBgNVHRMBAf8ECDAGAQH/AgEAMA0GCSqGSIb3\nDQEBCwUAA4ICAQCmMGGqjnIo0BgItLmKrXW8yFRncZdjLAS5fCRNO0C34vDrm9N/\ny1qhoITqQ+vKVeA+M/sWzTQihPz+pyWGfvjqxdagpepPERX0ZFENMJaP5Sc8R0bL\ny96Xxk7L/SnVvJ2jgRP/D7X6jQrLxQbDceFRPelE+KcrcfAQdTLO9VTJEIkr4j6L\nBMDjqMcXASo+/t5fAhz3rUlo1gvhgdX+E4iJSoPwimr0pmUWFS473eS8Jrgn5meG\nPq5Kmf3Q+1hYlisIAzRARJXWJxBxeI+VLCF2c90m1MLXpET4tm2s8Ln9ePw4edGM\ncrwbR4nTEN+aGbPyo0yhs+smQA28B1LRnnZRyj70wHii6PN9+qtbr1S41FzKnLvO\nEBU63KxOE+NiN4p8q/Gx2J+lDtNy4OKEjgNNpp9fpzEbcSdnNK1dmZTbdKFV/QqT\nDQ8paH3TWX0eel/LeBHyn5W6A6B0maLRKNN98jcbqDyx2RfkEcEqvlQgEThNKH/6\n2hfQ8BEAzFdevtenyjKbnHmJ861t/hAnvCbbxMrT0gzgK2+gnqTFJiON3s0SObsG\nivPak5w5wtvreFvEHCntnhIocuqc9AOFoDdQo9idB25YUzwot0NNL6pShMNXNE6F\nImaa1w7gBDc+DVRYAoJzHF+awCOgqEDEXu67GHgcrXpQ9Ts7Eq+wjNy9OQ==\n-----END CERTIFICATE-----";
+exports.DUMMY_CRL = "-----BEGIN X509 CRL-----\nMIICrTCBljANBgkqhkiG9w0BAQQFADBnMQswCQYDVQQGEwJGUjEOMAwGA1UEBxMF\nUGFyaXMxDzANBgNVBAoTBkVEUkxhYjESMBAGA1UECxMJTENQIFRlc3RzMSMwIQYD\nVQQDExpFRFJMYWIgUmVhZGl1bSBMQ1AgdGVzdCBDQRcNMTcwOTI2MTM1NTE1WhcN\nMjcwOTI0MTM1NTE1WjANBgkqhkiG9w0BAQQFAAOCAgEA27f50xnlaKGUdqs6u6rD\nWsR75z+tZrH4J2aA5E9I/K5fNe20FftQZb6XNjVQTNvawoMW0q+Rh9dVjDnV5Cfw\nptchu738ZQr8iCOLQHvIM6wqQj7XwMqvyNaaeGMZxfRMGlx7T9DOwvtWFCc5X0ik\nYGPPV19CFf1cas8x9Y3LE8GmCtX9eUrotWLKRggG+qRTCri/SlaoicfzqhViiGeL\ndW8RpG/Q6ox+tLHti3fxOgZarMgMbRmUa6OTh8pnxrfnrdtD2PbwACvaEMCpNCZR\naSTMRmIxw8UUbUA/JxDIwyISGn3ZRgbFAglYzaX80rSQZr6e0bFlzHl1xZtZ0Raz\nGQWP9vvfH5ESp6FsD98g//VYigatoPz/EKU4cfP+1W/Zrr4jRSBFB37rxASXPBcx\nL8cerb9nnRbAEvIqxnR4e0ZkhMyqIrLUZ3Jva0fC30kdtp09/KJ22mXKBz85wUQa\n7ihiSz7pov0R9hpY93fvt++idHBECRNGOeBC4wRtGxpru8ZUa0/KFOD0HXHMQDwV\ncIa/72T0okStOqjIOcWflxl/eAvUXwtet9Ht3o9giSl6hAObAeleMJOB37Bq9ASf\nh4w7d5he8zqfsCGjaG1OVQNWVAGxQQViWVysfcJohny4PIVAc9KkjCFa/QrkNGjr\nkUiV/PFCwL66iiF666DrXLY=\n-----END X509 CRL-----";
+
+},{}],424:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var ContentKey = (function () {
+    function ContentKey() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("encrypted_value"),
+        tslib_1.__metadata("design:type", String)
+    ], ContentKey.prototype, "EncryptedValue", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        tslib_1.__metadata("design:type", String)
+    ], ContentKey.prototype, "Algorithm", void 0);
+    ContentKey = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], ContentKey);
+    return ContentKey;
+}());
+exports.ContentKey = ContentKey;
+
+},{"ta-json":540,"tslib":553}],425:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var lcp_contentkey_1 = require("./lcp-contentkey");
+var lcp_userkey_1 = require("./lcp-userkey");
+var Encryption = (function () {
+    function Encryption() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("profile"),
+        tslib_1.__metadata("design:type", String)
+    ], Encryption.prototype, "Profile", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("content_key"),
+        tslib_1.__metadata("design:type", lcp_contentkey_1.ContentKey)
+    ], Encryption.prototype, "ContentKey", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("user_key"),
+        tslib_1.__metadata("design:type", lcp_userkey_1.UserKey)
+    ], Encryption.prototype, "UserKey", void 0);
+    Encryption = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Encryption);
+    return Encryption;
+}());
+exports.Encryption = Encryption;
+
+},{"./lcp-contentkey":424,"./lcp-userkey":430,"ta-json":540,"tslib":553}],426:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Link = (function () {
+    function Link() {
+    }
+    Link.prototype.HasRel = function (rel) {
+        return this.Rel === rel;
+    };
+    Link.prototype.SetRel = function (rel) {
+        this.Rel = rel;
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("length"),
+        tslib_1.__metadata("design:type", Number)
+    ], Link.prototype, "Length", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("href"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Href", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("title"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("type"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Type", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("templated"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Templated", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("profile"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Profile", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("hash"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Hash", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rel"),
+        tslib_1.__metadata("design:type", String)
+    ], Link.prototype, "Rel", void 0);
+    Link = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Link);
+    return Link;
+}());
+exports.Link = Link;
+
+},{"ta-json":540,"tslib":553}],427:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Rights = (function () {
+    function Rights() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("print"),
+        tslib_1.__metadata("design:type", Number)
+    ], Rights.prototype, "Print", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("copy"),
+        tslib_1.__metadata("design:type", Number)
+    ], Rights.prototype, "Copy", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("start"),
+        tslib_1.__metadata("design:type", Date)
+    ], Rights.prototype, "Start", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("end"),
+        tslib_1.__metadata("design:type", Date)
+    ], Rights.prototype, "End", void 0);
+    Rights = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Rights);
+    return Rights;
+}());
+exports.Rights = Rights;
+
+},{"ta-json":540,"tslib":553}],428:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var Signature = (function () {
+    function Signature() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        tslib_1.__metadata("design:type", String)
+    ], Signature.prototype, "Algorithm", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("certificate"),
+        tslib_1.__metadata("design:type", String)
+    ], Signature.prototype, "Certificate", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("value"),
+        tslib_1.__metadata("design:type", String)
+    ], Signature.prototype, "Value", void 0);
+    Signature = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], Signature);
+    return Signature;
+}());
+exports.Signature = Signature;
+
+},{"ta-json":540,"tslib":553}],429:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var User = (function () {
+    function User() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("id"),
+        tslib_1.__metadata("design:type", String)
+    ], User.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("email"),
+        tslib_1.__metadata("design:type", String)
+    ], User.prototype, "Email", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("name"),
+        tslib_1.__metadata("design:type", String)
+    ], User.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("encrypted"),
+        ta_json_1.JsonElementType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], User.prototype, "Encrypted", void 0);
+    User = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], User);
+    return User;
+}());
+exports.User = User;
+
+},{"ta-json":540,"tslib":553}],430:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var ta_json_1 = require("ta-json");
+var UserKey = (function () {
+    function UserKey() {
+    }
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("text_hint"),
+        tslib_1.__metadata("design:type", String)
+    ], UserKey.prototype, "TextHint", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("algorithm"),
+        tslib_1.__metadata("design:type", String)
+    ], UserKey.prototype, "Algorithm", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("key_check"),
+        tslib_1.__metadata("design:type", String)
+    ], UserKey.prototype, "KeyCheck", void 0);
+    UserKey = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], UserKey);
+    return UserKey;
+}());
+exports.UserKey = UserKey;
+
+},{"ta-json":540,"tslib":553}],431:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var bind = require("bindings");
+var crypto = require("crypto");
+var fs = require("fs");
+var path = require("path");
+var debug_ = require("debug");
+var ta_json_1 = require("ta-json");
+var lcp_certificate_1 = require("./lcp-certificate");
+var lcp_encryption_1 = require("./lcp-encryption");
+var lcp_link_1 = require("./lcp-link");
+var lcp_rights_1 = require("./lcp-rights");
+var lcp_signature_1 = require("./lcp-signature");
+var lcp_user_1 = require("./lcp-user");
+var AES_BLOCK_SIZE = 16;
+var debug = debug_("r2:publication:lcp");
+var LCP_NATIVE_PLUGIN_PATH = path.join(process.cwd(), "LCP", "lcp.node");
+function setLcpNativePluginPath(filepath) {
+    LCP_NATIVE_PLUGIN_PATH = filepath;
+    debug(LCP_NATIVE_PLUGIN_PATH);
+    var exists = fs.existsSync(LCP_NATIVE_PLUGIN_PATH);
+    debug("LCP NATIVE PLUGIN: " + (exists ? "OKAY" : "MISSING"));
+    return exists;
+}
+exports.setLcpNativePluginPath = setLcpNativePluginPath;
+var LCP = (function () {
+    function LCP() {
+        this._usesNativeNodePlugin = undefined;
+    }
+    LCP.prototype.isNativeNodePlugin = function () {
+        this.init();
+        return this._usesNativeNodePlugin;
+    };
+    LCP.prototype.isReady = function () {
+        if (this.isNativeNodePlugin()) {
+            return typeof this._lcpContext !== "undefined";
+        }
+        return typeof this.ContentKey !== "undefined";
+    };
+    LCP.prototype.init = function () {
+        if (typeof this._usesNativeNodePlugin !== "undefined") {
+            return;
+        }
+        this.ContentKey = undefined;
+        this._lcpContext = undefined;
+        if (fs.existsSync(LCP_NATIVE_PLUGIN_PATH)) {
+            debug("LCP _usesNativeNodePlugin");
+            var filePath = path.dirname(LCP_NATIVE_PLUGIN_PATH);
+            var fileName = path.basename(LCP_NATIVE_PLUGIN_PATH);
+            debug(filePath);
+            debug(fileName);
+            this._usesNativeNodePlugin = true;
+            this._lcpNative = bind({
+                bindings: fileName,
+                module_root: filePath,
+                try: [[
+                        "module_root",
+                        "bindings",
+                    ]],
+            });
+        }
+        else {
+            debug("LCP JS impl");
+            this._usesNativeNodePlugin = false;
+            this._lcpNative = undefined;
+        }
+    };
+    LCP.prototype.decrypt = function (encryptedContent) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return tslib_1.__generator(this, function (_a) {
+                if (!this.isNativeNodePlugin()) {
+                    return [2, Promise.reject("direct decrypt buffer only for native plugin")];
+                }
+                if (!this._lcpContext) {
+                    return [2, Promise.reject("LCP context not initialized (needs setUserPassphrase)")];
+                }
+                return [2, new Promise(function (resolve, reject) {
+                        _this._lcpNative.decrypt(_this._lcpContext, encryptedContent, function (er, decryptedContent) {
+                            if (er) {
+                                debug(er);
+                                reject(er);
+                                return;
+                            }
+                            var padding = decryptedContent[decryptedContent.length - 1];
+                            var buff = decryptedContent.slice(0, decryptedContent.length - padding);
+                            resolve(buff);
+                        });
+                    })];
+            });
+        });
+    };
+    LCP.prototype.setUserPassphrase = function (pass) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var check, userKey, keyCheck, encryptedLicenseID, iv, encrypted, decrypteds, decryptStream, buff1, buff2, decrypted, nPaddingBytes, size, decryptedOut, encryptedContentKey, iv2, encrypted2, decrypteds2, decryptStream2, buff1_, buff2_, decrypted2, nPaddingBytes2, size2;
+            return tslib_1.__generator(this, function (_a) {
+                this.init();
+                this.userPassphraseHex = pass;
+                if (!this.userPassphraseHex) {
+                    return [2, false];
+                }
+                check = (this.Encryption.Profile === "http://readium.org/lcp/basic-profile"
+                    || this.Encryption.Profile === "http://readium.org/lcp/profile-1.0")
+                    && this.Encryption.UserKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#sha256"
+                    && this.Encryption.ContentKey.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
+                if (!check) {
+                    debug("Incorrect LCP fields.");
+                    debug(this.Encryption.Profile);
+                    debug(this.Encryption.ContentKey.Algorithm);
+                    debug(this.Encryption.UserKey.Algorithm);
+                    return [2, false];
+                }
+                if (this._usesNativeNodePlugin) {
+                    return [2, new Promise(function (resolve, _reject) {
+                            _this._lcpNative.findOneValidPassphrase(_this.JsonSource, [_this.userPassphraseHex], function (err, validHashedPassphrase) {
+                                if (err) {
+                                    debug(err);
+                                    resolve(false);
+                                }
+                                else {
+                                    _this._lcpNative.createContext(_this.JsonSource, validHashedPassphrase, lcp_certificate_1.DUMMY_CRL, function (erro, context) {
+                                        if (erro) {
+                                            debug(erro);
+                                            resolve(false);
+                                            return;
+                                        }
+                                        _this._lcpContext = context;
+                                        resolve(true);
+                                    });
+                                }
+                            });
+                        })];
+                }
+                else {
+                    userKey = new Buffer(this.userPassphraseHex, "hex");
+                    keyCheck = new Buffer(this.Encryption.UserKey.KeyCheck, "base64");
+                    encryptedLicenseID = keyCheck;
+                    iv = encryptedLicenseID.slice(0, AES_BLOCK_SIZE);
+                    encrypted = encryptedLicenseID.slice(AES_BLOCK_SIZE);
+                    decrypteds = [];
+                    decryptStream = crypto.createDecipheriv("aes-256-cbc", userKey, iv);
+                    decryptStream.setAutoPadding(false);
+                    buff1 = decryptStream.update(encrypted);
+                    if (buff1) {
+                        decrypteds.push(buff1);
+                    }
+                    buff2 = decryptStream.final();
+                    if (buff2) {
+                        decrypteds.push(buff2);
+                    }
+                    decrypted = Buffer.concat(decrypteds);
+                    nPaddingBytes = decrypted[decrypted.length - 1];
+                    size = encrypted.length - nPaddingBytes;
+                    decryptedOut = decrypted.slice(0, size).toString("utf8");
+                    if (this.ID !== decryptedOut) {
+                        debug("Failed LCP ID check.");
+                        return [2, false];
+                    }
+                    encryptedContentKey = new Buffer(this.Encryption.ContentKey.EncryptedValue, "base64");
+                    iv2 = encryptedContentKey.slice(0, AES_BLOCK_SIZE);
+                    encrypted2 = encryptedContentKey.slice(AES_BLOCK_SIZE);
+                    decrypteds2 = [];
+                    decryptStream2 = crypto.createDecipheriv("aes-256-cbc", userKey, iv2);
+                    decryptStream2.setAutoPadding(false);
+                    buff1_ = decryptStream2.update(encrypted2);
+                    if (buff1_) {
+                        decrypteds2.push(buff1_);
+                    }
+                    buff2_ = decryptStream2.final();
+                    if (buff2_) {
+                        decrypteds2.push(buff2_);
+                    }
+                    decrypted2 = Buffer.concat(decrypteds2);
+                    nPaddingBytes2 = decrypted2[decrypted2.length - 1];
+                    size2 = encrypted2.length - nPaddingBytes2;
+                    this.ContentKey = decrypted2.slice(0, size2);
+                }
+                return [2, true];
+            });
+        });
+    };
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("id"),
+        tslib_1.__metadata("design:type", String)
+    ], LCP.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("provider"),
+        tslib_1.__metadata("design:type", String)
+    ], LCP.prototype, "Provider", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("issued"),
+        tslib_1.__metadata("design:type", Date)
+    ], LCP.prototype, "Issued", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("updated"),
+        tslib_1.__metadata("design:type", Date)
+    ], LCP.prototype, "Updated", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("encryption"),
+        tslib_1.__metadata("design:type", lcp_encryption_1.Encryption)
+    ], LCP.prototype, "Encryption", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("rights"),
+        tslib_1.__metadata("design:type", lcp_rights_1.Rights)
+    ], LCP.prototype, "Rights", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("user"),
+        tslib_1.__metadata("design:type", lcp_user_1.User)
+    ], LCP.prototype, "User", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("signature"),
+        tslib_1.__metadata("design:type", lcp_signature_1.Signature)
+    ], LCP.prototype, "Signature", void 0);
+    tslib_1.__decorate([
+        ta_json_1.JsonProperty("links"),
+        ta_json_1.JsonElementType(lcp_link_1.Link),
+        tslib_1.__metadata("design:type", Array)
+    ], LCP.prototype, "Links", void 0);
+    LCP = tslib_1.__decorate([
+        ta_json_1.JsonObject()
+    ], LCP);
+    return LCP;
+}());
+exports.LCP = LCP;
+
+},{"./lcp-certificate":423,"./lcp-encryption":425,"./lcp-link":426,"./lcp-rights":427,"./lcp-signature":428,"./lcp-user":429,"bindings":77,"crypto":undefined,"debug":142,"fs":undefined,"path":undefined,"ta-json":540,"tslib":553}],432:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Content = (function () {
+    function Content() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@src"),
+        tslib_1.__metadata("design:type", String)
+    ], Content.prototype, "Src", void 0);
+    Content = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        })
+    ], Content);
+    return Content;
+}());
+exports.Content = Content;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],433:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var ncx_content_1 = require("./ncx-content");
+var NavPoint = (function () {
+    function NavPoint() {
+    }
+    NavPoint_1 = NavPoint;
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navPoint"),
+        xml_js_mapper_1.XmlItemType(NavPoint_1),
+        tslib_1.__metadata("design:type", Array)
+    ], NavPoint.prototype, "Points", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], NavPoint.prototype, "Text", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:content"),
+        tslib_1.__metadata("design:type", ncx_content_1.Content)
+    ], NavPoint.prototype, "Content", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@playOrder"),
+        tslib_1.__metadata("design:type", Number)
+    ], NavPoint.prototype, "PlayerOrder", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], NavPoint.prototype, "ID", void 0);
+    NavPoint = NavPoint_1 = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], NavPoint);
+    return NavPoint;
+    var NavPoint_1;
+}());
+exports.NavPoint = NavPoint;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-content":432,"tslib":553}],434:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var ncx_pagetarget_1 = require("./ncx-pagetarget");
+var PageList = (function () {
+    function PageList() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:pageTarget"),
+        xml_js_mapper_1.XmlItemType(ncx_pagetarget_1.PageTarget),
+        tslib_1.__metadata("design:type", Array)
+    ], PageList.prototype, "PageTarget", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@class"),
+        tslib_1.__metadata("design:type", String)
+    ], PageList.prototype, "Class", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], PageList.prototype, "ID", void 0);
+    PageList = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], PageList);
+    return PageList;
+}());
+exports.PageList = PageList;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-pagetarget":435,"tslib":553}],435:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var ncx_content_1 = require("./ncx-content");
+var PageTarget = (function () {
+    function PageTarget() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navLabel/ncx:text/text()"),
+        tslib_1.__metadata("design:type", String)
+    ], PageTarget.prototype, "Text", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@value"),
+        tslib_1.__metadata("design:type", String)
+    ], PageTarget.prototype, "Value", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], PageTarget.prototype, "Type", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@playOrder"),
+        tslib_1.__metadata("design:type", Number)
+    ], PageTarget.prototype, "PlayOrder", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], PageTarget.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:content"),
+        tslib_1.__metadata("design:type", ncx_content_1.Content)
+    ], PageTarget.prototype, "Content", void 0);
+    PageTarget = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], PageTarget);
+    return PageTarget;
+}());
+exports.PageTarget = PageTarget;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-content":432,"tslib":553}],436:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var ncx_navpoint_1 = require("./ncx-navpoint");
+var ncx_pagelist_1 = require("./ncx-pagelist");
+var NCX = (function () {
+    function NCX() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:navMap/ncx:navPoint"),
+        xml_js_mapper_1.XmlItemType(ncx_navpoint_1.NavPoint),
+        tslib_1.__metadata("design:type", Array)
+    ], NCX.prototype, "Points", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("ncx:pageList"),
+        tslib_1.__metadata("design:type", ncx_pagelist_1.PageList)
+    ], NCX.prototype, "PageList", void 0);
+    NCX = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            ncx: "http://www.daisy.org/z3986/2005/ncx/",
+        })
+    ], NCX);
+    return NCX;
+}());
+exports.NCX = NCX;
+
+},{"../../_utils/xml-js-mapper":363,"./ncx-navpoint":433,"./ncx-pagelist":434,"tslib":553}],437:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Author = (function () {
+    function Author() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "Data", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@file-as"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "FileAs", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@role"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "Role", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], Author.prototype, "ID", void 0);
+    Author = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Author);
+    return Author;
+}());
+exports.Author = Author;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],438:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var MetaDate = (function () {
+    function MetaDate() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        tslib_1.__metadata("design:type", String)
+    ], MetaDate.prototype, "Data", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@event"),
+        tslib_1.__metadata("design:type", String)
+    ], MetaDate.prototype, "Event", void 0);
+    MetaDate = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], MetaDate);
+    return MetaDate;
+}());
+exports.MetaDate = MetaDate;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],439:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Identifier = (function () {
+    function Identifier() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Identifier.prototype, "Data", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], Identifier.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@scheme"),
+        tslib_1.__metadata("design:type", String)
+    ], Identifier.prototype, "Scheme", void 0);
+    Identifier = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Identifier);
+    return Identifier;
+}());
+exports.Identifier = Identifier;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],440:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Manifest = (function () {
+    function Manifest() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], Manifest.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@href"),
+        tslib_1.__metadata("design:type", String)
+    ], Manifest.prototype, "Href", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-type"),
+        tslib_1.__metadata("design:type", String)
+    ], Manifest.prototype, "MediaType", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-fallback"),
+        tslib_1.__metadata("design:type", String)
+    ], Manifest.prototype, "Fallback", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@properties"),
+        tslib_1.__metadata("design:type", String)
+    ], Manifest.prototype, "Properties", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@media-overlay"),
+        tslib_1.__metadata("design:type", String)
+    ], Manifest.prototype, "MediaOverlay", void 0);
+    Manifest = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Manifest);
+    return Manifest;
+}());
+exports.Manifest = Manifest;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],441:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var opf_author_1 = require("./opf-author");
+var opf_date_1 = require("./opf-date");
+var opf_identifier_1 = require("./opf-identifier");
+var opf_metafield_1 = require("./opf-metafield");
+var opf_subject_1 = require("./opf-subject");
+var opf_title_1 = require("./opf-title");
+var Metadata = (function () {
+    function Metadata() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:title"),
+        xml_js_mapper_1.XmlItemType(opf_title_1.Title),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:language/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Language", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:identifier"),
+        xml_js_mapper_1.XmlItemType(opf_identifier_1.Identifier),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Identifier", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:creator"),
+        xml_js_mapper_1.XmlItemType(opf_author_1.Author),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Creator", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:subject"),
+        xml_js_mapper_1.XmlItemType(opf_subject_1.Subject),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Subject", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:description/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Description", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:publisher/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Publisher", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:contributor"),
+        xml_js_mapper_1.XmlItemType(opf_author_1.Author),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Contributor", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:date"),
+        xml_js_mapper_1.XmlItemType(opf_date_1.MetaDate),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Date", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:type/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Type", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:format/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Format", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:source/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Source", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:relation/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Relation", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:coverage/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Coverage", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dc:rights/text()"),
+        xml_js_mapper_1.XmlItemType(String),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Rights", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:meta"),
+        xml_js_mapper_1.XmlItemType(opf_metafield_1.Metafield),
+        tslib_1.__metadata("design:type", Array)
+    ], Metadata.prototype, "Meta", void 0);
+    Metadata = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Metadata);
+    return Metadata;
+}());
+exports.Metadata = Metadata;
+
+},{"../../_utils/xml-js-mapper":363,"./opf-author":437,"./opf-date":438,"./opf-identifier":439,"./opf-metafield":442,"./opf-subject":446,"./opf-title":447,"tslib":553}],442:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Metafield = (function () {
+    function Metafield() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Data", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@name"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Name", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@content"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Content", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@refines"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Refine", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@scheme"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Scheme", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@property"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Property", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+        tslib_1.__metadata("design:type", String)
+    ], Metafield.prototype, "Lang", void 0);
+    Metafield = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Metafield);
+    return Metafield;
+}());
+exports.Metafield = Metafield;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],443:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Reference = (function () {
+    function Reference() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@href"),
+        tslib_1.__metadata("design:type", String)
+    ], Reference.prototype, "Href", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@title"),
+        tslib_1.__metadata("design:type", String)
+    ], Reference.prototype, "Title", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@type"),
+        tslib_1.__metadata("design:type", String)
+    ], Reference.prototype, "Type", void 0);
+    Reference = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], Reference);
+    return Reference;
+}());
+exports.Reference = Reference;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],444:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var opf_spineitem_1 = require("./opf-spineitem");
+var Spine = (function () {
+    function Spine() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], Spine.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@toc"),
+        tslib_1.__metadata("design:type", String)
+    ], Spine.prototype, "Toc", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@page-progression-direction"),
+        tslib_1.__metadata("design:type", String)
+    ], Spine.prototype, "PageProgression", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:itemref"),
+        xml_js_mapper_1.XmlItemType(opf_spineitem_1.SpineItem),
+        tslib_1.__metadata("design:type", Array)
+    ], Spine.prototype, "Items", void 0);
+    Spine = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Spine);
+    return Spine;
+}());
+exports.Spine = Spine;
+
+},{"../../_utils/xml-js-mapper":363,"./opf-spineitem":445,"tslib":553}],445:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var SpineItem = (function () {
+    function SpineItem() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@idref"),
+        tslib_1.__metadata("design:type", String)
+    ], SpineItem.prototype, "IDref", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@linear"),
+        tslib_1.__metadata("design:type", String)
+    ], SpineItem.prototype, "Linear", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], SpineItem.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@properties"),
+        tslib_1.__metadata("design:type", String)
+    ], SpineItem.prototype, "Properties", void 0);
+    SpineItem = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], SpineItem);
+    return SpineItem;
+}());
+exports.SpineItem = SpineItem;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],446:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Subject = (function () {
+    function Subject() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Data", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@term"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Term", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@authority"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Authority", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+        tslib_1.__metadata("design:type", String)
+    ], Subject.prototype, "Lang", void 0);
+    Subject = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Subject);
+    return Subject;
+}());
+exports.Subject = Subject;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],447:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Title = (function () {
+    function Title() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("text()"),
+        tslib_1.__metadata("design:type", String)
+    ], Title.prototype, "Data", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@id | @xml:id"),
+        tslib_1.__metadata("design:type", String)
+    ], Title.prototype, "ID", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@lang | @xml:lang"),
+        tslib_1.__metadata("design:type", String)
+    ], Title.prototype, "Lang", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@dir"),
+        tslib_1.__metadata("design:type", String)
+    ], Title.prototype, "Dir", void 0);
+    Title = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+            xml: "http://www.w3.org/XML/1998/namespace",
+        })
+    ], Title);
+    return Title;
+}());
+exports.Title = Title;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],448:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var opf_manifest_1 = require("./opf-manifest");
+var opf_metadata_1 = require("./opf-metadata");
+var opf_reference_1 = require("./opf-reference");
+var opf_spine_1 = require("./opf-spine");
+var OPF = (function () {
+    function OPF() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:metadata"),
+        tslib_1.__metadata("design:type", opf_metadata_1.Metadata)
+    ], OPF.prototype, "Metadata", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:manifest/opf:item"),
+        xml_js_mapper_1.XmlItemType(opf_manifest_1.Manifest),
+        tslib_1.__metadata("design:type", Array)
+    ], OPF.prototype, "Manifest", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:spine"),
+        tslib_1.__metadata("design:type", opf_spine_1.Spine)
+    ], OPF.prototype, "Spine", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("opf:guide/opf:reference"),
+        xml_js_mapper_1.XmlItemType(opf_reference_1.Reference),
+        tslib_1.__metadata("design:type", Array)
+    ], OPF.prototype, "Guide", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@unique-identifier"),
+        tslib_1.__metadata("design:type", String)
+    ], OPF.prototype, "UniqueIdentifier", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@dir"),
+        tslib_1.__metadata("design:type", String)
+    ], OPF.prototype, "Dir", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@version"),
+        tslib_1.__metadata("design:type", String)
+    ], OPF.prototype, "Version", void 0);
+    OPF = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            dc: "http://purl.org/dc/elements/1.1/",
+            opf: "http://www.idpf.org/2007/opf",
+        })
+    ], OPF);
+    return OPF;
+}());
+exports.OPF = OPF;
+
+},{"../../_utils/xml-js-mapper":363,"./opf-manifest":440,"./opf-metadata":441,"./opf-reference":443,"./opf-spine":444,"tslib":553}],449:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Audio = (function () {
+    function Audio() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@src"),
+        tslib_1.__metadata("design:type", String)
+    ], Audio.prototype, "Src", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@clipBegin"),
+        tslib_1.__metadata("design:type", String)
+    ], Audio.prototype, "ClipBegin", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@clipEnd"),
+        tslib_1.__metadata("design:type", String)
+    ], Audio.prototype, "ClipEnd", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+        tslib_1.__metadata("design:type", String)
+    ], Audio.prototype, "EpubType", void 0);
+    Audio = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], Audio);
+    return Audio;
+}());
+exports.Audio = Audio;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],450:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var smil_seq_1 = require("./smil-seq");
+var Body = (function (_super) {
+    tslib_1.__extends(Body, _super);
+    function Body() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.isBody = true;
+        return _this;
+    }
+    Body = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], Body);
+    return Body;
+}(smil_seq_1.Seq));
+exports.Body = Body;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-seq":453,"tslib":553}],451:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var smil_audio_1 = require("./smil-audio");
+var smil_seq_or_par_1 = require("./smil-seq-or-par");
+var smil_text_1 = require("./smil-text");
+var Par = (function (_super) {
+    tslib_1.__extends(Par, _super);
+    function Par() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:text"),
+        tslib_1.__metadata("design:type", smil_text_1.Text)
+    ], Par.prototype, "Text", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:audio"),
+        tslib_1.__metadata("design:type", smil_audio_1.Audio)
+    ], Par.prototype, "Audio", void 0);
+    Par = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        }),
+        xml_js_mapper_1.XmlDiscriminatorValue("par")
+    ], Par);
+    return Par;
+}(smil_seq_or_par_1.SeqOrPar));
+exports.Par = Par;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-audio":449,"./smil-seq-or-par":452,"./smil-text":454,"tslib":553}],452:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var SeqOrPar = (function () {
+    function SeqOrPar() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+        tslib_1.__metadata("design:type", String)
+    ], SeqOrPar.prototype, "EpubType", void 0);
+    SeqOrPar = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        }),
+        xml_js_mapper_1.XmlDiscriminatorProperty("localName")
+    ], SeqOrPar);
+    return SeqOrPar;
+}());
+exports.SeqOrPar = SeqOrPar;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],453:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var smil_seq_or_par_1 = require("./smil-seq-or-par");
+var Seq = (function (_super) {
+    tslib_1.__extends(Seq, _super);
+    function Seq() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:par|smil:seq"),
+        xml_js_mapper_1.XmlItemType(smil_seq_or_par_1.SeqOrPar),
+        tslib_1.__metadata("design:type", Array)
+    ], Seq.prototype, "Children", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@epub:textref"),
+        tslib_1.__metadata("design:type", String)
+    ], Seq.prototype, "TextRef", void 0);
+    Seq = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        }),
+        xml_js_mapper_1.XmlDiscriminatorValue("seq")
+    ], Seq);
+    return Seq;
+}(smil_seq_or_par_1.SeqOrPar));
+exports.Seq = Seq;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-seq-or-par":452,"tslib":553}],454:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var Text = (function () {
+    function Text() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@src"),
+        tslib_1.__metadata("design:type", String)
+    ], Text.prototype, "Src", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("@epub:type"),
+        tslib_1.__metadata("design:type", String)
+    ], Text.prototype, "EpubType", void 0);
+    Text = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], Text);
+    return Text;
+}());
+exports.Text = Text;
+
+},{"../../_utils/xml-js-mapper":363,"tslib":553}],455:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var xml_js_mapper_1 = require("../../_utils/xml-js-mapper");
+var smil_body_1 = require("./smil-body");
+var smil_par_1 = require("./smil-par");
+var SMIL = (function () {
+    function SMIL() {
+    }
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("smil:body"),
+        tslib_1.__metadata("design:type", smil_body_1.Body)
+    ], SMIL.prototype, "Body", void 0);
+    tslib_1.__decorate([
+        xml_js_mapper_1.XmlXPathSelector("dummy"),
+        tslib_1.__metadata("design:type", smil_par_1.Par)
+    ], SMIL.prototype, "Par", void 0);
+    SMIL = tslib_1.__decorate([
+        xml_js_mapper_1.XmlObject({
+            epub: "http://www.idpf.org/2007/ops",
+            smil: "http://www.w3.org/ns/SMIL",
+        })
+    ], SMIL);
+    return SMIL;
+}());
+exports.SMIL = SMIL;
+
+},{"../../_utils/xml-js-mapper":363,"./smil-body":450,"./smil-par":451,"tslib":553}],456:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var path = require("path");
+var cbz_1 = require("./cbz");
+var epub_1 = require("./epub");
+function PublicationParsePromise(filePath) {
+    return tslib_1.__awaiter(this, void 0, void 0, function () {
+        var fileName, ext;
+        return tslib_1.__generator(this, function (_a) {
+            fileName = path.basename(filePath);
+            ext = path.extname(fileName).toLowerCase();
+            return [2, /\.epub[3]?$/.test(ext) ?
+                    epub_1.EpubParsePromise(filePath) :
+                    cbz_1.CbzParsePromise(filePath)];
+        });
+    });
+}
+exports.PublicationParsePromise = PublicationParsePromise;
+
+},{"./cbz":408,"./epub":411,"path":undefined,"tslib":553}],457:[function(require,module,exports){
+"use strict";
+var _this = this;
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var crypto = require("crypto");
+var zlib = require("zlib");
+var RangeStream_1 = require("../_utils/stream/RangeStream");
+var debug_ = require("debug");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var debug = debug_("r2:transformer:lcp");
+var AES_BLOCK_SIZE = 16;
+var readStream = function (s, n) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    return tslib_1.__generator(this, function (_a) {
+        return [2, new Promise(function (resolve, reject) {
+                var onReadable = function () {
+                    var b = s.read(n);
+                    s.removeListener("readable", onReadable);
+                    s.removeListener("error", reject);
+                    resolve(b);
+                };
+                s.on("readable", onReadable);
+                s.on("error", reject);
+            })];
+    });
+}); };
+var TransformerLCP = (function () {
+    function TransformerLCP() {
+    }
+    TransformerLCP.prototype.supports = function (publication, link) {
+        if (!publication.LCP) {
+            return false;
+        }
+        if (!publication.LCP.isReady()) {
+            debug("LCP not ready!");
+            return false;
+        }
+        var check = link.Properties.Encrypted.Scheme === "http://readium.org/2014/01/lcp"
+            && (link.Properties.Encrypted.Profile === "http://readium.org/lcp/basic-profile" ||
+                link.Properties.Encrypted.Profile === "http://readium.org/lcp/profile-1.0")
+            && link.Properties.Encrypted.Algorithm === "http://www.w3.org/2001/04/xmlenc#aes256-cbc";
+        if (!check) {
+            debug("Incorrect resource LCP fields.");
+            debug(link.Properties.Encrypted.Scheme);
+            debug(link.Properties.Encrypted.Profile);
+            debug(link.Properties.Encrypted.Algorithm);
+            return false;
+        }
+        return true;
+    };
+    TransformerLCP.prototype.transformStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var plainTextSize, nativelyDecryptedStream, fullEncryptedBuffer, err_1, nativelyDecryptedBuffer, err_2, cryptoInfo, cypherBlockPadding, err_3, err_4, destStream, rawDecryptStream, ivBuffer, cypherRangeStream, err_5, decryptStream, cypherUnpaddedStream, inflateStream, l, rangeStream, sal;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        plainTextSize = -1;
+                        if (!publication.LCP.isNativeNodePlugin()) return [3, 9];
+                        debug("DECRYPT: " + link.Href);
+                        fullEncryptedBuffer = void 0;
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
+                    case 2:
+                        fullEncryptedBuffer = _a.sent();
+                        return [3, 4];
+                    case 3:
+                        err_1 = _a.sent();
+                        debug(err_1);
+                        return [2, Promise.reject("OUCH!")];
+                    case 4:
+                        nativelyDecryptedBuffer = void 0;
+                        _a.label = 5;
+                    case 5:
+                        _a.trys.push([5, 7, , 8]);
+                        return [4, publication.LCP.decrypt(fullEncryptedBuffer)];
+                    case 6:
+                        nativelyDecryptedBuffer = _a.sent();
+                        return [3, 8];
+                    case 7:
+                        err_2 = _a.sent();
+                        debug(err_2);
+                        return [2, Promise.reject("OUCH!")];
+                    case 8:
+                        plainTextSize = nativelyDecryptedBuffer.length;
+                        link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
+                        if (link.Properties.Encrypted.OriginalLength &&
+                            link.Properties.Encrypted.Compression === "none" &&
+                            link.Properties.Encrypted.OriginalLength !== plainTextSize) {
+                            debug("############### " +
+                                "LCP transformStream() LENGTH NOT MATCH " +
+                                "link.Properties.Encrypted.OriginalLength !== plainTextSize: " +
+                                (link.Properties.Encrypted.OriginalLength + " !== " + plainTextSize));
+                        }
+                        nativelyDecryptedStream = BufferUtils_1.bufferToStream(nativelyDecryptedBuffer);
+                        return [3, 18];
+                    case 9:
+                        cryptoInfo = void 0;
+                        cypherBlockPadding = -1;
+                        if (!(link.Properties.Encrypted.DecryptedLengthBeforeInflate > 0)) return [3, 10];
+                        plainTextSize = link.Properties.Encrypted.DecryptedLengthBeforeInflate;
+                        cypherBlockPadding = link.Properties.Encrypted.CypherBlockPadding;
+                        return [3, 18];
+                    case 10:
+                        _a.trys.push([10, 12, , 13]);
+                        return [4, this.getDecryptedSizeStream(publication, link, stream)];
+                    case 11:
+                        cryptoInfo = _a.sent();
+                        return [3, 13];
+                    case 12:
+                        err_3 = _a.sent();
+                        debug(err_3);
+                        return [2, Promise.reject(err_3)];
+                    case 13:
+                        plainTextSize = cryptoInfo.length;
+                        cypherBlockPadding = cryptoInfo.padding;
+                        link.Properties.Encrypted.DecryptedLengthBeforeInflate = plainTextSize;
+                        link.Properties.Encrypted.CypherBlockPadding = cypherBlockPadding;
+                        _a.label = 14;
+                    case 14:
+                        _a.trys.push([14, 16, , 17]);
+                        return [4, stream.reset()];
+                    case 15:
+                        stream = _a.sent();
+                        return [3, 17];
+                    case 16:
+                        err_4 = _a.sent();
+                        debug(err_4);
+                        return [2, Promise.reject(err_4)];
+                    case 17:
+                        if (link.Properties.Encrypted.OriginalLength &&
+                            link.Properties.Encrypted.Compression === "none" &&
+                            link.Properties.Encrypted.OriginalLength !== plainTextSize) {
+                            debug("############### " +
+                                "LCP transformStream() LENGTH NOT MATCH " +
+                                "link.Properties.Encrypted.OriginalLength !== plainTextSize: " +
+                                (link.Properties.Encrypted.OriginalLength + " !== " + plainTextSize));
+                        }
+                        _a.label = 18;
+                    case 18:
+                        if (partialByteBegin < 0) {
+                            partialByteBegin = 0;
+                        }
+                        if (partialByteEnd < 0) {
+                            partialByteEnd = plainTextSize - 1;
+                            if (link.Properties.Encrypted.OriginalLength) {
+                                partialByteEnd = link.Properties.Encrypted.OriginalLength - 1;
+                            }
+                        }
+                        if (!nativelyDecryptedStream) return [3, 19];
+                        destStream = nativelyDecryptedStream;
+                        return [3, 25];
+                    case 19:
+                        rawDecryptStream = void 0;
+                        ivBuffer = void 0;
+                        if (!link.Properties.Encrypted.CypherBlockIV) return [3, 20];
+                        ivBuffer = Buffer.from(link.Properties.Encrypted.CypherBlockIV, "binary");
+                        cypherRangeStream = new RangeStream_1.RangeStream(AES_BLOCK_SIZE, stream.length - 1, stream.length);
+                        stream.stream.pipe(cypherRangeStream);
+                        rawDecryptStream = cypherRangeStream;
+                        return [3, 24];
+                    case 20:
+                        _a.trys.push([20, 22, , 23]);
+                        return [4, readStream(stream.stream, AES_BLOCK_SIZE)];
+                    case 21:
+                        ivBuffer = _a.sent();
+                        return [3, 23];
+                    case 22:
+                        err_5 = _a.sent();
+                        debug(err_5);
+                        return [2, Promise.reject(err_5)];
+                    case 23:
+                        link.Properties.Encrypted.CypherBlockIV = ivBuffer.toString("binary");
+                        stream.stream.resume();
+                        rawDecryptStream = stream.stream;
+                        _a.label = 24;
+                    case 24:
+                        decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
+                        decryptStream.setAutoPadding(false);
+                        rawDecryptStream.pipe(decryptStream);
+                        destStream = decryptStream;
+                        if (link.Properties.Encrypted.CypherBlockPadding) {
+                            cypherUnpaddedStream = new RangeStream_1.RangeStream(0, plainTextSize - 1, plainTextSize);
+                            destStream.pipe(cypherUnpaddedStream);
+                            destStream = cypherUnpaddedStream;
+                        }
+                        _a.label = 25;
+                    case 25:
+                        if (link.Properties.Encrypted.Compression === "deflate") {
+                            inflateStream = zlib.createInflateRaw();
+                            destStream.pipe(inflateStream);
+                            destStream = inflateStream;
+                        }
+                        l = link.Properties.Encrypted.OriginalLength ?
+                            link.Properties.Encrypted.OriginalLength : plainTextSize;
+                        if (isPartialByteRangeRequest) {
+                            rangeStream = new RangeStream_1.RangeStream(partialByteBegin, partialByteEnd, l);
+                            destStream.pipe(rangeStream);
+                            destStream = rangeStream;
+                        }
+                        sal = {
+                            length: l,
+                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                var resetedStream, err_6;
+                                return tslib_1.__generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0:
+                                            _a.trys.push([0, 2, , 3]);
+                                            return [4, stream.reset()];
+                                        case 1:
+                                            resetedStream = _a.sent();
+                                            return [3, 3];
+                                        case 2:
+                                            err_6 = _a.sent();
+                                            debug(err_6);
+                                            return [2, Promise.reject(err_6)];
+                                        case 3:
+                                            if (!resetedStream) {
+                                                return [2, Promise.reject("??")];
+                                            }
+                                            return [2, this.transformStream(publication, link, resetedStream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
+                                    }
+                                });
+                            }); },
+                            stream: destStream,
+                        };
+                        return [2, Promise.resolve(sal)];
+                }
+            });
+        });
+    };
+    TransformerLCP.prototype.getDecryptedSizeStream = function (publication, _link, stream) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
+                return [2, new Promise(function (resolve, reject) {
+                        var TWO_AES_BLOCK_SIZE = 2 * AES_BLOCK_SIZE;
+                        if (stream.length < TWO_AES_BLOCK_SIZE) {
+                            reject("crypto err");
+                            return;
+                        }
+                        var readPos = stream.length - TWO_AES_BLOCK_SIZE;
+                        var cypherRangeStream = new RangeStream_1.RangeStream(readPos, readPos + TWO_AES_BLOCK_SIZE - 1, stream.length);
+                        stream.stream.pipe(cypherRangeStream);
+                        var decrypteds = [];
+                        cypherRangeStream.on("readable", function () {
+                            var ivBuffer = cypherRangeStream.read(AES_BLOCK_SIZE);
+                            if (!ivBuffer) {
+                                return;
+                            }
+                            var encrypted = cypherRangeStream.read(AES_BLOCK_SIZE);
+                            var decryptStream = crypto.createDecipheriv("aes-256-cbc", publication.LCP.ContentKey, ivBuffer);
+                            decryptStream.setAutoPadding(false);
+                            var buff1 = decryptStream.update(encrypted);
+                            if (buff1) {
+                                decrypteds.push(buff1);
+                            }
+                            var buff2 = decryptStream.final();
+                            if (buff2) {
+                                decrypteds.push(buff2);
+                            }
+                        });
+                        cypherRangeStream.on("end", function () {
+                            var decrypted = Buffer.concat(decrypteds);
+                            var nPaddingBytes = decrypted[AES_BLOCK_SIZE - 1];
+                            var size = stream.length - AES_BLOCK_SIZE - nPaddingBytes;
+                            var res = {
+                                length: size,
+                                padding: nPaddingBytes,
+                            };
+                            resolve(res);
+                        });
+                        cypherRangeStream.on("error", function () {
+                            reject("DECRYPT err");
+                        });
+                    })];
+            });
+        });
+    };
+    return TransformerLCP;
+}());
+exports.TransformerLCP = TransformerLCP;
+
+},{"../_utils/stream/BufferUtils":340,"../_utils/stream/RangeStream":341,"crypto":undefined,"debug":142,"tslib":553,"zlib":undefined}],458:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var TransformerObfAdobe = (function () {
+    function TransformerObfAdobe() {
+    }
+    TransformerObfAdobe.prototype.supports = function (_publication, link) {
+        return link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC";
+    };
+    TransformerObfAdobe.prototype.transformStream = function (publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var data, err_1, buff, err_2, sal;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
+                    case 1:
+                        data = _a.sent();
+                        return [3, 3];
+                    case 2:
+                        err_1 = _a.sent();
+                        return [2, Promise.reject(err_1)];
+                    case 3:
+                        _a.trys.push([3, 5, , 6]);
+                        return [4, this.transformBuffer(publication, link, data)];
+                    case 4:
+                        buff = _a.sent();
+                        return [3, 6];
+                    case 5:
+                        err_2 = _a.sent();
+                        return [2, Promise.reject(err_2)];
+                    case 6:
+                        sal = {
+                            length: buff.length,
+                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                return tslib_1.__generator(this, function (_a) {
+                                    return [2, Promise.resolve(sal)];
+                                });
+                            }); },
+                            stream: BufferUtils_1.bufferToStream(buff),
+                        };
+                        return [2, Promise.resolve(sal)];
+                }
+            });
+        });
+    };
+    TransformerObfAdobe.prototype.transformBuffer = function (publication, _link, data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var pubID, key, i, byteHex, byteNumer, prefixLength, zipDataPrefix, i, zipDataRemainder;
+            return tslib_1.__generator(this, function (_a) {
+                pubID = publication.Metadata.Identifier;
+                pubID = pubID.replace("urn:uuid:", "");
+                pubID = pubID.replace(/-/g, "");
+                pubID = pubID.replace(/\s/g, "");
+                key = [];
+                for (i = 0; i < 16; i++) {
+                    byteHex = pubID.substr(i * 2, 2);
+                    byteNumer = parseInt(byteHex, 16);
+                    key.push(byteNumer);
+                }
+                prefixLength = 1024;
+                zipDataPrefix = data.slice(0, prefixLength);
+                for (i = 0; i < prefixLength; i++) {
+                    zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
+                }
+                zipDataRemainder = data.slice(prefixLength);
+                return [2, Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]))];
+            });
+        });
+    };
+    return TransformerObfAdobe;
+}());
+exports.TransformerObfAdobe = TransformerObfAdobe;
+
+},{"../_utils/stream/BufferUtils":340,"tslib":553}],459:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var crypto = require("crypto");
+var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var TransformerObfIDPF = (function () {
+    function TransformerObfIDPF() {
+    }
+    TransformerObfIDPF.prototype.supports = function (_publication, link) {
+        return link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding";
+    };
+    TransformerObfIDPF.prototype.transformStream = function (publication, link, stream, _isPartialByteRangeRequest, _partialByteBegin, _partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var data, err_1, buff, err_2, sal;
+            return tslib_1.__generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4, BufferUtils_1.streamToBufferPromise(stream.stream)];
+                    case 1:
+                        data = _a.sent();
+                        return [3, 3];
+                    case 2:
+                        err_1 = _a.sent();
+                        return [2, Promise.reject(err_1)];
+                    case 3:
+                        _a.trys.push([3, 5, , 6]);
+                        return [4, this.transformBuffer(publication, link, data)];
+                    case 4:
+                        buff = _a.sent();
+                        return [3, 6];
+                    case 5:
+                        err_2 = _a.sent();
+                        return [2, Promise.reject(err_2)];
+                    case 6:
+                        sal = {
+                            length: buff.length,
+                            reset: function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                                return tslib_1.__generator(this, function (_a) {
+                                    return [2, Promise.resolve(sal)];
+                                });
+                            }); },
+                            stream: BufferUtils_1.bufferToStream(buff),
+                        };
+                        return [2, Promise.resolve(sal)];
+                }
+            });
+        });
+    };
+    TransformerObfIDPF.prototype.transformBuffer = function (publication, _link, data) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var pubID, checkSum, key, prefixLength, zipDataPrefix, i, zipDataRemainder;
+            return tslib_1.__generator(this, function (_a) {
+                pubID = publication.Metadata.Identifier;
+                pubID = pubID.replace(/\s/g, "");
+                checkSum = crypto.createHash("sha1");
+                checkSum.update(pubID);
+                key = checkSum.digest();
+                prefixLength = 1040;
+                zipDataPrefix = data.slice(0, prefixLength);
+                for (i = 0; i < prefixLength; i++) {
+                    zipDataPrefix[i] = zipDataPrefix[i] ^ (key[i % key.length]);
+                }
+                zipDataRemainder = data.slice(prefixLength);
+                return [2, Promise.resolve(Buffer.concat([zipDataPrefix, zipDataRemainder]))];
+            });
+        });
+    };
+    return TransformerObfIDPF;
+}());
+exports.TransformerObfIDPF = TransformerObfIDPF;
+
+},{"../_utils/stream/BufferUtils":340,"crypto":undefined,"tslib":553}],460:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var tslib_1 = require("tslib");
+var transformer_lcp_1 = require("./transformer-lcp");
+var transformer_obf_adobe_1 = require("./transformer-obf-adobe");
+var transformer_obf_idpf_1 = require("./transformer-obf-idpf");
+var Transformers = (function () {
+    function Transformers() {
+        this.transformers = [];
+    }
+    Transformers.instance = function () {
+        return Transformers._instance;
+    };
+    Transformers.tryStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            return tslib_1.__generator(this, function (_a) {
+                return [2, Transformers.instance()._tryStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
+            });
+        });
+    };
+    Transformers.prototype.add = function (transformer) {
+        if (this.transformers.indexOf(transformer) < 0) {
+            this.transformers.push(transformer);
+        }
+    };
+    Transformers.prototype._tryStream = function (publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd) {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var transformedData, transformer;
+            return tslib_1.__generator(this, function (_a) {
+                transformer = this.transformers.find(function (t) {
+                    if (!t.supports(publication, link)) {
+                        return false;
+                    }
+                    transformedData = t.transformStream(publication, link, stream, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
+                    if (transformedData) {
+                        return true;
+                    }
+                    return false;
+                });
+                if (transformer && transformedData) {
+                    return [2, transformedData];
+                }
+                return [2, Promise.reject("transformers fail (stream)")];
+            });
+        });
+    };
+    Transformers._instance = new Transformers();
+    return Transformers;
+}());
+exports.Transformers = Transformers;
+Transformers.instance().add(new transformer_obf_adobe_1.TransformerObfAdobe());
+Transformers.instance().add(new transformer_obf_idpf_1.TransformerObfIDPF());
+Transformers.instance().add(new transformer_lcp_1.TransformerLCP());
+
+},{"./transformer-lcp":457,"./transformer-obf-adobe":458,"./transformer-obf-idpf":459,"tslib":553}],461:[function(require,module,exports){
 /*!
  * range-parser
  * Copyright(c) 2012-2014 TJ Holowaychuk
@@ -88359,7 +88347,7 @@ function sortByRangeStart (a, b) {
   return a.start - b.start
 }
 
-},{}],463:[function(require,module,exports){
+},{}],462:[function(require,module,exports){
 /*!
  * raw-body
  * Copyright(c) 2013-2014 Jonathan Ong
@@ -88647,7 +88635,7 @@ function readStream (stream, encoding, length, limit, callback) {
   }
 }
 
-},{"bytes":252,"http-errors":357,"iconv-lite":383,"unpipe":564}],464:[function(require,module,exports){
+},{"bytes":127,"http-errors":231,"iconv-lite":257,"unpipe":563}],463:[function(require,module,exports){
 /*! *****************************************************************************
 Copyright (C) Microsoft. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
@@ -89773,7 +89761,7 @@ var Reflect;
             Function("return this;")());
 })(Reflect || (Reflect = {}));
 
-},{}],465:[function(require,module,exports){
+},{}],464:[function(require,module,exports){
 'use strict';
 
 var core = require('../'),
@@ -89849,7 +89837,7 @@ module.exports = function (options) {
 
 };
 
-},{"../":467,"lodash/isArray":417,"lodash/isFunction":418,"lodash/isObjectLike":420}],466:[function(require,module,exports){
+},{"../":466,"lodash/isArray":291,"lodash/isFunction":292,"lodash/isObjectLike":294}],465:[function(require,module,exports){
 'use strict';
 
 
@@ -89913,7 +89901,7 @@ module.exports = {
     TransformError: TransformError
 };
 
-},{}],467:[function(require,module,exports){
+},{}],466:[function(require,module,exports){
 'use strict';
 
 var errors = require('./errors.js'),
@@ -90082,7 +90070,7 @@ module.exports = function (options) {
 
 };
 
-},{"./errors.js":466,"lodash/isFunction":418,"lodash/isObjectLike":420,"lodash/isString":421,"lodash/isUndefined":422}],468:[function(require,module,exports){
+},{"./errors.js":465,"lodash/isFunction":292,"lodash/isObjectLike":294,"lodash/isString":295,"lodash/isUndefined":296}],467:[function(require,module,exports){
 'use strict';
 
 var configure = require('request-promise-core/configure/request2'),
@@ -90110,7 +90098,7 @@ configure({
 
 module.exports = request;
 
-},{"request":469,"request-promise-core/configure/request2":465,"stealthy-require":519,"tough-cookie":547}],469:[function(require,module,exports){
+},{"request":468,"request-promise-core/configure/request2":464,"stealthy-require":518,"tough-cookie":546}],468:[function(require,module,exports){
 // Copyright 2010-2012 Mikeal Rogers
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -90267,7 +90255,7 @@ Object.defineProperty(request, 'debug', {
   }
 })
 
-},{"./lib/cookies":471,"./lib/helpers":474,"./request":480,"extend":299}],470:[function(require,module,exports){
+},{"./lib/cookies":470,"./lib/helpers":473,"./request":479,"extend":174}],469:[function(require,module,exports){
 'use strict'
 
 var caseless = require('caseless')
@@ -90436,7 +90424,7 @@ Auth.prototype.onResponse = function (response) {
 
 exports.Auth = Auth
 
-},{"./helpers":474,"caseless":253,"uuid":566}],471:[function(require,module,exports){
+},{"./helpers":473,"caseless":128,"uuid":565}],470:[function(require,module,exports){
 'use strict'
 
 var tough = require('tough-cookie')
@@ -90476,7 +90464,7 @@ exports.jar = function (store) {
   return new RequestJar(store)
 }
 
-},{"tough-cookie":547}],472:[function(require,module,exports){
+},{"tough-cookie":546}],471:[function(require,module,exports){
 'use strict'
 
 function formatHostname (hostname) {
@@ -90557,7 +90545,7 @@ function getProxyFromURI (uri) {
 
 module.exports = getProxyFromURI
 
-},{}],473:[function(require,module,exports){
+},{}],472:[function(require,module,exports){
 'use strict'
 
 var fs = require('fs')
@@ -90764,7 +90752,7 @@ Har.prototype.options = function (options) {
 
 exports.Har = Har
 
-},{"extend":299,"fs":undefined,"har-validator":347,"querystring":undefined}],474:[function(require,module,exports){
+},{"extend":174,"fs":undefined,"har-validator":222,"querystring":undefined}],473:[function(require,module,exports){
 'use strict'
 
 var jsonSafeStringify = require('json-stringify-safe')
@@ -90832,7 +90820,7 @@ exports.copy = copy
 exports.version = version
 exports.defer = defer
 
-},{"crypto":undefined,"json-stringify-safe":409,"safe-buffer":484}],475:[function(require,module,exports){
+},{"crypto":undefined,"json-stringify-safe":283,"safe-buffer":483}],474:[function(require,module,exports){
 'use strict'
 
 var uuid = require('uuid')
@@ -90946,7 +90934,7 @@ Multipart.prototype.onRequest = function (options) {
 
 exports.Multipart = Multipart
 
-},{"combined-stream":255,"isstream":404,"safe-buffer":484,"uuid":566}],476:[function(require,module,exports){
+},{"combined-stream":130,"isstream":278,"safe-buffer":483,"uuid":565}],475:[function(require,module,exports){
 'use strict'
 
 var url = require('url')
@@ -91096,7 +91084,7 @@ OAuth.prototype.onRequest = function (_oauth) {
 
 exports.OAuth = OAuth
 
-},{"caseless":253,"crypto":undefined,"oauth-sign":446,"qs":458,"safe-buffer":484,"url":undefined,"uuid":566}],477:[function(require,module,exports){
+},{"caseless":128,"crypto":undefined,"oauth-sign":320,"qs":332,"safe-buffer":483,"url":undefined,"uuid":565}],476:[function(require,module,exports){
 'use strict'
 
 var qs = require('qs')
@@ -91148,7 +91136,7 @@ Querystring.prototype.unescape = querystring.unescape
 
 exports.Querystring = Querystring
 
-},{"qs":458,"querystring":undefined}],478:[function(require,module,exports){
+},{"qs":332,"querystring":undefined}],477:[function(require,module,exports){
 'use strict'
 
 var url = require('url')
@@ -91304,7 +91292,7 @@ Redirect.prototype.onResponse = function (response) {
 
 exports.Redirect = Redirect
 
-},{"url":undefined}],479:[function(require,module,exports){
+},{"url":undefined}],478:[function(require,module,exports){
 'use strict'
 
 var url = require('url')
@@ -91481,7 +91469,7 @@ Tunnel.defaultProxyHeaderWhiteList = defaultProxyHeaderWhiteList
 Tunnel.defaultProxyHeaderExclusiveList = defaultProxyHeaderExclusiveList
 exports.Tunnel = Tunnel
 
-},{"tunnel-agent":555,"url":undefined}],480:[function(require,module,exports){
+},{"tunnel-agent":554,"url":undefined}],479:[function(require,module,exports){
 'use strict'
 
 var http = require('http')
@@ -93035,9 +93023,9 @@ Request.defaultProxyHeaderExclusiveList =
 Request.prototype.toJSON = requestToJSON
 module.exports = Request
 
-},{"./lib/auth":470,"./lib/cookies":471,"./lib/getProxyFromURI":472,"./lib/har":473,"./lib/helpers":474,"./lib/multipart":475,"./lib/oauth":476,"./lib/querystring":477,"./lib/redirect":478,"./lib/tunnel":479,"aws-sign2":196,"aws4":197,"caseless":253,"extend":299,"forever-agent":318,"form-data":319,"hawk":351,"http":undefined,"http-signature":359,"https":undefined,"is-typedarray":403,"isstream":404,"mime-types":429,"performance-now":453,"safe-buffer":484,"stream":undefined,"stringstream":520,"url":undefined,"util":undefined,"zlib":undefined}],481:[function(require,module,exports){
+},{"./lib/auth":469,"./lib/cookies":470,"./lib/getProxyFromURI":471,"./lib/har":472,"./lib/helpers":473,"./lib/multipart":474,"./lib/oauth":475,"./lib/querystring":476,"./lib/redirect":477,"./lib/tunnel":478,"aws-sign2":71,"aws4":72,"caseless":128,"extend":174,"forever-agent":193,"form-data":194,"hawk":225,"http":undefined,"http-signature":233,"https":undefined,"is-typedarray":277,"isstream":278,"mime-types":303,"performance-now":327,"safe-buffer":483,"stream":undefined,"stringstream":519,"url":undefined,"util":undefined,"zlib":undefined}],480:[function(require,module,exports){
 module.exports = require('./lib/retry');
-},{"./lib/retry":482}],482:[function(require,module,exports){
+},{"./lib/retry":481}],481:[function(require,module,exports){
 var RetryOperation = require('./retry_operation');
 
 exports.operation = function(options) {
@@ -93138,7 +93126,7 @@ exports.wrap = function(obj, options, methods) {
   }
 };
 
-},{"./retry_operation":483}],483:[function(require,module,exports){
+},{"./retry_operation":482}],482:[function(require,module,exports){
 function RetryOperation(timeouts, options) {
   // Compatibility for the old (timeouts, retryForever) signature
   if (typeof options === 'boolean') {
@@ -93283,7 +93271,7 @@ RetryOperation.prototype.mainError = function() {
   return mainError;
 };
 
-},{}],484:[function(require,module,exports){
+},{}],483:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -93347,7 +93335,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":undefined}],485:[function(require,module,exports){
+},{"buffer":undefined}],484:[function(require,module,exports){
 /*!
  * send
  * Copyright(c) 2012 TJ Holowaychuk
@@ -94479,15 +94467,15 @@ function setHeaders (res, headers) {
   }
 }
 
-},{"debug":488,"depd":270,"destroy":274,"encodeurl":279,"escape-html":281,"etag":282,"fresh":322,"fs":undefined,"http-errors":357,"mime":430,"ms":439,"on-finished":447,"path":undefined,"range-parser":462,"statuses":518,"stream":undefined,"util":undefined}],486:[function(require,module,exports){
-arguments[4][245][0].apply(exports,arguments)
-},{"./debug":487,"dup":245}],487:[function(require,module,exports){
-arguments[4][246][0].apply(exports,arguments)
-},{"dup":246,"ms":439}],488:[function(require,module,exports){
-arguments[4][247][0].apply(exports,arguments)
-},{"./browser.js":486,"./node.js":489,"dup":247}],489:[function(require,module,exports){
-arguments[4][248][0].apply(exports,arguments)
-},{"./debug":487,"dup":248,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],490:[function(require,module,exports){
+},{"debug":487,"depd":145,"destroy":149,"encodeurl":154,"escape-html":156,"etag":157,"fresh":197,"fs":undefined,"http-errors":231,"mime":304,"ms":313,"on-finished":321,"path":undefined,"range-parser":461,"statuses":517,"stream":undefined,"util":undefined}],485:[function(require,module,exports){
+arguments[4][120][0].apply(exports,arguments)
+},{"./debug":486,"dup":120}],486:[function(require,module,exports){
+arguments[4][121][0].apply(exports,arguments)
+},{"dup":121,"ms":313}],487:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"./browser.js":485,"./node.js":488,"dup":122}],488:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"./debug":486,"dup":123,"fs":undefined,"net":undefined,"tty":undefined,"util":undefined}],489:[function(require,module,exports){
 /*!
  * serve-static
  * Copyright(c) 2010 Sencha Inc.
@@ -94698,13 +94686,14 @@ function createRedirectDirectoryListener () {
   }
 }
 
-},{"encodeurl":279,"escape-html":281,"parseurl":450,"path":undefined,"send":485,"url":undefined}],491:[function(require,module,exports){
-arguments[4][358][0].apply(exports,arguments)
-},{"dup":358}],492:[function(require,module,exports){
+},{"encodeurl":154,"escape-html":156,"parseurl":324,"path":undefined,"send":484,"url":undefined}],490:[function(require,module,exports){
+arguments[4][232][0].apply(exports,arguments)
+},{"dup":232}],491:[function(require,module,exports){
 
 ;(function (name, root, factory) {
   if (typeof exports === 'object') {
     module.exports = factory()
+    module.exports['default'] = factory()
   }
   /* istanbul ignore next */
   else if (typeof define === 'function' && define.amd) {
@@ -94752,7 +94741,7 @@ arguments[4][358][0].apply(exports,arguments)
   return replace
 }))
 
-},{}],493:[function(require,module,exports){
+},{}],492:[function(require,module,exports){
 'use strict';
 
 // Load modules
@@ -95166,7 +95155,7 @@ exports.now = function () {
     return now + internals.last.offset;
 };
 
-},{"dgram":undefined,"dns":undefined,"hoek":356}],494:[function(require,module,exports){
+},{"dgram":undefined,"dns":undefined,"hoek":230}],493:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var algInfo = {
@@ -95336,7 +95325,7 @@ module.exports = {
 	curves: curves
 };
 
-},{}],495:[function(require,module,exports){
+},{}],494:[function(require,module,exports){
 // Copyright 2016 Joyent, Inc.
 
 module.exports = Certificate;
@@ -95715,7 +95704,7 @@ Certificate._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./errors":498,"./fingerprint":499,"./formats/openssh-cert":501,"./formats/x509":509,"./formats/x509-pem":508,"./identity":510,"./key":512,"./private-key":513,"./signature":514,"./utils":516,"assert-plus":185,"crypto":undefined,"util":undefined}],496:[function(require,module,exports){
+},{"./algs":493,"./errors":497,"./fingerprint":498,"./formats/openssh-cert":500,"./formats/x509":508,"./formats/x509-pem":507,"./identity":509,"./key":511,"./private-key":512,"./signature":513,"./utils":515,"assert-plus":60,"crypto":undefined,"util":undefined}],495:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = {
@@ -96128,7 +96117,7 @@ function generateECDSA(curve) {
 	}
 }
 
-},{"./algs":494,"./key":512,"./private-key":513,"./utils":516,"assert-plus":185,"crypto":undefined,"ecc-jsbn":275,"ecc-jsbn/lib/ec":276,"jsbn":405,"tweetnacl":556}],497:[function(require,module,exports){
+},{"./algs":493,"./key":511,"./private-key":512,"./utils":515,"assert-plus":60,"crypto":undefined,"ecc-jsbn":150,"ecc-jsbn/lib/ec":151,"jsbn":279,"tweetnacl":555}],496:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -96226,7 +96215,7 @@ Signer.prototype.sign = function () {
 	return (sigObj);
 };
 
-},{"./signature":514,"assert-plus":185,"stream":undefined,"tweetnacl":556,"util":undefined}],498:[function(require,module,exports){
+},{"./signature":513,"assert-plus":60,"stream":undefined,"tweetnacl":555,"util":undefined}],497:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var assert = require('assert-plus');
@@ -96312,7 +96301,7 @@ module.exports = {
 	CertificateParseError: CertificateParseError
 };
 
-},{"assert-plus":185,"util":undefined}],499:[function(require,module,exports){
+},{"assert-plus":60,"util":undefined}],498:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = Fingerprint;
@@ -96475,7 +96464,7 @@ Fingerprint._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./certificate":495,"./errors":498,"./key":512,"./utils":516,"assert-plus":185,"crypto":undefined}],500:[function(require,module,exports){
+},{"./algs":493,"./certificate":494,"./errors":497,"./key":511,"./utils":515,"assert-plus":60,"crypto":undefined}],499:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -96550,7 +96539,7 @@ function write(key, options) {
 	throw (new Error('"auto" format cannot be used for writing'));
 }
 
-},{"../key":512,"../private-key":513,"../utils":516,"./pem":502,"./rfc4253":505,"./ssh":507,"assert-plus":185}],501:[function(require,module,exports){
+},{"../key":511,"../private-key":512,"../utils":515,"./pem":501,"./rfc4253":504,"./ssh":506,"assert-plus":60}],500:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = {
@@ -96874,7 +96863,7 @@ function getCertType(key) {
 	throw (new Error('Unsupported key type ' + key.type));
 }
 
-},{"../algs":494,"../certificate":495,"../identity":510,"../key":512,"../private-key":513,"../signature":514,"../ssh-buffer":515,"../utils":516,"./rfc4253":505,"assert-plus":185,"crypto":undefined}],502:[function(require,module,exports){
+},{"../algs":493,"../certificate":494,"../identity":509,"../key":511,"../private-key":512,"../signature":513,"../ssh-buffer":514,"../utils":515,"./rfc4253":504,"assert-plus":60,"crypto":undefined}],501:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97062,7 +97051,7 @@ function write(key, options, type) {
 	return (buf.slice(0, o));
 }
 
-},{"../algs":494,"../errors":498,"../key":512,"../private-key":513,"../utils":516,"./pkcs1":503,"./pkcs8":504,"./rfc4253":505,"./ssh-private":506,"asn1":184,"assert-plus":185,"crypto":undefined}],503:[function(require,module,exports){
+},{"../algs":493,"../errors":497,"../key":511,"../private-key":512,"../utils":515,"./pkcs1":502,"./pkcs8":503,"./rfc4253":504,"./ssh-private":505,"asn1":59,"assert-plus":60,"crypto":undefined}],502:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97384,7 +97373,7 @@ function writePkcs1ECDSAPrivate(der, key) {
 	der.endSequence();
 }
 
-},{"../algs":494,"../key":512,"../private-key":513,"../utils":516,"./pem":502,"./pkcs8":504,"asn1":184,"assert-plus":185}],504:[function(require,module,exports){
+},{"../algs":493,"../key":511,"../private-key":512,"../utils":515,"./pem":501,"./pkcs8":503,"asn1":59,"assert-plus":60}],503:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -97891,7 +97880,7 @@ function writePkcs8ECDSAPrivate(key, der) {
 	der.endSequence();
 }
 
-},{"../algs":494,"../key":512,"../private-key":513,"../utils":516,"./pem":502,"asn1":184,"assert-plus":185}],505:[function(require,module,exports){
+},{"../algs":493,"../key":511,"../private-key":512,"../utils":515,"./pem":501,"asn1":59,"assert-plus":60}],504:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -98039,7 +98028,7 @@ function write(key, options) {
 	return (buf.toBuffer());
 }
 
-},{"../algs":494,"../key":512,"../private-key":513,"../ssh-buffer":515,"../utils":516,"assert-plus":185}],506:[function(require,module,exports){
+},{"../algs":493,"../key":511,"../private-key":512,"../ssh-buffer":514,"../utils":515,"assert-plus":60}],505:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -98302,7 +98291,7 @@ function write(key, options) {
 	return (buf.slice(0, o));
 }
 
-},{"../algs":494,"../errors":498,"../key":512,"../private-key":513,"../ssh-buffer":515,"../utils":516,"./pem":502,"./rfc4253":505,"asn1":184,"assert-plus":185,"bcrypt-pbkdf":201,"crypto":undefined}],507:[function(require,module,exports){
+},{"../algs":493,"../errors":497,"../key":511,"../private-key":512,"../ssh-buffer":514,"../utils":515,"./pem":501,"./rfc4253":504,"asn1":59,"assert-plus":60,"bcrypt-pbkdf":76,"crypto":undefined}],506:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -98418,7 +98407,7 @@ function write(key, options) {
 	return (new Buffer(parts.join(' ')));
 }
 
-},{"../key":512,"../private-key":513,"../utils":516,"./rfc4253":505,"./ssh-private":506,"assert-plus":185}],508:[function(require,module,exports){
+},{"../key":511,"../private-key":512,"../utils":515,"./rfc4253":504,"./ssh-private":505,"assert-plus":60}],507:[function(require,module,exports){
 // Copyright 2016 Joyent, Inc.
 
 var x509 = require('./x509');
@@ -98497,7 +98486,7 @@ function write(cert, options) {
 	return (buf.slice(0, o));
 }
 
-},{"../algs":494,"../certificate":495,"../identity":510,"../key":512,"../private-key":513,"../signature":514,"../utils":516,"./pem":502,"./x509":509,"asn1":184,"assert-plus":185}],509:[function(require,module,exports){
+},{"../algs":493,"../certificate":494,"../identity":509,"../key":511,"../private-key":512,"../signature":513,"../utils":515,"./pem":501,"./x509":508,"asn1":59,"assert-plus":60}],508:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = {
@@ -99225,7 +99214,7 @@ function writeBitField(setBits, bitIndex) {
 	return (bits);
 }
 
-},{"../algs":494,"../certificate":495,"../identity":510,"../key":512,"../private-key":513,"../signature":514,"../utils":516,"./pem":502,"./pkcs8":504,"asn1":184,"assert-plus":185}],510:[function(require,module,exports){
+},{"../algs":493,"../certificate":494,"../identity":509,"../key":511,"../private-key":512,"../signature":513,"../utils":515,"./pem":501,"./pkcs8":503,"asn1":59,"assert-plus":60}],509:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = Identity;
@@ -99504,7 +99493,7 @@ Identity._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./errors":498,"./fingerprint":499,"./signature":514,"./utils":516,"asn1":184,"assert-plus":185,"crypto":undefined,"util":undefined}],511:[function(require,module,exports){
+},{"./algs":493,"./errors":497,"./fingerprint":498,"./signature":513,"./utils":515,"asn1":59,"assert-plus":60,"crypto":undefined,"util":undefined}],510:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 var Key = require('./key');
@@ -99545,7 +99534,7 @@ module.exports = {
 	CertificateParseError: errs.CertificateParseError
 };
 
-},{"./certificate":495,"./errors":498,"./fingerprint":499,"./identity":510,"./key":512,"./private-key":513,"./signature":514}],512:[function(require,module,exports){
+},{"./certificate":494,"./errors":497,"./fingerprint":498,"./identity":509,"./key":511,"./private-key":512,"./signature":513}],511:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = Key;
@@ -99821,7 +99810,7 @@ Key._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./dhe":496,"./ed-compat":497,"./errors":498,"./fingerprint":499,"./formats/auto":500,"./formats/pem":502,"./formats/pkcs1":503,"./formats/pkcs8":504,"./formats/rfc4253":505,"./formats/ssh":507,"./formats/ssh-private":506,"./private-key":513,"./signature":514,"./utils":516,"assert-plus":185,"crypto":undefined}],513:[function(require,module,exports){
+},{"./algs":493,"./dhe":495,"./ed-compat":496,"./errors":497,"./fingerprint":498,"./formats/auto":499,"./formats/pem":501,"./formats/pkcs1":502,"./formats/pkcs8":503,"./formats/rfc4253":504,"./formats/ssh":506,"./formats/ssh-private":505,"./private-key":512,"./signature":513,"./utils":515,"assert-plus":60,"crypto":undefined}],512:[function(require,module,exports){
 // Copyright 2017 Joyent, Inc.
 
 module.exports = PrivateKey;
@@ -100077,7 +100066,7 @@ PrivateKey._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./dhe":496,"./ed-compat":497,"./errors":498,"./fingerprint":499,"./formats/auto":500,"./formats/pem":502,"./formats/pkcs1":503,"./formats/pkcs8":504,"./formats/rfc4253":505,"./formats/ssh-private":506,"./key":512,"./signature":514,"./utils":516,"assert-plus":185,"crypto":undefined,"tweetnacl":556,"util":undefined}],514:[function(require,module,exports){
+},{"./algs":493,"./dhe":495,"./ed-compat":496,"./errors":497,"./fingerprint":498,"./formats/auto":499,"./formats/pem":501,"./formats/pkcs1":502,"./formats/pkcs8":503,"./formats/rfc4253":504,"./formats/ssh-private":505,"./key":511,"./signature":513,"./utils":515,"assert-plus":60,"crypto":undefined,"tweetnacl":555,"util":undefined}],513:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = Signature;
@@ -100392,7 +100381,7 @@ Signature._oldVersionDetect = function (obj) {
 	return ([1, 0]);
 };
 
-},{"./algs":494,"./errors":498,"./ssh-buffer":515,"./utils":516,"asn1":184,"assert-plus":185,"crypto":undefined}],515:[function(require,module,exports){
+},{"./algs":493,"./errors":497,"./ssh-buffer":514,"./utils":515,"asn1":59,"assert-plus":60,"crypto":undefined}],514:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = SSHBuffer;
@@ -100542,7 +100531,7 @@ SSHBuffer.prototype.write = function (buf) {
 	this._offset += buf.length;
 };
 
-},{"assert-plus":185}],516:[function(require,module,exports){
+},{"assert-plus":60}],515:[function(require,module,exports){
 // Copyright 2015 Joyent, Inc.
 
 module.exports = {
@@ -100832,7 +100821,7 @@ function opensshCipherInfo(cipher) {
 	return (inf);
 }
 
-},{"./private-key":513,"assert-plus":185,"crypto":undefined,"jsbn":405}],517:[function(require,module,exports){
+},{"./private-key":512,"assert-plus":60,"crypto":undefined,"jsbn":279}],516:[function(require,module,exports){
 module.exports={
   "100": "Continue",
   "101": "Switching Protocols",
@@ -100898,7 +100887,7 @@ module.exports={
   "510": "Not Extended",
   "511": "Network Authentication Required"
 }
-},{}],518:[function(require,module,exports){
+},{}],517:[function(require,module,exports){
 /*!
  * statuses
  * Copyright(c) 2014 Jonathan Ong
@@ -101010,7 +100999,7 @@ function status (code) {
   return n
 }
 
-},{"./codes.json":517}],519:[function(require,module,exports){
+},{"./codes.json":516}],518:[function(require,module,exports){
 'use strict';
 
 var isNative = /\.node$/;
@@ -101093,7 +101082,7 @@ module.exports = function (requireCache, callback, callbackForModulesToKeep, mod
 
 };
 
-},{}],520:[function(require,module,exports){
+},{}],519:[function(require,module,exports){
 var util = require('util')
 var Stream = require('stream')
 var StringDecoder = require('string_decoder').StringDecoder
@@ -101197,135 +101186,59 @@ function alignedWrite(buffer) {
   return returnBuffer.toString(this.encoding)
 }
 
-},{"stream":undefined,"string_decoder":undefined,"util":undefined}],521:[function(require,module,exports){
+},{"stream":undefined,"string_decoder":undefined,"util":undefined}],520:[function(require,module,exports){
 'use strict';
-const os = require('os');
-const hasFlag = require('has-flag');
+var argv = process.argv;
 
-const env = process.env;
+var terminator = argv.indexOf('--');
+var hasFlag = function (flag) {
+	flag = '--' + flag;
+	var pos = argv.indexOf(flag);
+	return pos !== -1 && (terminator !== -1 ? pos < terminator : true);
+};
 
-function translateLevel(level) {
-	if (level === 0) {
-		return false;
+module.exports = (function () {
+	if ('FORCE_COLOR' in process.env) {
+		return true;
 	}
 
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3
-	};
-}
-
-function supportsColor(stream) {
 	if (hasFlag('no-color') ||
 		hasFlag('no-colors') ||
 		hasFlag('color=false')) {
-		return 0;
-	}
-
-	if (hasFlag('color=16m') ||
-		hasFlag('color=full') ||
-		hasFlag('color=truecolor')) {
-		return 3;
-	}
-
-	if (hasFlag('color=256')) {
-		return 2;
+		return false;
 	}
 
 	if (hasFlag('color') ||
 		hasFlag('colors') ||
 		hasFlag('color=true') ||
 		hasFlag('color=always')) {
-		return 1;
+		return true;
 	}
 
-	if (stream && !stream.isTTY) {
-		return 0;
+	if (process.stdout && !process.stdout.isTTY) {
+		return false;
 	}
 
 	if (process.platform === 'win32') {
-		// Node.js 7.5.0 is the first version of Node.js to include a patch to
-		// libuv that enables 256 color output on Windows. Anything earlier and it
-		// won't work. However, here we target Node.js 8 at minimum as it is an LTS
-		// release, and Node.js 7 is not. Windows 10 build 10586 is the first Windows
-		// release that supports 256 colors. Windows 10 build 14931 is the first release
-		// that supports 16m/TrueColor.
-		const osRelease = os.release().split('.');
-		if (
-			Number(process.versions.node.split('.')[0]) >= 8 &&
-			Number(osRelease[0]) >= 10 &&
-			Number(osRelease[2]) >= 10586
-		) {
-			return Number(osRelease[2]) >= 14931 ? 3 : 2;
-		}
-
-		return 1;
+		return true;
 	}
 
-	if ('CI' in env) {
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
-			return 1;
-		}
-
-		return 0;
+	if ('COLORTERM' in process.env) {
+		return true;
 	}
 
-	if ('TEAMCITY_VERSION' in env) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+	if (process.env.TERM === 'dumb') {
+		return false;
 	}
 
-	if ('TERM_PROGRAM' in env) {
-		const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-		switch (env.TERM_PROGRAM) {
-			case 'iTerm.app':
-				return version >= 3 ? 3 : 2;
-			case 'Hyper':
-				return 3;
-			case 'Apple_Terminal':
-				return 2;
-			// No default
-		}
+	if (/^screen|^xterm|^vt100|color|ansi|cygwin|linux/i.test(process.env.TERM)) {
+		return true;
 	}
 
-	if (/-256(color)?$/i.test(env.TERM)) {
-		return 2;
-	}
+	return false;
+})();
 
-	if (/^screen|^xterm|^vt100|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-		return 1;
-	}
-
-	if ('COLORTERM' in env) {
-		return 1;
-	}
-
-	if (env.TERM === 'dumb') {
-		return 0;
-	}
-
-	return 0;
-}
-
-function getSupportLevel(stream) {
-	let level = supportsColor(stream);
-
-	if ('FORCE_COLOR' in env) {
-		level = (env.FORCE_COLOR.length > 0 && parseInt(env.FORCE_COLOR, 10) === 0) ? 0 : (level || 1);
-	}
-
-	return translateLevel(level);
-}
-
-module.exports = {
-	supportsColor: getSupportLevel,
-	stdout: getSupportLevel(process.stdout),
-	stderr: getSupportLevel(process.stderr)
-};
-
-},{"has-flag":348,"os":undefined}],522:[function(require,module,exports){
+},{}],521:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const property_definition_1 = require("./property-definition");
@@ -101403,7 +101316,7 @@ function getTypedInheritanceChain(type, object) {
 }
 exports.getTypedInheritanceChain = getTypedInheritanceChain;
 
-},{"./property-definition":523}],523:[function(require,module,exports){
+},{"./property-definition":522}],522:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class PropertyDefinition {
@@ -101416,7 +101329,7 @@ class PropertyDefinition {
 }
 exports.PropertyDefinition = PropertyDefinition;
 
-},{}],524:[function(require,module,exports){
+},{}],523:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class BufferConverter {
@@ -101441,7 +101354,7 @@ class BufferConverter {
 }
 exports.BufferConverter = BufferConverter;
 
-},{}],525:[function(require,module,exports){
+},{}],524:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const date_converter_1 = require("./date-converter");
@@ -101450,7 +101363,7 @@ exports.propertyConverters = new Map();
 exports.propertyConverters.set(Buffer, new buffer_converter_1.BufferConverter());
 exports.propertyConverters.set(Date, new date_converter_1.DateConverter());
 
-},{"./buffer-converter":524,"./date-converter":526}],526:[function(require,module,exports){
+},{"./buffer-converter":523,"./date-converter":525}],525:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class DateConverter {
@@ -101466,7 +101379,7 @@ class DateConverter {
 }
 exports.DateConverter = DateConverter;
 
-},{}],527:[function(require,module,exports){
+},{}],526:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -101476,7 +101389,7 @@ __export(require("./converter"));
 __export(require("./buffer-converter"));
 __export(require("./date-converter"));
 
-},{"./buffer-converter":524,"./converter":525,"./date-converter":526}],528:[function(require,module,exports){
+},{"./buffer-converter":523,"./converter":524,"./date-converter":525}],527:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101489,7 +101402,7 @@ function BeforeDeserialized() {
 }
 exports.BeforeDeserialized = BeforeDeserialized;
 
-},{"../classes/object-definition":522}],529:[function(require,module,exports){
+},{"../classes/object-definition":521}],528:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -101508,7 +101421,7 @@ __export(require("./json-constructor"));
 __export(require("./before-deserialized"));
 __export(require("./on-deserialized"));
 
-},{"./before-deserialized":528,"./json-constructor":530,"./json-converter":531,"./json-discriminator-property":532,"./json-discriminator-value":533,"./json-element-type":534,"./json-object":535,"./json-property":536,"./json-readonly":537,"./json-type":538,"./json-writeonly":539,"./on-deserialized":540}],530:[function(require,module,exports){
+},{"./before-deserialized":527,"./json-constructor":529,"./json-converter":530,"./json-discriminator-property":531,"./json-discriminator-value":532,"./json-element-type":533,"./json-object":534,"./json-property":535,"./json-readonly":536,"./json-type":537,"./json-writeonly":538,"./on-deserialized":539}],529:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101521,7 +101434,7 @@ function JsonConstructor() {
 }
 exports.JsonConstructor = JsonConstructor;
 
-},{"../classes/object-definition":522}],531:[function(require,module,exports){
+},{"../classes/object-definition":521}],530:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101539,7 +101452,7 @@ function JsonConverter(converter) {
 }
 exports.JsonConverter = JsonConverter;
 
-},{"../classes/object-definition":522}],532:[function(require,module,exports){
+},{"../classes/object-definition":521}],531:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101551,7 +101464,7 @@ function JsonDiscriminatorProperty(property) {
 }
 exports.JsonDiscriminatorProperty = JsonDiscriminatorProperty;
 
-},{"../classes/object-definition":522}],533:[function(require,module,exports){
+},{"../classes/object-definition":521}],532:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101563,7 +101476,7 @@ function JsonDiscriminatorValue(value) {
 }
 exports.JsonDiscriminatorValue = JsonDiscriminatorValue;
 
-},{"../classes/object-definition":522}],534:[function(require,module,exports){
+},{"../classes/object-definition":521}],533:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101576,7 +101489,7 @@ function JsonElementType(type) {
 }
 exports.JsonElementType = JsonElementType;
 
-},{"../classes/object-definition":522}],535:[function(require,module,exports){
+},{"../classes/object-definition":521}],534:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101588,7 +101501,7 @@ function JsonObject() {
 }
 exports.JsonObject = JsonObject;
 
-},{"../classes/object-definition":522}],536:[function(require,module,exports){
+},{"../classes/object-definition":521}],535:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
@@ -101608,7 +101521,7 @@ function JsonProperty(propertyName) {
 }
 exports.JsonProperty = JsonProperty;
 
-},{"../classes/object-definition":522,"reflect-metadata":545}],537:[function(require,module,exports){
+},{"../classes/object-definition":521,"reflect-metadata":544}],536:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101621,7 +101534,7 @@ function JsonReadonly() {
 }
 exports.JsonReadonly = JsonReadonly;
 
-},{"../classes/object-definition":522}],538:[function(require,module,exports){
+},{"../classes/object-definition":521}],537:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101634,7 +101547,7 @@ function JsonType(type) {
 }
 exports.JsonType = JsonType;
 
-},{"../classes/object-definition":522}],539:[function(require,module,exports){
+},{"../classes/object-definition":521}],538:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101647,7 +101560,7 @@ function JsonWriteonly() {
 }
 exports.JsonWriteonly = JsonWriteonly;
 
-},{"../classes/object-definition":522}],540:[function(require,module,exports){
+},{"../classes/object-definition":521}],539:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101660,7 +101573,7 @@ function OnDeserialized() {
 }
 exports.OnDeserialized = OnDeserialized;
 
-},{"../classes/object-definition":522}],541:[function(require,module,exports){
+},{"../classes/object-definition":521}],540:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -101670,7 +101583,7 @@ __export(require("./json"));
 __export(require("./decorators"));
 __export(require("./converters"));
 
-},{"./converters":527,"./decorators":529,"./json":542}],542:[function(require,module,exports){
+},{"./converters":526,"./decorators":528,"./json":541}],541:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const serialize_1 = require("./methods/serialize");
@@ -101691,7 +101604,7 @@ class JSON {
 }
 exports.JSON = JSON;
 
-},{"./methods/deserialize":543,"./methods/serialize":544}],543:[function(require,module,exports){
+},{"./methods/deserialize":542,"./methods/serialize":543}],542:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const object_definition_1 = require("../classes/object-definition");
@@ -101762,7 +101675,7 @@ function deserializeObject(object, definition, options) {
     return value;
 }
 
-},{"../classes/object-definition":522,"../converters/converter":525}],544:[function(require,module,exports){
+},{"../classes/object-definition":521,"../converters/converter":524}],543:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const converter_1 = require("./../converters/converter");
@@ -101834,9 +101747,9 @@ function serializeObject(object, definition) {
     return value;
 }
 
-},{"../classes/object-definition":522,"./../converters/converter":525}],545:[function(require,module,exports){
-arguments[4][464][0].apply(exports,arguments)
-},{"dup":464}],546:[function(require,module,exports){
+},{"../classes/object-definition":521,"./../converters/converter":524}],544:[function(require,module,exports){
+arguments[4][463][0].apply(exports,arguments)
+},{"dup":463}],545:[function(require,module,exports){
 /*!
  * Tmp
  *
@@ -102449,7 +102362,7 @@ module.exports.tmpNameSync = tmpNameSync;
 
 module.exports.setGracefulCleanup = setGracefulCleanup;
 
-},{"crypto":undefined,"fs":undefined,"os-tmpdir":449,"path":undefined}],547:[function(require,module,exports){
+},{"crypto":undefined,"fs":undefined,"os-tmpdir":323,"path":undefined}],546:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -103792,7 +103705,7 @@ module.exports = {
   canonicalDomain: canonicalDomain
 };
 
-},{"../package.json":553,"./memstore":548,"./pathMatch":549,"./permuteDomain":550,"./pubsuffix":551,"./store":552,"net":undefined,"punycode":undefined,"url":undefined}],548:[function(require,module,exports){
+},{"../package.json":552,"./memstore":547,"./pathMatch":548,"./permuteDomain":549,"./pubsuffix":550,"./store":551,"net":undefined,"punycode":undefined,"url":undefined}],547:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -103964,7 +103877,7 @@ MemoryCookieStore.prototype.getAllCookies = function(cb) {
   cb(null, cookies);
 };
 
-},{"./pathMatch":549,"./permuteDomain":550,"./store":552,"util":undefined}],549:[function(require,module,exports){
+},{"./pathMatch":548,"./permuteDomain":549,"./store":551,"util":undefined}],548:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -104027,7 +103940,7 @@ function pathMatch (reqPath, cookiePath) {
 
 exports.pathMatch = pathMatch;
 
-},{}],550:[function(require,module,exports){
+},{}],549:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -104085,7 +103998,7 @@ function permuteDomain (domain) {
 
 exports.permuteDomain = permuteDomain;
 
-},{"./pubsuffix":551}],551:[function(require,module,exports){
+},{"./pubsuffix":550}],550:[function(require,module,exports){
 /****************************************************
  * AUTOMATICALLY GENERATED by generate-pubsuffix.js *
  *                  DO NOT EDIT!                    *
@@ -104185,7 +104098,7 @@ var index = module.exports.index = Object.freeze(
 
 // END of automatically generated file
 
-},{"punycode":undefined}],552:[function(require,module,exports){
+},{"punycode":undefined}],551:[function(require,module,exports){
 /*!
  * Copyright (c) 2015, Salesforce.com, Inc.
  * All rights reserved.
@@ -104258,7 +104171,7 @@ Store.prototype.getAllCookies = function(cb) {
   throw new Error('getAllCookies is not implemented (therefore jar cannot be serialized)');
 };
 
-},{}],553:[function(require,module,exports){
+},{}],552:[function(require,module,exports){
 module.exports={
   "_from": "tough-cookie@~2.3.3",
   "_id": "tough-cookie@2.3.3",
@@ -104353,7 +104266,7 @@ module.exports={
   "version": "2.3.3"
 }
 
-},{}],554:[function(require,module,exports){
+},{}],553:[function(require,module,exports){
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
@@ -104580,7 +104493,7 @@ var __makeTemplateObject;
     exporter("__makeTemplateObject", __makeTemplateObject);
 });
 
-},{}],555:[function(require,module,exports){
+},{}],554:[function(require,module,exports){
 'use strict'
 
 var net = require('net')
@@ -104826,7 +104739,7 @@ if (process.env.NODE_DEBUG && /\btunnel\b/.test(process.env.NODE_DEBUG)) {
 }
 exports.debug = debug // for test
 
-},{"assert":undefined,"events":undefined,"http":undefined,"https":undefined,"net":undefined,"safe-buffer":484,"tls":undefined,"util":undefined}],556:[function(require,module,exports){
+},{"assert":undefined,"events":undefined,"http":undefined,"https":undefined,"net":undefined,"safe-buffer":483,"tls":undefined,"util":undefined}],555:[function(require,module,exports){
 (function(nacl) {
 'use strict';
 
@@ -107216,7 +107129,7 @@ nacl.setPRNG = function(fn) {
 
 })(typeof module !== 'undefined' && module.exports ? module.exports : (self.nacl = self.nacl || {}));
 
-},{"crypto":undefined}],557:[function(require,module,exports){
+},{"crypto":undefined}],556:[function(require,module,exports){
 /*!
  * type-is
  * Copyright(c) 2014 Jonathan Ong
@@ -107480,12 +107393,12 @@ function tryNormalizeType (value) {
   }
 }
 
-},{"media-typer":424,"mime-types":429}],558:[function(require,module,exports){
+},{"media-typer":298,"mime-types":303}],557:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/compare');
 
-},{"./lib/compare":560}],559:[function(require,module,exports){
+},{"./lib/compare":559}],558:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -107582,7 +107495,7 @@ var ByteAssertion = function () {
 }();
 
 exports.default = ByteAssertion;
-},{}],560:[function(require,module,exports){
+},{}],559:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -107608,7 +107521,7 @@ function isDate(date) {
 function isNumber(number) {
   return new _byteAssertion2.default(number);
 }
-},{"./byteAssertion":559,"./dateAssertion":561}],561:[function(require,module,exports){
+},{"./byteAssertion":558,"./dateAssertion":560}],560:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -107697,7 +107610,7 @@ var DateAssertion = function () {
 }();
 
 exports.default = DateAssertion;
-},{"./dates":562,"moment":433}],562:[function(require,module,exports){
+},{"./dates":561,"moment":307}],561:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -107724,7 +107637,7 @@ normaliser.addAlias('minutes', 'mins');
 function normalise(name) {
   return normaliser.normalise(name);
 }
-},{"./unitNormaliser":563}],563:[function(require,module,exports){
+},{"./unitNormaliser":562}],562:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -107765,7 +107678,7 @@ var UnitNormaliser = function () {
 }();
 
 exports.default = UnitNormaliser;
-},{}],564:[function(require,module,exports){
+},{}],563:[function(require,module,exports){
 /*!
  * unpipe
  * Copyright(c) 2015 Douglas Christopher Wilson
@@ -107836,7 +107749,7 @@ function unpipe(stream) {
   }
 }
 
-},{}],565:[function(require,module,exports){
+},{}],564:[function(require,module,exports){
 /**
  * Merge object b with object a.
  *
@@ -107861,7 +107774,7 @@ exports = module.exports = function(a, b){
   return a;
 };
 
-},{}],566:[function(require,module,exports){
+},{}],565:[function(require,module,exports){
 var v1 = require('./v1');
 var v4 = require('./v4');
 
@@ -107871,7 +107784,7 @@ uuid.v4 = v4;
 
 module.exports = uuid;
 
-},{"./v1":569,"./v4":570}],567:[function(require,module,exports){
+},{"./v1":568,"./v4":569}],566:[function(require,module,exports){
 /**
  * Convert array of 16 byte values to UUID string format of the form:
  * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
@@ -107896,7 +107809,7 @@ function bytesToUuid(buf, offset) {
 
 module.exports = bytesToUuid;
 
-},{}],568:[function(require,module,exports){
+},{}],567:[function(require,module,exports){
 // Unique ID creation requires a high quality random # generator.  In node.js
 // this is pretty straight-forward - we use the crypto API.
 
@@ -107908,7 +107821,7 @@ function rng() {
 
 module.exports = rng;
 
-},{"crypto":undefined}],569:[function(require,module,exports){
+},{"crypto":undefined}],568:[function(require,module,exports){
 var rng = require('./lib/rng');
 var bytesToUuid = require('./lib/bytesToUuid');
 
@@ -108010,7 +107923,7 @@ function v1(options, buf, offset) {
 
 module.exports = v1;
 
-},{"./lib/bytesToUuid":567,"./lib/rng":568}],570:[function(require,module,exports){
+},{"./lib/bytesToUuid":566,"./lib/rng":567}],569:[function(require,module,exports){
 var rng = require('./lib/rng');
 var bytesToUuid = require('./lib/bytesToUuid');
 
@@ -108041,7 +107954,7 @@ function v4(options, buf, offset) {
 
 module.exports = v4;
 
-},{"./lib/bytesToUuid":567,"./lib/rng":568}],571:[function(require,module,exports){
+},{"./lib/bytesToUuid":566,"./lib/rng":567}],570:[function(require,module,exports){
 /*!
  * vary
  * Copyright(c) 2014-2017 Douglas Christopher Wilson
@@ -108192,7 +108105,7 @@ function vary (res, field) {
   }
 }
 
-},{}],572:[function(require,module,exports){
+},{}],571:[function(require,module,exports){
 /*
  * verror.js: richer JavaScript errors
  */
@@ -108645,7 +108558,7 @@ WError.prototype.cause = function we_cause(c)
 	return (this.jse_cause);
 };
 
-},{"assert-plus":185,"core-util-is":261,"extsprintf":300,"util":undefined}],573:[function(require,module,exports){
+},{"assert-plus":60,"core-util-is":136,"extsprintf":175,"util":undefined}],572:[function(require,module,exports){
 function DOMParser(options){
 	this.options = options ||{locator:{}};
 	
@@ -108898,7 +108811,7 @@ function appendElement (hander,node) {
 	exports.DOMParser = DOMParser;
 //}
 
-},{"./dom":574,"./sax":575}],574:[function(require,module,exports){
+},{"./dom":573,"./sax":574}],573:[function(require,module,exports){
 /*
  * DOM Level 2
  * Object DOMException
@@ -110144,7 +110057,7 @@ try{
 	exports.XMLSerializer = XMLSerializer;
 //}
 
-},{}],575:[function(require,module,exports){
+},{}],574:[function(require,module,exports){
 //[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 //[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 //[5]   	Name	   ::=   	NameStartChar (NameChar)*
@@ -110779,7 +110692,7 @@ function split(source,start){
 exports.XMLReader = XMLReader;
 
 
-},{}],576:[function(require,module,exports){
+},{}],575:[function(require,module,exports){
 /*
  * xpath.js
  *
@@ -115545,7 +115458,7 @@ exports.select1 = function(e, doc) {
 // end non-node wrapper
 })(xpath);
 
-},{}],577:[function(require,module,exports){
+},{}],576:[function(require,module,exports){
 var fs = require("fs");
 var zlib = require("zlib");
 var fd_slicer = require("fd-slicer");
@@ -116322,5 +116235,5 @@ function defaultCallback(err) {
   if (err) throw err;
 }
 
-},{"buffer-crc32":251,"events":undefined,"fd-slicer":303,"fs":undefined,"stream":undefined,"util":undefined,"zlib":undefined}]},{},[37])
+},{"buffer-crc32":126,"events":undefined,"fd-slicer":178,"fs":undefined,"stream":undefined,"util":undefined,"zlib":undefined}]},{},[2])
 //# sourceMappingURL=server-cli.js.map

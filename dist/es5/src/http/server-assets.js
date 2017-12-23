@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var path = require("path");
-var transformer_1 = require("../transform/transformer");
-var RangeUtils_1 = require("../_utils/http/RangeUtils");
-var BufferUtils_1 = require("../_utils/stream/BufferUtils");
+var transformer_1 = require("r2-shared-js/dist/es5/src/transform/transformer");
+var RangeUtils_1 = require("r2-shared-js/dist/es5/src/_utils/http/RangeUtils");
+var BufferUtils_1 = require("r2-shared-js/dist/es5/src/_utils/stream/BufferUtils");
 var debug_ = require("debug");
 var express = require("express");
 var mime = require("mime-types");

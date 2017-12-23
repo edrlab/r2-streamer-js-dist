@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
 const path = require("path");
-const epub_1 = require("../parser/epub");
-const UrlUtils_1 = require("../_utils/http/UrlUtils");
-const JsonUtils_1 = require("../_utils/JsonUtils");
+const epub_1 = require("r2-shared-js/dist/es8-es2017/src/parser/epub");
+const UrlUtils_1 = require("r2-shared-js/dist/es8-es2017/src/_utils/http/UrlUtils");
+const JsonUtils_1 = require("r2-shared-js/dist/es8-es2017/src/_utils/JsonUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
