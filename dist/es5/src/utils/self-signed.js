@@ -9,8 +9,6 @@ function generateSelfSignedData() {
             return [2, new Promise(function (resolve, reject) {
                     var opts = {
                         algorithm: "sha256",
-                        clientCertificate: true,
-                        clientCertificateCN: "R2 insecure client",
                         days: 30,
                         extensions: [{
                                 altNames: [{

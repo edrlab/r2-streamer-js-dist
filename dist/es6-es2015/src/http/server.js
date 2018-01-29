@@ -65,20 +65,16 @@ class Server {
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
         this.expressApp.use((req, res, next) => {
-            Object.keys(req.headers).forEach((header) => {
-                debug(header + " => " + req.headers[header]);
-            });
             if (!this.isSecured() || !this.serverData) {
                 next();
                 return;
             }
-            let ua = req.get("user-agent");
-            if (ua) {
-                ua = ua.toLowerCase();
-            }
             if ((this.serverData.trustKey && this.serverData.trustVal &&
-                req.get(`X-Debug-${this.serverData.trustKey}`) !== this.serverData.trustVal)
-                || (ua && (ua.indexOf("curl") >= 0 || ua.indexOf("postman") >= 0 || ua.indexOf("wget") >= 0))) {
+                req.get(`X-Debug-${this.serverData.trustKey}`) !== this.serverData.trustVal)) {
+                debug(req);
+                Object.keys(req.headers).forEach((header) => {
+                    debug(header + " => " + req.headers[header]);
+                });
                 res.status(200);
                 res.end();
                 return;

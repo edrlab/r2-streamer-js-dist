@@ -6,8 +6,6 @@ async function generateSelfSignedData() {
     return new Promise((resolve, reject) => {
         const opts = {
             algorithm: "sha256",
-            clientCertificate: true,
-            clientCertificateCN: "R2 insecure client",
             days: 30,
             extensions: [{
                     altNames: [{

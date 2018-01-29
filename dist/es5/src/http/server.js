@@ -44,20 +44,16 @@ var Server = (function () {
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
         this.expressApp.use(function (req, res, next) {
-            Object.keys(req.headers).forEach(function (header) {
-                debug(header + " => " + req.headers[header]);
-            });
             if (!_this.isSecured() || !_this.serverData) {
                 next();
                 return;
             }
-            var ua = req.get("user-agent");
-            if (ua) {
-                ua = ua.toLowerCase();
-            }
             if ((_this.serverData.trustKey && _this.serverData.trustVal &&
-                req.get("X-Debug-" + _this.serverData.trustKey) !== _this.serverData.trustVal)
-                || (ua && (ua.indexOf("curl") >= 0 || ua.indexOf("postman") >= 0 || ua.indexOf("wget") >= 0))) {
+                req.get("X-Debug-" + _this.serverData.trustKey) !== _this.serverData.trustVal)) {
+                debug(req);
+                Object.keys(req.headers).forEach(function (header) {
+                    debug(header + " => " + req.headers[header]);
+                });
                 res.status(200);
                 res.end();
                 return;
