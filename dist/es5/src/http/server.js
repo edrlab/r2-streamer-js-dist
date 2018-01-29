@@ -4,6 +4,8 @@ var tslib_1 = require("tslib");
 var child_process = require("child_process");
 var crypto = require("crypto");
 var fs = require("fs");
+var http = require("http");
+var https = require("https");
 var path = require("path");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
@@ -14,6 +16,7 @@ var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
 var tmp_1 = require("tmp");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
+var self_signed_1 = require("../utils/self-signed");
 var server_assets_1 = require("./server-assets");
 var server_manifestjson_1 = require("./server-manifestjson");
 var server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -31,14 +34,36 @@ var Server = (function () {
         this.lcpEndToken = "-*";
         this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
         this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
+        this.disableRemotePubUrl = options && options.disableRemotePubUrl ? options.disableRemotePubUrl : false;
+        this.disableOPDS = options && options.disableOPDS ? options.disableOPDS : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
         this.publicationsOPDSfeedNeedsUpdate = true;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
-        this.started = false;
         this.expressApp = express();
+        this.expressApp.use(function (req, res, next) {
+            Object.keys(req.headers).forEach(function (header) {
+                debug(header + " => " + req.headers[header]);
+            });
+            if (!_this.isSecured() || !_this.serverData) {
+                next();
+                return;
+            }
+            var ua = req.get("user-agent");
+            if (ua) {
+                ua = ua.toLowerCase();
+            }
+            if ((_this.serverData.trustKey && _this.serverData.trustVal &&
+                req.get("X-Debug-" + _this.serverData.trustKey) !== _this.serverData.trustVal)
+                || (ua && (ua.indexOf("curl") >= 0 || ua.indexOf("postman") >= 0 || ua.indexOf("wget") >= 0))) {
+                res.status(200);
+                res.end();
+                return;
+            }
+            next();
+        });
         var staticOptions = {
             etag: false,
         };
@@ -55,10 +80,16 @@ var Server = (function () {
                     + "</strong><br> => <a href='./pub/" + UrlUtils_1.encodeURIComponent_RFC3986(filePathBase64)
                     + "'>" + "./pub/" + filePathBase64 + "</a></p>";
             });
-            html += "<h1>OPDS2 feed</h1><p><a href='./opds2'>CLICK HERE</a></p>";
-            html += "<h1>Load HTTP publication URL</h1><p><a href='./url'>CLICK HERE</a></p>";
-            html += "<h1>Browse HTTP OPDS1 feed</h1><p><a href='./opds'>CLICK HERE</a></p>";
-            html += "<h1>Convert OPDS feed v1 to v2</h1><p><a href='./opds12'>CLICK HERE</a></p>";
+            if (!_this.disableOPDS) {
+                html += "<h1>OPDS2 feed</h1><p><a href='./opds2'>CLICK HERE</a></p>";
+            }
+            if (!_this.disableRemotePubUrl) {
+                html += "<h1>Load HTTP publication URL</h1><p><a href='./url'>CLICK HERE</a></p>";
+            }
+            if (!_this.disableOPDS) {
+                html += "<h1>Browse HTTP OPDS1 feed</h1><p><a href='./opds'>CLICK HERE</a></p>";
+                html += "<h1>Convert OPDS feed v1 to v2</h1><p><a href='./opds12'>CLICK HERE</a></p>";
+            }
             html += "<h1>Server version</h1><p><a href='./version/show'>CLICK HERE</a></p>";
             html += "</body></html>";
             res.status(200).send(html);
@@ -102,10 +133,14 @@ var Server = (function () {
                 res.status(200).send(jsonStr);
             }
         });
-        server_url_1.serverUrl(this, this.expressApp);
-        server_opds_1.serverOPDS(this, this.expressApp);
-        server_opds2_1.serverOPDS2(this, this.expressApp);
-        server_opds1_2_1.serverOPDS12(this, this.expressApp);
+        if (!this.disableRemotePubUrl) {
+            server_url_1.serverUrl(this, this.expressApp);
+        }
+        if (!this.disableOPDS) {
+            server_opds_1.serverOPDS(this, this.expressApp);
+            server_opds2_1.serverOPDS2(this, this.expressApp);
+            server_opds1_2_1.serverOPDS12(this, this.expressApp);
+        }
         var routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
@@ -117,29 +152,104 @@ var Server = (function () {
     Server.prototype.expressGet = function (paths, func) {
         this.expressApp.get(paths, func);
     };
+    Server.prototype.isStarted = function () {
+        return (typeof this.serverInfo() !== "undefined") &&
+            (typeof this.httpServer !== "undefined") ||
+            (typeof this.httpsServer !== "undefined");
+    };
+    Server.prototype.isSecured = function () {
+        return (typeof this.serverInfo() !== "undefined") &&
+            (typeof this.httpsServer !== "undefined");
+    };
     Server.prototype.start = function (port) {
-        if (this.started) {
-            return this.url();
-        }
-        var p = port || process.env.PORT || 3000;
-        debug("PORT: " + p + " || " + process.env.PORT + " || 3000 => " + p);
-        this.httpServer = this.expressApp.listen(p, function () {
-            debug("http://localhost:" + p);
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            var envPort, p;
+            return tslib_1.__generator(this, function (_a) {
+                if (this.isStarted()) {
+                    return [2, Promise.resolve(this.serverInfo())];
+                }
+                envPort = 0;
+                try {
+                    envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 0;
+                }
+                catch (err) {
+                    debug(err);
+                    envPort = 0;
+                }
+                p = port || envPort || 3000;
+                debug("PORT: " + port + " || " + envPort + " || 3000 => " + p);
+                if (p === 443) {
+                    this.httpServer = undefined;
+                    return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                            var _this = this;
+                            var certData, err_1;
+                            return tslib_1.__generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        _a.trys.push([0, 2, , 3]);
+                                        return [4, self_signed_1.generateSelfSignedData()];
+                                    case 1:
+                                        certData = _a.sent();
+                                        return [3, 3];
+                                    case 2:
+                                        err_1 = _a.sent();
+                                        debug(err_1);
+                                        reject("err");
+                                        return [2];
+                                    case 3:
+                                        this.httpsServer = https.createServer({ key: certData.private, cert: certData.cert }, this.expressApp).listen(p, function () {
+                                            _this.serverData = tslib_1.__assign({}, certData, { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
+                                            resolve(_this.serverData);
+                                        });
+                                        return [2];
+                                }
+                            });
+                        }); })];
+                }
+                else {
+                    this.httpsServer = undefined;
+                    return [2, new Promise(function (resolve, _reject) {
+                            _this.httpServer = http.createServer(_this.expressApp).listen(p, function () {
+                                _this.serverData = {
+                                    urlHost: "127.0.0.1",
+                                    urlPort: p,
+                                    urlScheme: "http",
+                                };
+                                resolve(_this.serverData);
+                            });
+                        })];
+                }
+                return [2];
+            });
         });
-        this.started = true;
-        return "http://127.0.0.1:" + p;
     };
     Server.prototype.stop = function () {
-        if (this.started) {
-            this.httpServer.close();
-            this.started = false;
+        if (this.isStarted()) {
+            if (this.httpServer) {
+                this.httpServer.close();
+                this.httpServer = undefined;
+            }
+            if (this.httpsServer) {
+                this.httpsServer.close();
+                this.httpsServer = undefined;
+            }
+            this.serverData = undefined;
             this.uncachePublications();
         }
     };
-    Server.prototype.url = function () {
-        return this.started ?
-            "http://127.0.0.1:" + this.httpServer.address().port :
-            undefined;
+    Server.prototype.serverInfo = function () {
+        return this.serverData;
+    };
+    Server.prototype.serverUrl = function () {
+        if (!this.isStarted()) {
+            return undefined;
+        }
+        var info = this.serverInfo();
+        if (!info) {
+            return undefined;
+        }
+        return info.urlScheme + "://" + info.urlHost + ":" + info.urlPort;
     };
     Server.prototype.setResponseCORS = function (res) {
         res.setHeader("Access-Control-Allow-Origin", "*");
@@ -179,7 +289,7 @@ var Server = (function () {
     };
     Server.prototype.loadOrGetCachedPublication = function (filePath) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var publication, err_1;
+            var publication, err_2;
             return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -193,9 +303,9 @@ var Server = (function () {
                         publication = _a.sent();
                         return [3, 4];
                     case 3:
-                        err_1 = _a.sent();
-                        debug(err_1);
-                        return [2, Promise.reject(err_1)];
+                        err_2 = _a.sent();
+                        debug(err_2);
+                        return [2, Promise.reject(err_2)];
                     case 4:
                         this.cachePublication(filePath, publication);
                         _a.label = 5;

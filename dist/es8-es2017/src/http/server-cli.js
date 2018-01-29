@@ -51,12 +51,16 @@ if (stats.isDirectory()) {
             .find();
         const server = new server_1.Server();
         server.addPublications(files);
-        server.start(0);
+        const url = await server.start(0);
+        debug(url);
     })();
 }
 else {
-    const server = new server_1.Server();
-    server.addPublications([filePath]);
-    server.start(0);
+    (async () => {
+        const server = new server_1.Server();
+        server.addPublications([filePath]);
+        const url = await server.start(0);
+        debug(url);
+    })();
 }
 //# sourceMappingURL=server-cli.js.map

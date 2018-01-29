@@ -2,13 +2,23 @@
 import { Publication } from "r2-shared-js/dist/es5/src/models/publication";
 import { OPDSFeed } from "r2-opds-js/dist/es5/src/opds/opds2/opds2";
 import * as express from "express";
+import { CertificateData } from "../utils/self-signed";
+export interface ServerData extends CertificateData {
+    urlScheme: string;
+    urlHost: string;
+    urlPort: number;
+}
 export interface IServerOptions {
     disableReaders?: boolean;
     disableDecryption?: boolean;
+    disableRemotePubUrl?: boolean;
+    disableOPDS?: boolean;
 }
 export declare class Server {
     readonly disableReaders: boolean;
     readonly disableDecryption: boolean;
+    readonly disableRemotePubUrl: boolean;
+    readonly disableOPDS: boolean;
     readonly lcpBeginToken: string;
     readonly lcpEndToken: string;
     private readonly publications;
@@ -19,13 +29,17 @@ export declare class Server {
     private readonly opdsJsonFilePath;
     private readonly expressApp;
     private httpServer;
-    private started;
+    private httpsServer;
+    private serverData;
     constructor(options?: IServerOptions);
     expressUse(pathf: string, func: express.Handler): void;
     expressGet(paths: string[], func: express.Handler): void;
-    start(port: number): string;
+    isStarted(): boolean;
+    isSecured(): boolean;
+    start(port: number): Promise<ServerData>;
     stop(): void;
-    url(): string | undefined;
+    serverInfo(): ServerData | undefined;
+    serverUrl(): string | undefined;
     setResponseCORS(res: express.Response): void;
     addPublications(pubs: string[]): string[];
     removePublications(pubs: string[]): string[];

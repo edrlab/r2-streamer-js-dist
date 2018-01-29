@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const child_process = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
+const http = require("http");
+const https = require("https");
 const path = require("path");
 const opds2_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds2/opds2");
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
@@ -13,6 +15,7 @@ const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const tmp_1 = require("tmp");
 const publication_parser_1 = require("r2-shared-js/dist/es8-es2017/src/parser/publication-parser");
+const self_signed_1 = require("../utils/self-signed");
 const server_assets_1 = require("./server-assets");
 const server_manifestjson_1 = require("./server-manifestjson");
 const server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -51,14 +54,36 @@ class Server {
         this.lcpEndToken = "-*";
         this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
         this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
+        this.disableRemotePubUrl = options && options.disableRemotePubUrl ? options.disableRemotePubUrl : false;
+        this.disableOPDS = options && options.disableOPDS ? options.disableOPDS : false;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
         this.publicationsOPDSfeedNeedsUpdate = true;
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
-        this.started = false;
         this.expressApp = express();
+        this.expressApp.use((req, res, next) => {
+            Object.keys(req.headers).forEach((header) => {
+                debug(header + " => " + req.headers[header]);
+            });
+            if (!this.isSecured() || !this.serverData) {
+                next();
+                return;
+            }
+            let ua = req.get("user-agent");
+            if (ua) {
+                ua = ua.toLowerCase();
+            }
+            if ((this.serverData.trustKey && this.serverData.trustVal &&
+                req.get(`X-Debug-${this.serverData.trustKey}`) !== this.serverData.trustVal)
+                || (ua && (ua.indexOf("curl") >= 0 || ua.indexOf("postman") >= 0 || ua.indexOf("wget") >= 0))) {
+                res.status(200);
+                res.end();
+                return;
+            }
+            next();
+        });
         const staticOptions = {
             etag: false,
         };
@@ -75,10 +100,16 @@ class Server {
                     + "</strong><br> => <a href='./pub/" + UrlUtils_1.encodeURIComponent_RFC3986(filePathBase64)
                     + "'>" + "./pub/" + filePathBase64 + "</a></p>";
             });
-            html += "<h1>OPDS2 feed</h1><p><a href='./opds2'>CLICK HERE</a></p>";
-            html += "<h1>Load HTTP publication URL</h1><p><a href='./url'>CLICK HERE</a></p>";
-            html += "<h1>Browse HTTP OPDS1 feed</h1><p><a href='./opds'>CLICK HERE</a></p>";
-            html += "<h1>Convert OPDS feed v1 to v2</h1><p><a href='./opds12'>CLICK HERE</a></p>";
+            if (!this.disableOPDS) {
+                html += "<h1>OPDS2 feed</h1><p><a href='./opds2'>CLICK HERE</a></p>";
+            }
+            if (!this.disableRemotePubUrl) {
+                html += "<h1>Load HTTP publication URL</h1><p><a href='./url'>CLICK HERE</a></p>";
+            }
+            if (!this.disableOPDS) {
+                html += "<h1>Browse HTTP OPDS1 feed</h1><p><a href='./opds'>CLICK HERE</a></p>";
+                html += "<h1>Convert OPDS feed v1 to v2</h1><p><a href='./opds12'>CLICK HERE</a></p>";
+            }
             html += "<h1>Server version</h1><p><a href='./version/show'>CLICK HERE</a></p>";
             html += "</body></html>";
             res.status(200).send(html);
@@ -122,10 +153,14 @@ class Server {
                 res.status(200).send(jsonStr);
             }
         });
-        server_url_1.serverUrl(this, this.expressApp);
-        server_opds_1.serverOPDS(this, this.expressApp);
-        server_opds2_1.serverOPDS2(this, this.expressApp);
-        server_opds1_2_1.serverOPDS12(this, this.expressApp);
+        if (!this.disableRemotePubUrl) {
+            server_url_1.serverUrl(this, this.expressApp);
+        }
+        if (!this.disableOPDS) {
+            server_opds_1.serverOPDS(this, this.expressApp);
+            server_opds2_1.serverOPDS2(this, this.expressApp);
+            server_opds1_2_1.serverOPDS12(this, this.expressApp);
+        }
         const routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
@@ -137,29 +172,87 @@ class Server {
     expressGet(paths, func) {
         this.expressApp.get(paths, func);
     }
-    start(port) {
-        if (this.started) {
-            return this.url();
+    isStarted() {
+        return (typeof this.serverInfo() !== "undefined") &&
+            (typeof this.httpServer !== "undefined") ||
+            (typeof this.httpsServer !== "undefined");
+    }
+    isSecured() {
+        return (typeof this.serverInfo() !== "undefined") &&
+            (typeof this.httpsServer !== "undefined");
+    }
+    async start(port) {
+        if (this.isStarted()) {
+            return Promise.resolve(this.serverInfo());
         }
-        const p = port || process.env.PORT || 3000;
-        debug(`PORT: ${p} || ${process.env.PORT} || 3000 => ${p}`);
-        this.httpServer = this.expressApp.listen(p, () => {
-            debug(`http://localhost:${p}`);
-        });
-        this.started = true;
-        return `http://127.0.0.1:${p}`;
+        let envPort = 0;
+        try {
+            envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 0;
+        }
+        catch (err) {
+            debug(err);
+            envPort = 0;
+        }
+        const p = port || envPort || 3000;
+        debug(`PORT: ${port} || ${envPort} || 3000 => ${p}`);
+        if (p === 443) {
+            this.httpServer = undefined;
+            return new Promise(async (resolve, reject) => {
+                let certData;
+                try {
+                    certData = await self_signed_1.generateSelfSignedData();
+                }
+                catch (err) {
+                    debug(err);
+                    reject("err");
+                    return;
+                }
+                this.httpsServer = https.createServer({ key: certData.private, cert: certData.cert }, this.expressApp).listen(p, () => {
+                    this.serverData = Object.assign({}, certData, { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
+                    resolve(this.serverData);
+                });
+            });
+        }
+        else {
+            this.httpsServer = undefined;
+            return new Promise((resolve, _reject) => {
+                this.httpServer = http.createServer(this.expressApp).listen(p, () => {
+                    this.serverData = {
+                        urlHost: "127.0.0.1",
+                        urlPort: p,
+                        urlScheme: "http",
+                    };
+                    resolve(this.serverData);
+                });
+            });
+        }
     }
     stop() {
-        if (this.started) {
-            this.httpServer.close();
-            this.started = false;
+        if (this.isStarted()) {
+            if (this.httpServer) {
+                this.httpServer.close();
+                this.httpServer = undefined;
+            }
+            if (this.httpsServer) {
+                this.httpsServer.close();
+                this.httpsServer = undefined;
+            }
+            this.serverData = undefined;
             this.uncachePublications();
         }
     }
-    url() {
-        return this.started ?
-            `http://127.0.0.1:${this.httpServer.address().port}` :
-            undefined;
+    serverInfo() {
+        return this.serverData;
+    }
+    serverUrl() {
+        if (!this.isStarted()) {
+            return undefined;
+        }
+        const info = this.serverInfo();
+        if (!info) {
+            return undefined;
+        }
+        return `${info.urlScheme}://${info.urlHost}:${info.urlPort}`;
     }
     setResponseCORS(res) {
         res.setHeader("Access-Control-Allow-Origin", "*");

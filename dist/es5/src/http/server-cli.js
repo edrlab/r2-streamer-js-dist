@@ -45,7 +45,7 @@ if (!stats.isFile() && !stats.isDirectory()) {
 if (stats.isDirectory()) {
     debug("Analysing directory...");
     (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var files, server;
+        var files, server, url;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4, filehound.create()
@@ -58,15 +58,30 @@ if (stats.isDirectory()) {
                     files = _a.sent();
                     server = new server_1.Server();
                     server.addPublications(files);
-                    server.start(0);
+                    return [4, server.start(0)];
+                case 2:
+                    url = _a.sent();
+                    debug(url);
                     return [2];
             }
         });
     }); })();
 }
 else {
-    var server = new server_1.Server();
-    server.addPublications([filePath]);
-    server.start(0);
+    (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+        var server, url;
+        return tslib_1.__generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    server = new server_1.Server();
+                    server.addPublications([filePath]);
+                    return [4, server.start(0)];
+                case 1:
+                    url = _a.sent();
+                    debug(url);
+                    return [2];
+            }
+        });
+    }); })();
 }
 //# sourceMappingURL=server-cli.js.map

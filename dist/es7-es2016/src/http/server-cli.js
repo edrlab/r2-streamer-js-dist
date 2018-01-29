@@ -52,12 +52,16 @@ if (stats.isDirectory()) {
             .find();
         const server = new server_1.Server();
         server.addPublications(files);
-        server.start(0);
+        const url = yield server.start(0);
+        debug(url);
     }))();
 }
 else {
-    const server = new server_1.Server();
-    server.addPublications([filePath]);
-    server.start(0);
+    (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const server = new server_1.Server();
+        server.addPublications([filePath]);
+        const url = yield server.start(0);
+        debug(url);
+    }))();
 }
 //# sourceMappingURL=server-cli.js.map
