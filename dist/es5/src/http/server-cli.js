@@ -58,7 +58,7 @@ if (stats.isDirectory()) {
                     files = _a.sent();
                     server = new server_1.Server();
                     server.addPublications(files);
-                    return [4, server.start(0)];
+                    return [4, server.start(0, false)];
                 case 2:
                     url = _a.sent();
                     debug(url);
@@ -75,7 +75,7 @@ else {
                 case 0:
                     server = new server_1.Server();
                     server.addPublications([filePath]);
-                    return [4, server.start(0)];
+                    return [4, server.start(0, false)];
                 case 1:
                     url = _a.sent();
                     debug(url);

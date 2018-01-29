@@ -177,7 +177,7 @@ class Server {
         return (typeof this.serverInfo() !== "undefined") &&
             (typeof this.httpsServer !== "undefined");
     }
-    async start(port) {
+    async start(port, secure) {
         if (this.isStarted()) {
             return Promise.resolve(this.serverInfo());
         }
@@ -191,7 +191,7 @@ class Server {
         }
         const p = port || envPort || 3000;
         debug(`PORT: ${port} || ${envPort} || 3000 => ${p}`);
-        if (p === 443) {
+        if (secure) {
             this.httpServer = undefined;
             return new Promise(async (resolve, reject) => {
                 let certData;

@@ -52,7 +52,7 @@ if (stats.isDirectory()) {
             .find();
         const server = new server_1.Server();
         server.addPublications(files);
-        const url = yield server.start(0);
+        const url = yield server.start(0, false);
         debug(url);
     }))();
 }
@@ -60,7 +60,7 @@ else {
     (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const server = new server_1.Server();
         server.addPublications([filePath]);
-        const url = yield server.start(0);
+        const url = yield server.start(0, false);
         debug(url);
     }))();
 }

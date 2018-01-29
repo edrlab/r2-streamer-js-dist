@@ -36,7 +36,7 @@ export declare class Server {
     expressGet(paths: string[], func: express.Handler): void;
     isStarted(): boolean;
     isSecured(): boolean;
-    start(port: number): Promise<ServerData>;
+    start(port: number, secure: boolean): Promise<ServerData>;
     stop(): void;
     serverInfo(): ServerData | undefined;
     serverUrl(): string | undefined;

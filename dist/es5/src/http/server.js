@@ -157,7 +157,7 @@ var Server = (function () {
         return (typeof this.serverInfo() !== "undefined") &&
             (typeof this.httpsServer !== "undefined");
     };
-    Server.prototype.start = function (port) {
+    Server.prototype.start = function (port, secure) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
             var _this = this;
             var envPort, p;
@@ -175,7 +175,7 @@ var Server = (function () {
                 }
                 p = port || envPort || 3000;
                 debug("PORT: " + port + " || " + envPort + " || 3000 => " + p);
-                if (p === 443) {
+                if (secure) {
                     this.httpServer = undefined;
                     return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                             var _this = this;

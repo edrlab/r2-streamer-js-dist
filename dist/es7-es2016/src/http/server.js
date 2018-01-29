@@ -178,7 +178,7 @@ class Server {
         return (typeof this.serverInfo() !== "undefined") &&
             (typeof this.httpsServer !== "undefined");
     }
-    start(port) {
+    start(port, secure) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {
             if (this.isStarted()) {
                 return Promise.resolve(this.serverInfo());
@@ -193,7 +193,7 @@ class Server {
             }
             const p = port || envPort || 3000;
             debug(`PORT: ${port} || ${envPort} || 3000 => ${p}`);
-            if (p === 443) {
+            if (secure) {
                 this.httpServer = undefined;
                 return new Promise((resolve, reject) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                     let certData;
