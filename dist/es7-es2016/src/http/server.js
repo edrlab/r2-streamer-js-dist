@@ -251,6 +251,9 @@ class Server {
         if (!info) {
             return undefined;
         }
+        if (info.urlPort === 443 || info.urlPort === 80) {
+            return `${info.urlScheme}://${info.urlHost}`;
+        }
         return `${info.urlScheme}://${info.urlHost}:${info.urlPort}`;
     }
     setResponseCORS(res) {
