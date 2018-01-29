@@ -50,10 +50,6 @@ var Server = (function () {
             }
             if ((_this.serverData.trustKey && _this.serverData.trustVal &&
                 req.get("X-Debug-" + _this.serverData.trustKey) !== _this.serverData.trustVal)) {
-                debug(req);
-                Object.keys(req.headers).forEach(function (header) {
-                    debug(header + " => " + req.headers[header]);
-                });
                 res.status(200);
                 res.end();
                 return;

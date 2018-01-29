@@ -70,10 +70,6 @@ class Server {
             }
             if ((this.serverData.trustKey && this.serverData.trustVal &&
                 req.get(`X-Debug-${this.serverData.trustKey}`) !== this.serverData.trustVal)) {
-                debug(req);
-                Object.keys(req.headers).forEach((header) => {
-                    debug(header + " => " + req.headers[header]);
-                });
                 res.status(200);
                 res.end();
                 return;
