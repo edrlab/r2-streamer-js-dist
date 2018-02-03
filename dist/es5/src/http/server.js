@@ -44,20 +44,19 @@ var Server = (function () {
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
         this.expressApp.use(function (req, res, next) {
-            if (!_this.isSecured() || !_this.serverData) {
+            if (!_this.isSecured()) {
                 next();
                 return;
             }
-            if (_this.serverData.trustKey && _this.serverData.trustCheck) {
-                var doFail = true;
+            var doFail = true;
+            if (_this.serverData && _this.serverData.trustKey &&
+                _this.serverData.trustCheck && _this.serverData.trustCheckIV) {
                 var base64Val = req.get("X-" + _this.serverData.trustCheck);
                 if (base64Val) {
-                    var AES_BLOCK_SIZE = 16;
                     var decodedVal = new Buffer(base64Val, "base64");
-                    var iv = decodedVal.slice(0, AES_BLOCK_SIZE);
-                    var encrypted = decodedVal.slice(AES_BLOCK_SIZE);
+                    var encrypted = decodedVal;
                     var decrypteds = [];
-                    var decryptStream = crypto.createDecipheriv("aes-256-cbc", _this.serverData.trustKey, iv);
+                    var decryptStream = crypto.createDecipheriv("aes-256-cbc", _this.serverData.trustKey, _this.serverData.trustCheckIV);
                     decryptStream.setAutoPadding(false);
                     var buff1 = decryptStream.update(encrypted);
                     if (buff1) {
@@ -75,13 +74,13 @@ var Server = (function () {
                         doFail = false;
                     }
                 }
-                if (doFail) {
-                    debug("############## X-Debug- FAIL ========================== ");
-                    debug(req.url);
-                    res.status(200);
-                    res.end();
-                    return;
-                }
+            }
+            if (doFail) {
+                debug("############## X-Debug- FAIL ========================== ");
+                debug(req.url);
+                res.status(200);
+                res.end();
+                return;
             }
             next();
         });

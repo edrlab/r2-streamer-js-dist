@@ -65,20 +65,19 @@ class Server {
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
         this.expressApp.use((req, res, next) => {
-            if (!this.isSecured() || !this.serverData) {
+            if (!this.isSecured()) {
                 next();
                 return;
             }
-            if (this.serverData.trustKey && this.serverData.trustCheck) {
-                let doFail = true;
+            let doFail = true;
+            if (this.serverData && this.serverData.trustKey &&
+                this.serverData.trustCheck && this.serverData.trustCheckIV) {
                 const base64Val = req.get("X-" + this.serverData.trustCheck);
                 if (base64Val) {
-                    const AES_BLOCK_SIZE = 16;
                     const decodedVal = new Buffer(base64Val, "base64");
-                    const iv = decodedVal.slice(0, AES_BLOCK_SIZE);
-                    const encrypted = decodedVal.slice(AES_BLOCK_SIZE);
+                    const encrypted = decodedVal;
                     const decrypteds = [];
-                    const decryptStream = crypto.createDecipheriv("aes-256-cbc", this.serverData.trustKey, iv);
+                    const decryptStream = crypto.createDecipheriv("aes-256-cbc", this.serverData.trustKey, this.serverData.trustCheckIV);
                     decryptStream.setAutoPadding(false);
                     const buff1 = decryptStream.update(encrypted);
                     if (buff1) {
@@ -96,13 +95,13 @@ class Server {
                         doFail = false;
                     }
                 }
-                if (doFail) {
-                    debug("############## X-Debug- FAIL ========================== ");
-                    debug(req.url);
-                    res.status(200);
-                    res.end();
-                    return;
-                }
+            }
+            if (doFail) {
+                debug("############## X-Debug- FAIL ========================== ");
+                debug(req.url);
+                res.status(200);
+                res.end();
+                return;
             }
             next();
         });
