@@ -32,7 +32,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, okay, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -69,32 +69,25 @@ function serverManifestJson(server, routerPathBase64) {
                         + err_1 + "</p></body></html>");
                     return [2];
                 case 4:
-                    if (!(req.params.lcpPass64 && !server.disableDecryption)) return [3, 9];
+                    if (!(req.params.lcpPass64 && !server.disableDecryption)) return [3, 8];
                     lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
-                    if (!publication.LCP) return [3, 9];
-                    okay = false;
+                    if (!publication.LCP) return [3, 8];
                     _b.label = 5;
                 case 5:
                     _b.trys.push([5, 7, , 8]);
-                    return [4, publication.LCP.setUserPassphrase(lcpPass)];
+                    return [4, publication.LCP.tryUserKeys([lcpPass])];
                 case 6:
-                    okay = _b.sent();
+                    _b.sent();
                     return [3, 8];
                 case 7:
                     err_2 = _b.sent();
                     debug(err_2);
-                    okay = false;
-                    return [3, 8];
+                    errMsg = "FAIL publication.LCP.tryUserKeys(): " + err_2;
+                    debug(errMsg);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + errMsg + "</p></body></html>");
+                    return [2];
                 case 8:
-                    if (!okay) {
-                        errMsg = "FAIL publication.LCP.setUserPassphrase()";
-                        debug(errMsg);
-                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                            + errMsg + "</p></body></html>");
-                        return [2];
-                    }
-                    _b.label = 9;
-                case 9:
                     rootUrl = (isSecureHttp ? "https://" : "http://")
                         + req.headers.host + "/pub/"
                         + (req.params.lcpPass64 ?
@@ -133,100 +126,100 @@ function serverManifestJson(server, routerPathBase64) {
                             coverImage = absoluteURL(coverImage);
                         }
                     }
-                    if (!isShow) return [3, 27];
+                    if (!isShow) return [3, 26];
                     objToSerialize = null;
-                    if (!req.params.jsonPath) return [3, 25];
+                    if (!req.params.jsonPath) return [3, 24];
                     _a = req.params.jsonPath;
                     switch (_a) {
-                        case "all": return [3, 10];
-                        case "cover": return [3, 11];
-                        case "mediaoverlays": return [3, 12];
-                        case "spine": return [3, 16];
-                        case "pagelist": return [3, 17];
-                        case "landmarks": return [3, 18];
-                        case "links": return [3, 19];
-                        case "resources": return [3, 20];
-                        case "toc": return [3, 21];
-                        case "metadata": return [3, 22];
+                        case "all": return [3, 9];
+                        case "cover": return [3, 10];
+                        case "mediaoverlays": return [3, 11];
+                        case "spine": return [3, 15];
+                        case "pagelist": return [3, 16];
+                        case "landmarks": return [3, 17];
+                        case "links": return [3, 18];
+                        case "resources": return [3, 19];
+                        case "toc": return [3, 20];
+                        case "metadata": return [3, 21];
                     }
-                    return [3, 23];
-                case 10:
+                    return [3, 22];
+                case 9:
                     {
                         objToSerialize = publication;
-                        return [3, 24];
+                        return [3, 23];
+                    }
+                    _b.label = 10;
+                case 10:
+                    {
+                        objToSerialize = publication.GetCover();
+                        return [3, 23];
                     }
                     _b.label = 11;
                 case 11:
-                    {
-                        objToSerialize = publication.GetCover();
-                        return [3, 24];
-                    }
-                    _b.label = 12;
-                case 12:
-                    _b.trys.push([12, 14, , 15]);
+                    _b.trys.push([11, 13, , 14]);
                     return [4, epub_1.getAllMediaOverlays(publication)];
-                case 13:
+                case 12:
                     objToSerialize = _b.sent();
-                    return [3, 15];
-                case 14:
+                    return [3, 14];
+                case 13:
                     err_3 = _b.sent();
                     debug(err_3);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_3 + "</p></body></html>");
                     return [2];
-                case 15: return [3, 24];
-                case 16:
+                case 14: return [3, 23];
+                case 15:
                     {
                         objToSerialize = publication.Spine;
-                        return [3, 24];
+                        return [3, 23];
+                    }
+                    _b.label = 16;
+                case 16:
+                    {
+                        objToSerialize = publication.PageList;
+                        return [3, 23];
                     }
                     _b.label = 17;
                 case 17:
                     {
-                        objToSerialize = publication.PageList;
-                        return [3, 24];
+                        objToSerialize = publication.Landmarks;
+                        return [3, 23];
                     }
                     _b.label = 18;
                 case 18:
                     {
-                        objToSerialize = publication.Landmarks;
-                        return [3, 24];
+                        objToSerialize = publication.Links;
+                        return [3, 23];
                     }
                     _b.label = 19;
                 case 19:
                     {
-                        objToSerialize = publication.Links;
-                        return [3, 24];
+                        objToSerialize = publication.Resources;
+                        return [3, 23];
                     }
                     _b.label = 20;
                 case 20:
                     {
-                        objToSerialize = publication.Resources;
-                        return [3, 24];
+                        objToSerialize = publication.TOC;
+                        return [3, 23];
                     }
                     _b.label = 21;
                 case 21:
                     {
-                        objToSerialize = publication.TOC;
-                        return [3, 24];
+                        objToSerialize = publication.Metadata;
+                        return [3, 23];
                     }
                     _b.label = 22;
                 case 22:
                     {
-                        objToSerialize = publication.Metadata;
-                        return [3, 24];
-                    }
-                    _b.label = 23;
-                case 23:
-                    {
                         objToSerialize = null;
                     }
-                    _b.label = 24;
-                case 24: return [3, 26];
-                case 25:
+                    _b.label = 23;
+                case 23: return [3, 25];
+                case 24:
                     objToSerialize = publication;
-                    _b.label = 26;
-                case 26:
+                    _b.label = 25;
+                case 25:
                     if (!objToSerialize) {
                         objToSerialize = {};
                     }
@@ -242,8 +235,8 @@ function serverManifestJson(server, routerPathBase64) {
                         (coverImage ? "<img src=\"" + coverImage + "\" alt=\"\"/>" : "") +
                         "<hr><p><pre>" + jsonPretty + "</pre></p>" +
                         "</body></html>");
-                    return [3, 28];
-                case 27:
+                    return [3, 27];
+                case 26:
                     server.setResponseCORS(res);
                     res.set("Content-Type", "application/webpub+json; charset=utf-8");
                     publicationJsonObj = ta_json_1.JSON.serialize(publication);
@@ -282,8 +275,8 @@ function serverManifestJson(server, routerPathBase64) {
                     else {
                         res.send(publicationJsonStr);
                     }
-                    _b.label = 28;
-                case 28: return [2];
+                    _b.label = 27;
+                case 27: return [2];
             }
         });
     }); });

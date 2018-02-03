@@ -70,16 +70,12 @@ function serverManifestJson(server, routerPathBase64) {
         if (req.params.lcpPass64 && !server.disableDecryption) {
             const lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
             if (publication.LCP) {
-                let okay = false;
                 try {
-                    okay = yield publication.LCP.setUserPassphrase(lcpPass);
+                    yield publication.LCP.tryUserKeys([lcpPass]);
                 }
                 catch (err) {
                     debug(err);
-                    okay = false;
-                }
-                if (!okay) {
-                    const errMsg = "FAIL publication.LCP.setUserPassphrase()";
+                    const errMsg = "FAIL publication.LCP.tryUserKeys(): " + err;
                     debug(errMsg);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + errMsg + "</p></body></html>");
