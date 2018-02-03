@@ -1,6 +1,6 @@
 export interface CertificateData {
     trustKey: string;
-    trustVal: string;
+    trustCheck: string;
     private?: string;
     public?: string;
     cert?: string;

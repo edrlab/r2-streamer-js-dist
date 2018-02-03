@@ -48,11 +48,40 @@ var Server = (function () {
                 next();
                 return;
             }
-            if ((_this.serverData.trustKey && _this.serverData.trustVal &&
-                req.get("X-Debug-" + _this.serverData.trustKey) !== _this.serverData.trustVal)) {
-                res.status(200);
-                res.end();
-                return;
+            if (_this.serverData.trustKey && _this.serverData.trustCheck) {
+                var doFail = true;
+                var base64Val = req.get("X-" + _this.serverData.trustCheck);
+                if (base64Val) {
+                    var AES_BLOCK_SIZE = 16;
+                    var decodedVal = new Buffer(base64Val, "base64");
+                    var iv = decodedVal.slice(0, AES_BLOCK_SIZE);
+                    var encrypted = decodedVal.slice(AES_BLOCK_SIZE);
+                    var decrypteds = [];
+                    var decryptStream = crypto.createDecipheriv("aes-256-cbc", _this.serverData.trustKey, iv);
+                    decryptStream.setAutoPadding(false);
+                    var buff1 = decryptStream.update(encrypted);
+                    if (buff1) {
+                        decrypteds.push(buff1);
+                    }
+                    var buff2 = decryptStream.final();
+                    if (buff2) {
+                        decrypteds.push(buff2);
+                    }
+                    var decrypted = Buffer.concat(decrypteds);
+                    var nPaddingBytes = decrypted[decrypted.length - 1];
+                    var size = encrypted.length - nPaddingBytes;
+                    var decryptedStr = decrypted.slice(0, size).toString("utf8");
+                    if (decryptedStr === (_this.serverUrl() + req.url)) {
+                        doFail = false;
+                    }
+                }
+                if (doFail) {
+                    debug("############## X-Debug- FAIL ========================== ");
+                    debug(req.url);
+                    res.status(200);
+                    res.end();
+                    return;
+                }
             }
             next();
         });

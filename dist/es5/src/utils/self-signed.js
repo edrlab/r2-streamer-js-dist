@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var crypto = require("crypto");
 var selfsigned = require("selfsigned");
 var uuid = require("uuid");
 function generateSelfSignedData() {
@@ -25,8 +26,11 @@ function generateSelfSignedData() {
                             reject(err);
                             return;
                         }
-                        keys.trustKey = uuid.v4();
-                        keys.trustVal = rand;
+                        var checkSum = crypto.createHash("sha256");
+                        checkSum.update(uuid.v4());
+                        var key = checkSum.digest("hex").toUpperCase();
+                        keys.trustKey = key;
+                        keys.trustCheck = uuid.v4();
                         resolve(keys);
                     });
                 })];
