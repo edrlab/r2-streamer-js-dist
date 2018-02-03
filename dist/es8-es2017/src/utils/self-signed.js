@@ -26,8 +26,13 @@ async function generateSelfSignedData() {
             const checkSum = crypto.createHash("sha256");
             checkSum.update(uuid.v4());
             const key = checkSum.digest("hex").toUpperCase();
-            keys.trustKey = key;
-            keys.trustCheck = uuid.v4();
+            keys.trustKey = new Buffer(key, "hex");
+            const AES_BLOCK_SIZE = 16;
+            const ck = uuid.v4();
+            keys.trustCheck = ck;
+            const ivBuff = new Buffer(ck);
+            const iv = ivBuff.slice(0, AES_BLOCK_SIZE);
+            keys.trustCheckIV = iv;
             resolve(keys);
         });
     });

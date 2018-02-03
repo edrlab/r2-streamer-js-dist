@@ -1,6 +1,8 @@
+/// <reference types="node" />
 export interface CertificateData {
-    trustKey: string;
+    trustKey: Buffer;
     trustCheck: string;
+    trustCheckIV: Buffer;
     private?: string;
     public?: string;
     cert?: string;

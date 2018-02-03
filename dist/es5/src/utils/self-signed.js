@@ -29,8 +29,13 @@ function generateSelfSignedData() {
                         var checkSum = crypto.createHash("sha256");
                         checkSum.update(uuid.v4());
                         var key = checkSum.digest("hex").toUpperCase();
-                        keys.trustKey = key;
-                        keys.trustCheck = uuid.v4();
+                        keys.trustKey = new Buffer(key, "hex");
+                        var AES_BLOCK_SIZE = 16;
+                        var ck = uuid.v4();
+                        keys.trustCheck = ck;
+                        var ivBuff = new Buffer(ck);
+                        var iv = ivBuff.slice(0, AES_BLOCK_SIZE);
+                        keys.trustCheckIV = iv;
                         resolve(keys);
                     });
                 })];
