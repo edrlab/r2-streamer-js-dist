@@ -70,6 +70,11 @@ var Server = (function () {
                     var nPaddingBytes = decrypted[decrypted.length - 1];
                     var size = encrypted.length - nPaddingBytes;
                     var decryptedStr = decrypted.slice(0, size).toString("utf8");
+                    debug(decryptedStr);
+                    var i = decryptedStr.lastIndexOf("#");
+                    if (i > 0) {
+                        decryptedStr = decryptedStr.substr(0, i);
+                    }
                     if (decryptedStr === (_this.serverUrl() + req.url)) {
                         doFail = false;
                     }
