@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var debug_ = require("debug");
-var debug = debug_("r2:server:main");
+var debug = debug_("r2:streamer#http/server-trailing-slash-redirect");
 function trailingSlashRedirect(req, res, next) {
     var i = req.originalUrl.indexOf("?");
     var pathWithoutQuery = req.originalUrl;

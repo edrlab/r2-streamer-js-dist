@@ -13,7 +13,7 @@ const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils
 const debug_ = require("debug");
 const moment = require("moment");
 const ta_json_1 = require("ta-json");
-const debug = debug_("r2:opds2create");
+const debug = debug_("r2:streamer#http/opds2-create-cli");
 debug(`process.cwd(): ${process.cwd()}`);
 debug(`__dirname: ${__dirname}`);
 let args = process.argv.slice(2);

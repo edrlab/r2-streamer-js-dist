@@ -25,7 +25,7 @@ const server_opds1_2_1 = require("./server-opds1-2");
 const server_opds2_1 = require("./server-opds2");
 const server_pub_1 = require("./server-pub");
 const server_url_1 = require("./server-url");
-const debug = debug_("r2:server:main");
+const debug = debug_("r2:streamer#http/server");
 const jsonStyle = `
 .json-markup {
     line-height: 17px;

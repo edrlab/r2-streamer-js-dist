@@ -13,7 +13,7 @@ var request = require("request");
 var requestPromise = require("request-promise-native");
 var xmldom = require("xmldom");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-var debug = debug_("r2:server:opds");
+var debug = debug_("r2:streamer#http/server-opds");
 function serverOPDS(_server, topRouter) {
     var _this = this;
     var routerOPDS = express.Router({ strict: false });

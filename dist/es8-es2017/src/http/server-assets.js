@@ -7,7 +7,7 @@ const BufferUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/stream/Buf
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");
-const debug = debug_("r2:server:assets");
+const debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     const routerAssets = express.Router({ strict: false });
     routerAssets.get("/", async (req, res) => {

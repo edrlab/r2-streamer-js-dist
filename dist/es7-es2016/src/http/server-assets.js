@@ -8,7 +8,7 @@ const BufferUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/stream/Buf
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");
-const debug = debug_("r2:server:assets");
+const debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     const routerAssets = express.Router({ strict: false });
     routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {

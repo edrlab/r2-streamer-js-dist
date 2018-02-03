@@ -4,7 +4,7 @@ var debug_ = require("debug");
 var express = require("express");
 var morgan = require("morgan");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-var debug = debug_("r2:server:url");
+var debug = debug_("r2:streamer#http/server-url");
 function serverUrl(_server, topRouter) {
     var routerUrl = express.Router({ strict: false });
     routerUrl.use(morgan("combined"));

@@ -10,7 +10,7 @@ const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-const debug = debug_("r2:server:opds2");
+const debug = debug_("r2:streamer#http/server-opds2");
 function serverOPDS2(server, topRouter) {
     const jsonStyle = `
 .json-markup {

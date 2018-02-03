@@ -25,7 +25,7 @@ var server_opds1_2_1 = require("./server-opds1-2");
 var server_opds2_1 = require("./server-opds2");
 var server_pub_1 = require("./server-pub");
 var server_url_1 = require("./server-url");
-var debug = debug_("r2:server:main");
+var debug = debug_("r2:streamer#http/server");
 var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
 var Server = (function () {
     function Server(options) {

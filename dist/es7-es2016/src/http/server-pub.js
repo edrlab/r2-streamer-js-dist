@@ -7,7 +7,7 @@ const express = require("express");
 const morgan = require("morgan");
 const UrlUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-const debug = debug_("r2:server:pub");
+const debug = debug_("r2:streamer#http/server-pub");
 function serverPub(server, topRouter) {
     const urlBook = "/pub/PATH_BASE64/manifest.json";
     const urlBookShowAll = "./manifest.json/show/all";

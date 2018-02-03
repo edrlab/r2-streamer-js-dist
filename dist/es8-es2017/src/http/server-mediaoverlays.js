@@ -10,7 +10,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
-const debug = debug_("r2:server:mediaoverlays");
+const debug = debug_("r2:streamer#http/server-mediaoverlays");
 function serverMediaOverlays(server, routerPathBase64) {
     const jsonStyle = `
 .json-markup {

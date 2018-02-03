@@ -10,7 +10,7 @@ var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-var debug = debug_("r2:server:opds2");
+var debug = debug_("r2:streamer#http/server-opds2");
 function serverOPDS2(server, topRouter) {
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerOPDS2 = express.Router({ strict: false });

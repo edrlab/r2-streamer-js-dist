@@ -17,7 +17,7 @@ const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
 const xmldom = require("xmldom");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-const debug = debug_("r2:server:opds");
+const debug = debug_("r2:streamer#http/server-opds1-2");
 function serverOPDS12(_server, topRouter) {
     const jsonStyle = `
 .json-markup {

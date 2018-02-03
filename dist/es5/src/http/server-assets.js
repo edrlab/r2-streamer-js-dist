@@ -8,7 +8,7 @@ var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils"
 var debug_ = require("debug");
 var express = require("express");
 var mime = require("mime-types");
-var debug = debug_("r2:server:assets");
+var debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });

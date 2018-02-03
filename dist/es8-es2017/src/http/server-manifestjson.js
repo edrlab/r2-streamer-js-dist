@@ -10,7 +10,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
-const debug = debug_("r2:server:manifestjson");
+const debug = debug_("r2:streamer#http/server-manifestjson");
 function serverManifestJson(server, routerPathBase64) {
     const jsonStyle = `
 .json-markup {

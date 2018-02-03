@@ -13,7 +13,7 @@ const request = require("request");
 const requestPromise = require("request-promise-native");
 const xmldom = require("xmldom");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-const debug = debug_("r2:server:opds");
+const debug = debug_("r2:streamer#http/server-opds");
 function serverOPDS(_server, topRouter) {
     const routerOPDS = express.Router({ strict: false });
     routerOPDS.use(morgan("combined"));

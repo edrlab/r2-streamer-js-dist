@@ -14,7 +14,7 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var debug_ = require("debug");
 var moment = require("moment");
 var ta_json_1 = require("ta-json");
-var debug = debug_("r2:opds2create");
+var debug = debug_("r2:streamer#http/opds2-create-cli");
 debug("process.cwd(): " + process.cwd());
 debug("__dirname: " + __dirname);
 var args = process.argv.slice(2);

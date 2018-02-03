@@ -17,7 +17,7 @@ var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
 var xmldom = require("xmldom");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
-var debug = debug_("r2:server:opds");
+var debug = debug_("r2:streamer#http/server-opds1-2");
 function serverOPDS12(_server, topRouter) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
