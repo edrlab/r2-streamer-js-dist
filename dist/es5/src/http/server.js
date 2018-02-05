@@ -26,6 +26,8 @@ var server_opds2_1 = require("./server-opds2");
 var server_pub_1 = require("./server-pub");
 var server_url_1 = require("./server-url");
 var debug = debug_("r2:streamer#http/server");
+var debugHttps = debug_("r2:https");
+var IS_DEV = (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "dev");
 var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
 var Server = (function () {
     function Server(options) {
@@ -51,6 +53,12 @@ var Server = (function () {
             var doFail = true;
             if (_this.serverData && _this.serverData.trustKey &&
                 _this.serverData.trustCheck && _this.serverData.trustCheckIV) {
+                var t1 = void 0;
+                if (IS_DEV) {
+                    t1 = process.hrtime();
+                }
+                var delta = 0;
+                var urlCheck = _this.serverUrl() + req.url;
                 var base64Val = req.get("X-" + _this.serverData.trustCheck);
                 if (base64Val) {
                     var decodedVal = new Buffer(base64Val, "base64");
@@ -70,14 +78,33 @@ var Server = (function () {
                     var nPaddingBytes = decrypted[decrypted.length - 1];
                     var size = encrypted.length - nPaddingBytes;
                     var decryptedStr = decrypted.slice(0, size).toString("utf8");
-                    debug(decryptedStr);
-                    var i = decryptedStr.lastIndexOf("#");
-                    if (i > 0) {
-                        decryptedStr = decryptedStr.substr(0, i);
+                    try {
+                        var decryptedJson = JSON.parse(decryptedStr);
+                        var url = decryptedJson.url;
+                        var time = decryptedJson.time;
+                        var now = Date.now();
+                        delta = now - time;
+                        if (delta <= 1000) {
+                            var i = url.lastIndexOf("#");
+                            if (i > 0) {
+                                url = url.substr(0, i);
+                            }
+                            if (url === urlCheck) {
+                                doFail = false;
+                            }
+                        }
                     }
-                    if (decryptedStr === (_this.serverUrl() + req.url)) {
-                        doFail = false;
+                    catch (err) {
+                        debug(err);
+                        debug(decryptedStr);
                     }
+                }
+                if (IS_DEV) {
+                    var t2 = process.hrtime(t1);
+                    var seconds = t2[0];
+                    var nanoseconds = t2[1];
+                    var milliseconds = nanoseconds / 1e6;
+                    debugHttps("< B > (" + delta + "ms) " + seconds + "s " + milliseconds + "ms [ " + urlCheck + " ]");
                 }
             }
             if (doFail) {

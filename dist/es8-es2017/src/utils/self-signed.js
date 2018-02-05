@@ -23,14 +23,13 @@ async function generateSelfSignedData() {
                 reject(err);
                 return;
             }
-            const checkSum = crypto.createHash("sha256");
-            checkSum.update(uuid.v4());
-            const key = checkSum.digest("hex").toUpperCase();
-            keys.trustKey = new Buffer(key, "hex");
+            const password = uuid.v4();
+            const salt = crypto.randomBytes(16).toString("hex");
+            const hash = crypto.pbkdf2Sync(password, salt, 1000, 32, "sha256").toString("hex");
+            keys.trustKey = new Buffer(hash, "hex");
+            keys.trustCheck = uuid.v4();
             const AES_BLOCK_SIZE = 16;
-            const ck = uuid.v4();
-            keys.trustCheck = ck;
-            const ivBuff = new Buffer(ck);
+            const ivBuff = new Buffer(uuid.v4());
             const iv = ivBuff.slice(0, AES_BLOCK_SIZE);
             keys.trustCheckIV = iv;
             resolve(keys);
