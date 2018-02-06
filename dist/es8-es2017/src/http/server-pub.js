@@ -2,10 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = require("path");
 const querystring = require("querystring");
+const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
-const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
+const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-pub");
 function serverPub(server, topRouter) {
@@ -33,12 +34,13 @@ function serverPub(server, topRouter) {
     routerPathBase64.use(morgan("combined"));
     routerPathBase64.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerPathBase64.param("pathBase64", (req, res, next, value, _name) => {
+        const reqparams = req.params;
         if (value.indexOf(server.lcpBeginToken) === 0 && value.indexOf(server.lcpEndToken) > 0) {
             const i = value.indexOf(server.lcpEndToken);
             const pass64 = value.substr(server.lcpBeginToken.length, i - server.lcpBeginToken.length);
             req.lcpPass64 = pass64;
             value = value.substr(i + server.lcpEndToken.length);
-            req.params.pathBase64 = value;
+            reqparams.pathBase64 = value;
             debug(value);
         }
         const valueStr = new Buffer(value, "base64").toString("utf8");
@@ -58,21 +60,22 @@ function serverPub(server, topRouter) {
         }
         else {
             res.status(403).send("<html><body><p>Forbidden</p><p>INVALID parameter: <code>"
-                + req.params.pathBase64 + "</code></p></body></html>");
+                + reqparams.pathBase64 + "</code></p></body></html>");
         }
     });
-    routerPathBase64.get("/:pathBase64", (req, res) => {
-        if (!req.params.pathBase64) {
-            req.params.pathBase64 = req.pathBase64;
+    routerPathBase64.get("/:" + request_ext_1._pathBase64, (req, res) => {
+        const reqparams = req.params;
+        if (!reqparams.pathBase64) {
+            reqparams.pathBase64 = req.pathBase64;
         }
-        const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
+        const pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
         debug(`Publication: ${pathBase64Str}`);
         const isSecureHttp = req.secure ||
             req.protocol === "https" ||
             req.get("X-Forwarded-Proto") === "https";
         res.status(200).send(htmlLanding
             .replace(/PATH_STR/g, path.basename(pathBase64Str))
-            .replace(/PATH_BASE64/g, UrlUtils_1.encodeURIComponent_RFC3986(req.params.pathBase64))
+            .replace(/PATH_BASE64/g, UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64))
             .replace(/PREFIX/g, (isSecureHttp ?
             querystring.escape("https://") : querystring.escape("http://"))
             + req.headers.host).replace(/PREFIZ/g, (isSecureHttp ?

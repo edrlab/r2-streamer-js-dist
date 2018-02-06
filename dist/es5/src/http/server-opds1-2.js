@@ -16,6 +16,7 @@ var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
 var xmldom = require("xmldom");
+var request_ext_1 = require("./request-ext");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:streamer#http/server-opds1-2");
 function serverOPDS12(_server, topRouter) {
@@ -47,16 +48,17 @@ function serverOPDS12(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS12.get("/:urlEncoded(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerOPDS12.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var _this = this;
-        var urlDecoded, isSecureHttp, rootUrl, failure, success, needsStreamingResponse, response, err_1;
+        var reqparams, urlDecoded, isSecureHttp, rootUrl, failure, success, needsStreamingResponse, response, err_1;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.params.urlEncoded) {
-                        req.params.urlEncoded = req.urlEncoded;
+                    reqparams = req.params;
+                    if (!reqparams.urlEncoded) {
+                        reqparams.urlEncoded = req.urlEncoded;
                     }
-                    urlDecoded = req.params.urlEncoded;
+                    urlDecoded = reqparams.urlEncoded;
                     debug(urlDecoded);
                     isSecureHttp = req.secure ||
                         req.protocol === "https" ||

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var debug_ = require("debug");
 var express = require("express");
 var morgan = require("morgan");
+var request_ext_1 = require("./request-ext");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:streamer#http/server-url");
 function serverUrl(_server, topRouter) {
@@ -32,11 +33,12 @@ function serverUrl(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerUrl.get("/:urlEncoded(*)", function (req, res) {
-        if (!req.params.urlEncoded) {
-            req.params.urlEncoded = req.urlEncoded;
+    routerUrl.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) {
+        var reqparams = req.params;
+        if (!reqparams.urlEncoded) {
+            reqparams.urlEncoded = req.urlEncoded;
         }
-        var urlDecoded = req.params.urlEncoded;
+        var urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);
         var urlDecodedBase64 = new Buffer(urlDecoded).toString("base64");
         var redirect = req.originalUrl.substr(0, req.originalUrl.indexOf("/url/"))

@@ -11,12 +11,13 @@ var debug_ = require("debug");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
+var request_ext_1 = require("./request-ext");
 var debug = debug_("r2:streamer#http/server-mediaoverlays");
 function serverMediaOverlays(server, routerPathBase64) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerMediaOverlays = express.Router({ strict: false });
-    routerMediaOverlays.get(["/", "/show/:" + epub_1.mediaOverlayURLParam + "?"], function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerMediaOverlays.get(["/", "/" + request_ext_1._show + "/:" + epub_1.mediaOverlayURLParam + "?"], function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
@@ -32,26 +33,28 @@ function serverMediaOverlays(server, routerPathBase64) {
                 }
             });
         }
-        var isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, rootUrl, objToSerialize, resource, err_2, err_3, jsonObj, jsonPretty, jsonStr, checkSum, hash, match;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, rootUrl, objToSerialize, resource, err_2, err_3, jsonObj, jsonPretty, jsonStr, checkSum, hash, match;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.params.pathBase64) {
-                        req.params.pathBase64 = req.pathBase64;
+                    reqparams = req.params;
+                    if (!reqparams.pathBase64) {
+                        reqparams.pathBase64 = req.pathBase64;
                     }
-                    if (!req.params.lcpPass64) {
-                        req.params.lcpPass64 = req.lcpPass64;
+                    if (!reqparams.lcpPass64) {
+                        reqparams.lcpPass64 = req.lcpPass64;
                     }
                     isShow = req.url.indexOf("/show") >= 0 || req.query.show;
                     isHead = req.method.toLowerCase() === "head";
                     if (isHead) {
                         debug("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
-                    isCanonical = req.query.canonical && req.query.canonical === "true";
+                    isCanonical = req.query.canonical &&
+                        req.query.canonical === "true";
                     isSecureHttp = req.secure ||
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
-                    pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
+                    pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -68,13 +71,15 @@ function serverMediaOverlays(server, routerPathBase64) {
                 case 4:
                     rootUrl = (isSecureHttp ? "https://" : "http://")
                         + req.headers.host + "/pub/"
-                        + (req.params.lcpPass64 ?
-                            (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(req.params.lcpPass64) + server.lcpEndToken) :
+                        + (reqparams.lcpPass64 ?
+                            (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.lcpPass64) + server.lcpEndToken) :
                             "")
-                        + UrlUtils_1.encodeURIComponent_RFC3986(req.params.pathBase64);
+                        + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
                     objToSerialize = null;
                     resource = isShow ?
-                        (req.query.show ? req.query.show : req.params[epub_1.mediaOverlayURLParam]) :
+                        (req.query.show ?
+                            req.query.show :
+                            reqparams[epub_1.mediaOverlayURLParam]) :
                         req.query[epub_1.mediaOverlayURLParam];
                     if (!(resource && resource !== "all")) return [3, 9];
                     _a.label = 5;
@@ -146,7 +151,7 @@ function serverMediaOverlays(server, routerPathBase64) {
             }
         });
     }); });
-    routerPathBase64.use("/:pathBase64/" + epub_1.mediaOverlayURLPath, routerMediaOverlays);
+    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/" + epub_1.mediaOverlayURLPath, routerMediaOverlays);
 }
 exports.serverMediaOverlays = serverMediaOverlays;
 //# sourceMappingURL=server-mediaoverlays.js.map

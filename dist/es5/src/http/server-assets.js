@@ -8,30 +8,32 @@ var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils"
 var debug_ = require("debug");
 var express = require("express");
 var mime = require("mime-types");
+var request_ext_1 = require("./request-ext");
 var debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, decryptFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
+        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, decryptFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    if (!req.params.pathBase64) {
-                        req.params.pathBase64 = req.pathBase64;
+                    reqparams = req.params;
+                    if (!reqparams.pathBase64) {
+                        reqparams.pathBase64 = req.pathBase64;
                     }
-                    if (!req.params.asset) {
-                        req.params.asset = req.asset;
+                    if (!reqparams.asset) {
+                        reqparams.asset = req.asset;
                     }
-                    if (!req.params.lcpPass64) {
-                        req.params.lcpPass64 = req.lcpPass64;
+                    if (!reqparams.lcpPass64) {
+                        reqparams.lcpPass64 = req.lcpPass64;
                     }
                     isShow = req.query.show;
                     isHead = req.method.toLowerCase() === "head";
                     if (isHead) {
                         debug("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
-                    pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
+                    pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
@@ -55,7 +57,7 @@ function serverAssets(server, routerPathBase64) {
                         return [2];
                     }
                     zip = zipInternal.Value;
-                    pathInZip = req.params.asset;
+                    pathInZip = reqparams.asset;
                     if (!zip.hasEntry(pathInZip)) {
                         err = "Asset not in zip! " + pathInZip;
                         debug(err);
@@ -267,7 +269,7 @@ function serverAssets(server, routerPathBase64) {
         req.asset = value;
         next();
     });
-    routerPathBase64.use("/:pathBase64/:asset(*)", routerAssets);
+    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/:" + request_ext_1._asset + "(*)", routerAssets);
 }
 exports.serverAssets = serverAssets;
 //# sourceMappingURL=server-assets.js.map

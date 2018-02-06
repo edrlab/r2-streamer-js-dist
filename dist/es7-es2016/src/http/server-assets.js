@@ -8,25 +8,27 @@ const BufferUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/stream/Buf
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");
+const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     const routerAssets = express.Router({ strict: false });
     routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-        if (!req.params.pathBase64) {
-            req.params.pathBase64 = req.pathBase64;
+        const reqparams = req.params;
+        if (!reqparams.pathBase64) {
+            reqparams.pathBase64 = req.pathBase64;
         }
-        if (!req.params.asset) {
-            req.params.asset = req.asset;
+        if (!reqparams.asset) {
+            reqparams.asset = req.asset;
         }
-        if (!req.params.lcpPass64) {
-            req.params.lcpPass64 = req.lcpPass64;
+        if (!reqparams.lcpPass64) {
+            reqparams.lcpPass64 = req.lcpPass64;
         }
         const isShow = req.query.show;
         const isHead = req.method.toLowerCase() === "head";
         if (isHead) {
             debug("HEAD !!!!!!!!!!!!!!!!!!!");
         }
-        const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
+        const pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
         let publication;
         try {
             publication = yield server.loadOrGetCachedPublication(pathBase64Str);
@@ -46,7 +48,7 @@ function serverAssets(server, routerPathBase64) {
             return;
         }
         const zip = zipInternal.Value;
-        const pathInZip = req.params.asset;
+        const pathInZip = reqparams.asset;
         if (!zip.hasEntry(pathInZip)) {
             const err = "Asset not in zip! " + pathInZip;
             debug(err);
@@ -235,7 +237,7 @@ function serverAssets(server, routerPathBase64) {
         req.asset = value;
         next();
     });
-    routerPathBase64.use("/:pathBase64/:asset(*)", routerAssets);
+    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/:" + request_ext_1._asset + "(*)", routerAssets);
 }
 exports.serverAssets = serverAssets;
 //# sourceMappingURL=server-assets.js.map

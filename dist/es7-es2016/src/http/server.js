@@ -8,6 +8,7 @@ const http = require("http");
 const https = require("https");
 const path = require("path");
 const opds2_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2");
+const publication_parser_1 = require("r2-shared-js/dist/es7-es2016/src/parser/publication-parser");
 const UrlUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
@@ -15,8 +16,8 @@ const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const tmp_1 = require("tmp");
-const publication_parser_1 = require("r2-shared-js/dist/es7-es2016/src/parser/publication-parser");
 const self_signed_1 = require("../utils/self-signed");
+const request_ext_1 = require("./request-ext");
 const server_assets_1 = require("./server-assets");
 const server_manifestjson_1 = require("./server-manifestjson");
 const server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -167,10 +168,11 @@ class Server {
             html += "</body></html>";
             res.status(200).send(html);
         });
-        this.expressApp.get(["/version", "/version/show/:jsonPath?"], (req, res) => {
+        this.expressApp.get(["/" + request_ext_1._version, "/" + request_ext_1._version + "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => {
+            const reqparams = req.params;
             const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
-            if (!req.params.jsonPath && req.query.show) {
-                req.params.jsonPath = req.query.show;
+            if (!reqparams.jsonPath && req.query.show) {
+                reqparams.jsonPath = req.query.show;
             }
             const gitRevJson = "../../../gitrev.json";
             if (!fs.existsSync(path.resolve(path.join(__dirname, gitRevJson)))) {

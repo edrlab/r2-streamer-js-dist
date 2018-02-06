@@ -11,6 +11,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
+const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-mediaoverlays");
 function serverMediaOverlays(server, routerPathBase64) {
     const jsonStyle = `
@@ -37,23 +38,25 @@ function serverMediaOverlays(server, routerPathBase64) {
 }
 `;
     const routerMediaOverlays = express.Router({ strict: false });
-    routerMediaOverlays.get(["/", "/show/:" + epub_1.mediaOverlayURLParam + "?"], (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-        if (!req.params.pathBase64) {
-            req.params.pathBase64 = req.pathBase64;
+    routerMediaOverlays.get(["/", "/" + request_ext_1._show + "/:" + epub_1.mediaOverlayURLParam + "?"], (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const reqparams = req.params;
+        if (!reqparams.pathBase64) {
+            reqparams.pathBase64 = req.pathBase64;
         }
-        if (!req.params.lcpPass64) {
-            req.params.lcpPass64 = req.lcpPass64;
+        if (!reqparams.lcpPass64) {
+            reqparams.lcpPass64 = req.lcpPass64;
         }
         const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
         const isHead = req.method.toLowerCase() === "head";
         if (isHead) {
             debug("HEAD !!!!!!!!!!!!!!!!!!!");
         }
-        const isCanonical = req.query.canonical && req.query.canonical === "true";
+        const isCanonical = req.query.canonical &&
+            req.query.canonical === "true";
         const isSecureHttp = req.secure ||
             req.protocol === "https" ||
             req.get("X-Forwarded-Proto") === "https";
-        const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
+        const pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
         let publication;
         try {
             publication = yield server.loadOrGetCachedPublication(pathBase64Str);
@@ -66,10 +69,10 @@ function serverMediaOverlays(server, routerPathBase64) {
         }
         const rootUrl = (isSecureHttp ? "https://" : "http://")
             + req.headers.host + "/pub/"
-            + (req.params.lcpPass64 ?
-                (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(req.params.lcpPass64) + server.lcpEndToken) :
+            + (reqparams.lcpPass64 ?
+                (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.lcpPass64) + server.lcpEndToken) :
                 "")
-            + UrlUtils_1.encodeURIComponent_RFC3986(req.params.pathBase64);
+            + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
@@ -87,7 +90,9 @@ function serverMediaOverlays(server, routerPathBase64) {
         }
         let objToSerialize = null;
         const resource = isShow ?
-            (req.query.show ? req.query.show : req.params[epub_1.mediaOverlayURLParam]) :
+            (req.query.show ?
+                req.query.show :
+                reqparams[epub_1.mediaOverlayURLParam]) :
             req.query[epub_1.mediaOverlayURLParam];
         if (resource && resource !== "all") {
             try {
@@ -150,7 +155,7 @@ function serverMediaOverlays(server, routerPathBase64) {
             }
         }
     }));
-    routerPathBase64.use("/:pathBase64/" + epub_1.mediaOverlayURLPath, routerMediaOverlays);
+    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/" + epub_1.mediaOverlayURLPath, routerMediaOverlays);
 }
 exports.serverMediaOverlays = serverMediaOverlays;
 //# sourceMappingURL=server-mediaoverlays.js.map

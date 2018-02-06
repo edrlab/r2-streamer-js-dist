@@ -12,6 +12,7 @@ const morgan = require("morgan");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const xmldom = require("xmldom");
+const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-opds");
 function serverOPDS(_server, topRouter) {
@@ -41,11 +42,12 @@ function serverOPDS(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS.get("/:urlEncoded(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-        if (!req.params.urlEncoded) {
-            req.params.urlEncoded = req.urlEncoded;
+    routerOPDS.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const reqparams = req.params;
+        if (!reqparams.urlEncoded) {
+            reqparams.urlEncoded = req.urlEncoded;
         }
-        const urlDecoded = req.params.urlEncoded;
+        const urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);
         const failure = (err) => {
             debug(err);

@@ -9,6 +9,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
+const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-opds2");
 function serverOPDS2(server, topRouter) {
@@ -36,12 +37,14 @@ function serverOPDS2(server, topRouter) {
 }
 `;
     const routerOPDS2 = express.Router({ strict: false });
-    routerOPDS2.get(["/", "/show/:jsonPath?"], (req, res) => {
+    routerOPDS2.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => {
+        const reqparams = req.params;
         const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
-        if (!req.params.jsonPath && req.query.show) {
-            req.params.jsonPath = req.query.show;
+        if (!reqparams.jsonPath && req.query.show) {
+            reqparams.jsonPath = req.query.show;
         }
-        const isCanonical = req.query.canonical && req.query.canonical === "true";
+        const isCanonical = req.query.canonical &&
+            req.query.canonical === "true";
         const isSecureHttp = req.secure ||
             req.protocol === "https" ||
             req.get("X-Forwarded-Proto") === "https";
@@ -77,8 +80,8 @@ function serverOPDS2(server, topRouter) {
         }
         if (isShow) {
             let objToSerialize = null;
-            if (req.params.jsonPath) {
-                switch (req.params.jsonPath) {
+            if (reqparams.jsonPath) {
+                switch (reqparams.jsonPath) {
                     case "all": {
                         objToSerialize = feed;
                         break;

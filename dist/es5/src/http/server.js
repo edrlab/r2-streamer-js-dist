@@ -8,6 +8,7 @@ var http = require("http");
 var https = require("https");
 var path = require("path");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
+var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
@@ -15,8 +16,8 @@ var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
 var tmp_1 = require("tmp");
-var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var self_signed_1 = require("../utils/self-signed");
+var request_ext_1 = require("./request-ext");
 var server_assets_1 = require("./server-assets");
 var server_manifestjson_1 = require("./server-manifestjson");
 var server_mediaoverlays_1 = require("./server-mediaoverlays");
@@ -146,10 +147,11 @@ var Server = (function () {
             html += "</body></html>";
             res.status(200).send(html);
         });
-        this.expressApp.get(["/version", "/version/show/:jsonPath?"], function (req, res) {
+        this.expressApp.get(["/" + request_ext_1._version, "/" + request_ext_1._version + "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) {
+            var reqparams = req.params;
             var isShow = req.url.indexOf("/show") >= 0 || req.query.show;
-            if (!req.params.jsonPath && req.query.show) {
-                req.params.jsonPath = req.query.show;
+            if (!reqparams.jsonPath && req.query.show) {
+                reqparams.jsonPath = req.query.show;
             }
             var gitRevJson = "../../../gitrev.json";
             if (!fs.existsSync(path.resolve(path.join(__dirname, gitRevJson)))) {

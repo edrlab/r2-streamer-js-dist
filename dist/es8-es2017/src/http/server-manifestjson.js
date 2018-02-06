@@ -10,6 +10,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
+const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-manifestjson");
 function serverManifestJson(server, routerPathBase64) {
     const jsonStyle = `
@@ -36,26 +37,28 @@ function serverManifestJson(server, routerPathBase64) {
 }
 `;
     const routerManifestJson = express.Router({ strict: false });
-    routerManifestJson.get(["/", "/show/:jsonPath?"], async (req, res) => {
-        if (!req.params.pathBase64) {
-            req.params.pathBase64 = req.pathBase64;
+    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], async (req, res) => {
+        const reqparams = req.params;
+        if (!reqparams.pathBase64) {
+            reqparams.pathBase64 = req.pathBase64;
         }
-        if (!req.params.lcpPass64) {
-            req.params.lcpPass64 = req.lcpPass64;
+        if (!reqparams.lcpPass64) {
+            reqparams.lcpPass64 = req.lcpPass64;
         }
         const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
-        if (!req.params.jsonPath && req.query.show) {
-            req.params.jsonPath = req.query.show;
+        if (!reqparams.jsonPath && req.query.show) {
+            reqparams.jsonPath = req.query.show;
         }
         const isHead = req.method.toLowerCase() === "head";
         if (isHead) {
             debug("HEAD !!!!!!!!!!!!!!!!!!!");
         }
-        const isCanonical = req.query.canonical && req.query.canonical === "true";
+        const isCanonical = req.query.canonical &&
+            req.query.canonical === "true";
         const isSecureHttp = req.secure ||
             req.protocol === "https" ||
             req.get("X-Forwarded-Proto") === "https";
-        const pathBase64Str = new Buffer(req.params.pathBase64, "base64").toString("utf8");
+        const pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
         let publication;
         try {
             publication = await server.loadOrGetCachedPublication(pathBase64Str);
@@ -66,8 +69,8 @@ function serverManifestJson(server, routerPathBase64) {
                 + err + "</p></body></html>");
             return;
         }
-        if (req.params.lcpPass64 && !server.disableDecryption) {
-            const lcpPass = new Buffer(req.params.lcpPass64, "base64").toString("utf8");
+        if (reqparams.lcpPass64 && !server.disableDecryption) {
+            const lcpPass = new Buffer(reqparams.lcpPass64, "base64").toString("utf8");
             if (publication.LCP) {
                 try {
                     await publication.LCP.tryUserKeys([lcpPass]);
@@ -84,10 +87,10 @@ function serverManifestJson(server, routerPathBase64) {
         }
         const rootUrl = (isSecureHttp ? "https://" : "http://")
             + req.headers.host + "/pub/"
-            + (req.params.lcpPass64 ?
-                (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(req.params.lcpPass64) + server.lcpEndToken) :
+            + (reqparams.lcpPass64 ?
+                (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.lcpPass64) + server.lcpEndToken) :
                 "")
-            + UrlUtils_1.encodeURIComponent_RFC3986(req.params.pathBase64);
+            + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
         const manifestURL = rootUrl + "/" + "manifest.json";
         const selfLink = publication.searchLinkByRel("self");
         if (!selfLink) {
@@ -138,8 +141,8 @@ function serverManifestJson(server, routerPathBase64) {
         }
         if (isShow) {
             let objToSerialize = null;
-            if (req.params.jsonPath) {
-                switch (req.params.jsonPath) {
+            if (reqparams.jsonPath) {
+                switch (reqparams.jsonPath) {
                     case "all": {
                         objToSerialize = publication;
                         break;
@@ -253,7 +256,7 @@ function serverManifestJson(server, routerPathBase64) {
             }
         }
     });
-    routerPathBase64.use("/:pathBase64/manifest.json", routerManifestJson);
+    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/manifest.json", routerManifestJson);
 }
 exports.serverManifestJson = serverManifestJson;
 //# sourceMappingURL=server-manifestjson.js.map
