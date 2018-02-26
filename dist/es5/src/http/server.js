@@ -85,7 +85,7 @@ var Server = (function () {
                         var time = decryptedJson.time;
                         var now = Date.now();
                         delta = now - time;
-                        if (delta <= 1000) {
+                        if (delta <= 3000) {
                             var i = url.lastIndexOf("#");
                             if (i > 0) {
                                 url = url.substr(0, i);

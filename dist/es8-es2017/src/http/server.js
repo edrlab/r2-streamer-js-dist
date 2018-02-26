@@ -105,7 +105,7 @@ class Server {
                         const time = decryptedJson.time;
                         const now = Date.now();
                         delta = now - time;
-                        if (delta <= 1000) {
+                        if (delta <= 3000) {
                             const i = url.lastIndexOf("#");
                             if (i > 0) {
                                 url = url.substr(0, i);
