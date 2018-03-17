@@ -40,7 +40,8 @@ if (!stats.isFile() && !stats.isDirectory()) {
     debug("FILEPATH MUST BE FILE OR DIRECTORY.");
     process.exit(1);
 }
-if (stats.isDirectory()) {
+const isEPUB = fs.existsSync(path.join(filePath, "META-INF", "container.xml"));
+if (stats.isDirectory() && !isEPUB) {
     debug("Analysing directory...");
     (async () => {
         const files = await filehound.create()
