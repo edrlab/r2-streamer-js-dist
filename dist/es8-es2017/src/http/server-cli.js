@@ -51,6 +51,7 @@ if (stats.isDirectory() && !isEPUB) {
             .ext([".epub", ".epub3", ".cbz"])
             .find();
         const server = new server_1.Server();
+        server.preventRobots();
         server.addPublications(files);
         const url = await server.start(0, false);
         debug(url);
@@ -59,6 +60,7 @@ if (stats.isDirectory() && !isEPUB) {
 else {
     (async () => {
         const server = new server_1.Server();
+        server.preventRobots();
         server.addPublications([filePath]);
         const url = await server.start(0, false);
         debug(url);

@@ -32,6 +32,7 @@ export declare class Server {
     private httpsServer;
     private serverData;
     constructor(options?: IServerOptions);
+    preventRobots(): void;
     expressUse(pathf: string, func: express.Handler): void;
     expressGet(paths: string[], func: express.Handler): void;
     isStarted(): boolean;

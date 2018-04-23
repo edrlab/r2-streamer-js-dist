@@ -200,6 +200,13 @@ var Server = (function () {
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
     }
+    Server.prototype.preventRobots = function () {
+        this.expressApp.get("/robots.txt", function (_req, res) {
+            var robotsTxt = "User-agent: *\nDisallow: /\n";
+            res.header("Content-Type", "text/plain");
+            res.status(200).send(robotsTxt);
+        });
+    };
     Server.prototype.expressUse = function (pathf, func) {
         this.expressApp.use(pathf, func);
     };

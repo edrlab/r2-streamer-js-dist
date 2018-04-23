@@ -58,6 +58,7 @@ if (stats.isDirectory() && !isEPUB) {
                 case 1:
                     files = _a.sent();
                     server = new server_1.Server();
+                    server.preventRobots();
                     server.addPublications(files);
                     return [4, server.start(0, false)];
                 case 2:
@@ -75,6 +76,7 @@ else {
             switch (_a.label) {
                 case 0:
                     server = new server_1.Server();
+                    server.preventRobots();
                     server.addPublications([filePath]);
                     return [4, server.start(0, false)];
                 case 1:

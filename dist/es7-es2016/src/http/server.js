@@ -221,6 +221,15 @@ class Server {
         server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
         server_assets_1.serverAssets(this, routerPathBase64);
     }
+    preventRobots() {
+        this.expressApp.get("/robots.txt", (_req, res) => {
+            const robotsTxt = `User-agent: *
+Disallow: /
+`;
+            res.header("Content-Type", "text/plain");
+            res.status(200).send(robotsTxt);
+        });
+    }
     expressUse(pathf, func) {
         this.expressApp.use(pathf, func);
     }
