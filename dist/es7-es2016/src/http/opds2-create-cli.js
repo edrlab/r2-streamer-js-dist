@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const fs = require("fs");
 const opds2_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2");
-const opds2_contributor_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2-contributor");
 const opds2_link_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2-link");
 const opds2_metadata_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2-metadata");
 const opds2_publication_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2-publication");
@@ -59,6 +58,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
         linkSelf.TypeLink = "application/webpub+json";
         linkSelf.AddRel("self");
         publi.Links.push(linkSelf);
+        feed.Publications.push(publi);
         publi.Images = [];
         const coverLink = publication.GetCover();
         if (coverLink) {
@@ -71,29 +71,16 @@ if (fs.existsSync(opdsJsonFilePath)) {
             }
             publi.Images.push(linkCover);
         }
-        if (feed.Metadata) {
-            publi.Metadata = new opds2_publicationMetadata_1.OPDSPublicationMetadata();
-            if (publication.Metadata.Artist) {
-                publi.Metadata.Artist = [];
-                publication.Metadata.Artist.forEach((contributor) => {
-                    const c = new opds2_contributor_1.OPDSContributor();
-                    if (contributor.Identifier) {
-                        c.Identifier = contributor.Identifier;
-                    }
-                    if (contributor.Name) {
-                        c.Name = contributor.Name;
-                    }
-                    if (contributor.Role) {
-                        c.Role = contributor.Role;
-                    }
-                    if (contributor.SortAs) {
-                        c.SortAs = contributor.SortAs;
-                    }
-                    publi.Metadata.Artist.push(c);
-                });
+        if (publication.Metadata) {
+            try {
+                const publicationMetadataJson = ta_json_1.JSON.serialize(publication.Metadata);
+                publi.Metadata = ta_json_1.JSON.deserialize(publicationMetadataJson, opds2_publicationMetadata_1.OPDSPublicationMetadata);
+            }
+            catch (err) {
+                debug(err);
+                continue;
             }
         }
-        feed.Publications.push(publi);
     }
     feed.Metadata.NumberOfItems = nPubs;
     const jsonObj = ta_json_1.JSON.serialize(feed);
