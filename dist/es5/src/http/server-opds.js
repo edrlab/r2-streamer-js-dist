@@ -44,8 +44,8 @@ function serverOPDS(_server, topRouter) {
         next();
     });
     routerOPDS.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var _this = this;
         var reqparams, urlDecoded, failure, success, needsStreamingResponse, response, err_1;
+        var _this = this;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:

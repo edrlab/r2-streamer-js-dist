@@ -224,8 +224,8 @@ var Server = (function () {
     };
     Server.prototype.start = function (port, secure) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var _this = this;
             var envPort, p;
+            var _this = this;
             return tslib_1.__generator(this, function (_a) {
                 if (this.isStarted()) {
                     return [2, Promise.resolve(this.serverInfo())];
@@ -243,8 +243,8 @@ var Server = (function () {
                 if (secure) {
                     this.httpServer = undefined;
                     return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                            var _this = this;
                             var certData, err_1;
+                            var _this = this;
                             return tslib_1.__generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
