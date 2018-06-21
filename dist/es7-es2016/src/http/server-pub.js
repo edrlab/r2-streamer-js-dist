@@ -31,7 +31,7 @@ function serverPub(server, topRouter) {
             urlReaderREADIUM1 + "'>" + urlReaderREADIUM1 + "</a></p>")) +
         "</body></html>";
     const routerPathBase64 = express.Router({ strict: false });
-    routerPathBase64.use(morgan("combined"));
+    routerPathBase64.use(morgan("combined", { stream: { write: (msg) => debug(msg) } }));
     routerPathBase64.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerPathBase64.param("pathBase64", (req, res, next, value, _name) => {
         const reqparams = req.params;

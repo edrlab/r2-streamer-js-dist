@@ -8,7 +8,7 @@ var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect
 var debug = debug_("r2:streamer#http/server-url");
 function serverUrl(_server, topRouter) {
     var routerUrl = express.Router({ strict: false });
-    routerUrl.use(morgan("combined"));
+    routerUrl.use(morgan("combined", { stream: { write: function (msg) { return debug(msg); } } }));
     routerUrl.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerUrl.get("/", function (_req, res) {
         var html = "<html><head>";

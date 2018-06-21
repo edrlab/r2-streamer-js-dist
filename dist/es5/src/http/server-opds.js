@@ -18,7 +18,7 @@ var debug = debug_("r2:streamer#http/server-opds");
 function serverOPDS(_server, topRouter) {
     var _this = this;
     var routerOPDS = express.Router({ strict: false });
-    routerOPDS.use(morgan("combined"));
+    routerOPDS.use(morgan("combined", { stream: { write: function (msg) { return debug(msg); } } }));
     routerOPDS.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerOPDS.get("/", function (_req, res) {
         var html = "<html><head>";

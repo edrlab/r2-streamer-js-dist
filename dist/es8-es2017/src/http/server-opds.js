@@ -16,7 +16,7 @@ const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redire
 const debug = debug_("r2:streamer#http/server-opds");
 function serverOPDS(_server, topRouter) {
     const routerOPDS = express.Router({ strict: false });
-    routerOPDS.use(morgan("combined"));
+    routerOPDS.use(morgan("combined", { stream: { write: (msg) => debug(msg) } }));
     routerOPDS.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerOPDS.get("/", (_req, res) => {
         let html = "<html><head>";

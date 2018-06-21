@@ -23,7 +23,7 @@ function serverOPDS12(_server, topRouter) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerOPDS12 = express.Router({ strict: false });
-    routerOPDS12.use(morgan("combined"));
+    routerOPDS12.use(morgan("combined", { stream: { write: function (msg) { return debug(msg); } } }));
     routerOPDS12.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerOPDS12.get("/", function (_req, res) {
         var html = "<html><head>";

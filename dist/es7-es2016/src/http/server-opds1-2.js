@@ -44,7 +44,7 @@ function serverOPDS12(_server, topRouter) {
 }
 `;
     const routerOPDS12 = express.Router({ strict: false });
-    routerOPDS12.use(morgan("combined"));
+    routerOPDS12.use(morgan("combined", { stream: { write: (msg) => debug(msg) } }));
     routerOPDS12.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerOPDS12.get("/", (_req, res) => {
         let html = "<html><head>";
