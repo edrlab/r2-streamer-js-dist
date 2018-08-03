@@ -326,7 +326,8 @@ Disallow: /
     setResponseCORS(res) {
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Ranges, Link, Transfer-Encoding");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Ranges, Content-Range, Range, Link, Transfer-Encoding");
+        res.setHeader("Access-Control-Expose-Headers", "Content-Type, Content-Length, Accept-Ranges, Content-Range, Range, Link, Transfer-Encoding");
     }
     addPublications(pubs) {
         pubs.forEach((pub) => {
