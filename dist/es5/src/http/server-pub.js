@@ -13,22 +13,16 @@ function serverPub(server, topRouter) {
     var urlBook = "/pub/PATH_BASE64/manifest.json";
     var urlBookShowAll = "./manifest.json/show/all";
     var urlReaderNYPL = "/readerNYPL/?url=PREFIX" + querystring.escape(urlBook);
-    var urlReaderHADRIEN = "/readerHADRIEN/?manifest=true&href=PREFIX"
-        + querystring.escape(urlBook);
-    var urlReaderEPUBJS = "https://s3.amazonaws.com/epubjs-manifest/examples/manifest.html?href=PREFIZ"
-        + urlBook;
-    var urlReaderHADRIENbasic = "https://hadriengardeur.github.io/webpub-manifest/examples/viewer/?manifest=true&href=PREFIX"
-        + querystring.escape(urlBook);
-    var urlReaderREADIUM1 = "http://readium-2.surge.sh/?epub=PREFIX"
+    var urlReaderEPUBJS = "https://s3.amazonaws.com/epubjs-manifest/examples/manifest.html?href=PREFIZ" + urlBook;
+    var urlReaderHADRIEN = "/readerHADRIEN/?manifest=true&href=PREFIX" + querystring.escape(urlBook);
+    var urlReaderHADRIEN_ = "https://hadriengardeur.github.io/webpub-manifest/examples/viewer/?manifest=true&href=PREFIX"
         + querystring.escape(urlBook);
     var htmlLanding = "<html><body><h1>PATH_STR</h1><h2><a href='" +
         urlBookShowAll + "'>" + urlBookShowAll + "</a></h2>" +
-        (server.disableReaders ? "" : ("<p>Reader NYPL:<br><a href='" +
-            urlReaderNYPL + "'>" + urlReaderNYPL + "</a></p><p>Reader HADRIEN:<br><a href='" +
-            urlReaderHADRIEN + "'>" + urlReaderHADRIEN + "</a></p><p>Reader EPUB.js:<br><a href='" +
-            urlReaderEPUBJS + "'>" + urlReaderEPUBJS + "</a></p><p>Reader HADRIEN BASIC:<br><a href='" +
-            urlReaderHADRIENbasic + "'>" + urlReaderHADRIENbasic + "</a></p><p>Reader READIUM-1:<br><a href='" +
-            urlReaderREADIUM1 + "'>" + urlReaderREADIUM1 + "</a></p>")) +
+        (server.disableReaders ? "" : ("<p>Reader NYPL:<br><a href='" + urlReaderNYPL + "'>" + urlReaderNYPL + "</a></p>" +
+            "<p>Reader EPUB.js:<br><a href='" + urlReaderEPUBJS + "'>" + urlReaderEPUBJS + "</a></p>" +
+            "<p>Reader HADRIEN:<br><a href='" + urlReaderHADRIEN + "'>" + urlReaderHADRIEN + "</a></p>" +
+            "<p>Reader HADRIEN BASIC:<br><a href='" + urlReaderHADRIEN_ + "'>" + urlReaderHADRIEN_ + "</a></p>")) +
         "</body></html>";
     var routerPathBase64 = express.Router({ strict: false });
     routerPathBase64.use(morgan("combined", { stream: { write: function (msg) { return debug(msg); } } }));
