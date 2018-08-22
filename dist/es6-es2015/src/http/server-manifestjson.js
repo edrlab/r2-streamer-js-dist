@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const crypto = require("crypto");
+const fs = require("fs");
 const path = require("path");
+const Ajv = require("ajv");
 const epub_1 = require("r2-shared-js/dist/es6-es2015/src/parser/epub");
 const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
 const JsonUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/JsonUtils");
@@ -13,6 +15,79 @@ const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-manifestjson");
+let _jsonSchemas;
+function webPubManifestJsonValidate(jsonToValidate) {
+    try {
+        debug("WebPub Manifest JSON Schema validation ...");
+        if (!_jsonSchemas) {
+            const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
+            const jsonSchemasNames = [
+                "publication",
+                "contributor-object",
+                "contributor",
+                "link",
+                "metadata",
+                "subcollection",
+            ];
+            for (const jsonSchemaName of jsonSchemasNames) {
+                const jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
+                debug(jsonSchemaPath);
+                if (!fs.existsSync(jsonSchemaPath)) {
+                    debug("Skipping JSON SCHEMAS (not found): " + jsonSchemaPath);
+                    return undefined;
+                }
+                let jsonSchemaStr = fs.readFileSync(jsonSchemaPath, { encoding: "utf8" });
+                if (!jsonSchemaStr) {
+                    debug("File load fail: " + jsonSchemaPath);
+                    return undefined;
+                }
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<grandfathered>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse2>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<extension>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<variant>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<script>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<extlang>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<language>/g, "");
+                jsonSchemaStr = jsonSchemaStr.replace(/\?<region>/g, "");
+                if (jsonSchemaStr.indexOf("?<") >= 0) {
+                    debug("REGEX WARNING!!");
+                    return undefined;
+                }
+                const jsonSchema = global.JSON.parse(jsonSchemaStr);
+                if (!_jsonSchemas) {
+                    _jsonSchemas = [];
+                }
+                _jsonSchemas.push(jsonSchema);
+            }
+        }
+        if (!_jsonSchemas) {
+            return undefined;
+        }
+        const ajv = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
+        _jsonSchemas.forEach((jsonSchema) => {
+            debug("JSON Schema ADD: " + jsonSchema["$id"]);
+            ajv.addSchema(jsonSchema, jsonSchema["$id"]);
+        });
+        debug("JSON Schema VALIDATE ...");
+        const ajvValid = ajv.validate(_jsonSchemas[0]["$id"], jsonToValidate);
+        if (!ajvValid) {
+            debug("WebPub Manifest JSON Schema validation FAIL.");
+            const errorsText = ajv.errorsText();
+            debug(errorsText);
+            return errorsText;
+        }
+        else {
+            debug("WebPub Manifest JSON Schema validation OK.");
+        }
+    }
+    catch (err) {
+        debug("JSON Schema VALIDATION PROBLEM.");
+        debug(err);
+        return err;
+    }
+    return undefined;
+}
 function serverManifestJson(server, routerPathBase64) {
     const jsonStyle = `
 .json-markup {
@@ -204,6 +279,10 @@ function serverManifestJson(server, routerPathBase64) {
                 objToSerialize = {};
             }
             const jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+            let validationStr;
+            if (!reqparams.jsonPath || reqparams.jsonPath === "all") {
+                validationStr = webPubManifestJsonValidate(jsonObj);
+            }
             absolutizeURLs(jsonObj);
             const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
             res.status(200).send("<html>" +
@@ -214,6 +293,7 @@ function serverManifestJson(server, routerPathBase64) {
                 "<h1>" + path.basename(pathBase64Str) + "</h1>" +
                 (coverImage ? "<img src=\"" + coverImage + "\" alt=\"\"/>" : "") +
                 "<hr><p><pre>" + jsonPretty + "</pre></p>" +
+                (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) +
                 "</body></html>");
         }
         else {
