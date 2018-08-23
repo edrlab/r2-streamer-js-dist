@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const crypto = require("crypto");
 const path = require("path");
-const epub_1 = require("r2-shared-js/dist/es8-es2017/src/parser/epub");
-const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
-const JsonUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/JsonUtils");
+const epub_1 = require("r2-shared-js/dist/es6-es2015/src/parser/epub");
+const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
+const JsonUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/JsonUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
@@ -38,7 +39,7 @@ function serverManifestJson(server, routerPathBase64) {
 }
 `;
     const routerManifestJson = express.Router({ strict: false });
-    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], async (req, res) => {
+    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.pathBase64) {
             reqparams.pathBase64 = req.pathBase64;
@@ -62,7 +63,7 @@ function serverManifestJson(server, routerPathBase64) {
         const pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
         let publication;
         try {
-            publication = await server.loadOrGetCachedPublication(pathBase64Str);
+            publication = yield server.loadOrGetCachedPublication(pathBase64Str);
         }
         catch (err) {
             debug(err);
@@ -74,7 +75,7 @@ function serverManifestJson(server, routerPathBase64) {
             const lcpPass = new Buffer(reqparams.lcpPass64, "base64").toString("utf8");
             if (publication.LCP) {
                 try {
-                    await publication.LCP.tryUserKeys([lcpPass]);
+                    yield publication.LCP.tryUserKeys([lcpPass]);
                 }
                 catch (err) {
                     debug(err);
@@ -154,7 +155,7 @@ function serverManifestJson(server, routerPathBase64) {
                     }
                     case "mediaoverlays": {
                         try {
-                            objToSerialize = await epub_1.getAllMediaOverlays(publication);
+                            objToSerialize = yield epub_1.getAllMediaOverlays(publication);
                         }
                         catch (err) {
                             debug(err);
@@ -265,7 +266,7 @@ function serverManifestJson(server, routerPathBase64) {
                 res.send(publicationJsonStr);
             }
         }
-    });
+    }));
     routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/manifest.json", routerManifestJson);
 }
 exports.serverManifestJson = serverManifestJson;
