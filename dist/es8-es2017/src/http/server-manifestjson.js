@@ -95,8 +95,20 @@ function serverManifestJson(server, routerPathBase64) {
         const manifestURL = rootUrl + "/" + "manifest.json";
         const selfLink = publication.searchLinkByRel("self");
         if (!selfLink) {
-            publication.AddLink("application/webpub+json", ["self"], manifestURL, false);
+            publication.AddLink("application/webpub+json", ["self"], manifestURL, undefined);
         }
+        publication.AddLink("txt", ["test1"], "./relative/%20URL?param=val#hash", false);
+        publication.AddLink("txt", ["test2"], "./relative/%20URL?param=val#hash", true);
+        publication.AddLink("txt", ["test3"], "./relative/%20URL?param=val#hash", undefined);
+        publication.AddLink("txt", ["test4"], "./relative/%20URL{var}/?param=val#hash", false);
+        publication.AddLink("txt", ["test5"], "./relative/%20URL{var}/?param=val#hash", true);
+        publication.AddLink("txt", ["test6"], "./relative/%20URL{var}/?param=val#hash", undefined);
+        publication.AddLink("txt", ["test7"], "http://absolute.com/%20URL?param=val#hash", false);
+        publication.AddLink("txt", ["test8"], "http://absolute.com/%20URL?param=val#hash", true);
+        publication.AddLink("txt", ["test9"], "http://absolute.com/%20URL?param=val#hash", undefined);
+        publication.AddLink("txt", ["test10"], "http://absolute.com/%20URL{var}/?param=val#hash", false);
+        publication.AddLink("txt", ["test11"], "http://absolute.com/%20URL{var}/?param=val#hash", true);
+        publication.AddLink("txt", ["test12"], "http://absolute.com/%20URL{var}/?param=val#hash", undefined);
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
