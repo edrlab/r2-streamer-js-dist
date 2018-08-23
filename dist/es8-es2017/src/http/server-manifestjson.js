@@ -205,7 +205,8 @@ function serverManifestJson(server, routerPathBase64) {
             }
             const jsonObj = ta_json_1.JSON.serialize(objToSerialize);
             let validationStr;
-            if (!reqparams.jsonPath || reqparams.jsonPath === "all") {
+            const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
+            if (doValidate) {
                 const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
                 validationStr = json_schema_validate_1.webPubManifestJsonValidate(jsonSchemasRootpath, jsonObj);
             }
@@ -222,7 +223,7 @@ function serverManifestJson(server, routerPathBase64) {
                 "<h1>" + path.basename(pathBase64Str) + "</h1>" +
                 (coverImage ? "<a href=\"" + coverImage + "\"><div style=\"width: 400px;\"><img src=\"" + coverImage + "\" alt=\"\" style=\"display: block; width: 100%; height: auto;\"/></div></a>" : "") +
                 "<hr><p><pre>" + jsonPretty + "</pre></p>" +
-                (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) +
+                (doValidate ? (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) : "") +
                 "</body></html>");
         }
         else {

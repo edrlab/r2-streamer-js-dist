@@ -34,7 +34,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, jsonSchemasRootpath, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -229,7 +229,8 @@ function serverManifestJson(server, routerPathBase64) {
                     }
                     jsonObj = ta_json_1.JSON.serialize(objToSerialize);
                     validationStr = void 0;
-                    if (!reqparams.jsonPath || reqparams.jsonPath === "all") {
+                    doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
+                    if (doValidate) {
                         jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
                         validationStr = json_schema_validate_1.webPubManifestJsonValidate(jsonSchemasRootpath, jsonObj);
                     }
@@ -246,7 +247,7 @@ function serverManifestJson(server, routerPathBase64) {
                         "<h1>" + path.basename(pathBase64Str) + "</h1>" +
                         (coverImage ? "<a href=\"" + coverImage + "\"><div style=\"width: 400px;\"><img src=\"" + coverImage + "\" alt=\"\" style=\"display: block; width: 100%; height: auto;\"/></div></a>" : "") +
                         "<hr><p><pre>" + jsonPretty + "</pre></p>" +
-                        (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) +
+                        (doValidate ? (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) : "") +
                         "</body></html>");
                     return [3, 27];
                 case 26:
