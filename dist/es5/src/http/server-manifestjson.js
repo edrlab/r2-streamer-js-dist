@@ -2,9 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
-var fs = require("fs");
 var path = require("path");
-var Ajv = require("ajv");
 var epub_1 = require("r2-shared-js/dist/es5/src/parser/epub");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
@@ -13,82 +11,9 @@ var debug_ = require("debug");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_1 = require("ta-json");
+var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
 var debug = debug_("r2:streamer#http/server-manifestjson");
-var _jsonSchemas;
-function webPubManifestJsonValidate(jsonToValidate) {
-    try {
-        debug("WebPub Manifest JSON Schema validation ...");
-        if (!_jsonSchemas) {
-            var jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
-            var jsonSchemasNames = [
-                "publication",
-                "contributor-object",
-                "contributor",
-                "link",
-                "metadata",
-                "subcollection",
-            ];
-            for (var _i = 0, jsonSchemasNames_1 = jsonSchemasNames; _i < jsonSchemasNames_1.length; _i++) {
-                var jsonSchemaName = jsonSchemasNames_1[_i];
-                var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
-                debug(jsonSchemaPath);
-                if (!fs.existsSync(jsonSchemaPath)) {
-                    debug("Skipping JSON SCHEMAS (not found): " + jsonSchemaPath);
-                    return undefined;
-                }
-                var jsonSchemaStr = fs.readFileSync(jsonSchemaPath, { encoding: "utf8" });
-                if (!jsonSchemaStr) {
-                    debug("File load fail: " + jsonSchemaPath);
-                    return undefined;
-                }
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<grandfathered>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse2>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<extension>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<variant>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<script>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<extlang>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<language>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<region>/g, "");
-                if (jsonSchemaStr.indexOf("?<") >= 0) {
-                    debug("REGEX WARNING!!");
-                    return undefined;
-                }
-                var jsonSchema = global.JSON.parse(jsonSchemaStr);
-                if (!_jsonSchemas) {
-                    _jsonSchemas = [];
-                }
-                _jsonSchemas.push(jsonSchema);
-            }
-        }
-        if (!_jsonSchemas) {
-            return undefined;
-        }
-        var ajv_1 = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
-        _jsonSchemas.forEach(function (jsonSchema) {
-            debug("JSON Schema ADD: " + jsonSchema["$id"]);
-            ajv_1.addSchema(jsonSchema, jsonSchema["$id"]);
-        });
-        debug("JSON Schema VALIDATE ...");
-        var ajvValid = ajv_1.validate(_jsonSchemas[0]["$id"], jsonToValidate);
-        if (!ajvValid) {
-            debug("WebPub Manifest JSON Schema validation FAIL.");
-            var errorsText = ajv_1.errorsText();
-            debug(errorsText);
-            return errorsText;
-        }
-        else {
-            debug("WebPub Manifest JSON Schema validation OK.");
-        }
-    }
-    catch (err) {
-        debug("JSON Schema VALIDATION PROBLEM.");
-        debug(err);
-        return err;
-    }
-    return undefined;
-}
 function serverManifestJson(server, routerPathBase64) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
@@ -109,7 +34,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, jsonPretty, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, jsonSchemasRootpath, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -305,17 +230,21 @@ function serverManifestJson(server, routerPathBase64) {
                     jsonObj = ta_json_1.JSON.serialize(objToSerialize);
                     validationStr = void 0;
                     if (!reqparams.jsonPath || reqparams.jsonPath === "all") {
-                        validationStr = webPubManifestJsonValidate(jsonObj);
+                        jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
+                        validationStr = json_schema_validate_1.webPubManifestJsonValidate(jsonSchemasRootpath, jsonObj);
                     }
                     absolutizeURLs(jsonObj);
                     jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
+                    regex = new RegExp(">" + rootUrl + "/([^<]+</a>)", "g");
+                    jsonPretty = jsonPretty.replace(regex, ">$1");
+                    jsonPretty = jsonPretty.replace(/>manifest.json<\/a>/, ">" + rootUrl + "/manifest.json</a>");
                     res.status(200).send("<html>" +
                         "<head><script type=\"application/ld+json\" href=\"" +
                         manifestURL +
                         "\"></script></head>" +
                         "<body>" +
                         "<h1>" + path.basename(pathBase64Str) + "</h1>" +
-                        (coverImage ? "<img src=\"" + coverImage + "\" alt=\"\"/>" : "") +
+                        (coverImage ? "<a href=\"" + coverImage + "\"><div style=\"width: 400px;\"><img src=\"" + coverImage + "\" alt=\"\" style=\"display: block; width: 100%; height: auto;\"/></div></a>" : "") +
                         "<hr><p><pre>" + jsonPretty + "</pre></p>" +
                         (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) +
                         "</body></html>");
