@@ -273,7 +273,7 @@ function serverManifestJson(server, routerPathBase64) {
                         return [2];
                     }
                     res.setHeader("ETag", hash);
-                    links = publication.GetPreFetchResources();
+                    links = getPreFetchResources(publication);
                     if (links && links.length) {
                         prefetch_1 = "";
                         links.forEach(function (l) {
@@ -297,4 +297,18 @@ function serverManifestJson(server, routerPathBase64) {
     routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/manifest.json", routerManifestJson);
 }
 exports.serverManifestJson = serverManifestJson;
+function getPreFetchResources(publication) {
+    var links = [];
+    if (publication.Resources) {
+        var mediaTypes_1 = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
+        publication.Resources.forEach(function (link) {
+            mediaTypes_1.forEach(function (mediaType) {
+                if (link.TypeLink === mediaType) {
+                    links.push(link);
+                }
+            });
+        });
+    }
+    return links;
+}
 //# sourceMappingURL=server-manifestjson.js.map
