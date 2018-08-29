@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
 const converter_1 = require("r2-opds-js/dist/es8-es2017/src/opds/converter");
 const opds_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds1/opds");
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
@@ -15,6 +16,7 @@ const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_1 = require("ta-json");
 const xmldom = require("xmldom");
+const json_schema_validate_1 = require("../utils/json-schema-validate");
 const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-opds1-2");
@@ -142,6 +144,25 @@ function serverOPDS12(_server, topRouter) {
             const jsonObjOPDS1 = ta_json_1.JSON.serialize(opds1);
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
             const jsonObjOPDS2 = ta_json_1.JSON.serialize(opds2);
+            let validationStr;
+            const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
+            if (doValidate) {
+                const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
+                const jsonSchemasNames = [
+                    "feed",
+                    "acquisition-object",
+                    "feed-metadata",
+                    "link",
+                    "properties",
+                    "publication",
+                    "../webpub-manifest/subcollection",
+                    "../webpub-manifest/metadata",
+                    "../webpub-manifest/link",
+                    "../webpub-manifest/contributor",
+                    "../webpub-manifest/contributor-object",
+                ];
+                validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObjOPDS2);
+            }
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
             const css = css2json(jsonStyle);
             const jsonPrettyOPDS1 = jsonMarkup(jsonObjOPDS1, css);
@@ -162,6 +183,7 @@ function serverOPDS12(_server, topRouter) {
                 jsonPrettyOPDS2 + "</div></td>" +
                 "</tbody></tr>" +
                 "</table>" +
+                (doValidate ? (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) : "") +
                 "</body></html>");
         };
         const needsStreamingResponse = true;

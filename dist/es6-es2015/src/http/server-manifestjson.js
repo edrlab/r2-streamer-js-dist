@@ -208,8 +208,16 @@ function serverManifestJson(server, routerPathBase64) {
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
-                const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
-                validationStr = json_schema_validate_1.webPubManifestJsonValidate(jsonSchemasRootpath, jsonObj);
+                const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/webpub-manifest");
+                const jsonSchemasNames = [
+                    "publication",
+                    "contributor-object",
+                    "contributor",
+                    "link",
+                    "metadata",
+                    "subcollection",
+                ];
+                validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "webpubmanifest", jsonSchemasNames, jsonObj);
             }
             absolutizeURLs(jsonObj);
             let jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));

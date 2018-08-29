@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var path = require("path");
 var converter_1 = require("r2-opds-js/dist/es5/src/opds/converter");
 var opds_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
@@ -16,6 +17,7 @@ var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_1 = require("ta-json");
 var xmldom = require("xmldom");
+var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:streamer#http/server-opds1-2");
@@ -71,7 +73,7 @@ function serverOPDS12(_server, topRouter) {
                             + err + "</p></body></html>");
                     };
                     success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                        var responseData, err_2, responseStr, responseXml, isEntry, opds1, opds2, err, funk, jsonObjOPDS1, jsonObjOPDS2, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
+                        var responseData, err_2, responseStr, responseXml, isEntry, opds1, opds2, err, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
                         return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
@@ -133,6 +135,24 @@ function serverOPDS12(_server, topRouter) {
                                     jsonObjOPDS1 = ta_json_1.JSON.serialize(opds1);
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
                                     jsonObjOPDS2 = ta_json_1.JSON.serialize(opds2);
+                                    doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
+                                    if (doValidate) {
+                                        jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
+                                        jsonSchemasNames = [
+                                            "feed",
+                                            "acquisition-object",
+                                            "feed-metadata",
+                                            "link",
+                                            "properties",
+                                            "publication",
+                                            "../webpub-manifest/subcollection",
+                                            "../webpub-manifest/metadata",
+                                            "../webpub-manifest/link",
+                                            "../webpub-manifest/contributor",
+                                            "../webpub-manifest/contributor-object",
+                                        ];
+                                        validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObjOPDS2);
+                                    }
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
                                     css = css2json(jsonStyle);
                                     jsonPrettyOPDS1 = jsonMarkup(jsonObjOPDS1, css);
@@ -153,6 +173,7 @@ function serverOPDS12(_server, topRouter) {
                                         jsonPrettyOPDS2 + "</div></td>" +
                                         "</tbody></tr>" +
                                         "</table>" +
+                                        (doValidate ? (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) : "") +
                                         "</body></html>");
                                     return [2];
                             }

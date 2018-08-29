@@ -34,7 +34,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -231,8 +231,16 @@ function serverManifestJson(server, routerPathBase64) {
                     validationStr = void 0;
                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                     if (doValidate) {
-                        jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema");
-                        validationStr = json_schema_validate_1.webPubManifestJsonValidate(jsonSchemasRootpath, jsonObj);
+                        jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/webpub-manifest");
+                        jsonSchemasNames = [
+                            "publication",
+                            "contributor-object",
+                            "contributor",
+                            "link",
+                            "metadata",
+                            "subcollection",
+                        ];
+                        validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "webpubmanifest", jsonSchemasNames, jsonObj);
                     }
                     absolutizeURLs(jsonObj);
                     jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));

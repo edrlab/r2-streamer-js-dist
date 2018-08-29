@@ -5,19 +5,11 @@ var path = require("path");
 var Ajv = require("ajv");
 var debug_ = require("debug");
 var debug = debug_("r2:streamer#utils/json-schema-validate");
-var _jsonSchemas;
-function webPubManifestJsonValidate(jsonSchemasRootpath, jsonToValidate) {
+var _jsonSchemasCache = {};
+function jsonSchemaValidate(jsonSchemasRootpath, key, jsonSchemasNames, jsonToValidate) {
     try {
-        debug("WebPub Manifest JSON Schema validation ...");
-        if (!_jsonSchemas) {
-            var jsonSchemasNames = [
-                "publication",
-                "contributor-object",
-                "contributor",
-                "link",
-                "metadata",
-                "subcollection",
-            ];
+        debug("JSON Schema validation ...");
+        if (!_jsonSchemasCache[key]) {
             for (var _i = 0, jsonSchemasNames_1 = jsonSchemasNames; _i < jsonSchemasNames_1.length; _i++) {
                 var jsonSchemaName = jsonSchemasNames_1[_i];
                 var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
@@ -45,30 +37,30 @@ function webPubManifestJsonValidate(jsonSchemasRootpath, jsonToValidate) {
                     return undefined;
                 }
                 var jsonSchema = global.JSON.parse(jsonSchemaStr);
-                if (!_jsonSchemas) {
-                    _jsonSchemas = [];
+                if (!_jsonSchemasCache[key]) {
+                    _jsonSchemasCache[key] = [];
                 }
-                _jsonSchemas.push(jsonSchema);
+                _jsonSchemasCache[key].push(jsonSchema);
             }
         }
-        if (!_jsonSchemas) {
+        if (!_jsonSchemasCache[key]) {
             return undefined;
         }
         var ajv_1 = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
-        _jsonSchemas.forEach(function (jsonSchema) {
+        _jsonSchemasCache[key].forEach(function (jsonSchema) {
             debug("JSON Schema ADD: " + jsonSchema["$id"]);
             ajv_1.addSchema(jsonSchema, jsonSchema["$id"]);
         });
         debug("JSON Schema VALIDATE ...");
-        var ajvValid = ajv_1.validate(_jsonSchemas[0]["$id"], jsonToValidate);
+        var ajvValid = ajv_1.validate(_jsonSchemasCache[key][0]["$id"], jsonToValidate);
         if (!ajvValid) {
-            debug("WebPub Manifest JSON Schema validation FAIL.");
+            debug("JSON Schema validation FAIL.");
             var errorsText = ajv_1.errorsText();
             debug(errorsText);
             return errorsText;
         }
         else {
-            debug("WebPub Manifest JSON Schema validation OK.");
+            debug("JSON Schema validation OK.");
         }
     }
     catch (err) {
@@ -78,5 +70,5 @@ function webPubManifestJsonValidate(jsonSchemasRootpath, jsonToValidate) {
     }
     return undefined;
 }
-exports.webPubManifestJsonValidate = webPubManifestJsonValidate;
+exports.jsonSchemaValidate = jsonSchemaValidate;
 //# sourceMappingURL=json-schema-validate.js.map

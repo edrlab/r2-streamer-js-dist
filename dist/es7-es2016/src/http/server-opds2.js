@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
+const path = require("path");
 const opds2_link_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2-link");
 const UrlUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const JsonUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/JsonUtils");
@@ -9,6 +10,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
+const json_schema_validate_1 = require("../utils/json-schema-validate");
 const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-opds2");
@@ -110,11 +112,31 @@ function serverOPDS2(server, topRouter) {
                 objToSerialize = {};
             }
             const jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+            let validationStr;
+            const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
+            if (doValidate) {
+                const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
+                const jsonSchemasNames = [
+                    "feed",
+                    "acquisition-object",
+                    "feed-metadata",
+                    "link",
+                    "properties",
+                    "publication",
+                    "../webpub-manifest/subcollection",
+                    "../webpub-manifest/metadata",
+                    "../webpub-manifest/link",
+                    "../webpub-manifest/contributor",
+                    "../webpub-manifest/contributor-object",
+                ];
+                validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObj);
+            }
             absolutizeURLs(jsonObj);
             const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
             res.status(200).send("<html><body>" +
                 "<h1>OPDS2 JSON feed</h1>" +
                 "<hr><p><pre>" + jsonPretty + "</pre></p>" +
+                (doValidate ? (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) : "") +
                 "</body></html>");
         }
         else {

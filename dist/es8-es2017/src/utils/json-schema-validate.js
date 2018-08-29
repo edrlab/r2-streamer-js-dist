@@ -5,19 +5,11 @@ const path = require("path");
 const Ajv = require("ajv");
 const debug_ = require("debug");
 const debug = debug_("r2:streamer#utils/json-schema-validate");
-let _jsonSchemas;
-function webPubManifestJsonValidate(jsonSchemasRootpath, jsonToValidate) {
+const _jsonSchemasCache = {};
+function jsonSchemaValidate(jsonSchemasRootpath, key, jsonSchemasNames, jsonToValidate) {
     try {
-        debug("WebPub Manifest JSON Schema validation ...");
-        if (!_jsonSchemas) {
-            const jsonSchemasNames = [
-                "publication",
-                "contributor-object",
-                "contributor",
-                "link",
-                "metadata",
-                "subcollection",
-            ];
+        debug("JSON Schema validation ...");
+        if (!_jsonSchemasCache[key]) {
             for (const jsonSchemaName of jsonSchemasNames) {
                 const jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
                 debug(jsonSchemaPath);
@@ -44,30 +36,30 @@ function webPubManifestJsonValidate(jsonSchemasRootpath, jsonToValidate) {
                     return undefined;
                 }
                 const jsonSchema = global.JSON.parse(jsonSchemaStr);
-                if (!_jsonSchemas) {
-                    _jsonSchemas = [];
+                if (!_jsonSchemasCache[key]) {
+                    _jsonSchemasCache[key] = [];
                 }
-                _jsonSchemas.push(jsonSchema);
+                _jsonSchemasCache[key].push(jsonSchema);
             }
         }
-        if (!_jsonSchemas) {
+        if (!_jsonSchemasCache[key]) {
             return undefined;
         }
         const ajv = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
-        _jsonSchemas.forEach((jsonSchema) => {
+        _jsonSchemasCache[key].forEach((jsonSchema) => {
             debug("JSON Schema ADD: " + jsonSchema["$id"]);
             ajv.addSchema(jsonSchema, jsonSchema["$id"]);
         });
         debug("JSON Schema VALIDATE ...");
-        const ajvValid = ajv.validate(_jsonSchemas[0]["$id"], jsonToValidate);
+        const ajvValid = ajv.validate(_jsonSchemasCache[key][0]["$id"], jsonToValidate);
         if (!ajvValid) {
-            debug("WebPub Manifest JSON Schema validation FAIL.");
+            debug("JSON Schema validation FAIL.");
             const errorsText = ajv.errorsText();
             debug(errorsText);
             return errorsText;
         }
         else {
-            debug("WebPub Manifest JSON Schema validation OK.");
+            debug("JSON Schema validation OK.");
         }
     }
     catch (err) {
@@ -77,5 +69,5 @@ function webPubManifestJsonValidate(jsonSchemasRootpath, jsonToValidate) {
     }
     return undefined;
 }
-exports.webPubManifestJsonValidate = webPubManifestJsonValidate;
+exports.jsonSchemaValidate = jsonSchemaValidate;
 //# sourceMappingURL=json-schema-validate.js.map
