@@ -2,56 +2,30 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const child_process = require("child_process");
-const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
 const path = require("path");
 const opds2_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds2/opds2");
 const publication_parser_1 = require("r2-shared-js/dist/es6-es2015/src/parser/publication-parser");
-const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
-const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
-const jsonMarkup = require("json-markup");
 const ta_json_1 = require("ta-json");
 const tmp_1 = require("tmp");
 const self_signed_1 = require("../utils/self-signed");
-const request_ext_1 = require("./request-ext");
 const server_assets_1 = require("./server-assets");
 const server_manifestjson_1 = require("./server-manifestjson");
 const server_mediaoverlays_1 = require("./server-mediaoverlays");
-const server_opds_1 = require("./server-opds");
-const server_opds1_2_1 = require("./server-opds1-2");
-const server_opds2_1 = require("./server-opds2");
+const server_opds_browse_v1_1 = require("./server-opds-browse-v1");
+const server_opds_browse_v2_1 = require("./server-opds-browse-v2");
+const server_opds_convert_v1_to_v2_1 = require("./server-opds-convert-v1-to-v2");
+const server_opds_local_feed_1 = require("./server-opds-local-feed");
 const server_pub_1 = require("./server-pub");
+const server_root_1 = require("./server-root");
+const server_secure_1 = require("./server-secure");
 const server_url_1 = require("./server-url");
+const server_version_1 = require("./server-version");
 const debug = debug_("r2:streamer#http/server");
-const debugHttps = debug_("r2:https");
-const IS_DEV = (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "dev");
-const jsonStyle = `
-.json-markup {
-    line-height: 17px;
-    font-size: 13px;
-    font-family: monospace;
-    white-space: pre;
-}
-.json-markup-key {
-    font-weight: bold;
-}
-.json-markup-bool {
-    color: firebrick;
-}
-.json-markup-string {
-    color: green;
-}
-.json-markup-null {
-    color: gray;
-}
-.json-markup-number {
-    color: blue;
-}
-`;
 class Server {
     constructor(options) {
         this.lcpBeginToken = "*-";
@@ -67,77 +41,7 @@ class Server {
         this.creatingPublicationsOPDS = false;
         this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
-        this.expressApp.use((req, res, next) => {
-            if (!this.isSecured()) {
-                next();
-                return;
-            }
-            let doFail = true;
-            if (this.serverData && this.serverData.trustKey &&
-                this.serverData.trustCheck && this.serverData.trustCheckIV) {
-                let t1;
-                if (IS_DEV) {
-                    t1 = process.hrtime();
-                }
-                let delta = 0;
-                const urlCheck = this.serverUrl() + req.url;
-                const base64Val = req.get("X-" + this.serverData.trustCheck);
-                if (base64Val) {
-                    const decodedVal = new Buffer(base64Val, "base64");
-                    const encrypted = decodedVal;
-                    const decrypteds = [];
-                    const decryptStream = crypto.createDecipheriv("aes-256-cbc", this.serverData.trustKey, this.serverData.trustCheckIV);
-                    decryptStream.setAutoPadding(false);
-                    const buff1 = decryptStream.update(encrypted);
-                    if (buff1) {
-                        decrypteds.push(buff1);
-                    }
-                    const buff2 = decryptStream.final();
-                    if (buff2) {
-                        decrypteds.push(buff2);
-                    }
-                    const decrypted = Buffer.concat(decrypteds);
-                    const nPaddingBytes = decrypted[decrypted.length - 1];
-                    const size = encrypted.length - nPaddingBytes;
-                    const decryptedStr = decrypted.slice(0, size).toString("utf8");
-                    try {
-                        const decryptedJson = JSON.parse(decryptedStr);
-                        let url = decryptedJson.url;
-                        const time = decryptedJson.time;
-                        const now = Date.now();
-                        delta = now - time;
-                        if (delta <= 3000) {
-                            const i = url.lastIndexOf("#");
-                            if (i > 0) {
-                                url = url.substr(0, i);
-                            }
-                            if (url === urlCheck) {
-                                doFail = false;
-                            }
-                        }
-                    }
-                    catch (err) {
-                        debug(err);
-                        debug(decryptedStr);
-                    }
-                }
-                if (IS_DEV) {
-                    const t2 = process.hrtime(t1);
-                    const seconds = t2[0];
-                    const nanoseconds = t2[1];
-                    const milliseconds = nanoseconds / 1e6;
-                    debugHttps(`< B > (${delta}ms) ${seconds}s ${milliseconds}ms [ ${urlCheck} ]`);
-                }
-            }
-            if (doFail) {
-                debug("############## X-Debug- FAIL ========================== ");
-                debug(req.url);
-                res.status(200);
-                res.end();
-                return;
-            }
-            next();
-        });
+        server_secure_1.serverSecure(this, this.expressApp);
         const staticOptions = {
             etag: false,
         };
@@ -145,76 +49,16 @@ class Server {
             this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
             this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
         }
-        this.expressApp.get("/", (_req, res) => {
-            let html = "<html><body><h1>Publications</h1>";
-            this.publications.forEach((pub) => {
-                const filePathBase64 = new Buffer(pub).toString("base64");
-                html += "<p><strong>"
-                    + (UrlUtils_1.isHTTP(pub) ? pub : path.basename(pub))
-                    + "</strong><br> => <a href='./pub/" + UrlUtils_1.encodeURIComponent_RFC3986(filePathBase64)
-                    + "'>" + "./pub/" + filePathBase64 + "</a></p>";
-            });
-            if (!this.disableOPDS) {
-                html += "<h1>OPDS2 feed</h1><p><a href='./opds2'>CLICK HERE</a></p>";
-            }
-            if (!this.disableRemotePubUrl) {
-                html += "<h1>Load HTTP publication URL</h1><p><a href='./url'>CLICK HERE</a></p>";
-            }
-            if (!this.disableOPDS) {
-                html += "<h1>Browse HTTP OPDS1 feed</h1><p><a href='./opds'>CLICK HERE</a></p>";
-                html += "<h1>Convert OPDS feed v1 to v2</h1><p><a href='./opds12'>CLICK HERE</a></p>";
-            }
-            html += "<h1>Server version</h1><p><a href='./version/show'>CLICK HERE</a></p>";
-            html += "</body></html>";
-            res.status(200).send(html);
-        });
-        this.expressApp.get(["/" + request_ext_1._version, "/" + request_ext_1._version + "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => {
-            const reqparams = req.params;
-            const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
-            if (!reqparams.jsonPath && req.query.show) {
-                reqparams.jsonPath = req.query.show;
-            }
-            const gitRevJson = "../../../gitrev.json";
-            if (!fs.existsSync(path.resolve(path.join(__dirname, gitRevJson)))) {
-                const err = "Missing Git rev JSON! ";
-                debug(err + gitRevJson);
-                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                    + err + "</p></body></html>");
-                return;
-            }
-            const jsonObj = require(gitRevJson);
-            if (isShow) {
-                const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
-                res.status(200).send("<html><body>" +
-                    "<h1>R2-STREAMER-JS VERSION INFO</h1>" +
-                    "<hr><p><pre>" + jsonPretty + "</pre></p>" +
-                    "</body></html>");
-            }
-            else {
-                this.setResponseCORS(res);
-                res.set("Content-Type", "application/json; charset=utf-8");
-                const jsonStr = JSON.stringify(jsonObj, null, "  ");
-                const checkSum = crypto.createHash("sha256");
-                checkSum.update(jsonStr);
-                const hash = checkSum.digest("hex");
-                const match = req.header("If-None-Match");
-                if (match === hash) {
-                    debug("publications.json cache");
-                    res.status(304);
-                    res.end();
-                    return;
-                }
-                res.setHeader("ETag", hash);
-                res.status(200).send(jsonStr);
-            }
-        });
+        server_root_1.serverRoot(this, this.expressApp);
+        server_version_1.serverVersion(this, this.expressApp);
         if (!this.disableRemotePubUrl) {
-            server_url_1.serverUrl(this, this.expressApp);
+            server_url_1.serverRemotePub(this, this.expressApp);
         }
         if (!this.disableOPDS) {
-            server_opds_1.serverOPDS(this, this.expressApp);
-            server_opds2_1.serverOPDS2(this, this.expressApp);
-            server_opds1_2_1.serverOPDS12(this, this.expressApp);
+            server_opds_browse_v1_1.serverOPDS_browse_v1(this, this.expressApp);
+            server_opds_browse_v2_1.serverOPDS_browse_v2(this, this.expressApp);
+            server_opds_local_feed_1.serverOPDS_local_feed(this, this.expressApp);
+            server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2(this, this.expressApp);
         }
         const routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
         server_manifestjson_1.serverManifestJson(this, routerPathBase64);

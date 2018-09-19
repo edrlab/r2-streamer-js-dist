@@ -5,7 +5,6 @@ export declare const _asset = "asset";
 export declare const _jsonPath = "jsonPath";
 export declare const _urlEncoded = "urlEncoded";
 export declare const _show = "show";
-export declare const _version = "version";
 export interface IRequestPayloadExtension extends express.Request {
     lcpPass64: string;
     pathBase64: string;

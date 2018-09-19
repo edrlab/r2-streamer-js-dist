@@ -1,3 +1,4 @@
 import * as express from "express";
 import { Server } from "./server";
-export declare function serverUrl(_server: Server, topRouter: express.Application): void;
+export declare const serverRemotePub_PATH = "/url";
+export declare function serverRemotePub(_server: Server, topRouter: express.Application): void;

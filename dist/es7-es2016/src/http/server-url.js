@@ -6,7 +6,8 @@ const morgan = require("morgan");
 const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-url");
-function serverUrl(_server, topRouter) {
+exports.serverRemotePub_PATH = "/url";
+function serverRemotePub(_server, topRouter) {
     const routerUrl = express.Router({ strict: false });
     routerUrl.use(morgan("combined", { stream: { write: (msg) => debug(msg) } }));
     routerUrl.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
@@ -18,7 +19,7 @@ function serverUrl(_server, topRouter) {
             `function go(evt) {` +
             `if (evt) { evt.preventDefault(); } var url = ` +
             `location.origin +` +
-            ` '/url/' +` +
+            ` '${exports.serverRemotePub_PATH}/' +` +
             ` encodeURIComponent_RFC3986(document.getElementById("url").value);` +
             `location.href = url;}</script>`;
         html += "</head>";
@@ -41,12 +42,12 @@ function serverUrl(_server, topRouter) {
         const urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);
         const urlDecodedBase64 = new Buffer(urlDecoded).toString("base64");
-        const redirect = req.originalUrl.substr(0, req.originalUrl.indexOf("/url/"))
+        const redirect = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverRemotePub_PATH + "/"))
             + "/pub/" + urlDecodedBase64 + "/";
         debug(`REDIRECT: ${req.originalUrl} ==> ${redirect}`);
         res.redirect(301, redirect);
     });
-    topRouter.use("/url", routerUrl);
+    topRouter.use(exports.serverRemotePub_PATH, routerUrl);
 }
-exports.serverUrl = serverUrl;
+exports.serverRemotePub = serverRemotePub;
 //# sourceMappingURL=server-url.js.map

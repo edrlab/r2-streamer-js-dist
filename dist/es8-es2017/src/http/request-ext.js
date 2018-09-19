@@ -6,5 +6,4 @@ exports._asset = "asset";
 exports._jsonPath = "jsonPath";
 exports._urlEncoded = "urlEncoded";
 exports._show = "show";
-exports._version = "version";
 //# sourceMappingURL=request-ext.js.map

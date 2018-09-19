@@ -9,8 +9,9 @@ const morgan = require("morgan");
 const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 const debug = debug_("r2:streamer#http/server-pub");
+exports.serverPub_PATH = "/pub";
 function serverPub(server, topRouter) {
-    const urlBook = "/pub/PATH_BASE64/manifest.json";
+    const urlBook = exports.serverPub_PATH + "/PATH_BASE64/manifest.json";
     const urlBookShowAll = "./manifest.json/show/all";
     const urlReaderNYPL = "/readerNYPL/?url=PREFIX" + querystring.escape(urlBook);
     const urlReaderEPUBJS = "https://s3.amazonaws.com/epubjs-manifest/examples/manifest.html?href=PREFIZ" + urlBook;
@@ -76,7 +77,7 @@ function serverPub(server, topRouter) {
             "https://" : "http://")
             + req.headers.host));
     });
-    topRouter.use("/pub", routerPathBase64);
+    topRouter.use(exports.serverPub_PATH, routerPathBase64);
     return routerPathBase64;
 }
 exports.serverPub = serverPub;
