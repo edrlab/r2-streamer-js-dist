@@ -12,7 +12,7 @@ var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var debug_ = require("debug");
 var moment = require("moment");
-var ta_json_1 = require("ta-json");
+var ta_json_x_1 = require("ta-json-x");
 var debug = debug_("r2:streamer#http/opds2-create-cli");
 debug("process.cwd(): " + process.cwd());
 debug("__dirname: " + __dirname);
@@ -87,8 +87,8 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 }
                 if (publication.Metadata) {
                     try {
-                        publicationMetadataJson = ta_json_1.JSON.serialize(publication.Metadata);
-                        publi.Metadata = ta_json_1.JSON.deserialize(publicationMetadataJson, opds2_publicationMetadata_1.OPDSPublicationMetadata);
+                        publicationMetadataJson = ta_json_x_1.JSON.serialize(publication.Metadata);
+                        publi.Metadata = ta_json_x_1.JSON.deserialize(publicationMetadataJson, opds2_publicationMetadata_1.OPDSPublicationMetadata);
                     }
                     catch (err) {
                         debug(err);
@@ -101,7 +101,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 return [3, 1];
             case 7:
                 feed.Metadata.NumberOfItems = nPubs;
-                jsonObj = ta_json_1.JSON.serialize(feed);
+                jsonObj = ta_json_x_1.JSON.serialize(feed);
                 jsonStr = global.JSON.stringify(jsonObj, null, "");
                 fs.writeFileSync(opdsJsonFilePath, jsonStr, { encoding: "utf8" });
                 debug("DONE! :)");

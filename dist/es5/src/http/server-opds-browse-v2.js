@@ -162,6 +162,11 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                 case 4:
                                     responseStr = responseData.toString("utf8");
                                     responseXml = new xmldom.DOMParser().parseFromString(responseStr);
+                                    if (!responseXml || !responseXml.documentElement) {
+                                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                                            + "XML parse fail" + "</p></body></html>");
+                                        return [2];
+                                    }
                                     isEntry = responseXml.documentElement.localName === "entry";
                                     if (isEntry) {
                                         opdsEntry = xml_js_mapper_1.XML.deserialize(responseXml, opds_entry_1.Entry);

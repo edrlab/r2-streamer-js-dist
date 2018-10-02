@@ -18,8 +18,8 @@ export declare class Server {
     readonly disableDecryption: boolean;
     readonly disableRemotePubUrl: boolean;
     readonly disableOPDS: boolean;
-    readonly lcpBeginToken: string;
-    readonly lcpEndToken: string;
+    readonly lcpBeginToken = "*-";
+    readonly lcpEndToken = "-*";
     private readonly publications;
     private publicationsOPDSfeed;
     private publicationsOPDSfeedNeedsUpdate;

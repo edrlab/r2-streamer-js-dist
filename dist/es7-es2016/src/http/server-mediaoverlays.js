@@ -10,7 +10,7 @@ const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
-const ta_json_1 = require("ta-json");
+const ta_json_x_1 = require("ta-json-x");
 const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-mediaoverlays");
 function serverMediaOverlays(server, routerPathBase64) {
@@ -119,7 +119,7 @@ function serverMediaOverlays(server, routerPathBase64) {
         if (!objToSerialize) {
             objToSerialize = [];
         }
-        let jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+        let jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
         jsonObj = { "media-overlay": jsonObj };
         if (isShow) {
             absolutizeURLs(jsonObj);

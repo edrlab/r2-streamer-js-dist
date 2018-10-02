@@ -9,7 +9,7 @@ const opds2_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds2/opds2");
 const publication_parser_1 = require("r2-shared-js/dist/es8-es2017/src/parser/publication-parser");
 const debug_ = require("debug");
 const express = require("express");
-const ta_json_1 = require("ta-json");
+const ta_json_x_1 = require("ta-json-x");
 const tmp_1 = require("tmp");
 const self_signed_1 = require("../utils/self-signed");
 const server_assets_1 = require("./server-assets");
@@ -280,7 +280,7 @@ Disallow: /
             return undefined;
         }
         const json = global.JSON.parse(jsonStr);
-        this.publicationsOPDSfeed = ta_json_1.JSON.deserialize(json, opds2_1.OPDSFeed);
+        this.publicationsOPDSfeed = ta_json_x_1.JSON.deserialize(json, opds2_1.OPDSFeed);
         return this.publicationsOPDSfeed;
     }
 }

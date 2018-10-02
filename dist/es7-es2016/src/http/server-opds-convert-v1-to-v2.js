@@ -15,7 +15,7 @@ const jsonMarkup = require("json-markup");
 const morgan = require("morgan");
 const request = require("request");
 const requestPromise = require("request-promise-native");
-const ta_json_1 = require("ta-json");
+const ta_json_x_1 = require("ta-json-x");
 const xmldom = require("xmldom");
 const json_schema_validate_1 = require("../utils/json-schema-validate");
 const request_ext_1 = require("./request-ext");
@@ -106,6 +106,11 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             }
             const responseStr = responseData.toString("utf8");
             const responseXml = new xmldom.DOMParser().parseFromString(responseStr);
+            if (!responseXml || !responseXml.documentElement) {
+                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                    + "XML parse fail" + "</p></body></html>");
+                return;
+            }
             const isEntry = responseXml.documentElement.localName === "entry";
             let opds1;
             let opds2;
@@ -147,9 +152,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     }
                 }
             };
-            const jsonObjOPDS1 = ta_json_1.JSON.serialize(opds1);
+            const jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1);
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-            const jsonObjOPDS2 = ta_json_1.JSON.serialize(opds2);
+            const jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {

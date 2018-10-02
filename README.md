@@ -1,6 +1,6 @@
 # NodeJS / TypeScript Readium-2 "streamer"
 
-NodeJS implementation (written in TypeScript) and HTTP micro-services (Express middleware) for https://github.com/readium/readium-2/tree/master/streamer
+NodeJS implementation (written in TypeScript) and HTTP micro-services (Express middleware) for https://github.com/readium/architecture/tree/master/streamer
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](/LICENSE)
 
@@ -14,8 +14,8 @@ Public APIs are not stable. The internal logical architecture and physical code 
 
 ## Prerequisites
 
-1) https://nodejs.org NodeJS >= 6, NPM >= 3 (check with command line `node --version` and `npm --version`)
-2) NOW OPTIONAL https://yarnpkg.com Yarn >= 0.23 (check with command line `yarn --version`)
+1) https://nodejs.org NodeJS >= 8, NPM >= 5 (check with command line `node --version` and `npm --version`)
+2) OPTIONAL: https://yarnpkg.com Yarn >= 1.0 (check with command line `yarn --version`)
 
 ## GitHub repository
 
@@ -71,7 +71,7 @@ https://david-dm.org/readium/r2-streamer-js
 
 A [package-lock.json](https://github.com/readium/r2-streamer-js/blob/develop/package-lock.json) is provided (modern NPM alternative to `npm-shrinkwrap.json`).
 
-A [yarn.lock](https://github.com/readium/r2-streamer-js/blob/develop/yarn.lock) file is also provided at the root of the source tree (Yarn is not recommended anymore to manage this project's NPM dependencies, due to several experienced build-breaking bugs).
+A [yarn.lock](https://github.com/readium/r2-streamer-js/blob/develop/yarn.lock) file is *not* provided at the root of the source tree (note that Yarn is not recommended anymore to manage this project's NPM dependencies, due to experiencing several build-breaking bugs in the past).
 
 ## Continuous Integration
 
@@ -103,7 +103,7 @@ https://unpkg.com/r2-streamer-js/dist/gitrev.json
 
 GitHub "dist" repository (latest pushed):
 
-https://rawgit.com/edrlab/r2-streamer-js-dist/master/dist/gitrev.json
+https://rawgit.com/edrlab/r2-streamer-js-dist/develop/dist/gitrev.json
 
 Heroku app (latest deployed):
 
@@ -118,22 +118,18 @@ https://readium2.now.sh/version
 Command line steps (default NPM):
 
 1) `cd r2-streamer-js`
-2) `npm update --global` (sync NPM global packages)
-4) `npm install` (initialize local `node_modules` packages from dependencies declared in `package-lock.json`)
-5) `npm update` (sync local packages)
-6) `npm run build:all` (invoke the main build script: clean, lint, compile)
-7) `npm run server-debug {PATH_TO_EPUB_OR_DIR}` (path is relative or absolute)
+2) `git status` (please ensure there are no local changes, especially in `package-lock.json` and the dependency versions in `package.json`)
+3) `npm install` (initialize local `node_modules` packages from dependencies declared in `package-lock.json`)
+4) `npm run build:all` (invoke the main build script: clean, lint, compile)
+5) `npm run server-debug {PATH_TO_EPUB_OR_DIR}` (path is relative or absolute)
 
 Command line steps (optional Yarn):
 
 1) `cd r2-streamer-js`
-2) `npm update --global` (sync NPM global packages)
-3) `yarn global upgrade` (sync Yarn global packages)
-4) `yarn install` (initialize local `node_modules` packages from dependencies declared in `package.json`)
-5) `yarn upgrade` (sync local packages)
-6) `yarn run build:all` (invoke the main build script: clean, lint, compile)
-7) `yarn test` (run the unit tests)
-8) `yarn run server-debug {PATH_TO_EPUB_OR_DIR}` (path is relative or absolute)
+2) `git status` (please ensure there are no local changes, especially in `package-lock.json` and the dependency versions in `package.json`)
+3) `yarn install` (initialize local `node_modules` packages from dependencies declared in `package.json`)
+4) `yarn run build:all` (invoke the main build script: clean, lint, compile)
+5) `yarn run server-debug {PATH_TO_EPUB_OR_DIR}` (path is relative or absolute)
 
 ## Documentation
 

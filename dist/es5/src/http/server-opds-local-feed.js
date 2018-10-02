@@ -9,7 +9,7 @@ var css2json = require("css2json");
 var debug_ = require("debug");
 var express = require("express");
 var jsonMarkup = require("json-markup");
-var ta_json_1 = require("ta-json");
+var ta_json_x_1 = require("ta-json-x");
 var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
@@ -98,7 +98,7 @@ function serverOPDS_local_feed(server, topRouter) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            var jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+            var jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
             var validationStr = void 0;
             var doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -129,7 +129,7 @@ function serverOPDS_local_feed(server, topRouter) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/opds+json; charset=utf-8");
-            var publicationsJsonObj = ta_json_1.JSON.serialize(feed);
+            var publicationsJsonObj = ta_json_x_1.JSON.serialize(feed);
             absolutizeURLs(publicationsJsonObj);
             var publicationsJsonStr = isCanonical ?
                 global.JSON.stringify(JsonUtils_1.sortObject(publicationsJsonObj), null, "") :

@@ -9,7 +9,7 @@ const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
-const ta_json_1 = require("ta-json");
+const ta_json_x_1 = require("ta-json-x");
 const json_schema_validate_1 = require("../utils/json-schema-validate");
 const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-manifestjson");
@@ -203,7 +203,7 @@ function serverManifestJson(server, routerPathBase64) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            const jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+            const jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -237,7 +237,7 @@ function serverManifestJson(server, routerPathBase64) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/webpub+json; charset=utf-8");
-            const publicationJsonObj = ta_json_1.JSON.serialize(publication);
+            const publicationJsonObj = ta_json_x_1.JSON.serialize(publication);
             if (isCanonical) {
                 if (publicationJsonObj.links) {
                     delete publicationJsonObj.links;

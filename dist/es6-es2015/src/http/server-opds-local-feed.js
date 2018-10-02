@@ -9,7 +9,7 @@ const css2json = require("css2json");
 const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
-const ta_json_1 = require("ta-json");
+const ta_json_x_1 = require("ta-json-x");
 const json_schema_validate_1 = require("../utils/json-schema-validate");
 const request_ext_1 = require("./request-ext");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
@@ -120,7 +120,7 @@ function serverOPDS_local_feed(server, topRouter) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            const jsonObj = ta_json_1.JSON.serialize(objToSerialize);
+            const jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -151,7 +151,7 @@ function serverOPDS_local_feed(server, topRouter) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/opds+json; charset=utf-8");
-            const publicationsJsonObj = ta_json_1.JSON.serialize(feed);
+            const publicationsJsonObj = ta_json_x_1.JSON.serialize(feed);
             absolutizeURLs(publicationsJsonObj);
             const publicationsJsonStr = isCanonical ?
                 global.JSON.stringify(JsonUtils_1.sortObject(publicationsJsonObj), null, "") :

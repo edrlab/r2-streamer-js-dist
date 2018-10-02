@@ -15,7 +15,7 @@ var jsonMarkup = require("json-markup");
 var morgan = require("morgan");
 var request = require("request");
 var requestPromise = require("request-promise-native");
-var ta_json_1 = require("ta-json");
+var ta_json_x_1 = require("ta-json-x");
 var xmldom = require("xmldom");
 var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
@@ -98,6 +98,11 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                 case 4:
                                     responseStr = responseData.toString("utf8");
                                     responseXml = new xmldom.DOMParser().parseFromString(responseStr);
+                                    if (!responseXml || !responseXml.documentElement) {
+                                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                                            + "XML parse fail" + "</p></body></html>");
+                                        return [2];
+                                    }
                                     isEntry = responseXml.documentElement.localName === "entry";
                                     if (isEntry) {
                                         err = "OPDS Entry as top-level feed, not supported.";
@@ -137,9 +142,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             }
                                         }
                                     };
-                                    jsonObjOPDS1 = ta_json_1.JSON.serialize(opds1);
+                                    jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1);
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-                                    jsonObjOPDS2 = ta_json_1.JSON.serialize(opds2);
+                                    jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
                                         jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");

@@ -73,6 +73,11 @@ function serverOPDS_browse_v1(_server, topRouter) {
             }
             const responseStr = responseData.toString("utf8");
             const responseXml = new xmldom.DOMParser().parseFromString(responseStr);
+            if (!responseXml || !responseXml.documentElement) {
+                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                    + "XML parse fail" + "</p></body></html>");
+                return;
+            }
             const isEntry = responseXml.documentElement.localName === "entry";
             let opds;
             let opdsEntry;
