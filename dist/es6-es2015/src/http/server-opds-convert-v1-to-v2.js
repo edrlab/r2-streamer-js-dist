@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const path = require("path");
 const converter_1 = require("r2-opds-js/dist/es6-es2015/src/opds/converter");
 const opds_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds1/opds");
+const opds_entry_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds1/opds-entry");
 const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
 const JsonUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/JsonUtils");
 const BufferUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/stream/BufferUtils");
@@ -13,6 +13,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const morgan = require("morgan");
+const path = require("path");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_x_1 = require("ta-json-x");
@@ -112,19 +113,27 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                 return;
             }
             const isEntry = responseXml.documentElement.localName === "entry";
-            let opds1;
-            let opds2;
+            let opds1Feed;
+            let opds1Entry;
+            let opds2Feed;
+            let opds2Publication;
             if (isEntry) {
-                const err = "OPDS Entry as top-level feed, not supported.";
-                debug(err);
-                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                    + err + "</p></body></html>");
-                return;
+                opds1Entry = xml_js_mapper_1.XML.deserialize(responseXml, opds_entry_1.Entry);
+                try {
+                    opds2Publication = converter_1.convertOpds1ToOpds2_EntryToPublication(opds1Entry);
+                }
+                catch (err) {
+                    debug("OPDS 1 -> 2 conversion FAILED (Entry)");
+                    debug(err);
+                    res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                        + err + "</p></body></html>");
+                    return;
+                }
             }
             else {
-                opds1 = xml_js_mapper_1.XML.deserialize(responseXml, opds_1.OPDS);
+                opds1Feed = xml_js_mapper_1.XML.deserialize(responseXml, opds_1.OPDS);
                 try {
-                    opds2 = converter_1.convertOpds1ToOpds2(opds1);
+                    opds2Feed = converter_1.convertOpds1ToOpds2(opds1Feed);
                 }
                 catch (err) {
                     debug("OPDS 1 -> 2 conversion FAILED");
@@ -152,15 +161,14 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     }
                 }
             };
-            const jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1);
+            const jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1Entry ? opds1Entry : opds1Feed);
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-            const jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2);
+            const jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2Publication ? opds2Publication : opds2Feed);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
                 const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
                 const jsonSchemasNames = [
-                    "feed",
                     "acquisition-object",
                     "feed-metadata",
                     "link",
@@ -172,6 +180,15 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     "../webpub-manifest/contributor",
                     "../webpub-manifest/contributor-object",
                 ];
+                if (opds2Publication) {
+                    jsonSchemasNames.unshift("feed");
+                }
+                else {
+                    jsonSchemasNames.splice(jsonSchemasNames.indexOf("publication"), 1);
+                    jsonSchemasNames.unshift("feed");
+                    jsonSchemasNames.unshift("publication");
+                }
+                debug(jsonSchemasNames);
                 validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObjOPDS2);
             }
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
@@ -179,7 +196,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             const jsonPrettyOPDS1 = jsonMarkup(jsonObjOPDS1, css);
             const jsonPrettyOPDS2 = jsonMarkup(jsonObjOPDS2, css);
             res.status(200).send("<html><body>" +
-                "<h1>OPDS2 JSON feed (converted from OPDS1 XML/ATOM)</h1>" +
+                "<h1>OPDS2 JSON " +
+                (opds2Publication ? "entry" : "feed") +
+                " (converted from OPDS1 XML/ATOM)</h1>" +
                 "<h2><a href=\"" + urlDecoded + "\">" + urlDecoded + "</a></h2>" +
                 "<hr>" +
                 "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"90%\" " +

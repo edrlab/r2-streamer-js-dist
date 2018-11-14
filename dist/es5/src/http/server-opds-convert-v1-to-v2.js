@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
-var path = require("path");
 var converter_1 = require("r2-opds-js/dist/es5/src/opds/converter");
 var opds_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds");
+var opds_entry_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds-entry");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
@@ -13,6 +13,7 @@ var debug_ = require("debug");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var morgan = require("morgan");
+var path = require("path");
 var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_x_1 = require("ta-json-x");
@@ -74,7 +75,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                             + err + "</p></body></html>");
                     };
                     success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                        var responseData, err_2, responseStr, responseXml, isEntry, opds1, opds2, err, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
+                        var responseData, err_2, responseStr, responseXml, isEntry, opds1Feed, opds1Entry, opds2Feed, opds2Publication, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
                         return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
@@ -105,16 +106,22 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     }
                                     isEntry = responseXml.documentElement.localName === "entry";
                                     if (isEntry) {
-                                        err = "OPDS Entry as top-level feed, not supported.";
-                                        debug(err);
-                                        res.status(500).send("<html><body><p>Internal Server Error</p><p>"
-                                            + err + "</p></body></html>");
-                                        return [2];
+                                        opds1Entry = xml_js_mapper_1.XML.deserialize(responseXml, opds_entry_1.Entry);
+                                        try {
+                                            opds2Publication = converter_1.convertOpds1ToOpds2_EntryToPublication(opds1Entry);
+                                        }
+                                        catch (err) {
+                                            debug("OPDS 1 -> 2 conversion FAILED (Entry)");
+                                            debug(err);
+                                            res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                                                + err + "</p></body></html>");
+                                            return [2];
+                                        }
                                     }
                                     else {
-                                        opds1 = xml_js_mapper_1.XML.deserialize(responseXml, opds_1.OPDS);
+                                        opds1Feed = xml_js_mapper_1.XML.deserialize(responseXml, opds_1.OPDS);
                                         try {
-                                            opds2 = converter_1.convertOpds1ToOpds2(opds1);
+                                            opds2Feed = converter_1.convertOpds1ToOpds2(opds1Feed);
                                         }
                                         catch (err) {
                                             debug("OPDS 1 -> 2 conversion FAILED");
@@ -142,14 +149,13 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             }
                                         }
                                     };
-                                    jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1);
+                                    jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1Entry ? opds1Entry : opds1Feed);
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-                                    jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2);
+                                    jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2Publication ? opds2Publication : opds2Feed);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
                                         jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
                                         jsonSchemasNames = [
-                                            "feed",
                                             "acquisition-object",
                                             "feed-metadata",
                                             "link",
@@ -161,6 +167,15 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             "../webpub-manifest/contributor",
                                             "../webpub-manifest/contributor-object",
                                         ];
+                                        if (opds2Publication) {
+                                            jsonSchemasNames.unshift("feed");
+                                        }
+                                        else {
+                                            jsonSchemasNames.splice(jsonSchemasNames.indexOf("publication"), 1);
+                                            jsonSchemasNames.unshift("feed");
+                                            jsonSchemasNames.unshift("publication");
+                                        }
+                                        debug(jsonSchemasNames);
                                         validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObjOPDS2);
                                     }
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
@@ -168,7 +183,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     jsonPrettyOPDS1 = jsonMarkup(jsonObjOPDS1, css);
                                     jsonPrettyOPDS2 = jsonMarkup(jsonObjOPDS2, css);
                                     res.status(200).send("<html><body>" +
-                                        "<h1>OPDS2 JSON feed (converted from OPDS1 XML/ATOM)</h1>" +
+                                        "<h1>OPDS2 JSON " +
+                                        (opds2Publication ? "entry" : "feed") +
+                                        " (converted from OPDS1 XML/ATOM)</h1>" +
                                         "<h2><a href=\"" + urlDecoded + "\">" + urlDecoded + "</a></h2>" +
                                         "<hr>" +
                                         "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"90%\" " +
