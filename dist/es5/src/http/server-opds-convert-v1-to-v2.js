@@ -106,7 +106,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     }
                                     isEntry = responseXml.documentElement.localName === "entry";
                                     if (isEntry) {
+                                        debug("opds1Entry");
                                         opds1Entry = xml_js_mapper_1.XML.deserialize(responseXml, opds_entry_1.Entry);
+                                        debug(opds1Entry);
                                         try {
                                             opds2Publication = converter_1.convertOpds1ToOpds2_EntryToPublication(opds1Entry);
                                         }

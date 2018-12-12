@@ -95,7 +95,7 @@ function serverAssets(server, routerPathBase64) {
         if (link && link.TypeLink) {
             mediaType = link.TypeLink;
         }
-        const isText = mediaType && (mediaType.indexOf("text/") === 0 ||
+        const isText = (typeof mediaType === "string") && (mediaType.indexOf("text/") === 0 ||
             mediaType.indexOf("application/xhtml") === 0 ||
             mediaType.indexOf("application/xml") === 0 ||
             mediaType.indexOf("application/json") === 0 ||
@@ -144,9 +144,9 @@ function serverAssets(server, routerPathBase64) {
                 + err + "</p></body></html>");
             return;
         }
-        if ((isEncrypted && (isObfuscatedFont || !server.disableDecryption)) &&
-            link) {
-            let decryptFail = false;
+        const doTransform = !isEncrypted || (isObfuscatedFont || !server.disableDecryption);
+        if (doTransform && link) {
+            let transformFail = false;
             let transformedStream;
             try {
                 transformedStream = await transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
@@ -158,13 +158,16 @@ function serverAssets(server, routerPathBase64) {
                 return;
             }
             if (transformedStream) {
+                if (transformedStream !== zipStream_) {
+                    debug("Asset transformed ok: " + link.Href);
+                }
                 zipStream_ = transformedStream;
             }
             else {
-                decryptFail = true;
+                transformFail = true;
             }
-            if (decryptFail) {
-                const err = "Encryption scheme not supported.";
+            if (transformFail) {
+                const err = "Transform fail (encryption scheme not supported?)";
                 debug(err);
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + err + "</p></body></html>");

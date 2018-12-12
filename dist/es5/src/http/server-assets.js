@@ -14,7 +14,7 @@ function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, decryptFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
+        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, doTransform, transformFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -104,7 +104,7 @@ function serverAssets(server, routerPathBase64) {
                     if (link && link.TypeLink) {
                         mediaType = link.TypeLink;
                     }
-                    isText = mediaType && (mediaType.indexOf("text/") === 0 ||
+                    isText = (typeof mediaType === "string") && (mediaType.indexOf("text/") === 0 ||
                         mediaType.indexOf("application/xhtml") === 0 ||
                         mediaType.indexOf("application/xml") === 0 ||
                         mediaType.indexOf("application/json") === 0 ||
@@ -163,9 +163,9 @@ function serverAssets(server, routerPathBase64) {
                         + err_2 + "</p></body></html>");
                     return [2];
                 case 11:
-                    if (!((isEncrypted && (isObfuscatedFont || !server.disableDecryption)) &&
-                        link)) return [3, 16];
-                    decryptFail = false;
+                    doTransform = !isEncrypted || (isObfuscatedFont || !server.disableDecryption);
+                    if (!(doTransform && link)) return [3, 16];
+                    transformFail = false;
                     transformedStream = void 0;
                     _b.label = 12;
                 case 12:
@@ -182,13 +182,16 @@ function serverAssets(server, routerPathBase64) {
                     return [2];
                 case 15:
                     if (transformedStream) {
+                        if (transformedStream !== zipStream_) {
+                            debug("Asset transformed ok: " + link.Href);
+                        }
                         zipStream_ = transformedStream;
                     }
                     else {
-                        decryptFail = true;
+                        transformFail = true;
                     }
-                    if (decryptFail) {
-                        err = "Encryption scheme not supported.";
+                    if (transformFail) {
+                        err = "Transform fail (encryption scheme not supported?)";
                         debug(err);
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
