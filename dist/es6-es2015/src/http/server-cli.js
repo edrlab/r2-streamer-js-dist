@@ -6,6 +6,7 @@ const path = require("path");
 const lcp_1 = require("r2-lcp-js/dist/es6-es2015/src/parser/epub/lcp");
 const init_globals_1 = require("r2-opds-js/dist/es6-es2015/src/opds/init-globals");
 const init_globals_2 = require("r2-shared-js/dist/es6-es2015/src/init-globals");
+const epub_1 = require("r2-shared-js/dist/es6-es2015/src/parser/epub");
 const debug_ = require("debug");
 const filehound = require("filehound");
 const server_1 = require("./server");
@@ -44,8 +45,8 @@ if (!stats.isFile() && !stats.isDirectory()) {
     debug("FILEPATH MUST BE FILE OR DIRECTORY.");
     process.exit(1);
 }
-const isEPUB = fs.existsSync(path.join(filePath, "META-INF", "container.xml"));
-if (stats.isDirectory() && !isEPUB) {
+const isAnEPUB = epub_1.isEPUBlication(filePath);
+if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
     (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const files = yield filehound.create()

@@ -1,6 +1,6 @@
 # HTTP API
 
-`readium2-streamer-js` contains an Express server with support for the following routes:
+`r2-streamer-js` contains an Express server with support for the following routes:
 
 ## GET /opds2/publications.json
 
@@ -17,6 +17,8 @@ This route serves a pretty-printed representation of the "OPDS 2" JSON, with cli
 `/show` is equivalent to `/show/all`. Here is a list of available JSON "filters": Metadata = `/show/metadata`, Links = `/show/links`, Publications = `/show/publications`.
 
 Alternatively, the `show` URL query string parameter can be used (e.g. `/opds2/publications.json?show=all`).
+
+A JSON-Schema validation report is presented at the bottom of the page, based on the official OPDS2 schema (see `./misc/json-schema/opds/`).
 
 ## GET /pub/{PUB_ID}
 
@@ -41,6 +43,8 @@ This route serves a pretty-printed representation of the "webpub manifest" JSON,
 Alternatively, the `show` URL query string parameter can be used (e.g. `/pub/{PUB_ID}/manifest.json?show=all`).
 
 The cover image (if any) is always displayed at the top of the served HTML page.
+
+A JSON-Schema validation report is presented at the bottom of the page, based on the official ReadiumWebPubManifest schema (see `./misc/json-schema/webpub-manifest/`).
 
 ### GET /pub/{PUB_ID}/{ASSET_PATH}
 
