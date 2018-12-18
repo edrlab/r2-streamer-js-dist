@@ -28,7 +28,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
     process.exit(1);
 }
 (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-    var feed, nPubs, _i, args_1, pathBase64, pathBase64Str, publication, err_1, filePathBase64Encoded, publi, linkSelf, coverLink, linkCover, publicationMetadataJson, jsonObj, jsonStr;
+    var feed, nPubs, _i, args_1, pathBase64, pathBase64Str, publication, err_1, publi, linkSelf, coverLink, linkCover, publicationMetadataJson, jsonObj, jsonStr;
     return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -64,11 +64,10 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 return [3, 6];
             case 5:
                 nPubs++;
-                filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
                 publi = new opds2_publication_1.OPDSPublication();
                 publi.Links = [];
                 linkSelf = new opds2_link_1.OPDSLink();
-                linkSelf.Href = filePathBase64Encoded + "/manifest.json";
+                linkSelf.Href = pathBase64 + "/manifest.json";
                 linkSelf.TypeLink = "application/webpub+json";
                 linkSelf.AddRel("http://opds-spec.org/acquisition");
                 publi.Links.push(linkSelf);
@@ -77,7 +76,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 coverLink = publication.GetCover();
                 if (coverLink) {
                     linkCover = new opds2_link_1.OPDSLink();
-                    linkCover.Href = filePathBase64Encoded + "/" + coverLink.Href;
+                    linkCover.Href = pathBase64 + "/" + coverLink.Href;
                     linkCover.TypeLink = coverLink.TypeLink;
                     if (coverLink.Width && coverLink.Height) {
                         linkCover.Width = coverLink.Width;

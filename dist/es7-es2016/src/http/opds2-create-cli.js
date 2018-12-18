@@ -50,11 +50,10 @@ if (fs.existsSync(opdsJsonFilePath)) {
             continue;
         }
         nPubs++;
-        const filePathBase64Encoded = UrlUtils_1.encodeURIComponent_RFC3986(pathBase64);
         const publi = new opds2_publication_1.OPDSPublication();
         publi.Links = [];
         const linkSelf = new opds2_link_1.OPDSLink();
-        linkSelf.Href = filePathBase64Encoded + "/manifest.json";
+        linkSelf.Href = pathBase64 + "/manifest.json";
         linkSelf.TypeLink = "application/webpub+json";
         linkSelf.AddRel("http://opds-spec.org/acquisition");
         publi.Links.push(linkSelf);
@@ -63,7 +62,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
         const coverLink = publication.GetCover();
         if (coverLink) {
             const linkCover = new opds2_link_1.OPDSLink();
-            linkCover.Href = filePathBase64Encoded + "/" + coverLink.Href;
+            linkCover.Href = pathBase64 + "/" + coverLink.Href;
             linkCover.TypeLink = coverLink.TypeLink;
             if (coverLink.Width && coverLink.Height) {
                 linkCover.Width = coverLink.Width;
