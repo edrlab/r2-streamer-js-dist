@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const UrlUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
@@ -41,7 +42,7 @@ function serverRemotePub(_server, topRouter) {
         }
         const urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);
-        const urlDecodedBase64 = new Buffer(urlDecoded).toString("base64");
+        const urlDecodedBase64 = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(urlDecoded).toString("base64"));
         const redirect = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverRemotePub_PATH + "/"))
             + "/pub/" + urlDecodedBase64 + "/";
         debug(`REDIRECT: ${req.originalUrl} ==> ${redirect}`);

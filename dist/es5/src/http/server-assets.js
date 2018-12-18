@@ -33,7 +33,7 @@ function serverAssets(server, routerPathBase64) {
                     if (isHead) {
                         debug("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
-                    pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
+                    pathBase64Str = new Buffer(decodeURIComponent(reqparams.pathBase64), "base64").toString("utf8");
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);

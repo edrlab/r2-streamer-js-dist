@@ -5,6 +5,41 @@ var debug_ = require("debug");
 var debug = debug_("r2:streamer#http/server-secure");
 var debugHttps = debug_("r2:https");
 var IS_DEV = (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "dev");
+function serverSecureHTTPHeader(server, url) {
+    var info = server.serverInfo();
+    if (server.isSecured() &&
+        info && info.trustKey && info.trustCheck && info.trustCheckIV) {
+        var t1 = void 0;
+        if (IS_DEV) {
+            t1 = process.hrtime();
+        }
+        var encrypteds = [];
+        var encryptStream = crypto.createCipheriv("aes-256-cbc", info.trustKey, info.trustCheckIV);
+        encryptStream.setAutoPadding(true);
+        var now = Date.now();
+        var jsonStr = "{\"url\":\"" + url + "\",\"time\":" + now + "}";
+        var buff1 = encryptStream.update(jsonStr, "utf8");
+        if (buff1) {
+            encrypteds.push(buff1);
+        }
+        var buff2 = encryptStream.final();
+        if (buff2) {
+            encrypteds.push(buff2);
+        }
+        var encrypted = Buffer.concat(encrypteds);
+        var base64 = new Buffer(encrypted).toString("base64");
+        if (IS_DEV) {
+            var t2 = process.hrtime(t1);
+            var seconds = t2[0];
+            var nanoseconds = t2[1];
+            var milliseconds = nanoseconds / 1e6;
+            debugHttps("< A > " + seconds + "s " + milliseconds + "ms [ " + url + " ]");
+        }
+        return { name: "X-" + info.trustCheck, value: base64 };
+    }
+    return undefined;
+}
+exports.serverSecureHTTPHeader = serverSecureHTTPHeader;
 function serverSecure(server, topRouter) {
     topRouter.use(function (req, res, next) {
         if (!server.isSecured()) {

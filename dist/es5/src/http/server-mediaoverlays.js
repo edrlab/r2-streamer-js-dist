@@ -54,7 +54,7 @@ function serverMediaOverlays(server, routerPathBase64) {
                     isSecureHttp = req.secure ||
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
-                    pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
+                    pathBase64Str = new Buffer(decodeURIComponent(reqparams.pathBase64), "base64").toString("utf8");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);

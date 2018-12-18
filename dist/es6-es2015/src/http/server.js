@@ -8,6 +8,7 @@ const https = require("https");
 const path = require("path");
 const opds2_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds2/opds2");
 const publication_parser_1 = require("r2-shared-js/dist/es6-es2015/src/parser/publication-parser");
+const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
 const debug_ = require("debug");
 const express = require("express");
 const ta_json_x_1 = require("ta-json-x");
@@ -88,6 +89,9 @@ Disallow: /
     isSecured() {
         return (typeof this.serverInfo() !== "undefined") &&
             (typeof this.httpsServer !== "undefined");
+    }
+    getSecureHTTPHeader(url) {
+        return server_secure_1.serverSecureHTTPHeader(this, url);
     }
     start(port, secure) {
         return tslib_1.__awaiter(this, void 0, void 0, function* () {
@@ -181,7 +185,7 @@ Disallow: /
             }
         });
         return pubs.map((pub) => {
-            const pubid = new Buffer(pub).toString("base64");
+            const pubid = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
             return `/pub/${pubid}/manifest.json`;
         });
     }
@@ -195,7 +199,7 @@ Disallow: /
             }
         });
         return pubs.map((pub) => {
-            const pubid = new Buffer(pub).toString("base64");
+            const pubid = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
             return `/pub/${pubid}/manifest.json`;
         });
     }
@@ -262,7 +266,7 @@ Disallow: /
                 const jsFile = path.join(__dirname, "opds2-create-cli.js");
                 const args = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach((pub) => {
-                    const filePathBase64 = new Buffer(pub).toString("base64");
+                    const filePathBase64 = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
                     args.push(filePathBase64);
                 });
                 debug(`SPAWN OPDS2-create: ${args[0]}`);

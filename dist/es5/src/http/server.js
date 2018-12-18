@@ -8,6 +8,7 @@ var https = require("https");
 var path = require("path");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
+var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var debug_ = require("debug");
 var express = require("express");
 var ta_json_x_1 = require("ta-json-x");
@@ -86,6 +87,9 @@ var Server = (function () {
     Server.prototype.isSecured = function () {
         return (typeof this.serverInfo() !== "undefined") &&
             (typeof this.httpsServer !== "undefined");
+    };
+    Server.prototype.getSecureHTTPHeader = function (url) {
+        return server_secure_1.serverSecureHTTPHeader(this, url);
     };
     Server.prototype.start = function (port, secure) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
@@ -195,7 +199,7 @@ var Server = (function () {
             }
         });
         return pubs.map(function (pub) {
-            var pubid = new Buffer(pub).toString("base64");
+            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
             return "/pub/" + pubid + "/manifest.json";
         });
     };
@@ -210,7 +214,7 @@ var Server = (function () {
             }
         });
         return pubs.map(function (pub) {
-            var pubid = new Buffer(pub).toString("base64");
+            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
             return "/pub/" + pubid + "/manifest.json";
         });
     };
@@ -289,7 +293,7 @@ var Server = (function () {
                 var jsFile = path.join(__dirname, "opds2-create-cli.js");
                 var args_1 = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach(function (pub) {
-                    var filePathBase64 = new Buffer(pub).toString("base64");
+                    var filePathBase64 = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
                     args_1.push(filePathBase64);
                 });
                 debug("SPAWN OPDS2-create: " + args_1[0]);

@@ -58,7 +58,7 @@ function serverManifestJson(server, routerPathBase64) {
                     isSecureHttp = req.secure ||
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
-                    pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
+                    pathBase64Str = new Buffer(decodeURIComponent(reqparams.pathBase64), "base64").toString("utf8");
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
@@ -74,7 +74,7 @@ function serverManifestJson(server, routerPathBase64) {
                     return [2];
                 case 4:
                     if (!(reqparams.lcpPass64 && !server.disableDecryption)) return [3, 8];
-                    lcpPass = new Buffer(reqparams.lcpPass64, "base64").toString("utf8");
+                    lcpPass = new Buffer(decodeURIComponent(reqparams.lcpPass64), "base64").toString("utf8");
                     if (!publication.LCP) return [3, 8];
                     _b.label = 5;
                 case 5:

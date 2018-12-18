@@ -2,6 +2,7 @@ import { OPDSFeed } from "r2-opds-js/dist/es7-es2016/src/opds/opds2/opds2";
 import { Publication } from "r2-shared-js/dist/es7-es2016/src/models/publication";
 import * as express from "express";
 import { CertificateData } from "../utils/self-signed";
+import { IHTTPHeaderNameValue } from "./server-secure";
 export interface ServerData extends CertificateData {
     urlScheme: string;
     urlHost: string;
@@ -36,6 +37,7 @@ export declare class Server {
     expressGet(paths: string[], func: express.Handler): void;
     isStarted(): boolean;
     isSecured(): boolean;
+    getSecureHTTPHeader(url: string): IHTTPHeaderNameValue | undefined;
     start(port: number, secure: boolean): Promise<ServerData>;
     stop(): void;
     serverInfo(): ServerData | undefined;

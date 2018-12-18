@@ -45,7 +45,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
             case 1:
                 if (!(_i < args_1.length)) return [3, 7];
                 pathBase64 = args_1[_i];
-                pathBase64Str = new Buffer(pathBase64, "base64").toString("utf8");
+                pathBase64Str = new Buffer(decodeURIComponent(pathBase64), "base64").toString("utf8");
                 if (UrlUtils_1.isHTTP(pathBase64Str)) {
                     return [3, 6];
                 }
