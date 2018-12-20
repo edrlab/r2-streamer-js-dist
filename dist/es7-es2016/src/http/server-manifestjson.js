@@ -78,6 +78,7 @@ function serverManifestJson(server, routerPathBase64) {
                     yield publication.LCP.tryUserKeys([lcpPass]);
                 }
                 catch (err) {
+                    publication.LCP.ContentKey = undefined;
                     debug(err);
                     const errMsg = "FAIL publication.LCP.tryUserKeys(): " + err;
                     debug(errMsg);

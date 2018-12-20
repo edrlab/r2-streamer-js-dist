@@ -85,6 +85,7 @@ function serverManifestJson(server, routerPathBase64) {
                     return [3, 8];
                 case 7:
                     err_2 = _b.sent();
+                    publication.LCP.ContentKey = undefined;
                     debug(err_2);
                     errMsg = "FAIL publication.LCP.tryUserKeys(): " + err_2;
                     debug(errMsg);
