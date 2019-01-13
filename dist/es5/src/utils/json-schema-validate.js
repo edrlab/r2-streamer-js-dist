@@ -5,62 +5,77 @@ var path = require("path");
 var Ajv = require("ajv");
 var debug_ = require("debug");
 var debug = debug_("r2:streamer#utils/json-schema-validate");
-var _jsonSchemasCache = {};
-function jsonSchemaValidate(jsonSchemasRootpath, key, jsonSchemasNames, jsonToValidate) {
+var _cachedJsonSchemas = {};
+function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidate) {
     try {
-        debug("JSON Schema validation ...");
-        if (!_jsonSchemasCache[key]) {
-            for (var _i = 0, jsonSchemasNames_1 = jsonSchemasNames; _i < jsonSchemasNames_1.length; _i++) {
-                var jsonSchemaName = jsonSchemasNames_1[_i];
-                var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
-                debug(jsonSchemaPath);
-                if (!fs.existsSync(jsonSchemaPath)) {
-                    debug("Skipping JSON SCHEMAS (not found): " + jsonSchemaPath);
-                    return undefined;
-                }
-                var jsonSchemaStr = fs.readFileSync(jsonSchemaPath, { encoding: "utf8" });
-                if (!jsonSchemaStr) {
-                    debug("File load fail: " + jsonSchemaPath);
-                    return undefined;
-                }
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<grandfathered>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse2>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<extension>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<variant>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<script>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<extlang>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<language>/g, "");
-                jsonSchemaStr = jsonSchemaStr.replace(/\?<region>/g, "");
-                if (jsonSchemaStr.indexOf("?<") >= 0) {
-                    debug("REGEX WARNING!!");
-                    return undefined;
-                }
-                var jsonSchema = global.JSON.parse(jsonSchemaStr);
-                if (!_jsonSchemasCache[key]) {
-                    _jsonSchemasCache[key] = [];
-                }
-                _jsonSchemasCache[key].push(jsonSchema);
+        for (var _i = 0, jsonSchemasNames_1 = jsonSchemasNames; _i < jsonSchemasNames_1.length; _i++) {
+            var jsonSchemaName = jsonSchemasNames_1[_i];
+            var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
+            if (_cachedJsonSchemas[jsonSchemaPath]) {
+                continue;
             }
+            if (!fs.existsSync(jsonSchemaPath)) {
+                debug("Skipping JSON SCHEMAS (not found): " + jsonSchemaPath);
+                return undefined;
+            }
+            var jsonSchemaStr = fs.readFileSync(jsonSchemaPath, { encoding: "utf8" });
+            if (!jsonSchemaStr) {
+                debug("File load fail: " + jsonSchemaPath);
+                return undefined;
+            }
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<grandfathered>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<privateUse2>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<extension>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<variant>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<script>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<extlang>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<language>/g, "");
+            jsonSchemaStr = jsonSchemaStr.replace(/\?<region>/g, "");
+            if (jsonSchemaStr.indexOf("?<") >= 0) {
+                debug("REGEX WARNING!!");
+                return undefined;
+            }
+            var jsonSchema = global.JSON.parse(jsonSchemaStr);
+            debug("JSON SCHEMA is now cached: " + jsonSchema["$id"] + " (" + jsonSchemaPath + ")");
+            _cachedJsonSchemas[jsonSchemaPath] = jsonSchema;
         }
-        if (!_jsonSchemasCache[key]) {
+        var ajv = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
+        var idRoot = void 0;
+        for (var _a = 0, jsonSchemasNames_2 = jsonSchemasNames; _a < jsonSchemasNames_2.length; _a++) {
+            var jsonSchemaName = jsonSchemasNames_2[_a];
+            var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
+            var jsonSchema = _cachedJsonSchemas[jsonSchemaPath];
+            if (!jsonSchema) {
+                debug("!jsonSchema?? " + jsonSchemaPath);
+                return undefined;
+            }
+            if (!idRoot) {
+                idRoot = jsonSchema["$id"];
+            }
+            ajv.addSchema(jsonSchema, jsonSchema["$id"]);
+        }
+        if (!idRoot) {
+            debug("!idRoot?? ");
             return undefined;
         }
-        var ajv_1 = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
-        _jsonSchemasCache[key].forEach(function (jsonSchema) {
-            debug("JSON Schema ADD: " + jsonSchema["$id"]);
-            ajv_1.addSchema(jsonSchema, jsonSchema["$id"]);
-        });
-        debug("JSON Schema VALIDATE ...");
-        var ajvValid = ajv_1.validate(_jsonSchemasCache[key][0]["$id"], jsonToValidate);
+        var ajvValid = ajv.validate(idRoot, jsonToValidate);
         if (!ajvValid) {
-            debug("JSON Schema validation FAIL.");
-            var errorsText = ajv_1.errorsText();
-            debug(errorsText);
-            return errorsText;
-        }
-        else {
-            debug("JSON Schema validation OK.");
+            var errors = ajv.errors;
+            if (errors) {
+                var errs = [];
+                for (var _b = 0, errors_1 = errors; _b < errors_1.length; _b++) {
+                    var err = errors_1[_b];
+                    var jsonPath = err.dataPath.replace(/^\./, "").replace(/\[([0-9]+)\]/g, ".$1");
+                    errs.push({
+                        ajvDataPath: err.dataPath,
+                        ajvMessage: err.message ? err.message : "",
+                        ajvSchemaPath: err.schemaPath,
+                        jsonPath: jsonPath,
+                    });
+                }
+                return errs;
+            }
         }
     }
     catch (err) {

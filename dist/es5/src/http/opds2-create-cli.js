@@ -3,28 +3,31 @@ var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
+var init_globals_1 = require("r2-opds-js/dist/es5/src/opds/init-globals");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
 var opds2_link_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-link");
 var opds2_metadata_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-metadata");
 var opds2_publication_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-publication");
-var opds2_publicationMetadata_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-publicationMetadata");
+var init_globals_2 = require("r2-shared-js/dist/es5/src/init-globals");
+var metadata_1 = require("r2-shared-js/dist/es5/src/models/metadata");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
-var debug_ = require("debug");
 var moment = require("moment");
 var ta_json_x_1 = require("ta-json-x");
-var debug = debug_("r2:streamer#http/opds2-create-cli");
-debug("process.cwd(): " + process.cwd());
-debug("__dirname: " + __dirname);
+init_globals_1.initGlobalConverters_OPDS();
+init_globals_2.initGlobalConverters_SHARED();
+init_globals_2.initGlobalConverters_GENERIC();
+console.log("process.cwd(): " + process.cwd());
+console.log("__dirname: " + __dirname);
 var args = process.argv.slice(2);
 if (!args.length) {
-    debug("FILEPATH ARGUMENTS ARE MISSING.");
+    console.log("FILEPATH ARGUMENTS ARE MISSING.");
     process.exit(1);
 }
 var opdsJsonFilePath = args[0];
 args = args.slice(1);
 if (fs.existsSync(opdsJsonFilePath)) {
-    debug("OPDS2 JSON file already exists.");
+    console.log("OPDS2 JSON file already exists.");
     process.exit(1);
 }
 (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
@@ -49,7 +52,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 if (UrlUtils_1.isHTTP(pathBase64Str)) {
                     return [3, 6];
                 }
-                debug("OPDS parsing: " + pathBase64Str);
+                console.log("OPDS parsing: " + pathBase64Str);
                 publication = void 0;
                 _a.label = 2;
             case 2:
@@ -60,7 +63,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 return [3, 5];
             case 4:
                 err_1 = _a.sent();
-                debug(err_1);
+                console.log(err_1);
                 return [3, 6];
             case 5:
                 nPubs++;
@@ -84,13 +87,16 @@ if (fs.existsSync(opdsJsonFilePath)) {
                     }
                     publi.Images.push(linkCover);
                 }
+                else {
+                    console.log("NO COVER IMAGE?");
+                }
                 if (publication.Metadata) {
                     try {
                         publicationMetadataJson = ta_json_x_1.JSON.serialize(publication.Metadata);
-                        publi.Metadata = ta_json_x_1.JSON.deserialize(publicationMetadataJson, opds2_publicationMetadata_1.OPDSPublicationMetadata);
+                        publi.Metadata = ta_json_x_1.JSON.deserialize(publicationMetadataJson, metadata_1.Metadata);
                     }
                     catch (err) {
-                        debug(err);
+                        console.log(err);
                         return [3, 6];
                     }
                 }
@@ -103,8 +109,8 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 jsonObj = ta_json_x_1.JSON.serialize(feed);
                 jsonStr = global.JSON.stringify(jsonObj, null, "");
                 fs.writeFileSync(opdsJsonFilePath, jsonStr, { encoding: "utf8" });
-                debug("DONE! :)");
-                debug(opdsJsonFilePath);
+                console.log("DONE! :)");
+                console.log(opdsJsonFilePath);
                 return [2];
         }
     });

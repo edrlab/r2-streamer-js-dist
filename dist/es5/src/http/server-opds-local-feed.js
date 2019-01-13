@@ -7,6 +7,7 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
+var DotProp = require("dot-prop");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_x_1 = require("ta-json-x");
@@ -116,9 +117,42 @@ function serverOPDS_local_feed(server, topRouter) {
                     "../webpub-manifest/contributor",
                     "../webpub-manifest/contributor-object",
                 ];
-                validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObj);
+                var validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
+                if (validationErrors) {
+                    validationStr = "";
+                    for (var _i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
+                        var err = validationErrors_1[_i];
+                        debug("JSON Schema validation FAIL.");
+                        debug(err);
+                        var val = DotProp.get(jsonObj, err.jsonPath);
+                        var valueStr = (typeof val === "string") ?
+                            "" + val :
+                            ((val instanceof Array || typeof val === "object") ?
+                                "" + JSON.stringify(val) :
+                                "");
+                        debug(valueStr);
+                        var title = "";
+                        var pubIndex = "";
+                        if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                            var jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
+                            debug(jsonPubTitlePath);
+                            title = DotProp.get(jsonObj, jsonPubTitlePath);
+                            debug(title);
+                            pubIndex = err.jsonPath.replace(/^publications\.([0-9]+).*/, "$1");
+                            debug(pubIndex);
+                        }
+                        validationStr +=
+                            "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                    }
+                }
             }
             absolutizeURLs(jsonObj);
+            if (jsonObj.publications && jsonObj.publications.length) {
+                var i_1 = 0;
+                jsonObj.publications.forEach(function (pub) {
+                    pub.___________INDEX___________ = i_1++;
+                });
+            }
             var jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
             res.status(200).send("<html><body>" +
                 "<h1>OPDS2 JSON feed</h1>" +

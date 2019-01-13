@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var path = require("path");
 var converter_1 = require("r2-opds-js/dist/es5/src/opds/converter");
 var opds_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds");
 var opds_entry_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds-entry");
@@ -10,10 +11,10 @@ var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils"
 var xml_js_mapper_1 = require("r2-utils-js/dist/es5/src/_utils/xml-js-mapper");
 var css2json = require("css2json");
 var debug_ = require("debug");
+var DotProp = require("dot-prop");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var morgan = require("morgan");
-var path = require("path");
 var request = require("request");
 var requestPromise = require("request-promise-native");
 var ta_json_x_1 = require("ta-json-x");
@@ -75,7 +76,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                             + err + "</p></body></html>");
                     };
                     success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-                        var responseData, err_2, responseStr, responseXml, isEntry, opds1Feed, opds1Entry, opds2Feed, opds2Publication, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
+                        var responseData, err_2, responseStr, responseXml, isEntry, opds1Feed, opds1Entry, opds2Feed, opds2Publication, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, val, valueStr, title, pubIndex, jsonPubTitlePath, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
                         return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
@@ -168,15 +169,56 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             "../webpub-manifest/contributor-object",
                                         ];
                                         if (opds2Publication) {
-                                            jsonSchemasNames.unshift("feed");
-                                        }
-                                        else {
                                             jsonSchemasNames.splice(jsonSchemasNames.indexOf("publication"), 1);
                                             jsonSchemasNames.unshift("feed");
                                             jsonSchemasNames.unshift("publication");
                                         }
-                                        debug(jsonSchemasNames);
-                                        validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObjOPDS2);
+                                        else {
+                                            jsonSchemasNames.unshift("feed");
+                                        }
+                                        validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
+                                        if (validationErrors) {
+                                            validationStr = "";
+                                            for (_i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
+                                                err = validationErrors_1[_i];
+                                                debug("JSON Schema validation FAIL.");
+                                                debug(err);
+                                                if (opds2Publication) {
+                                                    val = DotProp.get(jsonObjOPDS2, err.jsonPath);
+                                                    valueStr = (typeof val === "string") ?
+                                                        "" + val :
+                                                        ((val instanceof Array || typeof val === "object") ?
+                                                            "" + JSON.stringify(val) :
+                                                            "");
+                                                    debug(valueStr);
+                                                    title = DotProp.get(jsonObjOPDS2, "metadata.title");
+                                                    debug(title);
+                                                    validationStr +=
+                                                        "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                }
+                                                else {
+                                                    val = DotProp.get(jsonObjOPDS2, err.jsonPath);
+                                                    valueStr = (typeof val === "string") ?
+                                                        "" + val :
+                                                        ((val instanceof Array || typeof val === "object") ?
+                                                            "" + JSON.stringify(val) :
+                                                            "");
+                                                    debug(valueStr);
+                                                    title = "";
+                                                    pubIndex = "";
+                                                    if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                                                        jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
+                                                        debug(jsonPubTitlePath);
+                                                        title = DotProp.get(jsonObjOPDS2, jsonPubTitlePath);
+                                                        debug(title);
+                                                        pubIndex = err.jsonPath.replace(/^publications\.([0-9]+).*/, "$1");
+                                                        debug(pubIndex);
+                                                    }
+                                                    validationStr +=
+                                                        "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                }
+                                            }
+                                        }
                                     }
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
                                     css = css2json(jsonStyle);

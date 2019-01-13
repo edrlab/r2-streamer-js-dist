@@ -8,6 +8,7 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var css2json = require("css2json");
 var debug_ = require("debug");
+var DotProp = require("dot-prop");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var ta_json_x_1 = require("ta-json-x");
@@ -34,7 +35,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -241,7 +242,26 @@ function serverManifestJson(server, routerPathBase64) {
                             "metadata",
                             "subcollection",
                         ];
-                        validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "webpubmanifest", jsonSchemasNames, jsonObj);
+                        validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
+                        if (validationErrors) {
+                            validationStr = "";
+                            for (_i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
+                                err = validationErrors_1[_i];
+                                debug("JSON Schema validation FAIL.");
+                                debug(err);
+                                val = DotProp.get(jsonObj, err.jsonPath);
+                                valueStr = (typeof val === "string") ?
+                                    "" + val :
+                                    ((val instanceof Array || typeof val === "object") ?
+                                        "" + JSON.stringify(val) :
+                                        "");
+                                debug(valueStr);
+                                title = DotProp.get(jsonObj, "metadata.title");
+                                debug(title);
+                                validationStr +=
+                                    "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                            }
+                        }
                     }
                     absolutizeURLs(jsonObj);
                     jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));

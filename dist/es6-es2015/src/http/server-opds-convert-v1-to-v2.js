@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const path = require("path");
 const converter_1 = require("r2-opds-js/dist/es6-es2015/src/opds/converter");
 const opds_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds1/opds");
 const opds_entry_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds1/opds-entry");
@@ -10,10 +11,10 @@ const BufferUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/stream/Buf
 const xml_js_mapper_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/xml-js-mapper");
 const css2json = require("css2json");
 const debug_ = require("debug");
+const DotProp = require("dot-prop");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const morgan = require("morgan");
-const path = require("path");
 const request = require("request");
 const requestPromise = require("request-promise-native");
 const ta_json_x_1 = require("ta-json-x");
@@ -181,15 +182,55 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     "../webpub-manifest/contributor-object",
                 ];
                 if (opds2Publication) {
-                    jsonSchemasNames.unshift("feed");
-                }
-                else {
                     jsonSchemasNames.splice(jsonSchemasNames.indexOf("publication"), 1);
                     jsonSchemasNames.unshift("feed");
                     jsonSchemasNames.unshift("publication");
                 }
-                debug(jsonSchemasNames);
-                validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObjOPDS2);
+                else {
+                    jsonSchemasNames.unshift("feed");
+                }
+                const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
+                if (validationErrors) {
+                    validationStr = "";
+                    for (const err of validationErrors) {
+                        debug("JSON Schema validation FAIL.");
+                        debug(err);
+                        if (opds2Publication) {
+                            const val = DotProp.get(jsonObjOPDS2, err.jsonPath);
+                            const valueStr = (typeof val === "string") ?
+                                `${val}` :
+                                ((val instanceof Array || typeof val === "object") ?
+                                    `${JSON.stringify(val)}` :
+                                    "");
+                            debug(valueStr);
+                            const title = DotProp.get(jsonObjOPDS2, "metadata.title");
+                            debug(title);
+                            validationStr +=
+                                `\n"${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                        }
+                        else {
+                            const val = DotProp.get(jsonObjOPDS2, err.jsonPath);
+                            const valueStr = (typeof val === "string") ?
+                                `${val}` :
+                                ((val instanceof Array || typeof val === "object") ?
+                                    `${JSON.stringify(val)}` :
+                                    "");
+                            debug(valueStr);
+                            let title = "";
+                            let pubIndex = "";
+                            if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                                const jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
+                                debug(jsonPubTitlePath);
+                                title = DotProp.get(jsonObjOPDS2, jsonPubTitlePath);
+                                debug(title);
+                                pubIndex = err.jsonPath.replace(/^publications\.([0-9]+).*/, "$1");
+                                debug(pubIndex);
+                            }
+                            validationStr +=
+                                `\n___________INDEX___________ #${pubIndex} "${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                        }
+                    }
+                }
             }
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
             const css = css2json(jsonStyle);

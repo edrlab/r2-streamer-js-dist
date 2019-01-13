@@ -7,6 +7,7 @@ const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils
 const JsonUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/JsonUtils");
 const css2json = require("css2json");
 const debug_ = require("debug");
+const DotProp = require("dot-prop");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const ta_json_x_1 = require("ta-json-x");
@@ -138,9 +139,41 @@ function serverOPDS_local_feed(server, topRouter) {
                     "../webpub-manifest/contributor",
                     "../webpub-manifest/contributor-object",
                 ];
-                validationStr = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, "opds", jsonSchemasNames, jsonObj);
+                const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
+                if (validationErrors) {
+                    validationStr = "";
+                    for (const err of validationErrors) {
+                        debug("JSON Schema validation FAIL.");
+                        debug(err);
+                        const val = DotProp.get(jsonObj, err.jsonPath);
+                        const valueStr = (typeof val === "string") ?
+                            `${val}` :
+                            ((val instanceof Array || typeof val === "object") ?
+                                `${JSON.stringify(val)}` :
+                                "");
+                        debug(valueStr);
+                        let title = "";
+                        let pubIndex = "";
+                        if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                            const jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
+                            debug(jsonPubTitlePath);
+                            title = DotProp.get(jsonObj, jsonPubTitlePath);
+                            debug(title);
+                            pubIndex = err.jsonPath.replace(/^publications\.([0-9]+).*/, "$1");
+                            debug(pubIndex);
+                        }
+                        validationStr +=
+                            `\n___________INDEX___________ #${pubIndex} "${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                    }
+                }
             }
             absolutizeURLs(jsonObj);
+            if (jsonObj.publications && jsonObj.publications.length) {
+                let i = 0;
+                jsonObj.publications.forEach((pub) => {
+                    pub.___________INDEX___________ = i++;
+                });
+            }
             const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
             res.status(200).send("<html><body>" +
                 "<h1>OPDS2 JSON feed</h1>" +
