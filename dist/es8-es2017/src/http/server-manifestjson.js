@@ -209,14 +209,20 @@ function serverManifestJson(server, routerPathBase64) {
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
-                const jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/webpub-manifest");
+                const jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
                 const jsonSchemasNames = [
-                    "publication",
-                    "contributor-object",
-                    "contributor",
-                    "link",
-                    "metadata",
-                    "subcollection",
+                    "webpub-manifest/publication",
+                    "webpub-manifest/contributor-object",
+                    "webpub-manifest/contributor",
+                    "webpub-manifest/link",
+                    "webpub-manifest/metadata",
+                    "webpub-manifest/subcollection",
+                    "webpub-manifest/properties",
+                    "webpub-manifest/extensions/epub/metadata",
+                    "webpub-manifest/extensions/epub/subcollections",
+                    "webpub-manifest/extensions/epub/properties",
+                    "opds/acquisition-object",
+                    "opds/properties",
                 ];
                 const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
                 if (validationErrors) {

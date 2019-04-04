@@ -36,7 +36,6 @@ if (fs.existsSync(opdsJsonFilePath)) {
         switch (_a.label) {
             case 0:
                 feed = new opds2_1.OPDSFeed();
-                feed.Context = ["http://opds-spec.org/opds.jsonld"];
                 feed.Metadata = new opds2_metadata_1.OPDSMetadata();
                 feed.Metadata.RDFType = "http://schema.org/DataFeed";
                 feed.Metadata.Title = "Readium 2 OPDS 2.0 Feed";

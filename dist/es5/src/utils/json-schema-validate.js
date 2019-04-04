@@ -10,7 +10,8 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
     try {
         for (var _i = 0, jsonSchemasNames_1 = jsonSchemasNames; _i < jsonSchemasNames_1.length; _i++) {
             var jsonSchemaName = jsonSchemasNames_1[_i];
-            var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
+            var jsonSchemaName_ = jsonSchemaName.replace(/\//g, path.sep);
+            var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName_ + ".schema.json");
             if (_cachedJsonSchemas[jsonSchemaPath]) {
                 continue;
             }
@@ -81,7 +82,7 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
     catch (err) {
         debug("JSON Schema VALIDATION PROBLEM.");
         debug(err);
-        return err;
+        return undefined;
     }
     return undefined;
 }

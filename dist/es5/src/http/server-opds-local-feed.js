@@ -103,19 +103,23 @@ function serverOPDS_local_feed(server, topRouter) {
             var validationStr = void 0;
             var doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
-                var jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
+                var jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
                 var jsonSchemasNames = [
-                    "feed",
-                    "acquisition-object",
-                    "feed-metadata",
-                    "link",
-                    "properties",
-                    "publication",
-                    "../webpub-manifest/subcollection",
-                    "../webpub-manifest/metadata",
-                    "../webpub-manifest/link",
-                    "../webpub-manifest/contributor",
-                    "../webpub-manifest/contributor-object",
+                    "opds/feed",
+                    "opds/publication",
+                    "opds/acquisition-object",
+                    "opds/feed-metadata",
+                    "opds/properties",
+                    "webpub-manifest/publication",
+                    "webpub-manifest/contributor-object",
+                    "webpub-manifest/contributor",
+                    "webpub-manifest/link",
+                    "webpub-manifest/metadata",
+                    "webpub-manifest/subcollection",
+                    "webpub-manifest/properties",
+                    "webpub-manifest/extensions/epub/metadata",
+                    "webpub-manifest/extensions/epub/subcollections",
+                    "webpub-manifest/extensions/epub/properties",
                 ];
                 var validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
                 if (validationErrors) {

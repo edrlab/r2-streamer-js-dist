@@ -155,27 +155,24 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2Publication ? opds2Publication : opds2Feed);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
-                                        jsonSchemasRootpath = path.join(process.cwd(), "misc/json-schema/opds");
+                                        jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
                                         jsonSchemasNames = [
-                                            "acquisition-object",
-                                            "feed-metadata",
-                                            "link",
-                                            "properties",
-                                            "publication",
-                                            "../webpub-manifest/subcollection",
-                                            "../webpub-manifest/metadata",
-                                            "../webpub-manifest/link",
-                                            "../webpub-manifest/contributor",
-                                            "../webpub-manifest/contributor-object",
+                                            opds2Publication ? "opds/publication" : "opds/feed",
+                                            !opds2Publication ? "opds/feed" : "opds/publication",
+                                            "opds/acquisition-object",
+                                            "opds/feed-metadata",
+                                            "opds/properties",
+                                            "webpub-manifest/publication",
+                                            "webpub-manifest/contributor-object",
+                                            "webpub-manifest/contributor",
+                                            "webpub-manifest/link",
+                                            "webpub-manifest/metadata",
+                                            "webpub-manifest/subcollection",
+                                            "webpub-manifest/properties",
+                                            "webpub-manifest/extensions/epub/metadata",
+                                            "webpub-manifest/extensions/epub/subcollections",
+                                            "webpub-manifest/extensions/epub/properties",
                                         ];
-                                        if (opds2Publication) {
-                                            jsonSchemasNames.splice(jsonSchemasNames.indexOf("publication"), 1);
-                                            jsonSchemasNames.unshift("feed");
-                                            jsonSchemasNames.unshift("publication");
-                                        }
-                                        else {
-                                            jsonSchemasNames.unshift("feed");
-                                        }
                                         validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
                                         if (validationErrors) {
                                             validationStr = "";

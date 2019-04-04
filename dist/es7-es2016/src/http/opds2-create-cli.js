@@ -31,7 +31,6 @@ if (fs.existsSync(opdsJsonFilePath)) {
 }
 (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
     const feed = new opds2_1.OPDSFeed();
-    feed.Context = ["http://opds-spec.org/opds.jsonld"];
     feed.Metadata = new opds2_metadata_1.OPDSMetadata();
     feed.Metadata.RDFType = "http://schema.org/DataFeed";
     feed.Metadata.Title = "Readium 2 OPDS 2.0 Feed";
