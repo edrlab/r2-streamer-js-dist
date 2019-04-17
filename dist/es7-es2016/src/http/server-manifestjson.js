@@ -219,6 +219,8 @@ function serverManifestJson(server, routerPathBase64) {
                     "webpub-manifest/metadata",
                     "webpub-manifest/subcollection",
                     "webpub-manifest/properties",
+                    "webpub-manifest/subject",
+                    "webpub-manifest/subject-object",
                     "webpub-manifest/extensions/epub/metadata",
                     "webpub-manifest/extensions/epub/subcollections",
                     "webpub-manifest/extensions/epub/properties",
