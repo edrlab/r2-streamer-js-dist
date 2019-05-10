@@ -55,7 +55,9 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
             .paths(filePath)
             .ext([".epub", ".epub3", ".cbz"])
             .find();
-        const server = new server_1.Server();
+        const server = new server_1.Server({
+            maxPrefetchLinks: 10,
+        });
         server.preventRobots();
         server.addPublications(files);
         const url = yield server.start(0, false);
@@ -64,7 +66,9 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
 }
 else {
     (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
-        const server = new server_1.Server();
+        const server = new server_1.Server({
+            maxPrefetchLinks: 10,
+        });
         server.preventRobots();
         server.addPublications([filePath]);
         const url = yield server.start(0, false);

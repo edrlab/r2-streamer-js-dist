@@ -288,11 +288,16 @@ function serverManifestJson(server, routerPathBase64) {
             res.setHeader("ETag", hash);
             const links = getPreFetchResources(publication);
             if (links && links.length) {
+                let n = 0;
                 let prefetch = "";
-                links.forEach((l) => {
+                for (const l of links) {
+                    n++;
+                    if (n > server.maxPrefetchLinks) {
+                        break;
+                    }
                     const href = absoluteURL(l.Href);
                     prefetch += "<" + href + ">;" + "rel=prefetch,";
-                });
+                }
                 res.setHeader("Link", prefetch);
             }
             res.status(200);
@@ -310,13 +315,15 @@ exports.serverManifestJson = serverManifestJson;
 function getPreFetchResources(publication) {
     const links = [];
     if (publication.Resources) {
-        const mediaTypes = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
+        const mediaTypes = ["text/css",
+            "text/javascript", "application/javascript",
+            "application/vnd.ms-opentype", "font/otf", "application/font-sfnt",
+            "font/ttf", "application/font-sfnt",
+            "font/woff", "application/font-woff", "font/woff2"];
         publication.Resources.forEach((link) => {
-            mediaTypes.forEach((mediaType) => {
-                if (link.TypeLink === mediaType) {
-                    links.push(link);
-                }
-            });
+            if (link.TypeLink && mediaTypes.indexOf(link.TypeLink) >= 0) {
+                links.push(link);
+            }
         });
     }
     return links;

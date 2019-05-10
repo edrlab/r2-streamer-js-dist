@@ -35,9 +35,9 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, prefetch_1;
-        return tslib_1.__generator(this, function (_b) {
-            switch (_b.label) {
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
+        return tslib_1.__generator(this, function (_c) {
+            switch (_c.label) {
                 case 0:
                     reqparams = req.params;
                     if (!reqparams.pathBase64) {
@@ -60,15 +60,15 @@ function serverManifestJson(server, routerPathBase64) {
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
                     pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
-                    _b.label = 1;
+                    _c.label = 1;
                 case 1:
-                    _b.trys.push([1, 3, , 4]);
+                    _c.trys.push([1, 3, , 4]);
                     return [4, server.loadOrGetCachedPublication(pathBase64Str)];
                 case 2:
-                    publication = _b.sent();
+                    publication = _c.sent();
                     return [3, 4];
                 case 3:
-                    err_1 = _b.sent();
+                    err_1 = _c.sent();
                     debug(err_1);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_1 + "</p></body></html>");
@@ -77,15 +77,15 @@ function serverManifestJson(server, routerPathBase64) {
                     if (!(reqparams.lcpPass64 && !server.disableDecryption)) return [3, 8];
                     lcpPass = new Buffer(reqparams.lcpPass64, "base64").toString("utf8");
                     if (!publication.LCP) return [3, 8];
-                    _b.label = 5;
+                    _c.label = 5;
                 case 5:
-                    _b.trys.push([5, 7, , 8]);
+                    _c.trys.push([5, 7, , 8]);
                     return [4, publication.LCP.tryUserKeys([lcpPass])];
                 case 6:
-                    _b.sent();
+                    _c.sent();
                     return [3, 8];
                 case 7:
-                    err_2 = _b.sent();
+                    err_2 = _c.sent();
                     publication.LCP.ContentKey = undefined;
                     debug(err_2);
                     errMsg = "FAIL publication.LCP.tryUserKeys(): " + err_2;
@@ -154,21 +154,21 @@ function serverManifestJson(server, routerPathBase64) {
                         objToSerialize = publication;
                         return [3, 23];
                     }
-                    _b.label = 10;
+                    _c.label = 10;
                 case 10:
                     {
                         objToSerialize = publication.GetCover();
                         return [3, 23];
                     }
-                    _b.label = 11;
+                    _c.label = 11;
                 case 11:
-                    _b.trys.push([11, 13, , 14]);
+                    _c.trys.push([11, 13, , 14]);
                     return [4, epub_1.getAllMediaOverlays(publication)];
                 case 12:
-                    objToSerialize = _b.sent();
+                    objToSerialize = _c.sent();
                     return [3, 14];
                 case 13:
-                    err_3 = _b.sent();
+                    err_3 = _c.sent();
                     debug(err_3);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_3 + "</p></body></html>");
@@ -179,52 +179,52 @@ function serverManifestJson(server, routerPathBase64) {
                         objToSerialize = publication.Spine;
                         return [3, 23];
                     }
-                    _b.label = 16;
+                    _c.label = 16;
                 case 16:
                     {
                         objToSerialize = publication.PageList;
                         return [3, 23];
                     }
-                    _b.label = 17;
+                    _c.label = 17;
                 case 17:
                     {
                         objToSerialize = publication.Landmarks;
                         return [3, 23];
                     }
-                    _b.label = 18;
+                    _c.label = 18;
                 case 18:
                     {
                         objToSerialize = publication.Links;
                         return [3, 23];
                     }
-                    _b.label = 19;
+                    _c.label = 19;
                 case 19:
                     {
                         objToSerialize = publication.Resources;
                         return [3, 23];
                     }
-                    _b.label = 20;
+                    _c.label = 20;
                 case 20:
                     {
                         objToSerialize = publication.TOC;
                         return [3, 23];
                     }
-                    _b.label = 21;
+                    _c.label = 21;
                 case 21:
                     {
                         objToSerialize = publication.Metadata;
                         return [3, 23];
                     }
-                    _b.label = 22;
+                    _c.label = 22;
                 case 22:
                     {
                         objToSerialize = null;
                     }
-                    _b.label = 23;
+                    _c.label = 23;
                 case 23: return [3, 25];
                 case 24:
                     objToSerialize = publication;
-                    _b.label = 25;
+                    _c.label = 25;
                 case 25:
                     if (!objToSerialize) {
                         objToSerialize = {};
@@ -312,12 +312,18 @@ function serverManifestJson(server, routerPathBase64) {
                     res.setHeader("ETag", hash);
                     links = getPreFetchResources(publication);
                     if (links && links.length) {
-                        prefetch_1 = "";
-                        links.forEach(function (l) {
-                            var href = absoluteURL(l.Href);
-                            prefetch_1 += "<" + href + ">;" + "rel=prefetch,";
-                        });
-                        res.setHeader("Link", prefetch_1);
+                        n = 0;
+                        prefetch = "";
+                        for (_b = 0, links_1 = links; _b < links_1.length; _b++) {
+                            l = links_1[_b];
+                            n++;
+                            if (n > server.maxPrefetchLinks) {
+                                break;
+                            }
+                            href = absoluteURL(l.Href);
+                            prefetch += "<" + href + ">;" + "rel=prefetch,";
+                        }
+                        res.setHeader("Link", prefetch);
                     }
                     res.status(200);
                     if (isHead) {
@@ -326,7 +332,7 @@ function serverManifestJson(server, routerPathBase64) {
                     else {
                         res.send(publicationJsonStr);
                     }
-                    _b.label = 27;
+                    _c.label = 27;
                 case 27: return [2];
             }
         });
@@ -337,13 +343,15 @@ exports.serverManifestJson = serverManifestJson;
 function getPreFetchResources(publication) {
     var links = [];
     if (publication.Resources) {
-        var mediaTypes_1 = ["text/css", "application/vnd.ms-opentype", "text/javascript"];
+        var mediaTypes_1 = ["text/css",
+            "text/javascript", "application/javascript",
+            "application/vnd.ms-opentype", "font/otf", "application/font-sfnt",
+            "font/ttf", "application/font-sfnt",
+            "font/woff", "application/font-woff", "font/woff2"];
         publication.Resources.forEach(function (link) {
-            mediaTypes_1.forEach(function (mediaType) {
-                if (link.TypeLink === mediaType) {
-                    links.push(link);
-                }
-            });
+            if (link.TypeLink && mediaTypes_1.indexOf(link.TypeLink) >= 0) {
+                links.push(link);
+            }
         });
     }
     return links;

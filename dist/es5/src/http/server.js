@@ -27,6 +27,7 @@ var server_secure_1 = require("./server-secure");
 var server_url_1 = require("./server-url");
 var server_version_1 = require("./server-version");
 var debug = debug_("r2:streamer#http/server");
+exports.MAX_PREFETCH_LINKS = 10;
 var Server = (function () {
     function Server(options) {
         this.lcpBeginToken = "*-";
@@ -35,6 +36,7 @@ var Server = (function () {
         this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
         this.disableRemotePubUrl = options && options.disableRemotePubUrl ? options.disableRemotePubUrl : false;
         this.disableOPDS = options && options.disableOPDS ? options.disableOPDS : false;
+        this.maxPrefetchLinks = options && options.maxPrefetchLinks ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;

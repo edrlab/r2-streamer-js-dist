@@ -61,7 +61,9 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
                         .find()];
                 case 1:
                     files = _a.sent();
-                    server = new server_1.Server();
+                    server = new server_1.Server({
+                        maxPrefetchLinks: 10,
+                    });
                     server.preventRobots();
                     server.addPublications(files);
                     return [4, server.start(0, false)];
@@ -79,7 +81,9 @@ else {
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    server = new server_1.Server();
+                    server = new server_1.Server({
+                        maxPrefetchLinks: 10,
+                    });
                     server.preventRobots();
                     server.addPublications([filePath]);
                     return [4, server.start(0, false)];
