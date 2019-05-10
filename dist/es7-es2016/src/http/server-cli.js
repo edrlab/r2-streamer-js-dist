@@ -45,6 +45,25 @@ if (!stats.isFile() && !stats.isDirectory()) {
     debug("FILEPATH MUST BE FILE OR DIRECTORY.");
     process.exit(1);
 }
+let maxPrefetchLinks = server_1.MAX_PREFETCH_LINKS;
+if (args[1]) {
+    args[1] = args[1].trim();
+    if (args[1].length && args[1][0] === "-") {
+        maxPrefetchLinks = -1;
+    }
+    else {
+        try {
+            maxPrefetchLinks = parseInt(args[1], 10);
+        }
+        catch (err) {
+            debug(err);
+        }
+        if (isNaN(maxPrefetchLinks)) {
+            maxPrefetchLinks = server_1.MAX_PREFETCH_LINKS;
+        }
+    }
+}
+debug(`maxPrefetchLinks: ${maxPrefetchLinks}`);
 const isAnEPUB = epub_1.isEPUBlication(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
@@ -56,7 +75,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
             .ext([".epub", ".epub3", ".cbz"])
             .find();
         const server = new server_1.Server({
-            maxPrefetchLinks: 10,
+            maxPrefetchLinks,
         });
         server.preventRobots();
         server.addPublications(files);
@@ -67,7 +86,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
 else {
     (() => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const server = new server_1.Server({
-            maxPrefetchLinks: 10,
+            maxPrefetchLinks,
         });
         server.preventRobots();
         server.addPublications([filePath]);
