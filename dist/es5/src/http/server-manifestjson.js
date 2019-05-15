@@ -343,16 +343,20 @@ exports.serverManifestJson = serverManifestJson;
 function getPreFetchResources(publication) {
     var links = [];
     if (publication.Resources) {
-        var mediaTypes_1 = ["text/css",
+        var mediaTypes = ["text/css",
             "text/javascript", "application/javascript",
             "application/vnd.ms-opentype", "font/otf", "application/font-sfnt",
             "font/ttf", "application/font-sfnt",
             "font/woff", "application/font-woff", "font/woff2"];
-        publication.Resources.forEach(function (link) {
-            if (link.TypeLink && mediaTypes_1.indexOf(link.TypeLink) >= 0) {
-                links.push(link);
+        for (var _i = 0, mediaTypes_1 = mediaTypes; _i < mediaTypes_1.length; _i++) {
+            var mediaType = mediaTypes_1[_i];
+            for (var _a = 0, _b = publication.Resources; _a < _b.length; _a++) {
+                var link = _b[_a];
+                if (link.TypeLink === mediaType) {
+                    links.push(link);
+                }
             }
-        });
+        }
     }
     return links;
 }

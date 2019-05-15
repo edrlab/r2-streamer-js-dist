@@ -320,11 +320,13 @@ function getPreFetchResources(publication) {
             "application/vnd.ms-opentype", "font/otf", "application/font-sfnt",
             "font/ttf", "application/font-sfnt",
             "font/woff", "application/font-woff", "font/woff2"];
-        publication.Resources.forEach((link) => {
-            if (link.TypeLink && mediaTypes.indexOf(link.TypeLink) >= 0) {
-                links.push(link);
+        for (const mediaType of mediaTypes) {
+            for (const link of publication.Resources) {
+                if (link.TypeLink === mediaType) {
+                    links.push(link);
+                }
             }
-        });
+        }
     }
     return links;
 }
