@@ -28,7 +28,7 @@ function serverAssets(server, routerPathBase64) {
         if (isHead) {
             debug("HEAD !!!!!!!!!!!!!!!!!!!");
         }
-        const pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
+        const pathBase64Str = Buffer.from(reqparams.pathBase64, "base64").toString("utf8");
         let publication;
         try {
             publication = yield server.loadOrGetCachedPublication(pathBase64Str);

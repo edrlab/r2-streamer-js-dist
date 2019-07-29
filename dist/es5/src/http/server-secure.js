@@ -27,7 +27,7 @@ function serverSecureHTTPHeader(server, url) {
             encrypteds.push(buff2);
         }
         var encrypted = Buffer.concat(encrypteds);
-        var base64 = new Buffer(encrypted).toString("base64");
+        var base64 = Buffer.from(encrypted).toString("base64");
         if (IS_DEV) {
             var t2 = process.hrtime(t1);
             var seconds = t2[0];
@@ -58,7 +58,7 @@ function serverSecure(server, topRouter) {
             var urlCheck = server.serverUrl() + req.url;
             var base64Val = req.get("X-" + serverData.trustCheck);
             if (base64Val) {
-                var decodedVal = new Buffer(base64Val, "base64");
+                var decodedVal = Buffer.from(base64Val, "base64");
                 var encrypted = decodedVal;
                 var decrypteds = [];
                 var decryptStream = crypto.createDecipheriv("aes-256-cbc", serverData.trustKey, serverData.trustCheckIV);

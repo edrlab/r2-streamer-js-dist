@@ -27,7 +27,7 @@ function serverSecureHTTPHeader(server, url) {
             encrypteds.push(buff2);
         }
         const encrypted = Buffer.concat(encrypteds);
-        const base64 = new Buffer(encrypted).toString("base64");
+        const base64 = Buffer.from(encrypted).toString("base64");
         if (IS_DEV) {
             const t2 = process.hrtime(t1);
             const seconds = t2[0];
@@ -58,7 +58,7 @@ function serverSecure(server, topRouter) {
             const urlCheck = server.serverUrl() + req.url;
             const base64Val = req.get("X-" + serverData.trustCheck);
             if (base64Val) {
-                const decodedVal = new Buffer(base64Val, "base64");
+                const decodedVal = Buffer.from(base64Val, "base64");
                 const encrypted = decodedVal;
                 const decrypteds = [];
                 const decryptStream = crypto.createDecipheriv("aes-256-cbc", serverData.trustKey, serverData.trustCheckIV);

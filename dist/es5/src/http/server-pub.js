@@ -38,14 +38,14 @@ function serverPub(server, topRouter) {
             reqparams.pathBase64 = value;
             debug(value);
         }
-        var valueStr = new Buffer(value, "base64").toString("utf8");
+        var valueStr = Buffer.from(value, "base64").toString("utf8");
         if (UrlUtils_1.isHTTP(valueStr)) {
             req.pathBase64 = value;
             next();
             return;
         }
         var found = server.getPublications().find(function (filePath) {
-            var filePathBase64 = new Buffer(filePath).toString("base64");
+            var filePathBase64 = Buffer.from(filePath).toString("base64");
             return value === filePathBase64;
         });
         if (found) {
@@ -62,7 +62,7 @@ function serverPub(server, topRouter) {
         if (!reqparams.pathBase64) {
             reqparams.pathBase64 = req.pathBase64;
         }
-        var pathBase64Str = new Buffer(reqparams.pathBase64, "base64").toString("utf8");
+        var pathBase64Str = Buffer.from(reqparams.pathBase64, "base64").toString("utf8");
         debug("Publication: " + pathBase64Str);
         var isSecureHttp = req.secure ||
             req.protocol === "https" ||

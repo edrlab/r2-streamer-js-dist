@@ -42,7 +42,7 @@ function serverRemotePub(_server, topRouter) {
         }
         var urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);
-        var urlDecodedBase64 = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(urlDecoded).toString("base64"));
+        var urlDecodedBase64 = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(urlDecoded).toString("base64"));
         var redirect = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverRemotePub_PATH + "/"))
             + "/pub/" + urlDecodedBase64 + "/";
         debug("REDIRECT: " + req.originalUrl + " ==> " + redirect);

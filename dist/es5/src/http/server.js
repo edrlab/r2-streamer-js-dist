@@ -201,7 +201,7 @@ var Server = (function () {
             }
         });
         return pubs.map(function (pub) {
-            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
+            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
             return "/pub/" + pubid + "/manifest.json";
         });
     };
@@ -216,7 +216,7 @@ var Server = (function () {
             }
         });
         return pubs.map(function (pub) {
-            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
+            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
             return "/pub/" + pubid + "/manifest.json";
         });
     };
@@ -295,7 +295,7 @@ var Server = (function () {
                 var jsFile = path.join(__dirname, "opds2-create-cli.js");
                 var args_1 = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach(function (pub) {
-                    var filePathBase64 = UrlUtils_1.encodeURIComponent_RFC3986(new Buffer(pub).toString("base64"));
+                    var filePathBase64 = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
                     args_1.push(filePathBase64);
                 });
                 debug("SPAWN OPDS2-create: " + args_1[0]);

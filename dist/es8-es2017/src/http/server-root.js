@@ -19,7 +19,7 @@ function serverRoot(server, topRouter) {
 <body>
 <h1>Local Publications</h1>
 ${server.getPublications().map((pub) => {
-            const filePathBase64 = new Buffer(pub).toString("base64");
+            const filePathBase64 = Buffer.from(pub).toString("base64");
             return `\
 <h2><a href=".${server_pub_1.serverPub_PATH}/${UrlUtils_1.encodeURIComponent_RFC3986(filePathBase64)}">\
 ${UrlUtils_1.isHTTP(pub) ? pub : path.basename(pub)}\

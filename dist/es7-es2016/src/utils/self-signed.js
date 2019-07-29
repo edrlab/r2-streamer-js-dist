@@ -28,10 +28,10 @@ function generateSelfSignedData() {
                 const password = uuid.v4();
                 const salt = crypto.randomBytes(16).toString("hex");
                 const hash = crypto.pbkdf2Sync(password, salt, 1000, 32, "sha256").toString("hex");
-                keys.trustKey = new Buffer(hash, "hex");
+                keys.trustKey = Buffer.from(hash, "hex");
                 keys.trustCheck = uuid.v4();
                 const AES_BLOCK_SIZE = 16;
-                const ivBuff = new Buffer(uuid.v4());
+                const ivBuff = Buffer.from(uuid.v4());
                 const iv = ivBuff.slice(0, AES_BLOCK_SIZE);
                 keys.trustCheckIV = iv;
                 resolve(keys);
