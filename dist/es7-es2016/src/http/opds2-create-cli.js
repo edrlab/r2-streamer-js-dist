@@ -29,7 +29,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
     console.log("OPDS2 JSON file already exists.");
     process.exit(1);
 }
-(() => tslib_1.__awaiter(this, void 0, void 0, function* () {
+(() => tslib_1.__awaiter(void 0, void 0, void 0, function* () {
     const feed = new opds2_1.OPDSFeed();
     feed.Metadata = new opds2_metadata_1.OPDSMetadata();
     feed.Metadata.RDFType = "http://schema.org/DataFeed";

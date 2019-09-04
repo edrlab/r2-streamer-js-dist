@@ -131,7 +131,7 @@ var Server = (function () {
                                         return [2];
                                     case 3:
                                         this.httpsServer = https.createServer({ key: certData.private, cert: certData.cert }, this.expressApp).listen(p, function () {
-                                            _this.serverData = tslib_1.__assign({}, certData, { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
+                                            _this.serverData = tslib_1.__assign(tslib_1.__assign({}, certData), { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
                                             resolve(_this.serverData);
                                         });
                                         return [2];

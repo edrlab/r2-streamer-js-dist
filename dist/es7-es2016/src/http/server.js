@@ -123,7 +123,7 @@ Disallow: /
                         return;
                     }
                     this.httpsServer = https.createServer({ key: certData.private, cert: certData.cert }, this.expressApp).listen(p, () => {
-                        this.serverData = Object.assign({}, certData, { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
+                        this.serverData = Object.assign(Object.assign({}, certData), { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
                         resolve(this.serverData);
                     });
                 }));

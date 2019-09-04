@@ -1,5 +1,4 @@
 "use strict";
-var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
@@ -30,7 +29,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
     console.log("OPDS2 JSON file already exists.");
     process.exit(1);
 }
-(function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+(function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
     var feed, nPubs, _i, args_1, pathBase64, pathBase64Str, publication, err_1, publi, linkSelf, coverLink, linkCover, publicationMetadataJson, jsonObj, jsonStr;
     return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {

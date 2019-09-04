@@ -1,5 +1,4 @@
 "use strict";
-var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
@@ -68,7 +67,7 @@ debug("maxPrefetchLinks: " + maxPrefetchLinks);
 var isAnEPUB = epub_1.isEPUBlication(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
-    (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    (function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
         var files, server, url;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
@@ -95,7 +94,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     }); })();
 }
 else {
-    (function () { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    (function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
         var server, url;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
