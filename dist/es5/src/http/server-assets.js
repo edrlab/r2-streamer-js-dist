@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
+var debug_ = require("debug");
+var express = require("express");
+var mime = require("mime-types");
 var path = require("path");
 var transformer_1 = require("r2-shared-js/dist/es5/src/transform/transformer");
 var RangeUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/RangeUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
-var debug_ = require("debug");
-var express = require("express");
-var mime = require("mime-types");
 var request_ext_1 = require("./request-ext");
 var debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {

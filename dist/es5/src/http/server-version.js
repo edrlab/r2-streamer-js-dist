@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var crypto = require("crypto");
-var fs = require("fs");
-var path = require("path");
 var css2json = require("css2json");
 var debug_ = require("debug");
+var fs = require("fs");
 var jsonMarkup = require("json-markup");
+var path = require("path");
 var request_ext_1 = require("./request-ext");
 var debug = debug_("r2:streamer#http/server-version");
 var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";

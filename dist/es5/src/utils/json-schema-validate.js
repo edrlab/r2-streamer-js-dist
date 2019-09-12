@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var fs = require("fs");
-var path = require("path");
 var Ajv = require("ajv");
 var debug_ = require("debug");
+var fs = require("fs");
+var path = require("path");
 var debug = debug_("r2:streamer#utils/json-schema-validate");
 var _cachedJsonSchemas = {};
 function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidate) {

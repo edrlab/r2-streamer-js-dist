@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
 const css2json = require("css2json");
 const debug_ = require("debug");
+const fs = require("fs");
 const jsonMarkup = require("json-markup");
+const path = require("path");
 const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-version");
 const jsonStyle = `

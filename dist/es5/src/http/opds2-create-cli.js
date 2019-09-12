@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
+var moment = require("moment");
+var ta_json_x_1 = require("ta-json-x");
 var init_globals_1 = require("r2-opds-js/dist/es5/src/opds/init-globals");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
 var opds2_link_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-link");
@@ -11,8 +13,6 @@ var init_globals_2 = require("r2-shared-js/dist/es5/src/init-globals");
 var metadata_1 = require("r2-shared-js/dist/es5/src/models/metadata");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
-var moment = require("moment");
-var ta_json_x_1 = require("ta-json-x");
 init_globals_1.initGlobalConverters_OPDS();
 init_globals_2.initGlobalConverters_SHARED();
 init_globals_2.initGlobalConverters_GENERIC();

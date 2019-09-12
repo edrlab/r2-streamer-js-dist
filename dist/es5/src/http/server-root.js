@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var js_beautify_1 = require("js-beautify");
 var path = require("path");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
-var js_beautify_1 = require("js-beautify");
 var request_ext_1 = require("./request-ext");
 var server_opds_browse_v1_1 = require("./server-opds-browse-v1");
 var server_opds_browse_v2_1 = require("./server-opds-browse-v2");
