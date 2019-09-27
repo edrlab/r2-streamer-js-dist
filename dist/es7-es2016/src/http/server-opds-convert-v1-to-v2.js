@@ -170,8 +170,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             if (doValidate) {
                 const jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
                 const jsonSchemasNames = [
-                    opds2Publication ? "opds/publication" : "opds/feed",
-                    !opds2Publication ? "opds/feed" : "opds/publication",
+                    "opds/publication",
                     "opds/acquisition-object",
                     "opds/feed-metadata",
                     "opds/properties",
@@ -188,6 +187,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     "webpub-manifest/extensions/epub/subcollections",
                     "webpub-manifest/extensions/epub/properties",
                 ];
+                if (!opds2Publication) {
+                    jsonSchemasNames.unshift("opds/feed");
+                }
                 const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
                 if (validationErrors) {
                     validationStr = "";
