@@ -46,7 +46,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
         next();
     });
     routerOPDS_browse_v1.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var reqparams, urlDecoded, failure, success, needsStreamingResponse, response, err_1;
+        var reqparams, urlDecoded, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
         return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
@@ -217,10 +217,15 @@ function serverOPDS_browse_v1(_server, topRouter) {
                             }
                         });
                     }); };
+                    headers = {
+                        "Accept": "application/json,application/xml",
+                        "Accept-Language": "en-UK,en-US;q=0.7,en;q=0.5",
+                        "User-Agent": "READIUM2",
+                    };
                     needsStreamingResponse = true;
                     if (!needsStreamingResponse) return [3, 1];
                     request.get({
-                        headers: {},
+                        headers: headers,
                         method: "GET",
                         uri: urlDecoded,
                     })
@@ -233,7 +238,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
                 case 2:
                     _a.trys.push([2, 4, , 5]);
                     return [4, requestPromise({
-                            headers: {},
+                            headers: headers,
                             method: "GET",
                             resolveWithFullResponse: true,
                             uri: urlDecoded,

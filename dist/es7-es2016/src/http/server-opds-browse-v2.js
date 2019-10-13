@@ -202,10 +202,15 @@ function serverOPDS_browse_v2(_server, topRouter) {
             html += "</body></html>";
             res.status(200).send(html);
         });
+        const headers = {
+            "Accept": "application/json,application/xml",
+            "Accept-Language": "en-UK,en-US;q=0.7,en;q=0.5",
+            "User-Agent": "READIUM2",
+        };
         const needsStreamingResponse = true;
         if (needsStreamingResponse) {
             request.get({
-                headers: {},
+                headers,
                 method: "GET",
                 uri: urlDecoded,
             })
@@ -216,7 +221,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
             let response;
             try {
                 response = yield requestPromise({
-                    headers: {},
+                    headers,
                     method: "GET",
                     resolveWithFullResponse: true,
                     uri: urlDecoded,

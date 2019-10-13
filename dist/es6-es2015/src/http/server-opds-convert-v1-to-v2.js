@@ -258,10 +258,15 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                 (doValidate ? (validationStr ? ("<hr><p><pre>" + validationStr + "</pre></p>") : ("<hr><p>JSON SCHEMA OK.</p>")) : "") +
                 "</body></html>");
         });
+        const headers = {
+            "Accept": "application/json,application/xml",
+            "Accept-Language": "en-UK,en-US;q=0.7,en;q=0.5",
+            "User-Agent": "READIUM2",
+        };
         const needsStreamingResponse = true;
         if (needsStreamingResponse) {
             request.get({
-                headers: {},
+                headers,
                 method: "GET",
                 uri: urlDecoded,
             })
@@ -272,7 +277,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             let response;
             try {
                 response = yield requestPromise({
-                    headers: {},
+                    headers,
                     method: "GET",
                     resolveWithFullResponse: true,
                     uri: urlDecoded,
