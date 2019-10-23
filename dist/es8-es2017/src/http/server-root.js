@@ -12,6 +12,16 @@ const server_pub_1 = require("./server-pub");
 const server_url_1 = require("./server-url");
 const server_version_1 = require("./server-version");
 function serverRoot(server, topRouter) {
+    topRouter.options("*", (_req, res) => {
+        server.setResponseCORS(res);
+        const serverData = server.serverInfo();
+        if (serverData && serverData.trustKey &&
+            serverData.trustCheck && serverData.trustCheckIV) {
+            res.setHeader("Access-Control-Allow-Headers", res.getHeader("Access-Control-Allow-Headers").toString() +
+                ", X-" + serverData.trustCheck);
+        }
+        res.status(200).end();
+    });
     topRouter.get("/", (_req, res) => {
         const html = `\
 <!DOCTYPE html>

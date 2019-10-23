@@ -12,6 +12,16 @@ var server_pub_1 = require("./server-pub");
 var server_url_1 = require("./server-url");
 var server_version_1 = require("./server-version");
 function serverRoot(server, topRouter) {
+    topRouter.options("*", function (_req, res) {
+        server.setResponseCORS(res);
+        var serverData = server.serverInfo();
+        if (serverData && serverData.trustKey &&
+            serverData.trustCheck && serverData.trustCheckIV) {
+            res.setHeader("Access-Control-Allow-Headers", res.getHeader("Access-Control-Allow-Headers").toString() +
+                ", X-" + serverData.trustCheck);
+        }
+        res.status(200).end();
+    });
     topRouter.get("/", function (_req, res) {
         var html = "<!DOCTYPE html>\n<html>\n<body>\n<h1>Local Publications</h1>\n" + server.getPublications().map(function (pub) {
             var filePathBase64 = Buffer.from(pub).toString("base64");

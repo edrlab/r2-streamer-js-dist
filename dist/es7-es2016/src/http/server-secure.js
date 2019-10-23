@@ -46,6 +46,10 @@ function serverSecure(server, topRouter) {
             next();
             return;
         }
+        if (req.method.toLowerCase() === "options") {
+            next();
+            return;
+        }
         let doFail = true;
         const serverData = server.serverInfo();
         if (serverData && serverData.trustKey &&
