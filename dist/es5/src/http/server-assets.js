@@ -5,6 +5,7 @@ var debug_ = require("debug");
 var express = require("express");
 var mime = require("mime-types");
 var path = require("path");
+var zipHasEntry_1 = require("r2-shared-js/dist/es5/src/_utils/zipHasEntry");
 var transformer_1 = require("r2-shared-js/dist/es5/src/transform/transformer");
 var RangeUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/RangeUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
@@ -58,7 +59,7 @@ function serverAssets(server, routerPathBase64) {
                     }
                     zip = zipInternal.Value;
                     pathInZip = reqparams.asset;
-                    if (!zip.hasEntry(pathInZip)) {
+                    if (!zipHasEntry_1.zipHasEntry(zip, pathInZip, undefined)) {
                         err = "Asset not in zip! " + pathInZip;
                         debug(err);
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
