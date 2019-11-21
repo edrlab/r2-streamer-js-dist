@@ -10,8 +10,8 @@ var morgan = require("morgan");
 var path = require("path");
 var request = require("request");
 var requestPromise = require("request-promise-native");
-var ta_json_x_1 = require("ta-json-x");
 var xmldom = require("xmldom");
+var serializable_1 = require("r2-lcp-js/dist/es5/src/serializable");
 var converter_1 = require("r2-opds-js/dist/es5/src/opds/converter");
 var opds_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds");
 var opds_entry_1 = require("r2-opds-js/dist/es5/src/opds/opds1/opds-entry");
@@ -150,9 +150,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             }
                                         }
                                     };
-                                    jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1Entry ? opds1Entry : opds1Feed);
+                                    jsonObjOPDS1 = serializable_1.TaJsonSerialize(opds1Entry ? opds1Entry : opds1Feed);
                                     JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-                                    jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2Publication ? opds2Publication : opds2Feed);
+                                    jsonObjOPDS2 = serializable_1.TaJsonSerialize(opds2Publication ? opds2Publication : opds2Feed);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
                                         jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");

@@ -8,8 +8,8 @@ var fs = require("fs");
 var http = require("http");
 var https = require("https");
 var path = require("path");
-var ta_json_x_1 = require("ta-json-x");
 var tmp_1 = require("tmp");
+var serializable_1 = require("r2-lcp-js/dist/es5/src/serializable");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
@@ -318,7 +318,7 @@ var Server = (function () {
             return undefined;
         }
         var json = global.JSON.parse(jsonStr);
-        this.publicationsOPDSfeed = ta_json_x_1.JSON.deserialize(json, opds2_1.OPDSFeed);
+        this.publicationsOPDSfeed = serializable_1.TaJsonDeserialize(json, opds2_1.OPDSFeed);
         return this.publicationsOPDSfeed;
     };
     return Server;

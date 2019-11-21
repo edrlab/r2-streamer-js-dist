@@ -8,7 +8,7 @@ const DotProp = require("dot-prop");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const path = require("path");
-const ta_json_x_1 = require("ta-json-x");
+const serializable_1 = require("r2-lcp-js/dist/es7-es2016/src/serializable");
 const epub_1 = require("r2-shared-js/dist/es7-es2016/src/parser/epub");
 const UrlUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const JsonUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/JsonUtils");
@@ -206,7 +206,7 @@ function serverManifestJson(server, routerPathBase64) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            const jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
+            const jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -266,7 +266,7 @@ function serverManifestJson(server, routerPathBase64) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/webpub+json; charset=utf-8");
-            const publicationJsonObj = ta_json_x_1.JSON.serialize(publication);
+            const publicationJsonObj = serializable_1.TaJsonSerialize(publication);
             if (isCanonical) {
                 if (publicationJsonObj.links) {
                     delete publicationJsonObj.links;

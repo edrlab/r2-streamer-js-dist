@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var fs = require("fs");
 var moment = require("moment");
-var ta_json_x_1 = require("ta-json-x");
+var serializable_1 = require("r2-lcp-js/dist/es5/src/serializable");
 var init_globals_1 = require("r2-opds-js/dist/es5/src/opds/init-globals");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
 var opds2_link_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-link");
@@ -90,8 +90,8 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 }
                 if (publication.Metadata) {
                     try {
-                        publicationMetadataJson = ta_json_x_1.JSON.serialize(publication.Metadata);
-                        publi.Metadata = ta_json_x_1.JSON.deserialize(publicationMetadataJson, metadata_1.Metadata);
+                        publicationMetadataJson = serializable_1.TaJsonSerialize(publication.Metadata);
+                        publi.Metadata = serializable_1.TaJsonDeserialize(publicationMetadataJson, metadata_1.Metadata);
                     }
                     catch (err) {
                         console.log(err);
@@ -104,7 +104,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 return [3, 1];
             case 7:
                 feed.Metadata.NumberOfItems = nPubs;
-                jsonObj = ta_json_x_1.JSON.serialize(feed);
+                jsonObj = serializable_1.TaJsonSerialize(feed);
                 jsonStr = global.JSON.stringify(jsonObj, null, "");
                 fs.writeFileSync(opdsJsonFilePath, jsonStr, { encoding: "utf8" });
                 console.log("DONE! :)");

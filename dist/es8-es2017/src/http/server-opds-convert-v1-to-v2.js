@@ -9,8 +9,8 @@ const morgan = require("morgan");
 const path = require("path");
 const request = require("request");
 const requestPromise = require("request-promise-native");
-const ta_json_x_1 = require("ta-json-x");
 const xmldom = require("xmldom");
+const serializable_1 = require("r2-lcp-js/dist/es8-es2017/src/serializable");
 const converter_1 = require("r2-opds-js/dist/es8-es2017/src/opds/converter");
 const opds_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds1/opds");
 const opds_entry_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds1/opds-entry");
@@ -161,9 +161,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     }
                 }
             };
-            const jsonObjOPDS1 = ta_json_x_1.JSON.serialize(opds1Entry ? opds1Entry : opds1Feed);
+            const jsonObjOPDS1 = serializable_1.TaJsonSerialize(opds1Entry ? opds1Entry : opds1Feed);
             JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-            const jsonObjOPDS2 = ta_json_x_1.JSON.serialize(opds2Publication ? opds2Publication : opds2Feed);
+            const jsonObjOPDS2 = serializable_1.TaJsonSerialize(opds2Publication ? opds2Publication : opds2Feed);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {

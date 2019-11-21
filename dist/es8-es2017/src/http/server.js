@@ -7,8 +7,8 @@ const fs = require("fs");
 const http = require("http");
 const https = require("https");
 const path = require("path");
-const ta_json_x_1 = require("ta-json-x");
 const tmp_1 = require("tmp");
+const serializable_1 = require("r2-lcp-js/dist/es8-es2017/src/serializable");
 const opds2_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds2/opds2");
 const publication_parser_1 = require("r2-shared-js/dist/es8-es2017/src/parser/publication-parser");
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
@@ -286,7 +286,7 @@ Disallow: /
             return undefined;
         }
         const json = global.JSON.parse(jsonStr);
-        this.publicationsOPDSfeed = ta_json_x_1.JSON.deserialize(json, opds2_1.OPDSFeed);
+        this.publicationsOPDSfeed = serializable_1.TaJsonDeserialize(json, opds2_1.OPDSFeed);
         return this.publicationsOPDSfeed;
     }
 }

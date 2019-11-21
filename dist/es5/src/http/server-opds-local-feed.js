@@ -7,7 +7,7 @@ var DotProp = require("dot-prop");
 var express = require("express");
 var jsonMarkup = require("json-markup");
 var path = require("path");
-var ta_json_x_1 = require("ta-json-x");
+var serializable_1 = require("r2-lcp-js/dist/es5/src/serializable");
 var opds2_link_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2-link");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
@@ -99,7 +99,7 @@ function serverOPDS_local_feed(server, topRouter) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            var jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
+            var jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
             var validationStr = void 0;
             var doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -169,7 +169,7 @@ function serverOPDS_local_feed(server, topRouter) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/opds+json; charset=utf-8");
-            var publicationsJsonObj = ta_json_x_1.JSON.serialize(feed);
+            var publicationsJsonObj = serializable_1.TaJsonSerialize(feed);
             absolutizeURLs(publicationsJsonObj);
             var publicationsJsonStr = isCanonical ?
                 global.JSON.stringify(JsonUtils_1.sortObject(publicationsJsonObj), null, "") :

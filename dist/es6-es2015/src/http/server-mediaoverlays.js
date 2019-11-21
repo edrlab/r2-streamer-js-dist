@@ -7,7 +7,7 @@ const debug_ = require("debug");
 const express = require("express");
 const jsonMarkup = require("json-markup");
 const path = require("path");
-const ta_json_x_1 = require("ta-json-x");
+const serializable_1 = require("r2-lcp-js/dist/es6-es2015/src/serializable");
 const epub_1 = require("r2-shared-js/dist/es6-es2015/src/parser/epub");
 const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
 const JsonUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/JsonUtils");
@@ -119,7 +119,7 @@ function serverMediaOverlays(server, routerPathBase64) {
         if (!objToSerialize) {
             objToSerialize = [];
         }
-        let jsonObj = ta_json_x_1.JSON.serialize(objToSerialize);
+        let jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
         jsonObj = { "media-overlay": jsonObj };
         if (isShow) {
             absolutizeURLs(jsonObj);
