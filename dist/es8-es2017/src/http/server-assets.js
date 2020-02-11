@@ -57,7 +57,7 @@ function serverAssets(server, routerPathBase64) {
             return;
         }
         let link;
-        if ((publication.Resources || publication.Spine)
+        if ((publication.Resources || publication.Spine || publication.Links)
             && pathInZip.indexOf("META-INF/") !== 0
             && !pathInZip.endsWith(".opf")) {
             const relativePath = pathInZip;
@@ -72,6 +72,16 @@ function serverAssets(server, routerPathBase64) {
             if (!link) {
                 if (publication.Spine) {
                     link = publication.Spine.find((l) => {
+                        if (l.Href === relativePath) {
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            }
+            if (!link) {
+                if (publication.Links) {
+                    link = publication.Links.find((l) => {
                         if (l.Href === relativePath) {
                             return true;
                         }
@@ -146,11 +156,12 @@ function serverAssets(server, routerPathBase64) {
             return;
         }
         const doTransform = !isEncrypted || (isObfuscatedFont || !server.disableDecryption);
+        const sessionInfo = req.query[request_ext_1.URL_PARAM_SESSION_INFO];
         if (doTransform && link) {
             let transformFail = false;
             let transformedStream;
             try {
-                transformedStream = await transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd);
+                transformedStream = await transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, sessionInfo);
             }
             catch (err) {
                 debug(err);

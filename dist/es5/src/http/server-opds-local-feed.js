@@ -60,7 +60,7 @@ function serverOPDS_local_feed(server, topRouter) {
                         obj.href = absoluteURL(obj.href);
                     }
                     if (isShow &&
-                        obj.type === "application/webpub+json" &&
+                        (obj.type === "application/webpub+json" || obj.type === "application/audiobook+json") &&
                         obj.rel === "http://opds-spec.org/acquisition" &&
                         obj.href.endsWith("/manifest.json")) {
                         obj.href += "/show";

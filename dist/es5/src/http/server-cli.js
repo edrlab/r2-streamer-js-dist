@@ -75,7 +75,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
                         .discard("node_modules")
                         .depth(5)
                         .paths(filePath)
-                        .ext([".epub", ".epub3", ".cbz"])
+                        .ext([".epub", ".epub3", ".cbz", ".audiobook"])
                         .find()];
                 case 1:
                     files = _a.sent();

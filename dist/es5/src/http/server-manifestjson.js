@@ -35,7 +35,7 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, contentType, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
         return tslib_1.__generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
@@ -101,9 +101,12 @@ function serverManifestJson(server, routerPathBase64) {
                             "")
                         + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
                     manifestURL = rootUrl + "/" + "manifest.json";
+                    contentType = (publication.Metadata && publication.Metadata.RDFType &&
+                        /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
+                        "application/audiobook+json" : "application/webpub+json";
                     selfLink = publication.searchLinkByRel("self");
                     if (!selfLink) {
-                        publication.AddLink("application/webpub+json", ["self"], manifestURL, undefined);
+                        publication.AddLink(contentType, ["self"], manifestURL, undefined);
                     }
                     hasMO = false;
                     if (publication.Spine) {
@@ -289,7 +292,7 @@ function serverManifestJson(server, routerPathBase64) {
                     return [3, 27];
                 case 26:
                     server.setResponseCORS(res);
-                    res.set("Content-Type", "application/webpub+json; charset=utf-8");
+                    res.set("Content-Type", contentType + "; charset=utf-8");
                     publicationJsonObj = serializable_1.TaJsonSerialize(publication);
                     if (isCanonical) {
                         if (publicationJsonObj.links) {

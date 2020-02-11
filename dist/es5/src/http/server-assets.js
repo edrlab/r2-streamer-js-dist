@@ -15,7 +15,7 @@ function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, doTransform, transformFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
+        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, doTransform, sessionInfo, transformFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -66,7 +66,7 @@ function serverAssets(server, routerPathBase64) {
                             + err + "</p></body></html>");
                         return [2];
                     }
-                    if ((publication.Resources || publication.Spine)
+                    if ((publication.Resources || publication.Spine || publication.Links)
                         && pathInZip.indexOf("META-INF/") !== 0
                         && !pathInZip.endsWith(".opf")) {
                         relativePath_1 = pathInZip;
@@ -81,6 +81,16 @@ function serverAssets(server, routerPathBase64) {
                         if (!link) {
                             if (publication.Spine) {
                                 link = publication.Spine.find(function (l) {
+                                    if (l.Href === relativePath_1) {
+                                        return true;
+                                    }
+                                    return false;
+                                });
+                            }
+                        }
+                        if (!link) {
+                            if (publication.Links) {
+                                link = publication.Links.find(function (l) {
                                     if (l.Href === relativePath_1) {
                                         return true;
                                     }
@@ -165,13 +175,14 @@ function serverAssets(server, routerPathBase64) {
                     return [2];
                 case 11:
                     doTransform = !isEncrypted || (isObfuscatedFont || !server.disableDecryption);
+                    sessionInfo = req.query[request_ext_1.URL_PARAM_SESSION_INFO];
                     if (!(doTransform && link)) return [3, 16];
                     transformFail = false;
                     transformedStream = void 0;
                     _b.label = 12;
                 case 12:
                     _b.trys.push([12, 14, , 15]);
-                    return [4, transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd)];
+                    return [4, transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, sessionInfo)];
                 case 13:
                     transformedStream = _b.sent();
                     return [3, 15];

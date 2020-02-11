@@ -96,9 +96,12 @@ function serverManifestJson(server, routerPathBase64) {
                 "")
             + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
         const manifestURL = rootUrl + "/" + "manifest.json";
+        const contentType = (publication.Metadata && publication.Metadata.RDFType &&
+            /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
+            "application/audiobook+json" : "application/webpub+json";
         const selfLink = publication.searchLinkByRel("self");
         if (!selfLink) {
-            publication.AddLink("application/webpub+json", ["self"], manifestURL, undefined);
+            publication.AddLink(contentType, ["self"], manifestURL, undefined);
         }
         function absoluteURL(href) {
             return rootUrl + "/" + href;
@@ -265,7 +268,7 @@ function serverManifestJson(server, routerPathBase64) {
         }
         else {
             server.setResponseCORS(res);
-            res.set("Content-Type", "application/webpub+json; charset=utf-8");
+            res.set("Content-Type", `${contentType}; charset=utf-8`);
             const publicationJsonObj = serializable_1.TaJsonSerialize(publication);
             if (isCanonical) {
                 if (publicationJsonObj.links) {
