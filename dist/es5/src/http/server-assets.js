@@ -15,7 +15,7 @@ function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isObfuscatedFont, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, partialByteLength, ranges, err, zipStream_, _a, err_2, doTransform, sessionInfo, transformFail, transformedStream, err_3, err, zipData, err_4, rangeHeader;
+        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _a, err_2, doTransform, sessionInfo, fullUrl, transformedStream, err_3, err, zipData, err_4, partialByteLength, rangeHeader;
         return tslib_1.__generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -127,13 +127,9 @@ function serverAssets(server, routerPathBase64) {
                         mediaType.indexOf("+xhtml") > 0 ||
                         mediaType.indexOf("+xml") > 0);
                     isEncrypted = link && link.Properties && link.Properties.Encrypted;
-                    isObfuscatedFont = isEncrypted && link &&
-                        (link.Properties.Encrypted.Algorithm === "http://ns.adobe.com/pdf/enc#RC"
-                            || link.Properties.Encrypted.Algorithm === "http://www.idpf.org/2008/embedding");
                     isPartialByteRangeRequest = ((req.headers && req.headers.range) ? true : false);
                     partialByteBegin = 0;
                     partialByteEnd = -1;
-                    partialByteLength = 0;
                     if (isPartialByteRangeRequest) {
                         debug(req.headers.range);
                         ranges = RangeUtils_1.parseRangeHeader(req.headers.range);
@@ -141,7 +137,7 @@ function serverAssets(server, routerPathBase64) {
                             if (ranges.length > 1) {
                                 err = "Too many HTTP ranges: " + req.headers.range;
                                 debug(err);
-                                res.status(500).send("<html><body><p>Internal Server Error</p><p>"
+                                res.status(416).send("<html><body><p>Internal Server Error</p><p>"
                                     + err + "</p></body></html>");
                                 return [2];
                             }
@@ -151,6 +147,7 @@ function serverAssets(server, routerPathBase64) {
                                 partialByteBegin = 0;
                             }
                         }
+                        debug(pathInZip + " >> " + partialByteBegin + "-" + partialByteEnd);
                     }
                     _b.label = 5;
                 case 5:
@@ -174,15 +171,15 @@ function serverAssets(server, routerPathBase64) {
                         + err_2 + "</p></body></html>");
                     return [2];
                 case 11:
-                    doTransform = !isEncrypted || (isObfuscatedFont || !server.disableDecryption);
+                    doTransform = true;
                     sessionInfo = req.query[request_ext_1.URL_PARAM_SESSION_INFO];
                     if (!(doTransform && link)) return [3, 16];
-                    transformFail = false;
+                    fullUrl = "" + server.serverUrl() + req.originalUrl;
                     transformedStream = void 0;
                     _b.label = 12;
                 case 12:
                     _b.trys.push([12, 14, , 15]);
-                    return [4, transformer_1.Transformers.tryStream(publication, link, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, sessionInfo)];
+                    return [4, transformer_1.Transformers.tryStream(publication, link, fullUrl, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, sessionInfo)];
                 case 13:
                     transformedStream = _b.sent();
                     return [3, 15];
@@ -200,9 +197,6 @@ function serverAssets(server, routerPathBase64) {
                         zipStream_ = transformedStream;
                     }
                     else {
-                        transformFail = true;
-                    }
-                    if (transformFail) {
                         err = "Transform fail (encryption scheme not supported?)";
                         debug(err);
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
@@ -211,12 +205,6 @@ function serverAssets(server, routerPathBase64) {
                     }
                     _b.label = 16;
                 case 16:
-                    if (partialByteEnd < 0) {
-                        partialByteEnd = zipStream_.length - 1;
-                    }
-                    partialByteLength = isPartialByteRangeRequest ?
-                        partialByteEnd - partialByteBegin + 1 :
-                        zipStream_.length;
                     if (!isShow) return [3, 21];
                     zipData = void 0;
                     _b.label = 17;
@@ -251,12 +239,25 @@ function serverAssets(server, routerPathBase64) {
                     return [2];
                 case 21:
                     server.setResponseCORS(res);
-                    res.setHeader("Cache-Control", "public,max-age=86400");
+                    if (isPartialByteRangeRequest) {
+                        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+                        res.setHeader("Pragma", "no-cache");
+                        res.setHeader("Expires", "0");
+                    }
+                    else {
+                        res.setHeader("Cache-Control", "public,max-age=86400");
+                    }
                     if (mediaType) {
                         res.set("Content-Type", mediaType);
                     }
                     res.setHeader("Accept-Ranges", "bytes");
                     if (isPartialByteRangeRequest) {
+                        if (partialByteEnd < 0) {
+                            partialByteEnd = zipStream_.length - 1;
+                        }
+                        partialByteLength = isPartialByteRangeRequest ?
+                            partialByteEnd - partialByteBegin + 1 :
+                            zipStream_.length;
                         res.setHeader("Content-Length", "" + partialByteLength);
                         rangeHeader = "bytes " + partialByteBegin + "-" + partialByteEnd + "/" + zipStream_.length;
                         res.setHeader("Content-Range", rangeHeader);
@@ -271,8 +272,14 @@ function serverAssets(server, routerPathBase64) {
                     }
                     else {
                         zipStream_.stream
+                            .on("error", function f() {
+                            debug("ZIP ERROR " + pathInZip);
+                        })
                             .pipe(res)
-                            .on("close", function () {
+                            .on("error", function f() {
+                            debug("RES ERROR " + pathInZip);
+                        })
+                            .on("close", function f() {
                             res.end();
                         });
                     }
