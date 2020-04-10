@@ -25,4 +25,5 @@ export interface IRequestQueryParams {
     authRefresh: string;
     [mediaOverlayURLParam]: string;
     [URL_PARAM_SESSION_INFO]: string;
+    [key: string]: string;
 }
