@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverOPDS_convert_v1_to_v2 = exports.serverOPDS_convert_v1_to_v2_PATH = void 0;
 const css2json = require("css2json");
 const debug_ = require("debug");
 const DotProp = require("dot-prop");

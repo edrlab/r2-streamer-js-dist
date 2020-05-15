@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.jsonSchemaValidate = void 0;
 var Ajv = require("ajv");
 var debug_ = require("debug");
 var fs = require("fs");

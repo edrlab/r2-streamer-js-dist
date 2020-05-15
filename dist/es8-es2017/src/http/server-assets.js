@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverAssets = void 0;
 const debug_ = require("debug");
 const express = require("express");
 const mime = require("mime-types");

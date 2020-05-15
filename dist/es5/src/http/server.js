@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Server = exports.MAX_PREFETCH_LINKS = void 0;
 var tslib_1 = require("tslib");
 var child_process = require("child_process");
 var debug_ = require("debug");

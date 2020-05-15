@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverOPDS_browse_v2 = exports.serverOPDS_auth_PATH = exports.serverOPDS_dataUrl_PATH = exports.serverOPDS_browse_v2_PATH = void 0;
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var css2json = require("css2json");

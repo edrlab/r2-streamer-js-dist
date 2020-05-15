@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverVersion = exports.serverVersion_PATH = void 0;
 const crypto = require("crypto");
 const css2json = require("css2json");
 const debug_ = require("debug");

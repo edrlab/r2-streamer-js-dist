@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Server = exports.MAX_PREFETCH_LINKS = void 0;
 const child_process = require("child_process");
 const debug_ = require("debug");
 const express = require("express");

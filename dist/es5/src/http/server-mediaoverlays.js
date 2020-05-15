@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverMediaOverlays = void 0;
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var css2json = require("css2json");
@@ -113,7 +114,6 @@ function serverMediaOverlays(server, routerPathBase64) {
                         objToSerialize = [];
                     }
                     jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
-                    jsonObj = { "media-overlay": jsonObj };
                     if (isShow) {
                         absolutizeURLs(jsonObj);
                         jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
@@ -124,7 +124,7 @@ function serverMediaOverlays(server, routerPathBase64) {
                     }
                     else {
                         server.setResponseCORS(res);
-                        res.set("Content-Type", "application/vnd.readium.mo+json; charset=utf-8");
+                        res.set("Content-Type", "application/vnd.syncnarr+json; charset=utf-8");
                         jsonStr = isCanonical ?
                             global.JSON.stringify(JsonUtils_1.sortObject(jsonObj), null, "") :
                             global.JSON.stringify(jsonObj, null, "  ");

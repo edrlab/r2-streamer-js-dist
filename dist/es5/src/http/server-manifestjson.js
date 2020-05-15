@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverManifestJson = void 0;
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var css2json = require("css2json");
@@ -125,7 +126,7 @@ function serverManifestJson(server, routerPathBase64) {
                         if (!moLink) {
                             moURL = epub_1.mediaOverlayURLPath +
                                 "?" + epub_1.mediaOverlayURLParam + "={path}";
-                            publication.AddLink("application/vnd.readium.mo+json", ["media-overlay"], moURL, true);
+                            publication.AddLink("application/vnd.syncnarr+json", ["media-overlay"], moURL, true);
                         }
                     }
                     coverLink = publication.GetCover();

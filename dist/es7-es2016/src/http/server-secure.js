@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverSecure = exports.serverSecureHTTPHeader = void 0;
 const crypto = require("crypto");
 const debug_ = require("debug");
 const debug = debug_("r2:streamer#http/server-secure");

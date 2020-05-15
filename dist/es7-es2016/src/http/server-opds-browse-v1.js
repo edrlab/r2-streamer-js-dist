@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.serverOPDS_browse_v1 = exports.serverOPDS_browse_v1_PATH = void 0;
 const tslib_1 = require("tslib");
 const debug_ = require("debug");
 const express = require("express");

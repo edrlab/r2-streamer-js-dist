@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.trailingSlashRedirect = void 0;
 var debug_ = require("debug");
 var debug = debug_("r2:streamer#http/server-trailing-slash-redirect");
 function trailingSlashRedirect(req, res, next) {
