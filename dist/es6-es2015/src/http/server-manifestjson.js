@@ -99,7 +99,10 @@ function serverManifestJson(server, routerPathBase64) {
         const manifestURL = rootUrl + "/" + "manifest.json";
         const contentType = (publication.Metadata && publication.Metadata.RDFType &&
             /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
-            "application/audiobook+json" : "application/webpub+json";
+            "application/audiobook+json" : ((publication.Metadata && publication.Metadata.RDFType &&
+            (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
+            "application/webpub+json");
         const selfLink = publication.searchLinkByRel("self");
         if (!selfLink) {
             publication.AddLink(contentType, ["self"], manifestURL, undefined);

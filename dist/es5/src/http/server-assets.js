@@ -16,9 +16,9 @@ function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
     routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
-        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, link, relativePath_1, err, mediaType, isText, isEncrypted, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _a, err_2, doTransform, sessionInfo, fullUrl, transformedStream, err_3, err, zipData, err_4, partialByteLength, rangeHeader;
-        return tslib_1.__generator(this, function (_b) {
-            switch (_b.label) {
+        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, isDivina, link, findLinkRecursive, relativePath, _i, _a, l, _b, _c, l, _d, _e, l, err, mediaType, isText, isEncrypted, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _f, err_2, doTransform, sessionInfo, fullUrl, transformedStream, err_3, err, zipData, err_4, partialByteLength, rangeHeader;
+        return tslib_1.__generator(this, function (_g) {
+            switch (_g.label) {
                 case 0:
                     reqparams = req.params;
                     if (!reqparams.pathBase64) {
@@ -36,15 +36,15 @@ function serverAssets(server, routerPathBase64) {
                         debug("HEAD !!!!!!!!!!!!!!!!!!!");
                     }
                     pathBase64Str = Buffer.from(reqparams.pathBase64, "base64").toString("utf8");
-                    _b.label = 1;
+                    _g.label = 1;
                 case 1:
-                    _b.trys.push([1, 3, , 4]);
+                    _g.trys.push([1, 3, , 4]);
                     return [4, server.loadOrGetCachedPublication(pathBase64Str)];
                 case 2:
-                    publication = _b.sent();
+                    publication = _g.sent();
                     return [3, 4];
                 case 3:
-                    err_1 = _b.sent();
+                    err_1 = _g.sent();
                     debug(err_1);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_1 + "</p></body></html>");
@@ -67,40 +67,72 @@ function serverAssets(server, routerPathBase64) {
                             + err + "</p></body></html>");
                         return [2];
                     }
+                    isDivina = publication.Metadata && publication.Metadata.RDFType &&
+                        (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                            /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType));
+                    findLinkRecursive = function (relativePath, l) {
+                        if (l.Href === relativePath) {
+                            return l;
+                        }
+                        var found;
+                        if (l.Children) {
+                            for (var _i = 0, _a = l.Children; _i < _a.length; _i++) {
+                                var child = _a[_i];
+                                found = findLinkRecursive(relativePath, child);
+                                if (found) {
+                                    return found;
+                                }
+                            }
+                        }
+                        if (l.Alternate) {
+                            for (var _b = 0, _c = l.Alternate; _b < _c.length; _b++) {
+                                var alt = _c[_b];
+                                found = findLinkRecursive(relativePath, alt);
+                                if (found) {
+                                    return found;
+                                }
+                            }
+                        }
+                        return undefined;
+                    };
                     if ((publication.Resources || publication.Spine || publication.Links)
                         && pathInZip.indexOf("META-INF/") !== 0
                         && !pathInZip.endsWith(".opf")) {
-                        relativePath_1 = pathInZip;
+                        relativePath = pathInZip;
                         if (publication.Resources) {
-                            link = publication.Resources.find(function (l) {
-                                if (l.Href === relativePath_1) {
-                                    return true;
+                            for (_i = 0, _a = publication.Resources; _i < _a.length; _i++) {
+                                l = _a[_i];
+                                link = findLinkRecursive(relativePath, l);
+                                if (link) {
+                                    break;
                                 }
-                                return false;
-                            });
+                            }
                         }
                         if (!link) {
                             if (publication.Spine) {
-                                link = publication.Spine.find(function (l) {
-                                    if (l.Href === relativePath_1) {
-                                        return true;
+                                for (_b = 0, _c = publication.Spine; _b < _c.length; _b++) {
+                                    l = _c[_b];
+                                    link = findLinkRecursive(relativePath, l);
+                                    if (link) {
+                                        break;
                                     }
-                                    return false;
-                                });
+                                }
                             }
                         }
                         if (!link) {
                             if (publication.Links) {
-                                link = publication.Links.find(function (l) {
-                                    if (l.Href === relativePath_1) {
-                                        return true;
+                                for (_d = 0, _e = publication.Links; _d < _e.length; _d++) {
+                                    l = _e[_d];
+                                    link = findLinkRecursive(relativePath, l);
+                                    if (link) {
+                                        break;
                                     }
-                                    return false;
-                                });
+                                }
                             }
                         }
-                        if (!link) {
-                            err = "Asset not declared in publication spine/resources!" + relativePath_1;
+                        if (!link &&
+                            !isDivina) {
+                            err = "Asset not declared in publication spine/resources!" + relativePath;
                             debug(err);
                             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                                 + err + "</p></body></html>");
@@ -150,23 +182,23 @@ function serverAssets(server, routerPathBase64) {
                         }
                         debug(pathInZip + " >> " + partialByteBegin + "-" + partialByteEnd);
                     }
-                    _b.label = 5;
+                    _g.label = 5;
                 case 5:
-                    _b.trys.push([5, 10, , 11]);
+                    _g.trys.push([5, 10, , 11]);
                     if (!(isPartialByteRangeRequest && !isEncrypted)) return [3, 7];
                     return [4, zip.entryStreamRangePromise(pathInZip, partialByteBegin, partialByteEnd)];
                 case 6:
-                    _a = _b.sent();
+                    _f = _g.sent();
                     return [3, 9];
                 case 7: return [4, zip.entryStreamPromise(pathInZip)];
                 case 8:
-                    _a = _b.sent();
-                    _b.label = 9;
+                    _f = _g.sent();
+                    _g.label = 9;
                 case 9:
-                    zipStream_ = _a;
+                    zipStream_ = _f;
                     return [3, 11];
                 case 10:
-                    err_2 = _b.sent();
+                    err_2 = _g.sent();
                     debug(err_2);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_2 + "</p></body></html>");
@@ -177,15 +209,15 @@ function serverAssets(server, routerPathBase64) {
                     if (!(doTransform && link)) return [3, 16];
                     fullUrl = "" + server.serverUrl() + req.originalUrl;
                     transformedStream = void 0;
-                    _b.label = 12;
+                    _g.label = 12;
                 case 12:
-                    _b.trys.push([12, 14, , 15]);
+                    _g.trys.push([12, 14, , 15]);
                     return [4, transformer_1.Transformers.tryStream(publication, link, fullUrl, zipStream_, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, sessionInfo)];
                 case 13:
-                    transformedStream = _b.sent();
+                    transformedStream = _g.sent();
                     return [3, 15];
                 case 14:
-                    err_3 = _b.sent();
+                    err_3 = _g.sent();
                     debug(err_3);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_3 + "</p></body></html>");
@@ -204,19 +236,19 @@ function serverAssets(server, routerPathBase64) {
                             + err + "</p></body></html>");
                         return [2];
                     }
-                    _b.label = 16;
+                    _g.label = 16;
                 case 16:
                     if (!isShow) return [3, 21];
                     zipData = void 0;
-                    _b.label = 17;
+                    _g.label = 17;
                 case 17:
-                    _b.trys.push([17, 19, , 20]);
+                    _g.trys.push([17, 19, , 20]);
                     return [4, BufferUtils_1.streamToBufferPromise(zipStream_.stream)];
                 case 18:
-                    zipData = _b.sent();
+                    zipData = _g.sent();
                     return [3, 20];
                 case 19:
-                    err_4 = _b.sent();
+                    err_4 = _g.sent();
                     debug(err_4);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_4 + "</p></body></html>");
