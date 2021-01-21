@@ -160,6 +160,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                         jsonSchemasNames = [
                                             "opds/publication",
                                             "opds/acquisition-object",
+                                            "opds/catalog-entry",
                                             "opds/feed-metadata",
                                             "opds/properties",
                                             "webpub-manifest/publication",
@@ -174,6 +175,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             "webpub-manifest/extensions/epub/metadata",
                                             "webpub-manifest/extensions/epub/subcollections",
                                             "webpub-manifest/extensions/epub/properties",
+                                            "webpub-manifest/extensions/presentation/metadata",
+                                            "webpub-manifest/extensions/presentation/properties",
+                                            "webpub-manifest/language-map",
                                         ];
                                         if (!opds2Publication) {
                                             jsonSchemasNames.unshift("opds/feed");

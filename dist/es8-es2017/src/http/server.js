@@ -15,6 +15,7 @@ const publication_parser_1 = require("r2-shared-js/dist/es8-es2017/src/parser/pu
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
 const self_signed_1 = require("../utils/self-signed");
 const server_assets_1 = require("./server-assets");
+const server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
 const server_manifestjson_1 = require("./server-manifestjson");
 const server_mediaoverlays_1 = require("./server-mediaoverlays");
 const server_opds_browse_v1_1 = require("./server-opds-browse-v1");
@@ -56,6 +57,7 @@ class Server {
         server_version_1.serverVersion(this, this.expressApp);
         if (!this.disableRemotePubUrl) {
             server_url_1.serverRemotePub(this, this.expressApp);
+            server_lcp_lsd_show_1.serverLCPLSD_show(this, this.expressApp);
         }
         if (!this.disableOPDS) {
             server_opds_browse_v1_1.serverOPDS_browse_v1(this, this.expressApp);
@@ -170,6 +172,16 @@ Disallow: /
             return `${info.urlScheme}://${info.urlHost}`;
         }
         return `${info.urlScheme}://${info.urlHost}:${info.urlPort}`;
+    }
+    setResponseCacheHeaders(res, enableCaching) {
+        if (enableCaching) {
+            res.setHeader("Cache-Control", "public,max-age=86400");
+        }
+        else {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+        }
     }
     setResponseCORS(res) {
         res.setHeader("Access-Control-Allow-Origin", "*");

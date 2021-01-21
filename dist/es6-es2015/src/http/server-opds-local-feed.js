@@ -133,6 +133,7 @@ function serverOPDS_local_feed(server, topRouter) {
                     "opds/feed",
                     "opds/publication",
                     "opds/acquisition-object",
+                    "opds/catalog-entry",
                     "opds/feed-metadata",
                     "opds/properties",
                     "webpub-manifest/publication",
@@ -147,6 +148,9 @@ function serverOPDS_local_feed(server, topRouter) {
                     "webpub-manifest/extensions/epub/metadata",
                     "webpub-manifest/extensions/epub/subcollections",
                     "webpub-manifest/extensions/epub/properties",
+                    "webpub-manifest/extensions/presentation/metadata",
+                    "webpub-manifest/extensions/presentation/properties",
+                    "webpub-manifest/language-map",
                 ];
                 const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
                 if (validationErrors) {

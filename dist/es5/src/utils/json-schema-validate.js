@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.jsonSchemaValidate = void 0;
-var Ajv = require("ajv");
+var ajv_1 = require("ajv");
+var ajv_formats_1 = require("ajv-formats");
 var debug_ = require("debug");
 var fs = require("fs");
 var path = require("path");
@@ -42,7 +43,15 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             debug("JSON SCHEMA is now cached: " + jsonSchema["$id"] + " (" + jsonSchemaPath + ")");
             _cachedJsonSchemas[jsonSchemaPath] = jsonSchema;
         }
-        var ajv = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
+        var ajv = new ajv_1.default({
+            allErrors: true,
+            allowUnionTypes: true,
+            coerceTypes: false,
+            strict: true,
+            validateFormats: true,
+            verbose: true,
+        });
+        ajv_formats_1.default(ajv);
         var idRoot = void 0;
         for (var _a = 0, jsonSchemasNames_2 = jsonSchemasNames; _a < jsonSchemasNames_2.length; _a++) {
             var jsonSchemaName = jsonSchemasNames_2[_a];
@@ -83,7 +92,14 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
     catch (err) {
         debug("JSON Schema VALIDATION PROBLEM.");
         debug(err);
-        return undefined;
+        var errs = [];
+        errs.push({
+            ajvDataPath: err && toString ? err.toString() : "ajvDataPath",
+            ajvMessage: err.message ? err.message : "ajvMessage",
+            ajvSchemaPath: "ajvSchemaPath",
+            jsonPath: "jsonPath",
+        });
+        return errs;
     }
     return undefined;
 }

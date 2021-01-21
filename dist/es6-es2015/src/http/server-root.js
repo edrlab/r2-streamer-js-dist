@@ -5,6 +5,7 @@ const js_beautify_1 = require("js-beautify");
 const path = require("path");
 const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils");
 const request_ext_1 = require("./request-ext");
+const server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
 const server_opds_browse_v1_1 = require("./server-opds-browse-v1");
 const server_opds_browse_v2_1 = require("./server-opds-browse-v2");
 const server_opds_convert_v1_to_v2_1 = require("./server-opds-convert-v1-to-v2");
@@ -48,6 +49,7 @@ ${server.disableOPDS ? "" : `\
 
 ${server.disableRemotePubUrl ? "" : `\
 <h2><a href='.${server_url_1.serverRemotePub_PATH}'>Load Remote Publication</a> (HTTP URL)</h2>
+<h2><a href='.${server_lcp_lsd_show_1.serverLCPLSD_show_PATH}'>Show LCP / LSD</a> (HTTP URL)</h2>
 `}\
 
 ${server.disableOPDS ? "" : `\

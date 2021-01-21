@@ -45,6 +45,7 @@ export declare class Server {
     stop(): void;
     serverInfo(): ServerData | undefined;
     serverUrl(): string | undefined;
+    setResponseCacheHeaders(res: express.Response, enableCaching: boolean): void;
     setResponseCORS(res: express.Response): void;
     addPublications(pubs: string[]): string[];
     removePublications(pubs: string[]): string[];

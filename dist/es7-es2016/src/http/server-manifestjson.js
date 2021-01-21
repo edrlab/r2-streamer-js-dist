@@ -231,7 +231,11 @@ function serverManifestJson(server, routerPathBase64) {
                     "webpub-manifest/extensions/epub/metadata",
                     "webpub-manifest/extensions/epub/subcollections",
                     "webpub-manifest/extensions/epub/properties",
+                    "webpub-manifest/extensions/presentation/metadata",
+                    "webpub-manifest/extensions/presentation/properties",
+                    "webpub-manifest/language-map",
                     "opds/acquisition-object",
+                    "opds/catalog-entry",
                     "opds/properties",
                 ];
                 const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);

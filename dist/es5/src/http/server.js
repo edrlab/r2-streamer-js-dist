@@ -16,6 +16,7 @@ var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var self_signed_1 = require("../utils/self-signed");
 var server_assets_1 = require("./server-assets");
+var server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
 var server_manifestjson_1 = require("./server-manifestjson");
 var server_mediaoverlays_1 = require("./server-mediaoverlays");
 var server_opds_browse_v1_1 = require("./server-opds-browse-v1");
@@ -57,6 +58,7 @@ var Server = (function () {
         server_version_1.serverVersion(this, this.expressApp);
         if (!this.disableRemotePubUrl) {
             server_url_1.serverRemotePub(this, this.expressApp);
+            server_lcp_lsd_show_1.serverLCPLSD_show(this, this.expressApp);
         }
         if (!this.disableOPDS) {
             server_opds_browse_v1_1.serverOPDS_browse_v1(this, this.expressApp);
@@ -186,6 +188,16 @@ var Server = (function () {
             return info.urlScheme + "://" + info.urlHost;
         }
         return info.urlScheme + "://" + info.urlHost + ":" + info.urlPort;
+    };
+    Server.prototype.setResponseCacheHeaders = function (res, enableCaching) {
+        if (enableCaching) {
+            res.setHeader("Cache-Control", "public,max-age=86400");
+        }
+        else {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+        }
     };
     Server.prototype.setResponseCORS = function (res) {
         res.setHeader("Access-Control-Allow-Origin", "*");

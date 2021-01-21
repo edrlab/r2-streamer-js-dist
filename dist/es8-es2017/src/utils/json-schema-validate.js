@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.jsonSchemaValidate = void 0;
-const Ajv = require("ajv");
+const ajv_1 = require("ajv");
+const ajv_formats_1 = require("ajv-formats");
 const debug_ = require("debug");
 const fs = require("fs");
 const path = require("path");
@@ -41,7 +42,15 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             debug(`JSON SCHEMA is now cached: ${jsonSchema["$id"]} (${jsonSchemaPath})`);
             _cachedJsonSchemas[jsonSchemaPath] = jsonSchema;
         }
-        const ajv = new Ajv({ allErrors: true, coerceTypes: false, verbose: true });
+        const ajv = new ajv_1.default({
+            allErrors: true,
+            allowUnionTypes: true,
+            coerceTypes: false,
+            strict: true,
+            validateFormats: true,
+            verbose: true,
+        });
+        ajv_formats_1.default(ajv);
         let idRoot;
         for (const jsonSchemaName of jsonSchemasNames) {
             const jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
@@ -80,7 +89,14 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
     catch (err) {
         debug("JSON Schema VALIDATION PROBLEM.");
         debug(err);
-        return undefined;
+        const errs = [];
+        errs.push({
+            ajvDataPath: err && toString ? err.toString() : "ajvDataPath",
+            ajvMessage: err.message ? err.message : "ajvMessage",
+            ajvSchemaPath: "ajvSchemaPath",
+            jsonPath: "jsonPath",
+        });
+        return errs;
     }
     return undefined;
 }
