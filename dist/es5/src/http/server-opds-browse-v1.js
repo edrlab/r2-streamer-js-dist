@@ -14,6 +14,7 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
 var xml_js_mapper_1 = require("r2-utils-js/dist/es5/src/_utils/xml-js-mapper");
 var request_ext_1 = require("./request-ext");
+var server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var server_url_1 = require("./server-url");
 var debug = debug_("r2:streamer#http/server-opds-browse-v1");
@@ -110,6 +111,15 @@ function serverOPDS_browse_v1(_server, topRouter) {
                                         var linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
                                         var opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v1_PATH + "/"))
                                             + exports.serverOPDS_browse_v1_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
+                                        html += "<a href='" + opdsUrl
+                                            + "'>" + link.Href + "</a> (TITLE: " + link.Title
+                                            + ") [REL: " + link.Rel + "]<br/>";
+                                    }
+                                    else if (opds && link.Type &&
+                                        (link.Type === "application/vnd.readium.lcp.license.v1.0+json")) {
+                                        var linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
+                                        var opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v1_PATH + "/"))
+                                            + server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
                                         html += "<a href='" + opdsUrl
                                             + "'>" + link.Href + "</a> (TITLE: " + link.Title
                                             + ") [REL: " + link.Rel + "]<br/>";

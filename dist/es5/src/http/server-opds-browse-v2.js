@@ -22,6 +22,7 @@ var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
 var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
+var server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
 var server_opds_convert_v1_to_v2_1 = require("./server-opds-convert-v1-to-v2");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
 var debug = debug_("r2:streamer#http/server-opds-browse-v2");
@@ -231,6 +232,17 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                                 (obj.Type && obj.Type.indexOf("opds") >= 0 && obj.Type.indexOf("json") >= 0)) {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
                                                     exports.serverOPDS_browse_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                if (authRequestBase64 && authResponseBase64) {
+                                                    obj.__href__AUTH = obj.__href__ +
+                                                        "?" +
+                                                        request_ext_1._authResponse + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authResponseBase64) +
+                                                        "&" +
+                                                        request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64);
+                                                }
+                                            }
+                                            else if (obj.type === "application/vnd.readium.lcp.license.v1.0+json") {
+                                                obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
+                                                    server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
                                                 if (authRequestBase64 && authResponseBase64) {
                                                     obj.__href__AUTH = obj.__href__ +
                                                         "?" +

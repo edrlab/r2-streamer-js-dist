@@ -281,6 +281,9 @@ function serverAssets(server, routerPathBase64) {
         }
     });
     routerPathBase64.param("asset", (req, _res, next, value, _name) => {
+        if (value) {
+            value = value.replace(/\/\/+/g, "/");
+        }
         req.asset = value;
         next();
     });

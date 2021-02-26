@@ -1,10 +1,10 @@
 {
-  "node": "14.15.4",
+  "node": "14.15.5",
   "npm": "6.14.11",
-  "short": "1f558b2",
-  "long": "1f558b27c9d061f81b22de0adc1bbec480f305f2",
+  "short": "0ba66d9",
+  "long": "0ba66d90f63e3760742350d486e6f4c4f3c88196",
   "branch": "develop",
-  "date": "2021-01-21T16:26:12.000Z",
-  "urlHistory": "https://github.com/readium/r2-streamer-js/commits/1f558b27c9d061f81b22de0adc1bbec480f305f2",
-  "urlDiff": "https://github.com/readium/r2-streamer-js/compare/1f558b27c9d061f81b22de0adc1bbec480f305f2...develop"
+  "date": "2021-02-26T11:21:14.000Z",
+  "urlHistory": "https://github.com/readium/r2-streamer-js/commits/0ba66d90f63e3760742350d486e6f4c4f3c88196",
+  "urlDiff": "https://github.com/readium/r2-streamer-js/compare/0ba66d90f63e3760742350d486e6f4c4f3c88196...develop"
 }
