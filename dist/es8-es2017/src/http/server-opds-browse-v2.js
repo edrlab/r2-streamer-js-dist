@@ -114,6 +114,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                 + err + "</p></body></html>");
         };
         const success = async (response) => {
+            var _a, _b;
             const isAuthStatusCode = response.statusCode === 401;
             if (isAuthStatusCode &&
                 authRequestBase64 && authResponseJson && authResponseJson.refresh_token) {
@@ -190,7 +191,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         debug("JSON Schema validation FAIL.");
                         debug(err);
                         if (isPublication) {
-                            const val = DotProp.get(opds2FeedJson, err.jsonPath);
+                            const val = err.jsonPath ? DotProp.get(opds2FeedJson, err.jsonPath) : "";
                             const valueStr = (typeof val === "string") ?
                                 `${val}` :
                                 ((val instanceof Array || typeof val === "object") ?
@@ -200,10 +201,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
                             const title = DotProp.get(opds2FeedJson, "metadata.title");
                             debug(title);
                             validationStr +=
-                                `\n"${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                                `\n"${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${(_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
                         }
                         else {
-                            const val = DotProp.get(opds2FeedJson, err.jsonPath);
+                            const val = err.jsonPath ? DotProp.get(opds2FeedJson, err.jsonPath) : "";
                             const valueStr = (typeof val === "string") ?
                                 `${val}` :
                                 ((val instanceof Array || typeof val === "object") ?
@@ -212,7 +213,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                             debug(valueStr);
                             let title = "";
                             let pubIndex = "";
-                            if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                            if (err.jsonPath && /^publications\.[0-9]+/.test(err.jsonPath)) {
                                 const jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
                                 debug(jsonPubTitlePath);
                                 title = DotProp.get(opds2FeedJson, jsonPubTitlePath);
@@ -221,7 +222,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                 debug(pubIndex);
                             }
                             validationStr +=
-                                `\n___________INDEX___________ #${pubIndex} "${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                                `\n___________INDEX___________ #${pubIndex} "${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${(_b = err.ajvDataPath) === null || _b === void 0 ? void 0 : _b.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
                         }
                     }
                 }

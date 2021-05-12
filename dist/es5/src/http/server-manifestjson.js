@@ -37,8 +37,9 @@ function serverManifestJson(server, routerPathBase64) {
             });
         }
         var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, contentType, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
-        return tslib_1.__generator(this, function (_c) {
-            switch (_c.label) {
+        var _c;
+        return tslib_1.__generator(this, function (_d) {
+            switch (_d.label) {
                 case 0:
                     reqparams = req.params;
                     if (!reqparams.pathBase64) {
@@ -61,15 +62,15 @@ function serverManifestJson(server, routerPathBase64) {
                         req.protocol === "https" ||
                         req.get("X-Forwarded-Proto") === "https";
                     pathBase64Str = Buffer.from(reqparams.pathBase64, "base64").toString("utf8");
-                    _c.label = 1;
+                    _d.label = 1;
                 case 1:
-                    _c.trys.push([1, 3, , 4]);
+                    _d.trys.push([1, 3, , 4]);
                     return [4, server.loadOrGetCachedPublication(pathBase64Str)];
                 case 2:
-                    publication = _c.sent();
+                    publication = _d.sent();
                     return [3, 4];
                 case 3:
-                    err_1 = _c.sent();
+                    err_1 = _d.sent();
                     debug(err_1);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_1 + "</p></body></html>");
@@ -78,15 +79,15 @@ function serverManifestJson(server, routerPathBase64) {
                     if (!(reqparams.lcpPass64 && !server.disableDecryption)) return [3, 8];
                     lcpPass = Buffer.from(reqparams.lcpPass64, "base64").toString("utf8");
                     if (!publication.LCP) return [3, 8];
-                    _c.label = 5;
+                    _d.label = 5;
                 case 5:
-                    _c.trys.push([5, 7, , 8]);
+                    _d.trys.push([5, 7, , 8]);
                     return [4, publication.LCP.tryUserKeys([lcpPass])];
                 case 6:
-                    _c.sent();
+                    _d.sent();
                     return [3, 8];
                 case 7:
-                    err_2 = _c.sent();
+                    err_2 = _d.sent();
                     publication.LCP.ContentKey = undefined;
                     debug(err_2);
                     errMsg = "FAIL publication.LCP.tryUserKeys(): " + err_2;
@@ -161,21 +162,21 @@ function serverManifestJson(server, routerPathBase64) {
                         objToSerialize = publication;
                         return [3, 23];
                     }
-                    _c.label = 10;
+                    _d.label = 10;
                 case 10:
                     {
                         objToSerialize = publication.GetCover();
                         return [3, 23];
                     }
-                    _c.label = 11;
+                    _d.label = 11;
                 case 11:
-                    _c.trys.push([11, 13, , 14]);
+                    _d.trys.push([11, 13, , 14]);
                     return [4, epub_1.getAllMediaOverlays(publication)];
                 case 12:
-                    objToSerialize = _c.sent();
+                    objToSerialize = _d.sent();
                     return [3, 14];
                 case 13:
-                    err_3 = _c.sent();
+                    err_3 = _d.sent();
                     debug(err_3);
                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                         + err_3 + "</p></body></html>");
@@ -186,52 +187,52 @@ function serverManifestJson(server, routerPathBase64) {
                         objToSerialize = publication.Spine;
                         return [3, 23];
                     }
-                    _c.label = 16;
+                    _d.label = 16;
                 case 16:
                     {
                         objToSerialize = publication.PageList;
                         return [3, 23];
                     }
-                    _c.label = 17;
+                    _d.label = 17;
                 case 17:
                     {
                         objToSerialize = publication.Landmarks;
                         return [3, 23];
                     }
-                    _c.label = 18;
+                    _d.label = 18;
                 case 18:
                     {
                         objToSerialize = publication.Links;
                         return [3, 23];
                     }
-                    _c.label = 19;
+                    _d.label = 19;
                 case 19:
                     {
                         objToSerialize = publication.Resources;
                         return [3, 23];
                     }
-                    _c.label = 20;
+                    _d.label = 20;
                 case 20:
                     {
                         objToSerialize = publication.TOC;
                         return [3, 23];
                     }
-                    _c.label = 21;
+                    _d.label = 21;
                 case 21:
                     {
                         objToSerialize = publication.Metadata;
                         return [3, 23];
                     }
-                    _c.label = 22;
+                    _d.label = 22;
                 case 22:
                     {
                         objToSerialize = null;
                     }
-                    _c.label = 23;
+                    _d.label = 23;
                 case 23: return [3, 25];
                 case 24:
                     objToSerialize = publication;
-                    _c.label = 25;
+                    _d.label = 25;
                 case 25:
                     if (!objToSerialize) {
                         objToSerialize = {};
@@ -268,7 +269,7 @@ function serverManifestJson(server, routerPathBase64) {
                                 err = validationErrors_1[_i];
                                 debug("JSON Schema validation FAIL.");
                                 debug(err);
-                                val = DotProp.get(jsonObj, err.jsonPath);
+                                val = err.jsonPath ? DotProp.get(jsonObj, err.jsonPath) : "";
                                 valueStr = (typeof val === "string") ?
                                     "" + val :
                                     ((val instanceof Array || typeof val === "object") ?
@@ -278,7 +279,7 @@ function serverManifestJson(server, routerPathBase64) {
                                 title = DotProp.get(jsonObj, "metadata.title");
                                 debug(title);
                                 validationStr +=
-                                    "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                                    "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_c = err.ajvDataPath) === null || _c === void 0 ? void 0 : _c.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
                             }
                         }
                     }
@@ -343,7 +344,7 @@ function serverManifestJson(server, routerPathBase64) {
                     else {
                         res.send(publicationJsonStr);
                     }
-                    _c.label = 27;
+                    _d.label = 27;
                 case 27: return [2];
             }
         });

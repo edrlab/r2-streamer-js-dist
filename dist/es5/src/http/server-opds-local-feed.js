@@ -22,6 +22,7 @@ function serverOPDS_local_feed(server, topRouter) {
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerOPDS_local_feed = express.Router({ strict: false });
     routerOPDS_local_feed.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) {
+        var _a;
         var reqparams = req.params;
         var isShow = req.url.indexOf("/show") >= 0 || req.query.show;
         if (!reqparams.jsonPath && req.query.show) {
@@ -137,7 +138,7 @@ function serverOPDS_local_feed(server, topRouter) {
                         var err = validationErrors_1[_i];
                         debug("JSON Schema validation FAIL.");
                         debug(err);
-                        var val = DotProp.get(jsonObj, err.jsonPath);
+                        var val = err.jsonPath ? DotProp.get(jsonObj, err.jsonPath) : "";
                         var valueStr = (typeof val === "string") ?
                             "" + val :
                             ((val instanceof Array || typeof val === "object") ?
@@ -146,7 +147,7 @@ function serverOPDS_local_feed(server, topRouter) {
                         debug(valueStr);
                         var title = "";
                         var pubIndex = "";
-                        if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                        if (err.jsonPath && /^publications\.[0-9]+/.test(err.jsonPath)) {
                             var jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
                             debug(jsonPubTitlePath);
                             title = DotProp.get(jsonObj, jsonPubTitlePath);
@@ -155,7 +156,7 @@ function serverOPDS_local_feed(server, topRouter) {
                             debug(pubIndex);
                         }
                         validationStr +=
-                            "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                            "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
                     }
                 }
             }

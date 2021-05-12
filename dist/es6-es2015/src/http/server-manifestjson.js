@@ -42,6 +42,7 @@ function serverManifestJson(server, routerPathBase64) {
 `;
     const routerManifestJson = express.Router({ strict: false });
     routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        var _a;
         const reqparams = req.params;
         if (!reqparams.pathBase64) {
             reqparams.pathBase64 = req.pathBase64;
@@ -244,7 +245,7 @@ function serverManifestJson(server, routerPathBase64) {
                     for (const err of validationErrors) {
                         debug("JSON Schema validation FAIL.");
                         debug(err);
-                        const val = DotProp.get(jsonObj, err.jsonPath);
+                        const val = err.jsonPath ? DotProp.get(jsonObj, err.jsonPath) : "";
                         const valueStr = (typeof val === "string") ?
                             `${val}` :
                             ((val instanceof Array || typeof val === "object") ?
@@ -254,7 +255,7 @@ function serverManifestJson(server, routerPathBase64) {
                         const title = DotProp.get(jsonObj, "metadata.title");
                         debug(title);
                         validationStr +=
-                            `\n"${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                            `\n"${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${(_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
                     }
                 }
             }

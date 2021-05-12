@@ -76,23 +76,24 @@ function serverLCPLSD_show(_server, topRouter) {
                     };
                     success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var isBadStatusCode, responseData, err_2, responseStr, responseJson, isStatusDoc, lcpOrLsd, lcpOrLsdJson, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, funk, css, jsonPretty;
-                        return tslib_1.__generator(this, function (_a) {
-                            switch (_a.label) {
+                        var _a;
+                        return tslib_1.__generator(this, function (_b) {
+                            switch (_b.label) {
                                 case 0:
                                     isBadStatusCode = response.statusCode && (response.statusCode < 200 || response.statusCode >= 300);
                                     if (isBadStatusCode) {
                                         failure("HTTP CODE " + response.statusCode);
                                         return [2];
                                     }
-                                    _a.label = 1;
+                                    _b.label = 1;
                                 case 1:
-                                    _a.trys.push([1, 3, , 4]);
+                                    _b.trys.push([1, 3, , 4]);
                                     return [4, BufferUtils_1.streamToBufferPromise(response)];
                                 case 2:
-                                    responseData = _a.sent();
+                                    responseData = _b.sent();
                                     return [3, 4];
                                 case 3:
-                                    err_2 = _a.sent();
+                                    err_2 = _b.sent();
                                     debug(err_2);
                                     res.status(500).send("<html><body><p>Internal Server Error</p><p>" + err_2 + "</p></body></html>");
                                     return [2];
@@ -121,7 +122,7 @@ function serverLCPLSD_show(_server, topRouter) {
                                                 err = validationErrors_1[_i];
                                                 debug("JSON Schema validation FAIL.");
                                                 debug(err);
-                                                val = DotProp.get(lcpOrLsdJson, err.jsonPath);
+                                                val = err.jsonPath ? DotProp.get(lcpOrLsdJson, err.jsonPath) : "";
                                                 valueStr = (typeof val === "string") ?
                                                     "" + val :
                                                     ((val instanceof Array || typeof val === "object") ?
@@ -129,7 +130,7 @@ function serverLCPLSD_show(_server, topRouter) {
                                                         "");
                                                 debug(valueStr);
                                                 validationStr +=
-                                                    "\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                    "\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
                                             }
                                         }
                                     }

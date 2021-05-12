@@ -91,6 +91,7 @@ function serverLCPLSD_show(_server, topRouter) {
                 + err + "</p></body></html>");
         };
         const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            var _a;
             const isBadStatusCode = response.statusCode && (response.statusCode < 200 || response.statusCode >= 300);
             if (isBadStatusCode) {
                 failure("HTTP CODE " + response.statusCode);
@@ -129,7 +130,7 @@ function serverLCPLSD_show(_server, topRouter) {
                     for (const err of validationErrors) {
                         debug("JSON Schema validation FAIL.");
                         debug(err);
-                        const val = DotProp.get(lcpOrLsdJson, err.jsonPath);
+                        const val = err.jsonPath ? DotProp.get(lcpOrLsdJson, err.jsonPath) : "";
                         const valueStr = (typeof val === "string") ?
                             `${val}` :
                             ((val instanceof Array || typeof val === "object") ?
@@ -137,7 +138,7 @@ function serverLCPLSD_show(_server, topRouter) {
                                 "");
                         debug(valueStr);
                         validationStr +=
-                            `\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                            `\n${err.ajvMessage}: ${valueStr}\n\n'${(_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
                     }
                 }
             }

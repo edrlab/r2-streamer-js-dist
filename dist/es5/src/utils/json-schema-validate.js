@@ -9,6 +9,7 @@ var path = require("path");
 var debug = debug_("r2:streamer#utils/json-schema-validate");
 var _cachedJsonSchemas = {};
 function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidate) {
+    var _a;
     try {
         for (var _i = 0, jsonSchemasNames_1 = jsonSchemasNames; _i < jsonSchemasNames_1.length; _i++) {
             var jsonSchemaName = jsonSchemasNames_1[_i];
@@ -48,13 +49,14 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             allowUnionTypes: true,
             coerceTypes: false,
             strict: true,
+            strictRequired: "log",
             validateFormats: true,
             verbose: true,
         });
         ajv_formats_1.default(ajv);
         var idRoot = void 0;
-        for (var _a = 0, jsonSchemasNames_2 = jsonSchemasNames; _a < jsonSchemasNames_2.length; _a++) {
-            var jsonSchemaName = jsonSchemasNames_2[_a];
+        for (var _b = 0, jsonSchemasNames_2 = jsonSchemasNames; _b < jsonSchemasNames_2.length; _b++) {
+            var jsonSchemaName = jsonSchemasNames_2[_b];
             var jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");
             var jsonSchema = _cachedJsonSchemas[jsonSchemaPath];
             if (!jsonSchema) {
@@ -75,11 +77,11 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             var errors = ajv.errors;
             if (errors) {
                 var errs = [];
-                for (var _b = 0, errors_1 = errors; _b < errors_1.length; _b++) {
-                    var err = errors_1[_b];
-                    var jsonPath = err.dataPath.replace(/^\./, "").replace(/\[([0-9]+)\]/g, ".$1");
+                for (var _c = 0, errors_1 = errors; _c < errors_1.length; _c++) {
+                    var err = errors_1[_c];
+                    var jsonPath = (_a = err.instancePath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "").replace(/\[([0-9]+)\]/g, ".$1");
                     errs.push({
-                        ajvDataPath: err.dataPath,
+                        ajvDataPath: err.instancePath,
                         ajvMessage: err.message ? err.message : "",
                         ajvSchemaPath: err.schemaPath,
                         jsonPath: jsonPath,

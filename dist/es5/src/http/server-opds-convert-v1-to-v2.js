@@ -78,22 +78,23 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     };
                     success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var responseData, err_2, responseStr, responseXml, isEntry, opds1Feed, opds1Entry, opds2Feed, opds2Publication, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, val, valueStr, title, pubIndex, jsonPubTitlePath, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
-                        return tslib_1.__generator(this, function (_a) {
-                            switch (_a.label) {
+                        var _a, _b;
+                        return tslib_1.__generator(this, function (_c) {
+                            switch (_c.label) {
                                 case 0:
                                     if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                                         failure("HTTP CODE " + response.statusCode);
                                         return [2];
                                     }
-                                    _a.label = 1;
+                                    _c.label = 1;
                                 case 1:
-                                    _a.trys.push([1, 3, , 4]);
+                                    _c.trys.push([1, 3, , 4]);
                                     return [4, BufferUtils_1.streamToBufferPromise(response)];
                                 case 2:
-                                    responseData = _a.sent();
+                                    responseData = _c.sent();
                                     return [3, 4];
                                 case 3:
-                                    err_2 = _a.sent();
+                                    err_2 = _c.sent();
                                     debug(err_2);
                                     res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                                         + err_2 + "</p></body></html>");
@@ -190,7 +191,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                                 debug("JSON Schema validation FAIL.");
                                                 debug(err);
                                                 if (opds2Publication) {
-                                                    val = DotProp.get(jsonObjOPDS2, err.jsonPath);
+                                                    val = err.jsonPath ? DotProp.get(jsonObjOPDS2, err.jsonPath) : "";
                                                     valueStr = (typeof val === "string") ?
                                                         "" + val :
                                                         ((val instanceof Array || typeof val === "object") ?
@@ -200,10 +201,10 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                                     title = DotProp.get(jsonObjOPDS2, "metadata.title");
                                                     debug(title);
                                                     validationStr +=
-                                                        "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                        "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
                                                 }
                                                 else {
-                                                    val = DotProp.get(jsonObjOPDS2, err.jsonPath);
+                                                    val = err.jsonPath ? DotProp.get(jsonObjOPDS2, err.jsonPath) : "";
                                                     valueStr = (typeof val === "string") ?
                                                         "" + val :
                                                         ((val instanceof Array || typeof val === "object") ?
@@ -212,7 +213,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                                     debug(valueStr);
                                                     title = "";
                                                     pubIndex = "";
-                                                    if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                                                    if (err.jsonPath && /^publications\.[0-9]+/.test(err.jsonPath)) {
                                                         jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
                                                         debug(jsonPubTitlePath);
                                                         title = DotProp.get(jsonObjOPDS2, jsonPubTitlePath);
@@ -221,7 +222,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                                         debug(pubIndex);
                                                     }
                                                     validationStr +=
-                                                        "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + err.ajvDataPath.replace(/^\./, "") + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                        "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_b = err.ajvDataPath) === null || _b === void 0 ? void 0 : _b.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
                                                 }
                                             }
                                         }

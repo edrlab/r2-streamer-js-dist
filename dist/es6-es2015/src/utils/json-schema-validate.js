@@ -9,6 +9,7 @@ const path = require("path");
 const debug = debug_("r2:streamer#utils/json-schema-validate");
 const _cachedJsonSchemas = {};
 function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidate) {
+    var _a;
     try {
         for (const jsonSchemaName of jsonSchemasNames) {
             const jsonSchemaName_ = jsonSchemaName.replace(/\//g, path.sep);
@@ -47,6 +48,7 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             allowUnionTypes: true,
             coerceTypes: false,
             strict: true,
+            strictRequired: "log",
             validateFormats: true,
             verbose: true,
         });
@@ -74,9 +76,9 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             if (errors) {
                 const errs = [];
                 for (const err of errors) {
-                    const jsonPath = err.dataPath.replace(/^\./, "").replace(/\[([0-9]+)\]/g, ".$1");
+                    const jsonPath = (_a = err.instancePath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "").replace(/\[([0-9]+)\]/g, ".$1");
                     errs.push({
-                        ajvDataPath: err.dataPath,
+                        ajvDataPath: err.instancePath,
                         ajvMessage: err.message ? err.message : "",
                         ajvSchemaPath: err.schemaPath,
                         jsonPath,

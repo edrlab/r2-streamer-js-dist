@@ -44,6 +44,7 @@ function serverOPDS_local_feed(server, topRouter) {
 `;
     const routerOPDS_local_feed = express.Router({ strict: false });
     routerOPDS_local_feed.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => {
+        var _a;
         const reqparams = req.params;
         const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
         if (!reqparams.jsonPath && req.query.show) {
@@ -158,7 +159,7 @@ function serverOPDS_local_feed(server, topRouter) {
                     for (const err of validationErrors) {
                         debug("JSON Schema validation FAIL.");
                         debug(err);
-                        const val = DotProp.get(jsonObj, err.jsonPath);
+                        const val = err.jsonPath ? DotProp.get(jsonObj, err.jsonPath) : "";
                         const valueStr = (typeof val === "string") ?
                             `${val}` :
                             ((val instanceof Array || typeof val === "object") ?
@@ -167,7 +168,7 @@ function serverOPDS_local_feed(server, topRouter) {
                         debug(valueStr);
                         let title = "";
                         let pubIndex = "";
-                        if (/^publications\.[0-9]+/.test(err.jsonPath)) {
+                        if (err.jsonPath && /^publications\.[0-9]+/.test(err.jsonPath)) {
                             const jsonPubTitlePath = err.jsonPath.replace(/^(publications\.[0-9]+).*/, "$1.metadata.title");
                             debug(jsonPubTitlePath);
                             title = DotProp.get(jsonObj, jsonPubTitlePath);
@@ -176,7 +177,7 @@ function serverOPDS_local_feed(server, topRouter) {
                             debug(pubIndex);
                         }
                         validationStr +=
-                            `\n___________INDEX___________ #${pubIndex} "${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${err.ajvDataPath.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                            `\n___________INDEX___________ #${pubIndex} "${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${(_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
                     }
                 }
             }
