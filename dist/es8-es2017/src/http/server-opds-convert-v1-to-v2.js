@@ -53,20 +53,20 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
     routerOPDS_convert_v1_to_v2.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerOPDS_convert_v1_to_v2.get("/", (_req, res) => {
         let html = "<html><head>";
-        html += `<script type="text/javascript">function encodeURIComponent_RFC3986(str) { ` +
-            `return encodeURIComponent(str).replace(/[!'()*]/g, (c) => { ` +
-            `return "%" + c.charCodeAt(0).toString(16); }); }` +
-            `function go(evt) {` +
-            `if (evt) { evt.preventDefault(); } var url = ` +
-            `location.origin +` +
+        html += "<script type=\"text/javascript\">function encodeURIComponent_RFC3986(str) { " +
+            "return encodeURIComponent(str).replace(/[!'()*]/g, (c) => { " +
+            "return \"%\" + c.charCodeAt(0).toString(16); }); }" +
+            "function go(evt) {" +
+            "if (evt) { evt.preventDefault(); } var url = " +
+            "location.origin +" +
             ` '${exports.serverOPDS_convert_v1_to_v2_PATH}/' +` +
-            ` encodeURIComponent_RFC3986(document.getElementById("url").value);` +
-            `location.href = url;}</script>`;
+            " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
+            "location.href = url;}</script>";
         html += "</head>";
         html += "<body><h1>OPDS 1 -> 2 converter</h1>";
-        html += `<form onsubmit="go();return false;">` +
-            `<input type="text" name="url" id="url" size="80">` +
-            `<input type="submit" value="Go!"></form>`;
+        html += "<form onsubmit=\"go();return false;\">" +
+            "<input type=\"text\" name=\"url\" id=\"url\" size=\"80\">" +
+            "<input type=\"submit\" value=\"Go!\"></form>";
         html += "</body></html>";
         res.status(200).send(html);
     });

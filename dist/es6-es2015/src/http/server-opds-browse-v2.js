@@ -64,20 +64,20 @@ function serverOPDS_browse_v2(_server, topRouter) {
     routerOPDS_browse_v2.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerOPDS_browse_v2.get("/", (_req, res) => {
         let html = "<html><head>";
-        html += `<script type="text/javascript">function encodeURIComponent_RFC3986(str) { ` +
-            `return encodeURIComponent(str).replace(/[!'()*]/g, (c) => { ` +
-            `return "%" + c.charCodeAt(0).toString(16); }); }` +
-            `function go(evt) {` +
-            `if (evt) { evt.preventDefault(); } var url = ` +
-            `location.origin +` +
+        html += "<script type=\"text/javascript\">function encodeURIComponent_RFC3986(str) { " +
+            "return encodeURIComponent(str).replace(/[!'()*]/g, (c) => { " +
+            "return \"%\" + c.charCodeAt(0).toString(16); }); }" +
+            "function go(evt) {" +
+            "if (evt) { evt.preventDefault(); } var url = " +
+            "location.origin +" +
             ` '${exports.serverOPDS_browse_v2_PATH}/' +` +
-            ` encodeURIComponent_RFC3986(document.getElementById("url").value);` +
-            `location.href = url;}</script>`;
+            " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
+            "location.href = url;}</script>";
         html += "</head>";
         html += "<body><h1>OPDS feed browser</h1>";
-        html += `<form onsubmit="go();return false;">` +
-            `<input type="text" name="url" id="url" size="80">` +
-            `<input type="submit" value="Go!"></form>`;
+        html += "<form onsubmit=\"go();return false;\">" +
+            "<input type=\"text\" name=\"url\" id=\"url\" size=\"80\">" +
+            "<input type=\"submit\" value=\"Go!\"></form>";
         html += "</body></html>";
         res.status(200).send(html);
     });
@@ -299,7 +299,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
 <br><br>
     <input type="submit" value="Authenticate">
 </form>
-${imageUrl ? `<img src="${imageUrl}" />` : ``}
+${imageUrl ? `<img src="${imageUrl}" />` : ""}
 <script type="text/javascript">
 // document.addEventListener("DOMContentLoaded", (event) => {
 // });
@@ -396,7 +396,7 @@ function doAuth() {
     });
 */
     ` :
-                `window.alert("no auth link!");`}
+                "window.alert(\"no auth link!\");"}
 }
 </script>`;
             res.status(200).send("<html><body>" +

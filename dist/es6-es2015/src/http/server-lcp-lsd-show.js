@@ -52,20 +52,20 @@ function serverLCPLSD_show(_server, topRouter) {
     routerLCPLSD_show.use(server_trailing_slash_redirect_1.trailingSlashRedirect);
     routerLCPLSD_show.get("/", (_req, res) => {
         let html = "<html><head>";
-        html += `<script type="text/javascript">function encodeURIComponent_RFC3986(str) { ` +
-            `return encodeURIComponent(str).replace(/[!'()*]/g, (c) => { ` +
-            `return "%" + c.charCodeAt(0).toString(16); }); }` +
-            `function go(evt) {` +
-            `if (evt) { evt.preventDefault(); } var url = ` +
-            `location.origin +` +
+        html += "<script type=\"text/javascript\">function encodeURIComponent_RFC3986(str) { " +
+            "return encodeURIComponent(str).replace(/[!'()*]/g, (c) => { " +
+            "return \"%\" + c.charCodeAt(0).toString(16); }); }" +
+            "function go(evt) {" +
+            "if (evt) { evt.preventDefault(); } var url = " +
+            "location.origin +" +
             ` '${exports.serverLCPLSD_show_PATH}/' +` +
-            ` encodeURIComponent_RFC3986(document.getElementById("url").value);` +
-            `location.href = url;}</script>`;
+            " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
+            "location.href = url;}</script>";
         html += "</head>";
         html += "<body><h1>LCP / LSD examiner</h1>";
-        html += `<form onsubmit="go();return false;">` +
-            `<input type="text" name="url" id="url" size="80">` +
-            `<input type="submit" value="Go!"></form>`;
+        html += "<form onsubmit=\"go();return false;\">" +
+            "<input type=\"text\" name=\"url\" id=\"url\" size=\"80\">" +
+            "<input type=\"submit\" value=\"Go!\"></form>";
         html += "</body></html>";
         res.status(200).send(html);
     });
