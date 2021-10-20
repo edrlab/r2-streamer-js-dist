@@ -56,9 +56,9 @@ function serverOPDS_local_feed(server, topRouter) {
             return rootUrl + "/pub/" + href;
         }
         function absolutizeURLs(jsonObj) {
-            JsonUtils_1.traverseJsonObjects(jsonObj, function (obj) {
+            (0, JsonUtils_1.traverseJsonObjects)(jsonObj, function (obj) {
                 if (obj.href && typeof obj.href === "string") {
-                    if (!UrlUtils_1.isHTTP(obj.href)) {
+                    if (!(0, UrlUtils_1.isHTTP)(obj.href)) {
                         obj.href = absoluteURL(obj.href);
                     }
                     if (isShow &&
@@ -103,7 +103,7 @@ function serverOPDS_local_feed(server, topRouter) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            var jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
+            var jsonObj = (0, serializable_1.TaJsonSerialize)(objToSerialize);
             var validationStr = void 0;
             var doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -131,7 +131,7 @@ function serverOPDS_local_feed(server, topRouter) {
                     "webpub-manifest/extensions/presentation/properties",
                     "webpub-manifest/language-map",
                 ];
-                var validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
+                var validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
                 if (validationErrors) {
                     validationStr = "";
                     for (var _i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
@@ -177,10 +177,10 @@ function serverOPDS_local_feed(server, topRouter) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/opds+json; charset=utf-8");
-            var publicationsJsonObj = serializable_1.TaJsonSerialize(feed);
+            var publicationsJsonObj = (0, serializable_1.TaJsonSerialize)(feed);
             absolutizeURLs(publicationsJsonObj);
             var publicationsJsonStr = isCanonical ?
-                global.JSON.stringify(JsonUtils_1.sortObject(publicationsJsonObj), null, "") :
+                global.JSON.stringify((0, JsonUtils_1.sortObject)(publicationsJsonObj), null, "") :
                 global.JSON.stringify(publicationsJsonObj, null, "  ");
             var checkSum = crypto.createHash("sha256");
             checkSum.update(publicationsJsonStr);

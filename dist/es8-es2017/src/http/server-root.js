@@ -33,8 +33,8 @@ function serverRoot(server, topRouter) {
 ${server.getPublications().map((pub) => {
             const filePathBase64 = Buffer.from(pub).toString("base64");
             return `\
-<h2><a href=".${server_pub_1.serverPub_PATH}/${UrlUtils_1.encodeURIComponent_RFC3986(filePathBase64)}">\
-${UrlUtils_1.isHTTP(pub) ? pub : path.basename(pub)}\
+<h2><a href=".${server_pub_1.serverPub_PATH}/${(0, UrlUtils_1.encodeURIComponent_RFC3986)(filePathBase64)}">\
+${(0, UrlUtils_1.isHTTP)(pub) ? pub : path.basename(pub)}\
 </a></h2>
 `;
         }).join("")}\
@@ -61,7 +61,7 @@ ${server.disableOPDS ? "" : `\
 </body>
 </html>
 `;
-        res.status(200).send(js_beautify_1.html(html));
+        res.status(200).send((0, js_beautify_1.html)(html));
     });
 }
 exports.serverRoot = serverRoot;

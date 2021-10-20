@@ -52,7 +52,7 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             validateFormats: true,
             verbose: true,
         });
-        ajv_formats_1.default(ajv);
+        (0, ajv_formats_1.default)(ajv);
         let idRoot;
         for (const jsonSchemaName of jsonSchemasNames) {
             const jsonSchemaPath = path.join(jsonSchemasRootpath, jsonSchemaName + ".schema.json");

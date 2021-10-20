@@ -46,7 +46,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v1.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerOPDS_browse_v1.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -58,14 +58,14 @@ function serverOPDS_browse_v1(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
             if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                 failure("HTTP CODE " + response.statusCode);
                 return;
             }
             let responseData;
             try {
-                responseData = yield BufferUtils_1.streamToBufferPromise(response);
+                responseData = yield (0, BufferUtils_1.streamToBufferPromise)(response);
             }
             catch (err) {
                 debug(err);
@@ -99,7 +99,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
                 html += "<h2>" + opdsEntry.Title + "</h2>";
             }
             if (opds && opds.Icon) {
-                const iconUrl = UrlUtils_1.ensureAbsolute(urlDecoded, opds.Icon);
+                const iconUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, opds.Icon);
                 html += "<img src='" + iconUrl + "' alt='' />";
             }
             const links = opds ? opds.Links : (opdsEntry ? opdsEntry.Links : undefined);
@@ -108,9 +108,9 @@ function serverOPDS_browse_v1(_server, topRouter) {
                 links.forEach((link) => {
                     if (link.Type &&
                         (link.Type.indexOf("opds-catalog") >= 0 || link.Type === "application/atom+xml")) {
-                        const linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
+                        const linkUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, link.Href);
                         const opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v1_PATH + "/"))
-                            + exports.serverOPDS_browse_v1_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
+                            + exports.serverOPDS_browse_v1_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(linkUrl);
                         html += "<a href='" + opdsUrl
                             + "'>" + link.Href + "</a> (TITLE: " + link.Title
                             + ") [REL: " + link.Rel + "]<br/>";
@@ -161,27 +161,27 @@ function serverOPDS_browse_v1(_server, topRouter) {
                         }
                         if (opds && link.Type &&
                             (link.Type.indexOf("opds-catalog") >= 0 || link.Type === "application/atom+xml")) {
-                            const linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
+                            const linkUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, link.Href);
                             const opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v1_PATH + "/"))
-                                + exports.serverOPDS_browse_v1_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
+                                + exports.serverOPDS_browse_v1_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(linkUrl);
                             html += "<a href='" + opdsUrl
                                 + "'>" + link.Href + "</a> (TITLE: " + link.Title
                                 + ") [REL: " + link.Rel + "]<br/>";
                         }
                         else if (opds && link.Type &&
                             (link.Type === "application/vnd.readium.lcp.license.v1.0+json")) {
-                            const linkUrl = UrlUtils_1.ensureAbsolute(urlDecoded, link.Href);
+                            const linkUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, link.Href);
                             const opdsUrl = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v1_PATH + "/"))
-                                + server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(linkUrl);
+                                + server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(linkUrl);
                             html += "<a href='" + opdsUrl
                                 + "'>" + link.Href + "</a> (TITLE: " + link.Title
                                 + ") [REL: " + link.Rel + "]<br/>";
                         }
                     });
                     if (imageThumbnail) {
-                        const imageThumbnailUrl = UrlUtils_1.ensureAbsolute(urlDecoded, imageThumbnail);
+                        const imageThumbnailUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, imageThumbnail);
                         if (image) {
-                            const imageUrl = UrlUtils_1.ensureAbsolute(urlDecoded, image);
+                            const imageUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, image);
                             html += "<a href='" + imageUrl + "'><img src='"
                                 + imageThumbnailUrl + "' alt='' /></a><br/>";
                         }
@@ -190,13 +190,13 @@ function serverOPDS_browse_v1(_server, topRouter) {
                         }
                     }
                     else if (image) {
-                        const imageUrl = UrlUtils_1.ensureAbsolute(urlDecoded, image);
+                        const imageUrl = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, image);
                         html += "<img src='" + imageUrl + "' alt='' /><br/>";
                     }
                     if (epub) {
-                        const epub_ = UrlUtils_1.ensureAbsolute(urlDecoded, epub);
+                        const epub_ = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, epub);
                         const epubUrl = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v1_PATH + "/"))
-                            + server_url_1.serverRemotePub_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(epub_);
+                            + server_url_1.serverRemotePub_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(epub_);
                         html += "<strong><a href='" + epubUrl + "'>" + epub + "</a></strong>";
                     }
                 }

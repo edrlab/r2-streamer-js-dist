@@ -70,20 +70,20 @@ function serverMediaOverlays(server, routerPathBase64) {
         const rootUrl = (isSecureHttp ? "https://" : "http://")
             + req.headers.host + "/pub/"
             + (reqparams.lcpPass64 ?
-                (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.lcpPass64) + server.lcpEndToken) :
+                (server.lcpBeginToken + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.lcpPass64) + server.lcpEndToken) :
                 "")
-            + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
+            + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.pathBase64);
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
         function absolutizeURLs(jsonObject) {
-            JsonUtils_1.traverseJsonObjects(jsonObject, (obj) => {
+            (0, JsonUtils_1.traverseJsonObjects)(jsonObject, (obj) => {
                 if (obj.text && typeof obj.text === "string"
-                    && !UrlUtils_1.isHTTP(obj.text)) {
+                    && !(0, UrlUtils_1.isHTTP)(obj.text)) {
                     obj.text = absoluteURL(obj.text);
                 }
                 if (obj.audio && typeof obj.audio === "string"
-                    && !UrlUtils_1.isHTTP(obj.audio)) {
+                    && !(0, UrlUtils_1.isHTTP)(obj.audio)) {
                     obj.audio = absoluteURL(obj.audio);
                 }
             });
@@ -96,7 +96,7 @@ function serverMediaOverlays(server, routerPathBase64) {
             req.query[epub_1.mediaOverlayURLParam];
         if (resource && resource !== "all") {
             try {
-                objToSerialize = await epub_1.getMediaOverlay(publication, resource);
+                objToSerialize = await (0, epub_1.getMediaOverlay)(publication, resource);
             }
             catch (err) {
                 debug(err);
@@ -107,7 +107,7 @@ function serverMediaOverlays(server, routerPathBase64) {
         }
         else {
             try {
-                objToSerialize = await epub_1.getAllMediaOverlays(publication);
+                objToSerialize = await (0, epub_1.getAllMediaOverlays)(publication);
             }
             catch (err) {
                 debug(err);
@@ -119,7 +119,7 @@ function serverMediaOverlays(server, routerPathBase64) {
         if (!objToSerialize) {
             objToSerialize = [];
         }
-        const jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
+        const jsonObj = (0, serializable_1.TaJsonSerialize)(objToSerialize);
         if (isShow) {
             absolutizeURLs(jsonObj);
             const jsonPretty = jsonMarkup(jsonObj, css2json(jsonStyle));
@@ -132,7 +132,7 @@ function serverMediaOverlays(server, routerPathBase64) {
             server.setResponseCORS(res);
             res.set("Content-Type", "application/vnd.syncnarr+json; charset=utf-8");
             const jsonStr = isCanonical ?
-                global.JSON.stringify(JsonUtils_1.sortObject(jsonObj), null, "") :
+                global.JSON.stringify((0, JsonUtils_1.sortObject)(jsonObj), null, "") :
                 global.JSON.stringify(jsonObj, null, "  ");
             const checkSum = crypto.createHash("sha256");
             checkSum.update(jsonStr);

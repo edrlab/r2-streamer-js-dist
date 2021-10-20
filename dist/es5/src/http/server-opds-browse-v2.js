@@ -30,10 +30,10 @@ exports.serverOPDS_browse_v2_PATH = "/opds-v2-browse";
 exports.serverOPDS_dataUrl_PATH = "/data-url";
 exports.serverOPDS_auth_PATH = "/opds-auth";
 var salt = crypto.randomBytes(16).toString("hex");
-var OPDS_AUTH_ENCRYPTION_KEY_BUFFER = crypto.pbkdf2Sync(uuid_1.v4(), salt, 1000, 32, "sha256");
+var OPDS_AUTH_ENCRYPTION_KEY_BUFFER = crypto.pbkdf2Sync((0, uuid_1.v4)(), salt, 1000, 32, "sha256");
 var OPDS_AUTH_ENCRYPTION_KEY_HEX = OPDS_AUTH_ENCRYPTION_KEY_BUFFER.toString("hex");
 var AES_BLOCK_SIZE = 16;
-var OPDS_AUTH_ENCRYPTION_IV_BUFFER = Buffer.from(uuid_1.v4()).slice(0, AES_BLOCK_SIZE);
+var OPDS_AUTH_ENCRYPTION_IV_BUFFER = Buffer.from((0, uuid_1.v4)()).slice(0, AES_BLOCK_SIZE);
 var OPDS_AUTH_ENCRYPTION_IV_HEX = OPDS_AUTH_ENCRYPTION_IV_BUFFER.toString("hex");
 function serverOPDS_browse_v2(_server, topRouter) {
     var _this = this;
@@ -64,10 +64,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
         var reqparams, authResponseJson, authResponseBase64, authResponseStr, authRequestBase64, urlDecoded, isSecureHttp, rootUrl, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return tslib_1.__generator(this, function (_a) {
+        return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -97,17 +97,17 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
                         var isAuthStatusCode, redirectUrl, isBadStatusCode, responseData, err_2, responseStr, responseJson, isPublication, isAuth, opds2Feed, opds2FeedJson, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, val, valueStr, title, pubIndex, jsonPubTitlePath, funk, css, jsonPrettyOPDS2, authDoc, authObj, authLink, imageLink, imageUrl, authHtmlForm;
                         var _a, _b;
-                        return tslib_1.__generator(this, function (_c) {
+                        return (0, tslib_1.__generator)(this, function (_c) {
                             switch (_c.label) {
                                 case 0:
                                     isAuthStatusCode = response.statusCode === 401;
                                     if (isAuthStatusCode &&
                                         authRequestBase64 && authResponseJson && authResponseJson.refresh_token) {
                                         redirectUrl = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                                            exports.serverOPDS_auth_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64) +
+                                            exports.serverOPDS_auth_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64) +
                                             "?" + request_ext_1._authRefresh + "=" + authResponseJson.refresh_token;
                                         debug("REDIRECT: " + req.originalUrl + " ==> " + redirectUrl);
                                         res.redirect(301, redirectUrl);
@@ -121,7 +121,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                     _c.label = 1;
                                 case 1:
                                     _c.trys.push([1, 3, , 4]);
-                                    return [4, BufferUtils_1.streamToBufferPromise(response)];
+                                    return [4, (0, BufferUtils_1.streamToBufferPromise)(response)];
                                 case 2:
                                     responseData = _c.sent();
                                     return [3, 4];
@@ -140,10 +140,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                         !responseJson.catalogs &&
                                         responseJson.metadata;
                                     isAuth = !isPublication && responseJson.authentication;
-                                    opds2Feed = isPublication ? serializable_1.TaJsonDeserialize(responseJson, opds2_publication_1.OPDSPublication) :
-                                        (isAuth ? serializable_1.TaJsonDeserialize(responseJson, opds2_authentication_doc_1.OPDSAuthenticationDoc) :
-                                            serializable_1.TaJsonDeserialize(responseJson, opds2_1.OPDSFeed));
-                                    opds2FeedJson = serializable_1.TaJsonSerialize(opds2Feed);
+                                    opds2Feed = isPublication ? (0, serializable_1.TaJsonDeserialize)(responseJson, opds2_publication_1.OPDSPublication) :
+                                        (isAuth ? (0, serializable_1.TaJsonDeserialize)(responseJson, opds2_authentication_doc_1.OPDSAuthenticationDoc) :
+                                            (0, serializable_1.TaJsonDeserialize)(responseJson, opds2_1.OPDSFeed));
+                                    opds2FeedJson = (0, serializable_1.TaJsonSerialize)(opds2Feed);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
                                         jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
@@ -175,7 +175,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                         else if (!isPublication) {
                                             jsonSchemasNames.unshift("opds/feed");
                                         }
-                                        validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, opds2FeedJson);
+                                        validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, opds2FeedJson);
                                         if (validationErrors) {
                                             validationStr = "";
                                             for (_i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
@@ -225,37 +225,37 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                             var fullHref = obj.href ? obj.href : obj.Href;
                                             var isDataUrl = /^data:/.test(fullHref);
                                             var isMailUrl = /^mailto:/.test(fullHref);
-                                            var notFull = !isDataUrl && !isMailUrl && !UrlUtils_1.isHTTP(fullHref);
+                                            var notFull = !isDataUrl && !isMailUrl && !(0, UrlUtils_1.isHTTP)(fullHref);
                                             if (notFull) {
-                                                fullHref = UrlUtils_1.ensureAbsolute(urlDecoded, fullHref);
+                                                fullHref = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, fullHref);
                                             }
                                             if ((obj.type && obj.type.indexOf("opds") >= 0 && obj.type.indexOf("json") >= 0) ||
                                                 (obj.Type && obj.Type.indexOf("opds") >= 0 && obj.Type.indexOf("json") >= 0)) {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                                                    exports.serverOPDS_browse_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                    exports.serverOPDS_browse_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                                                 if (authRequestBase64 && authResponseBase64) {
                                                     obj.__href__AUTH = obj.__href__ +
                                                         "?" +
-                                                        request_ext_1._authResponse + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authResponseBase64) +
+                                                        request_ext_1._authResponse + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authResponseBase64) +
                                                         "&" +
-                                                        request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64);
+                                                        request_ext_1._authRequest + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64);
                                                 }
                                             }
                                             else if (obj.type === "application/vnd.readium.lcp.license.v1.0+json") {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                                                    server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                    server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                                                 if (authRequestBase64 && authResponseBase64) {
                                                     obj.__href__AUTH = obj.__href__ +
                                                         "?" +
-                                                        request_ext_1._authResponse + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authResponseBase64) +
+                                                        request_ext_1._authResponse + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authResponseBase64) +
                                                         "&" +
-                                                        request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64);
+                                                        request_ext_1._authRequest + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64);
                                                 }
                                             }
                                             else if ((obj.type && obj.type.indexOf("application/atom+xml") >= 0) ||
                                                 (obj.Type && obj.Type.indexOf("application/atom+xml") >= 0)) {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                                                    server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                    server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                                             }
                                             else if (isDataUrl) {
                                             }
@@ -264,7 +264,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                             }
                                         }
                                     };
-                                    JsonUtils_1.traverseJsonObjects(opds2FeedJson, funk);
+                                    (0, JsonUtils_1.traverseJsonObjects)(opds2FeedJson, funk);
                                     css = css2json(jsonStyle);
                                     jsonPrettyOPDS2 = jsonMarkup(opds2FeedJson, css);
                                     jsonPrettyOPDS2 = jsonPrettyOPDS2.replace(/>"data:image\/(.*)"</g, "><a href=\"data:image/$1\" target=\"_BLANK\"><img style=\"max-width: 100px;\" src=\"data:image/$1\"></a><");
@@ -278,7 +278,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                     imageLink = authDoc ? (authDoc.Links && authDoc.Links.find(function (link) {
                                         return link.Rel && link.Rel.includes("logo") && link.TypeLink && link.TypeLink.startsWith("image/");
                                     })) : undefined;
-                                    imageUrl = imageLink ? UrlUtils_1.ensureAbsolute(urlDecoded, imageLink.Href) : undefined;
+                                    imageUrl = imageLink ? (0, UrlUtils_1.ensureAbsolute)(urlDecoded, imageLink.Href) : undefined;
                                     authHtmlForm = !authObj ? "" : "\n<hr>\n<form id=\"authForm\">\n    <input type=\"text\" name=\"login\" id=\"login\" size=\"40\">\n    <span>" + authObj.Labels.Login + "</span>\n<br><br>\n    <input type=\"password\" name=\"password\" id=\"password\" size=\"40\">\n    <span>" + authObj.Labels.Password + "</span>\n<br><br>\n    <input type=\"submit\" value=\"Authenticate\">\n</form>\n" + (imageUrl ? "<img src=\"" + imageUrl + "\" />" : "") + "\n<script type=\"text/javascript\">\n// document.addEventListener(\"DOMContentLoaded\", (event) => {\n// });\nconst formElement = document.getElementById(\"authForm\");\nformElement.addEventListener(\"submit\", (event) => {\n    event.preventDefault();\n    doAuth();\n});\nfunction encodeURIComponent_RFC3986(str) {\n    return encodeURIComponent(str).replace(/[!'()*]/g, (c) => {\n        return \"%\" + c.charCodeAt(0).toString(16);\n    });\n}\nfunction encodeFormData(json) {\n    if (!json) {\n        return \"\";\n    }\n    return Object.keys(json).map((key) => {\n        return encodeURIComponent_RFC3986(key) + \"=\" + (json[key] ? encodeURIComponent_RFC3986(json[key]) : \"_\");\n    }).join(\"&\");\n}\nfunction hexStrToArrayBuffer(hexStr) {\n    return new Uint8Array(\n        hexStr\n        .match(/.{1,2}/g)\n        .map((byte) => {\n            return parseInt(byte, 16);\n        })\n    );\n}\nfunction doAuth() {\n    " + (authLink ? "\n    const bodyJson = {\n        targetUrl: \"" + urlDecoded + "\",\n        authUrl: \"" + authLink.Href + "\",\n        grant_type: \"password\",\n        username: document.getElementById(\"login\").value,\n        password: document.getElementById(\"password\").value\n    };\n    const bodyStr = JSON.stringify(bodyJson);\n\n    const textEncoder = new TextEncoder(\"utf-8\");\n    const bodyStrEncoded = textEncoder.encode(bodyStr); // Uint8Array\n\n    const keyPromise = window.crypto.subtle.importKey(\n        \"raw\",\n        hexStrToArrayBuffer(\"" + OPDS_AUTH_ENCRYPTION_KEY_HEX + "\"),\n        { \"name\": \"AES-CBC\" },\n        false,\n        [\"encrypt\", \"decrypt\"]\n    );\n    keyPromise.then((key) => { // CryptoKey\n\n        const iv = hexStrToArrayBuffer(\"" + OPDS_AUTH_ENCRYPTION_IV_HEX + "\");\n        const encryptedBodyPromise = window.crypto.subtle.encrypt(\n            {\n                name: \"AES-CBC\",\n                iv\n            },\n            key,\n            bodyStrEncoded\n        );\n        encryptedBodyPromise.then((encryptedBody) => { // ArrayBuffer\n            // const arg = String.fromCharCode.apply(null, new Uint8Array(encryptedBody));\n            const arg = new Uint8Array(encryptedBody).reduce((data, byte) => {\n                return data + String.fromCharCode(byte);\n            }, '');\n            const encryptedBodyB64 = window.btoa(arg);\n\n            const url = location.origin + \"" + exports.serverOPDS_auth_PATH + "/\" + encodeURIComponent_RFC3986(encryptedBodyB64);\n            location.href = url;\n        }).catch((err) => {\n            console.log(err);\n        });\n    }).catch((err) => {\n        console.log(err);\n    });\n\n/* does not work because of HTTP CORS, so we forward to NodeJS fetch/request via the serverOPDS_auth_PATH HTTP route\n    window.fetch(\"" + authLink.Href + "\", {\n        method: \"POST\",\n        headers: {\n            \"Content-Type\": \"application/x-www-form-url-encoded\",\n            \"Accept\": \"application/json\"\n        },\n        body: encodeFormData(bodyJson)\n    })\n    .then((response) => {\n        const res = JSON.stringify(response, null, 4);\n        console.log(res);\n    })\n    .catch((error) => {\n        console.log(error);\n    });\n*/\n    " :
                                         "window.alert(\"no auth link!\");") + "\n}\n</script>";
                                     res.status(200).send("<html><body>" +
@@ -352,10 +352,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
         var reqparams, base64Payload, refreshToken, isSecureHttp, rootUrl, encrypted, decrypteds, decryptStream, buff1, buff2, decrypted, nPaddingBytes, size, decryptedStr, decryptedJson_1, authUrl, targetUrl_1, failure_1, success, headers, needsStreamingResponse, response, err_3, err_4;
         var _this = this;
-        return tslib_1.__generator(this, function (_a) {
+        return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -402,9 +402,9 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
                         var responseData, err_5, responseStr, responseJson, targetUrl_, refreshTokenUrl;
-                        return tslib_1.__generator(this, function (_a) {
+                        return (0, tslib_1.__generator)(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
@@ -414,7 +414,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                     _a.label = 1;
                                 case 1:
                                     _a.trys.push([1, 3, , 4]);
-                                    return [4, BufferUtils_1.streamToBufferPromise(response)];
+                                    return [4, (0, BufferUtils_1.streamToBufferPromise)(response)];
                                 case 2:
                                     responseData = _a.sent();
                                     return [3, 4];
@@ -429,13 +429,13 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                         responseStr = responseData.toString("utf8");
                                         responseJson = JSON.parse(responseStr);
                                         targetUrl_ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_auth_PATH + "/")) +
-                                            exports.serverOPDS_browse_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(targetUrl_1) +
+                                            exports.serverOPDS_browse_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(targetUrl_1) +
                                             "?" + request_ext_1._authResponse + "=" +
-                                            UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(JSON.stringify(responseJson)).toString("base64")) +
-                                            "&" + request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(base64Payload);
+                                            (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(JSON.stringify(responseJson)).toString("base64")) +
+                                            "&" + request_ext_1._authRequest + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(base64Payload);
                                         refreshTokenUrl = responseJson.refresh_token ? rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_auth_PATH + "/")) +
-                                            exports.serverOPDS_auth_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(base64Payload) +
-                                            "?" + request_ext_1._authRefresh + "=" + UrlUtils_1.encodeURIComponent_RFC3986(responseJson.refresh_token) : undefined;
+                                            exports.serverOPDS_auth_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(base64Payload) +
+                                            "?" + request_ext_1._authRefresh + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(responseJson.refresh_token) : undefined;
                                         decryptedJson_1.password = "***";
                                         res.status(200).send("\n                        <html><body>\n                        <hr>\n                        <a href=\"" + targetUrl_ + "\">" + targetUrl_1 + "</a>\n                        <hr>\n                        <pre>" + JSON.stringify(decryptedJson_1, null, 4) + "</pre>\n                        <hr>\n                        <pre>" + JSON.stringify(responseJson, null, 4) + "</pre>\n                        <hr>\n                        " + (refreshTokenUrl ? "<a href=\"" + refreshTokenUrl + "\">FORCE REFRESH TOKEN</a>" : "") + "\n                        <hr>\n                        </body></html>\n                    ");
                                     }

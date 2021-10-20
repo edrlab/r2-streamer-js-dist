@@ -75,7 +75,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_convert_v1_to_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerOPDS_convert_v1_to_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -92,7 +92,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
             var _a, _b;
             if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                 failure("HTTP CODE " + response.statusCode);
@@ -100,7 +100,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             }
             let responseData;
             try {
-                responseData = yield BufferUtils_1.streamToBufferPromise(response);
+                responseData = yield (0, BufferUtils_1.streamToBufferPromise)(response);
             }
             catch (err) {
                 debug(err);
@@ -123,7 +123,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             if (isEntry) {
                 opds1Entry = xml_js_mapper_1.XML.deserialize(responseXml, opds_entry_1.Entry);
                 try {
-                    opds2Publication = converter_1.convertOpds1ToOpds2_EntryToPublication(opds1Entry);
+                    opds2Publication = (0, converter_1.convertOpds1ToOpds2_EntryToPublication)(opds1Entry);
                 }
                 catch (err) {
                     debug("OPDS 1 -> 2 conversion FAILED (Entry)");
@@ -136,7 +136,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             else {
                 opds1Feed = xml_js_mapper_1.XML.deserialize(responseXml, opds_1.OPDS);
                 try {
-                    opds2Feed = converter_1.convertOpds1ToOpds2(opds1Feed);
+                    opds2Feed = (0, converter_1.convertOpds1ToOpds2)(opds1Feed);
                 }
                 catch (err) {
                     debug("OPDS 1 -> 2 conversion FAILED");
@@ -150,23 +150,23 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                 if ((obj.href && typeof obj.href === "string") ||
                     (obj.Href && typeof obj.Href === "string")) {
                     let fullHref = obj.href ? obj.href : obj.Href;
-                    const notFull = !UrlUtils_1.isHTTP(fullHref);
+                    const notFull = !(0, UrlUtils_1.isHTTP)(fullHref);
                     if (notFull) {
-                        fullHref = UrlUtils_1.ensureAbsolute(urlDecoded, fullHref);
+                        fullHref = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, fullHref);
                     }
                     if ((obj.type && obj.type.indexOf("application/atom+xml") >= 0) ||
                         (obj.Type && obj.Type.indexOf("application/atom+xml") >= 0)) {
                         obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_convert_v1_to_v2_PATH + "/")) +
-                            exports.serverOPDS_convert_v1_to_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                            exports.serverOPDS_convert_v1_to_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                     }
                     else if (notFull) {
                         obj.__href__ = fullHref;
                     }
                 }
             };
-            const jsonObjOPDS1 = serializable_1.TaJsonSerialize(opds1Entry ? opds1Entry : opds1Feed);
-            JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-            const jsonObjOPDS2 = serializable_1.TaJsonSerialize(opds2Publication ? opds2Publication : opds2Feed);
+            const jsonObjOPDS1 = (0, serializable_1.TaJsonSerialize)(opds1Entry ? opds1Entry : opds1Feed);
+            (0, JsonUtils_1.traverseJsonObjects)(jsonObjOPDS1, funk);
+            const jsonObjOPDS2 = (0, serializable_1.TaJsonSerialize)(opds2Publication ? opds2Publication : opds2Feed);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -196,7 +196,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                 if (!opds2Publication) {
                     jsonSchemasNames.unshift("opds/feed");
                 }
-                const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
+                const validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
                 if (validationErrors) {
                     validationStr = "";
                     for (const err of validationErrors) {
@@ -239,7 +239,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                     }
                 }
             }
-            JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
+            (0, JsonUtils_1.traverseJsonObjects)(jsonObjOPDS2, funk);
             const css = css2json(jsonStyle);
             const jsonPrettyOPDS1 = jsonMarkup(jsonObjOPDS1, css);
             const jsonPrettyOPDS2 = jsonMarkup(jsonObjOPDS2, css);

@@ -247,6 +247,11 @@ https://api.deslibris.ca/api/feed
 =>
 http://readium2.herokuapp.com/opds-v1-v2-convert/https%3A%2F%2Fapi.deslibris.ca%2Fapi%2Ffeed
 
+Lyrasis
+https://lion.lyrasistechnology.org
+=>
+http://readium2.herokuapp.com/opds-v1-v2-convert/https%3A%2F%2Flion.lyrasistechnology.org%2F
+
 ## OPDS 2.0
 
 Specification: https://drafts.opds.io/opds-2.0
@@ -256,6 +261,8 @@ Sample feed: https://test.opds.io/2.0/home.json => http://readium2.herokuapp.com
 Feedbooks: https://catalog.feedbooks.com/catalog/index.json (replace `.json` with `.atom` to access the OPDS1 XML feed) => http://readium2.herokuapp.com/opds-v2-browse/https%3A%2F%2Fcatalog.feedbooks.com%2Fcatalog%2Findex.json
 
 Lirtuel.be: https://www.lirtuel.be/v1/home.opds2 => http://readium2.herokuapp.com/opds-v2-browse/https%3A%2F%2Fwww.lirtuel.be%2Fv1%2Fhome.opds2
+
+eBiblioMedia (Lausanne Fondation Suisse): https://bm.ebibliomedia.ch/v1/home.opds2 => http://readium2.herokuapp.com/opds-v2-browse/https%3A%2F%2Fbm.ebibliomedia.ch%2Fv1%2Fhome.opds2
 
 CantookStation / Pretnumerique.ca / Bibliopresto.ca: https://missmills.cantookstation.com/v1/home.opds2 and http://quebec.pretnumerique.ca/v1/home.opds2 and http://montreal.pretnumerique.ca/v1/home.opds2 and https://demoreader.cantookstation.com/v1/home.opds2 and https://demo-testapp.cantookstation.com/v1/home.opds2 and ... many more, see https://sols.cantookstation.com/find_library and http://www.pretnumerique.ca/find_library and https://bibliopresto.ca => http://readium2.herokuapp.com/opds-v2-browse/
 

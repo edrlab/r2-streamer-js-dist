@@ -12,9 +12,9 @@ const init_globals_2 = require("r2-shared-js/dist/es8-es2017/src/init-globals");
 const metadata_1 = require("r2-shared-js/dist/es8-es2017/src/models/metadata");
 const publication_parser_1 = require("r2-shared-js/dist/es8-es2017/src/parser/publication-parser");
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
-init_globals_1.initGlobalConverters_OPDS();
-init_globals_2.initGlobalConverters_SHARED();
-init_globals_2.initGlobalConverters_GENERIC();
+(0, init_globals_1.initGlobalConverters_OPDS)();
+(0, init_globals_2.initGlobalConverters_SHARED)();
+(0, init_globals_2.initGlobalConverters_GENERIC)();
 console.log(`process.cwd(): ${process.cwd()}`);
 console.log(`__dirname: ${__dirname}`);
 let args = process.argv.slice(2);
@@ -38,13 +38,13 @@ if (fs.existsSync(opdsJsonFilePath)) {
     let nPubs = 0;
     for (const pathBase64 of args) {
         const pathBase64Str = Buffer.from(decodeURIComponent(pathBase64), "base64").toString("utf8");
-        if (UrlUtils_1.isHTTP(pathBase64Str)) {
+        if ((0, UrlUtils_1.isHTTP)(pathBase64Str)) {
             continue;
         }
         console.log(`OPDS parsing: ${pathBase64Str}`);
         let publication;
         try {
-            publication = await publication_parser_1.PublicationParsePromise(pathBase64Str);
+            publication = await (0, publication_parser_1.PublicationParsePromise)(pathBase64Str);
         }
         catch (err) {
             console.log(err);
@@ -82,8 +82,8 @@ if (fs.existsSync(opdsJsonFilePath)) {
         }
         if (publication.Metadata) {
             try {
-                const publicationMetadataJson = serializable_1.TaJsonSerialize(publication.Metadata);
-                publi.Metadata = serializable_1.TaJsonDeserialize(publicationMetadataJson, metadata_1.Metadata);
+                const publicationMetadataJson = (0, serializable_1.TaJsonSerialize)(publication.Metadata);
+                publi.Metadata = (0, serializable_1.TaJsonDeserialize)(publicationMetadataJson, metadata_1.Metadata);
             }
             catch (err) {
                 console.log(err);
@@ -92,7 +92,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
         }
     }
     feed.Metadata.NumberOfItems = nPubs;
-    const jsonObj = serializable_1.TaJsonSerialize(feed);
+    const jsonObj = (0, serializable_1.TaJsonSerialize)(feed);
     const jsonStr = global.JSON.stringify(jsonObj, null, "");
     fs.writeFileSync(opdsJsonFilePath, jsonStr, { encoding: "utf8" });
     console.log("DONE! :)");

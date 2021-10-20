@@ -73,7 +73,7 @@ function serverLCPLSD_show(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -90,7 +90,7 @@ function serverLCPLSD_show(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
             var _a;
             const isBadStatusCode = response.statusCode && (response.statusCode < 200 || response.statusCode >= 300);
             if (isBadStatusCode) {
@@ -99,7 +99,7 @@ function serverLCPLSD_show(_server, topRouter) {
             }
             let responseData;
             try {
-                responseData = yield BufferUtils_1.streamToBufferPromise(response);
+                responseData = yield (0, BufferUtils_1.streamToBufferPromise)(response);
             }
             catch (err) {
                 debug(err);
@@ -113,9 +113,9 @@ function serverLCPLSD_show(_server, topRouter) {
                 responseJson.updated &&
                 responseJson.links;
             const lcpOrLsd = isStatusDoc ?
-                serializable_1.TaJsonDeserialize(responseJson, lsd_1.LSD) :
-                serializable_1.TaJsonDeserialize(responseJson, lcp_1.LCP);
-            const lcpOrLsdJson = serializable_1.TaJsonSerialize(lcpOrLsd);
+                (0, serializable_1.TaJsonDeserialize)(responseJson, lsd_1.LSD) :
+                (0, serializable_1.TaJsonDeserialize)(responseJson, lcp_1.LCP);
+            const lcpOrLsdJson = (0, serializable_1.TaJsonSerialize)(lcpOrLsd);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -124,7 +124,7 @@ function serverLCPLSD_show(_server, topRouter) {
                     isStatusDoc ? "lcp/status" : "lcp/license",
                     "lcp/link",
                 ];
-                const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, lcpOrLsdJson);
+                const validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, lcpOrLsdJson);
                 if (validationErrors) {
                     validationStr = "";
                     for (const err of validationErrors) {
@@ -148,18 +148,18 @@ function serverLCPLSD_show(_server, topRouter) {
                     let fullHref = obj.href ? obj.href : obj.Href;
                     const isDataUrl = /^data:/.test(fullHref);
                     const isMailUrl = /^mailto:/.test(fullHref);
-                    const notFull = !isDataUrl && !isMailUrl && !UrlUtils_1.isHTTP(fullHref);
+                    const notFull = !isDataUrl && !isMailUrl && !(0, UrlUtils_1.isHTTP)(fullHref);
                     if (notFull) {
-                        fullHref = UrlUtils_1.ensureAbsolute(urlDecoded, fullHref);
+                        fullHref = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, fullHref);
                     }
                     if ((obj.type === "application/vnd.readium.license.status.v1.0+json" && obj.rel === "status") ||
                         (obj.type === "application/vnd.readium.lcp.license.v1.0+json" && obj.rel === "license")) {
                         obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverLCPLSD_show_PATH + "/")) +
-                            exports.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                            exports.serverLCPLSD_show_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                     }
                     else if (obj.type === "application/epub+zip" && obj.rel === "publication") {
                         obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverLCPLSD_show_PATH + "/")) +
-                            server_url_1.serverRemotePub_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                            server_url_1.serverRemotePub_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                     }
                     else if (isDataUrl) {
                     }
@@ -168,7 +168,7 @@ function serverLCPLSD_show(_server, topRouter) {
                     }
                 }
             };
-            JsonUtils_1.traverseJsonObjects(lcpOrLsdJson, funk);
+            (0, JsonUtils_1.traverseJsonObjects)(lcpOrLsdJson, funk);
             const css = css2json(jsonStyle);
             const jsonPretty = jsonMarkup(lcpOrLsdJson, css);
             res.status(200).send("<html><body>" +

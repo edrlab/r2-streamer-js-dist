@@ -20,25 +20,25 @@ function serverManifestJson(server, routerPathBase64) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerManifestJson = express.Router({ strict: false });
-    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
         function absolutizeURLs(jsonObj) {
-            JsonUtils_1.traverseJsonObjects(jsonObj, function (obj) {
+            (0, JsonUtils_1.traverseJsonObjects)(jsonObj, function (obj) {
                 if (obj.href && typeof obj.href === "string"
-                    && !UrlUtils_1.isHTTP(obj.href)) {
+                    && !(0, UrlUtils_1.isHTTP)(obj.href)) {
                     obj.href = absoluteURL(obj.href);
                 }
                 if (obj["media-overlay"] && typeof obj["media-overlay"] === "string"
-                    && !UrlUtils_1.isHTTP(obj["media-overlay"])) {
+                    && !(0, UrlUtils_1.isHTTP)(obj["media-overlay"])) {
                     obj["media-overlay"] = absoluteURL(obj["media-overlay"]);
                 }
             });
         }
         var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, contentType, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
         var _c;
-        return tslib_1.__generator(this, function (_d) {
+        return (0, tslib_1.__generator)(this, function (_d) {
             switch (_d.label) {
                 case 0:
                     reqparams = req.params;
@@ -99,9 +99,9 @@ function serverManifestJson(server, routerPathBase64) {
                     rootUrl = (isSecureHttp ? "https://" : "http://")
                         + req.headers.host + "/pub/"
                         + (reqparams.lcpPass64 ?
-                            (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.lcpPass64) + server.lcpEndToken) :
+                            (server.lcpBeginToken + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.lcpPass64) + server.lcpEndToken) :
                             "")
-                        + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
+                        + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.pathBase64);
                     manifestURL = rootUrl + "/" + "manifest.json";
                     contentType = (publication.Metadata && publication.Metadata.RDFType &&
                         /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
@@ -136,7 +136,7 @@ function serverManifestJson(server, routerPathBase64) {
                     coverLink = publication.GetCover();
                     if (coverLink) {
                         coverImage = coverLink.Href;
-                        if (coverImage && !UrlUtils_1.isHTTP(coverImage)) {
+                        if (coverImage && !(0, UrlUtils_1.isHTTP)(coverImage)) {
                             coverImage = absoluteURL(coverImage);
                         }
                     }
@@ -171,7 +171,7 @@ function serverManifestJson(server, routerPathBase64) {
                     _d.label = 11;
                 case 11:
                     _d.trys.push([11, 13, , 14]);
-                    return [4, epub_1.getAllMediaOverlays(publication)];
+                    return [4, (0, epub_1.getAllMediaOverlays)(publication)];
                 case 12:
                     objToSerialize = _d.sent();
                     return [3, 14];
@@ -237,7 +237,7 @@ function serverManifestJson(server, routerPathBase64) {
                     if (!objToSerialize) {
                         objToSerialize = {};
                     }
-                    jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
+                    jsonObj = (0, serializable_1.TaJsonSerialize)(objToSerialize);
                     validationStr = void 0;
                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                     if (doValidate) {
@@ -262,7 +262,7 @@ function serverManifestJson(server, routerPathBase64) {
                             "opds/catalog-entry",
                             "opds/properties",
                         ];
-                        validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
+                        validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
                         if (validationErrors) {
                             validationStr = "";
                             for (_i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
@@ -302,14 +302,14 @@ function serverManifestJson(server, routerPathBase64) {
                 case 26:
                     server.setResponseCORS(res);
                     res.set("Content-Type", contentType + "; charset=utf-8");
-                    publicationJsonObj = serializable_1.TaJsonSerialize(publication);
+                    publicationJsonObj = (0, serializable_1.TaJsonSerialize)(publication);
                     if (isCanonical) {
                         if (publicationJsonObj.links) {
                             delete publicationJsonObj.links;
                         }
                     }
                     publicationJsonStr = isCanonical ?
-                        global.JSON.stringify(JsonUtils_1.sortObject(publicationJsonObj), null, "") :
+                        global.JSON.stringify((0, JsonUtils_1.sortObject)(publicationJsonObj), null, "") :
                         global.JSON.stringify(publicationJsonObj, null, "  ");
                     checkSum = crypto.createHash("sha256");
                     checkSum.update(publicationJsonStr);

@@ -30,10 +30,10 @@ exports.serverOPDS_browse_v2_PATH = "/opds-v2-browse";
 exports.serverOPDS_dataUrl_PATH = "/data-url";
 exports.serverOPDS_auth_PATH = "/opds-auth";
 const salt = crypto.randomBytes(16).toString("hex");
-const OPDS_AUTH_ENCRYPTION_KEY_BUFFER = crypto.pbkdf2Sync(uuid_1.v4(), salt, 1000, 32, "sha256");
+const OPDS_AUTH_ENCRYPTION_KEY_BUFFER = crypto.pbkdf2Sync((0, uuid_1.v4)(), salt, 1000, 32, "sha256");
 const OPDS_AUTH_ENCRYPTION_KEY_HEX = OPDS_AUTH_ENCRYPTION_KEY_BUFFER.toString("hex");
 const AES_BLOCK_SIZE = 16;
-const OPDS_AUTH_ENCRYPTION_IV_BUFFER = Buffer.from(uuid_1.v4()).slice(0, AES_BLOCK_SIZE);
+const OPDS_AUTH_ENCRYPTION_IV_BUFFER = Buffer.from((0, uuid_1.v4)()).slice(0, AES_BLOCK_SIZE);
 const OPDS_AUTH_ENCRYPTION_IV_HEX = OPDS_AUTH_ENCRYPTION_IV_BUFFER.toString("hex");
 function serverOPDS_browse_v2(_server, topRouter) {
     const jsonStyle = `
@@ -85,7 +85,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -114,13 +114,13 @@ function serverOPDS_browse_v2(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
             var _a, _b;
             const isAuthStatusCode = response.statusCode === 401;
             if (isAuthStatusCode &&
                 authRequestBase64 && authResponseJson && authResponseJson.refresh_token) {
                 const redirectUrl = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                    exports.serverOPDS_auth_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64) +
+                    exports.serverOPDS_auth_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64) +
                     "?" + request_ext_1._authRefresh + "=" + authResponseJson.refresh_token;
                 debug(`REDIRECT: ${req.originalUrl} ==> ${redirectUrl}`);
                 res.redirect(301, redirectUrl);
@@ -133,7 +133,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
             }
             let responseData;
             try {
-                responseData = yield BufferUtils_1.streamToBufferPromise(response);
+                responseData = yield (0, BufferUtils_1.streamToBufferPromise)(response);
             }
             catch (err) {
                 debug(err);
@@ -149,10 +149,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
                 !responseJson.catalogs &&
                 responseJson.metadata;
             const isAuth = !isPublication && responseJson.authentication;
-            const opds2Feed = isPublication ? serializable_1.TaJsonDeserialize(responseJson, opds2_publication_1.OPDSPublication) :
-                (isAuth ? serializable_1.TaJsonDeserialize(responseJson, opds2_authentication_doc_1.OPDSAuthenticationDoc) :
-                    serializable_1.TaJsonDeserialize(responseJson, opds2_1.OPDSFeed));
-            const opds2FeedJson = serializable_1.TaJsonSerialize(opds2Feed);
+            const opds2Feed = isPublication ? (0, serializable_1.TaJsonDeserialize)(responseJson, opds2_publication_1.OPDSPublication) :
+                (isAuth ? (0, serializable_1.TaJsonDeserialize)(responseJson, opds2_authentication_doc_1.OPDSAuthenticationDoc) :
+                    (0, serializable_1.TaJsonDeserialize)(responseJson, opds2_1.OPDSFeed));
+            const opds2FeedJson = (0, serializable_1.TaJsonSerialize)(opds2Feed);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -185,7 +185,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                 else if (!isPublication) {
                     jsonSchemasNames.unshift("opds/feed");
                 }
-                const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, opds2FeedJson);
+                const validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, opds2FeedJson);
                 if (validationErrors) {
                     validationStr = "";
                     for (const err of validationErrors) {
@@ -234,37 +234,37 @@ function serverOPDS_browse_v2(_server, topRouter) {
                     let fullHref = obj.href ? obj.href : obj.Href;
                     const isDataUrl = /^data:/.test(fullHref);
                     const isMailUrl = /^mailto:/.test(fullHref);
-                    const notFull = !isDataUrl && !isMailUrl && !UrlUtils_1.isHTTP(fullHref);
+                    const notFull = !isDataUrl && !isMailUrl && !(0, UrlUtils_1.isHTTP)(fullHref);
                     if (notFull) {
-                        fullHref = UrlUtils_1.ensureAbsolute(urlDecoded, fullHref);
+                        fullHref = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, fullHref);
                     }
                     if ((obj.type && obj.type.indexOf("opds") >= 0 && obj.type.indexOf("json") >= 0) ||
                         (obj.Type && obj.Type.indexOf("opds") >= 0 && obj.Type.indexOf("json") >= 0)) {
                         obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                            exports.serverOPDS_browse_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                            exports.serverOPDS_browse_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                         if (authRequestBase64 && authResponseBase64) {
                             obj.__href__AUTH = obj.__href__ +
                                 "?" +
-                                request_ext_1._authResponse + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authResponseBase64) +
+                                request_ext_1._authResponse + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authResponseBase64) +
                                 "&" +
-                                request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64);
+                                request_ext_1._authRequest + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64);
                         }
                     }
                     else if (obj.type === "application/vnd.readium.lcp.license.v1.0+json") {
                         obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                            server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                            server_lcp_lsd_show_1.serverLCPLSD_show_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                         if (authRequestBase64 && authResponseBase64) {
                             obj.__href__AUTH = obj.__href__ +
                                 "?" +
-                                request_ext_1._authResponse + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authResponseBase64) +
+                                request_ext_1._authResponse + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authResponseBase64) +
                                 "&" +
-                                request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(authRequestBase64);
+                                request_ext_1._authRequest + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64);
                         }
                     }
                     else if ((obj.type && obj.type.indexOf("application/atom+xml") >= 0) ||
                         (obj.Type && obj.Type.indexOf("application/atom+xml") >= 0)) {
                         obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
-                            server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                            server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                     }
                     else if (isDataUrl) {
                     }
@@ -273,7 +273,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                     }
                 }
             };
-            JsonUtils_1.traverseJsonObjects(opds2FeedJson, funk);
+            (0, JsonUtils_1.traverseJsonObjects)(opds2FeedJson, funk);
             const css = css2json(jsonStyle);
             let jsonPrettyOPDS2 = jsonMarkup(opds2FeedJson, css);
             jsonPrettyOPDS2 = jsonPrettyOPDS2.replace(/>"data:image\/(.*)"</g, "><a href=\"data:image/$1\" target=\"_BLANK\"><img style=\"max-width: 100px;\" src=\"data:image/$1\"></a><");
@@ -287,7 +287,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
             const imageLink = authDoc ? (authDoc.Links && authDoc.Links.find((link) => {
                 return link.Rel && link.Rel.includes("logo") && link.TypeLink && link.TypeLink.startsWith("image/");
             })) : undefined;
-            const imageUrl = imageLink ? UrlUtils_1.ensureAbsolute(urlDecoded, imageLink.Href) : undefined;
+            const imageUrl = imageLink ? (0, UrlUtils_1.ensureAbsolute)(urlDecoded, imageLink.Href) : undefined;
             const authHtmlForm = !authObj ? "" : `
 <hr>
 <form id="authForm">
@@ -458,7 +458,7 @@ function doAuth() {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -501,14 +501,14 @@ function doAuth() {
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + err + "</p></body></html>");
             };
-            const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
                 if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                     failure("HTTP CODE " + response.statusCode);
                     return;
                 }
                 let responseData;
                 try {
-                    responseData = yield BufferUtils_1.streamToBufferPromise(response);
+                    responseData = yield (0, BufferUtils_1.streamToBufferPromise)(response);
                 }
                 catch (err) {
                     debug(err);
@@ -520,13 +520,13 @@ function doAuth() {
                     const responseStr = responseData.toString("utf8");
                     const responseJson = JSON.parse(responseStr);
                     const targetUrl_ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_auth_PATH + "/")) +
-                        exports.serverOPDS_browse_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(targetUrl) +
+                        exports.serverOPDS_browse_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(targetUrl) +
                         "?" + request_ext_1._authResponse + "=" +
-                        UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(JSON.stringify(responseJson)).toString("base64")) +
-                        "&" + request_ext_1._authRequest + "=" + UrlUtils_1.encodeURIComponent_RFC3986(base64Payload);
+                        (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(JSON.stringify(responseJson)).toString("base64")) +
+                        "&" + request_ext_1._authRequest + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(base64Payload);
                     const refreshTokenUrl = responseJson.refresh_token ? rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_auth_PATH + "/")) +
-                        exports.serverOPDS_auth_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(base64Payload) +
-                        "?" + request_ext_1._authRefresh + "=" + UrlUtils_1.encodeURIComponent_RFC3986(responseJson.refresh_token) : undefined;
+                        exports.serverOPDS_auth_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(base64Payload) +
+                        "?" + request_ext_1._authRefresh + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(responseJson.refresh_token) : undefined;
                     decryptedJson.password = "***";
                     res.status(200).send(`
                         <html><body>

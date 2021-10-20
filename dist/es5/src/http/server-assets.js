@@ -15,9 +15,9 @@ var debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
-    routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerAssets.get("/", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
         var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, isDivina, link, findLinkRecursive, relativePath, _i, _a, l, _b, _c, l, _d, _e, l, err, mediaType, isText, isEncrypted, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _f, err_2, doTransform, sessionInfo, fullUrl, transformedStream, err_3, err, zipData, err_4, partialByteLength, rangeHeader;
-        return tslib_1.__generator(this, function (_g) {
+        return (0, tslib_1.__generator)(this, function (_g) {
             switch (_g.label) {
                 case 0:
                     reqparams = req.params;
@@ -60,7 +60,7 @@ function serverAssets(server, routerPathBase64) {
                     }
                     zip = zipInternal.Value;
                     pathInZip = reqparams.asset;
-                    if (!zipHasEntry_1.zipHasEntry(zip, pathInZip, undefined)) {
+                    if (!(0, zipHasEntry_1.zipHasEntry)(zip, pathInZip, undefined)) {
                         err = "Asset not in zip! " + pathInZip;
                         debug(err);
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
@@ -165,7 +165,7 @@ function serverAssets(server, routerPathBase64) {
                     partialByteEnd = -1;
                     if (isPartialByteRangeRequest) {
                         debug(req.headers.range);
-                        ranges = RangeUtils_1.parseRangeHeader(req.headers.range);
+                        ranges = (0, RangeUtils_1.parseRangeHeader)(req.headers.range);
                         if (ranges && ranges.length) {
                             if (ranges.length > 1) {
                                 err = "Too many HTTP ranges: " + req.headers.range;
@@ -243,7 +243,7 @@ function serverAssets(server, routerPathBase64) {
                     _g.label = 17;
                 case 17:
                     _g.trys.push([17, 19, , 20]);
-                    return [4, BufferUtils_1.streamToBufferPromise(zipStream_.stream)];
+                    return [4, (0, BufferUtils_1.streamToBufferPromise)(zipStream_.stream)];
                 case 18:
                     zipData = _g.sent();
                     return [3, 20];

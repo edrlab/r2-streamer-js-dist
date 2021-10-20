@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const debug_ = require("debug");
-const filehound = require("filehound");
 const fs = require("fs");
 const path = require("path");
 const lcp_1 = require("r2-lcp-js/dist/es8-es2017/src/parser/epub/lcp");
@@ -9,10 +8,10 @@ const init_globals_1 = require("r2-opds-js/dist/es8-es2017/src/opds/init-globals
 const init_globals_2 = require("r2-shared-js/dist/es8-es2017/src/init-globals");
 const epub_1 = require("r2-shared-js/dist/es8-es2017/src/parser/epub");
 const server_1 = require("./server");
-init_globals_1.initGlobalConverters_OPDS();
-init_globals_2.initGlobalConverters_SHARED();
-init_globals_2.initGlobalConverters_GENERIC();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
+(0, init_globals_1.initGlobalConverters_OPDS)();
+(0, init_globals_2.initGlobalConverters_SHARED)();
+(0, init_globals_2.initGlobalConverters_GENERIC)();
+(0, lcp_1.setLcpNativePluginPath)(path.join(process.cwd(), "LCP", "lcp.node"));
 const debug = debug_("r2:streamer#http/server-cli");
 debug(`process.cwd(): ${process.cwd()}`);
 debug(`__dirname: ${__dirname}`);
@@ -63,16 +62,12 @@ if (args[1]) {
     }
 }
 debug(`maxPrefetchLinks: ${maxPrefetchLinks}`);
-const isAnEPUB = epub_1.isEPUBlication(filePath);
+const isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
     (async () => {
-        const files = await filehound.create()
-            .discard("node_modules")
-            .depth(5)
-            .paths(filePath)
-            .ext([".epub", ".epub3", ".cbz", ".audiobook", ".lcpaudiobook", ".lcpa", ".divina", ".lcpdivina"])
-            .find();
+        const files = fs.readdirSync(filePath, { withFileTypes: true }).
+            filter((f) => f.isFile() && /\.(epub3?)|(cbz)|(audiobook)|(lcpaudiobook)|(lcpa)|(divina)|(lcpdivina)$/.test(f.name)).map((f) => path.join(filePath, f.name));
         const server = new server_1.Server({
             maxPrefetchLinks,
         });

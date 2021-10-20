@@ -52,10 +52,10 @@ function serverLCPLSD_show(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
         var reqparams, urlDecoded, isSecureHttp, rootUrl, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return tslib_1.__generator(this, function (_a) {
+        return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -74,10 +74,10 @@ function serverLCPLSD_show(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
                         var isBadStatusCode, responseData, err_2, responseStr, responseJson, isStatusDoc, lcpOrLsd, lcpOrLsdJson, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, funk, css, jsonPretty;
                         var _a;
-                        return tslib_1.__generator(this, function (_b) {
+                        return (0, tslib_1.__generator)(this, function (_b) {
                             switch (_b.label) {
                                 case 0:
                                     isBadStatusCode = response.statusCode && (response.statusCode < 200 || response.statusCode >= 300);
@@ -88,7 +88,7 @@ function serverLCPLSD_show(_server, topRouter) {
                                     _b.label = 1;
                                 case 1:
                                     _b.trys.push([1, 3, , 4]);
-                                    return [4, BufferUtils_1.streamToBufferPromise(response)];
+                                    return [4, (0, BufferUtils_1.streamToBufferPromise)(response)];
                                 case 2:
                                     responseData = _b.sent();
                                     return [3, 4];
@@ -105,9 +105,9 @@ function serverLCPLSD_show(_server, topRouter) {
                                         responseJson.updated &&
                                         responseJson.links;
                                     lcpOrLsd = isStatusDoc ?
-                                        serializable_1.TaJsonDeserialize(responseJson, lsd_1.LSD) :
-                                        serializable_1.TaJsonDeserialize(responseJson, lcp_1.LCP);
-                                    lcpOrLsdJson = serializable_1.TaJsonSerialize(lcpOrLsd);
+                                        (0, serializable_1.TaJsonDeserialize)(responseJson, lsd_1.LSD) :
+                                        (0, serializable_1.TaJsonDeserialize)(responseJson, lcp_1.LCP);
+                                    lcpOrLsdJson = (0, serializable_1.TaJsonSerialize)(lcpOrLsd);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
                                         jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
@@ -115,7 +115,7 @@ function serverLCPLSD_show(_server, topRouter) {
                                             isStatusDoc ? "lcp/status" : "lcp/license",
                                             "lcp/link",
                                         ];
-                                        validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, lcpOrLsdJson);
+                                        validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, lcpOrLsdJson);
                                         if (validationErrors) {
                                             validationStr = "";
                                             for (_i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
@@ -140,18 +140,18 @@ function serverLCPLSD_show(_server, topRouter) {
                                             var fullHref = obj.href ? obj.href : obj.Href;
                                             var isDataUrl = /^data:/.test(fullHref);
                                             var isMailUrl = /^mailto:/.test(fullHref);
-                                            var notFull = !isDataUrl && !isMailUrl && !UrlUtils_1.isHTTP(fullHref);
+                                            var notFull = !isDataUrl && !isMailUrl && !(0, UrlUtils_1.isHTTP)(fullHref);
                                             if (notFull) {
-                                                fullHref = UrlUtils_1.ensureAbsolute(urlDecoded, fullHref);
+                                                fullHref = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, fullHref);
                                             }
                                             if ((obj.type === "application/vnd.readium.license.status.v1.0+json" && obj.rel === "status") ||
                                                 (obj.type === "application/vnd.readium.lcp.license.v1.0+json" && obj.rel === "license")) {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverLCPLSD_show_PATH + "/")) +
-                                                    exports.serverLCPLSD_show_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                    exports.serverLCPLSD_show_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                                             }
                                             else if (obj.type === "application/epub+zip" && obj.rel === "publication") {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverLCPLSD_show_PATH + "/")) +
-                                                    server_url_1.serverRemotePub_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                    server_url_1.serverRemotePub_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                                             }
                                             else if (isDataUrl) {
                                             }
@@ -160,7 +160,7 @@ function serverLCPLSD_show(_server, topRouter) {
                                             }
                                         }
                                     };
-                                    JsonUtils_1.traverseJsonObjects(lcpOrLsdJson, funk);
+                                    (0, JsonUtils_1.traverseJsonObjects)(lcpOrLsdJson, funk);
                                     css = css2json(jsonStyle);
                                     jsonPretty = jsonMarkup(lcpOrLsdJson, css);
                                     res.status(200).send("<html><body>" +

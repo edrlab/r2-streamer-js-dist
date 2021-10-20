@@ -93,9 +93,9 @@ function serverManifestJson(server, routerPathBase64) {
         const rootUrl = (isSecureHttp ? "https://" : "http://")
             + req.headers.host + "/pub/"
             + (reqparams.lcpPass64 ?
-                (server.lcpBeginToken + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.lcpPass64) + server.lcpEndToken) :
+                (server.lcpBeginToken + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.lcpPass64) + server.lcpEndToken) :
                 "")
-            + UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64);
+            + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.pathBase64);
         const manifestURL = rootUrl + "/" + "manifest.json";
         const contentType = (publication.Metadata && publication.Metadata.RDFType &&
             /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
@@ -111,13 +111,13 @@ function serverManifestJson(server, routerPathBase64) {
             return rootUrl + "/" + href;
         }
         function absolutizeURLs(jsonObj) {
-            JsonUtils_1.traverseJsonObjects(jsonObj, (obj) => {
+            (0, JsonUtils_1.traverseJsonObjects)(jsonObj, (obj) => {
                 if (obj.href && typeof obj.href === "string"
-                    && !UrlUtils_1.isHTTP(obj.href)) {
+                    && !(0, UrlUtils_1.isHTTP)(obj.href)) {
                     obj.href = absoluteURL(obj.href);
                 }
                 if (obj["media-overlay"] && typeof obj["media-overlay"] === "string"
-                    && !UrlUtils_1.isHTTP(obj["media-overlay"])) {
+                    && !(0, UrlUtils_1.isHTTP)(obj["media-overlay"])) {
                     obj["media-overlay"] = absoluteURL(obj["media-overlay"]);
                 }
             });
@@ -146,7 +146,7 @@ function serverManifestJson(server, routerPathBase64) {
         const coverLink = publication.GetCover();
         if (coverLink) {
             coverImage = coverLink.Href;
-            if (coverImage && !UrlUtils_1.isHTTP(coverImage)) {
+            if (coverImage && !(0, UrlUtils_1.isHTTP)(coverImage)) {
                 coverImage = absoluteURL(coverImage);
             }
         }
@@ -164,7 +164,7 @@ function serverManifestJson(server, routerPathBase64) {
                     }
                     case "mediaoverlays": {
                         try {
-                            objToSerialize = await epub_1.getAllMediaOverlays(publication);
+                            objToSerialize = await (0, epub_1.getAllMediaOverlays)(publication);
                         }
                         catch (err) {
                             debug(err);
@@ -213,7 +213,7 @@ function serverManifestJson(server, routerPathBase64) {
             if (!objToSerialize) {
                 objToSerialize = {};
             }
-            const jsonObj = serializable_1.TaJsonSerialize(objToSerialize);
+            const jsonObj = (0, serializable_1.TaJsonSerialize)(objToSerialize);
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -238,7 +238,7 @@ function serverManifestJson(server, routerPathBase64) {
                     "opds/catalog-entry",
                     "opds/properties",
                 ];
-                const validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
+                const validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, jsonObj);
                 if (validationErrors) {
                     validationStr = "";
                     for (const err of validationErrors) {
@@ -277,14 +277,14 @@ function serverManifestJson(server, routerPathBase64) {
         else {
             server.setResponseCORS(res);
             res.set("Content-Type", `${contentType}; charset=utf-8`);
-            const publicationJsonObj = serializable_1.TaJsonSerialize(publication);
+            const publicationJsonObj = (0, serializable_1.TaJsonSerialize)(publication);
             if (isCanonical) {
                 if (publicationJsonObj.links) {
                     delete publicationJsonObj.links;
                 }
             }
             const publicationJsonStr = isCanonical ?
-                global.JSON.stringify(JsonUtils_1.sortObject(publicationJsonObj), null, "") :
+                global.JSON.stringify((0, JsonUtils_1.sortObject)(publicationJsonObj), null, "") :
                 global.JSON.stringify(publicationJsonObj, null, "  ");
             const checkSum = crypto.createHash("sha256");
             checkSum.update(publicationJsonStr);

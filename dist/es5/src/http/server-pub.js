@@ -40,7 +40,7 @@ function serverPub(server, topRouter) {
             debug(value);
         }
         var valueStr = Buffer.from(value, "base64").toString("utf8");
-        if (UrlUtils_1.isHTTP(valueStr)) {
+        if ((0, UrlUtils_1.isHTTP)(valueStr)) {
             req.pathBase64 = value;
             next();
             return;
@@ -70,7 +70,7 @@ function serverPub(server, topRouter) {
             req.get("X-Forwarded-Proto") === "https";
         res.status(200).send(htmlLanding
             .replace(/PATH_STR/g, path.basename(pathBase64Str))
-            .replace(/PATH_BASE64/g, UrlUtils_1.encodeURIComponent_RFC3986(reqparams.pathBase64))
+            .replace(/PATH_BASE64/g, (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.pathBase64))
             .replace(/PREFIX/g, (isSecureHttp ?
             querystring.escape("https://") : querystring.escape("http://"))
             + req.headers.host).replace(/PREFIZ/g, (isSecureHttp ?

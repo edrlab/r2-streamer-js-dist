@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var debug_ = require("debug");
-var filehound = require("filehound");
 var fs = require("fs");
 var path = require("path");
 var lcp_1 = require("r2-lcp-js/dist/es5/src/parser/epub/lcp");
@@ -10,10 +9,10 @@ var init_globals_1 = require("r2-opds-js/dist/es5/src/opds/init-globals");
 var init_globals_2 = require("r2-shared-js/dist/es5/src/init-globals");
 var epub_1 = require("r2-shared-js/dist/es5/src/parser/epub");
 var server_1 = require("./server");
-init_globals_1.initGlobalConverters_OPDS();
-init_globals_2.initGlobalConverters_SHARED();
-init_globals_2.initGlobalConverters_GENERIC();
-lcp_1.setLcpNativePluginPath(path.join(process.cwd(), "LCP", "lcp.node"));
+(0, init_globals_1.initGlobalConverters_OPDS)();
+(0, init_globals_2.initGlobalConverters_SHARED)();
+(0, init_globals_2.initGlobalConverters_GENERIC)();
+(0, lcp_1.setLcpNativePluginPath)(path.join(process.cwd(), "LCP", "lcp.node"));
 var debug = debug_("r2:streamer#http/server-cli");
 debug("process.cwd(): " + process.cwd());
 debug("__dirname: " + __dirname);
@@ -64,28 +63,23 @@ if (args[1]) {
     }
 }
 debug("maxPrefetchLinks: " + maxPrefetchLinks);
-var isAnEPUB = epub_1.isEPUBlication(filePath);
+var isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
-    (function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
+    (function () { return (0, tslib_1.__awaiter)(void 0, void 0, void 0, function () {
         var files, server, url;
-        return tslib_1.__generator(this, function (_a) {
+        return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4, filehound.create()
-                        .discard("node_modules")
-                        .depth(5)
-                        .paths(filePath)
-                        .ext([".epub", ".epub3", ".cbz", ".audiobook", ".lcpaudiobook", ".lcpa", ".divina", ".lcpdivina"])
-                        .find()];
-                case 1:
-                    files = _a.sent();
+                case 0:
+                    files = fs.readdirSync(filePath, { withFileTypes: true }).
+                        filter(function (f) { return f.isFile() && /\.(epub3?)|(cbz)|(audiobook)|(lcpaudiobook)|(lcpa)|(divina)|(lcpdivina)$/.test(f.name); }).map(function (f) { return path.join(filePath, f.name); });
                     server = new server_1.Server({
                         maxPrefetchLinks: maxPrefetchLinks,
                     });
                     server.preventRobots();
                     server.addPublications(files);
                     return [4, server.start(0, false)];
-                case 2:
+                case 1:
                     url = _a.sent();
                     debug(url);
                     return [2];
@@ -94,9 +88,9 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     }); })();
 }
 else {
-    (function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
+    (function () { return (0, tslib_1.__awaiter)(void 0, void 0, void 0, function () {
         var server, url;
-        return tslib_1.__generator(this, function (_a) {
+        return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     server = new server_1.Server({

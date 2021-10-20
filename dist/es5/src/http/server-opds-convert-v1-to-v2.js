@@ -54,10 +54,10 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_convert_v1_to_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerOPDS_convert_v1_to_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
         var reqparams, urlDecoded, isSecureHttp, rootUrl, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return tslib_1.__generator(this, function (_a) {
+        return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -76,10 +76,10 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
                         var responseData, err_2, responseStr, responseXml, isEntry, opds1Feed, opds1Entry, opds2Feed, opds2Publication, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, val, valueStr, title, pubIndex, jsonPubTitlePath, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
                         var _a, _b;
-                        return tslib_1.__generator(this, function (_c) {
+                        return (0, tslib_1.__generator)(this, function (_c) {
                             switch (_c.label) {
                                 case 0:
                                     if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
@@ -89,7 +89,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     _c.label = 1;
                                 case 1:
                                     _c.trys.push([1, 3, , 4]);
-                                    return [4, BufferUtils_1.streamToBufferPromise(response)];
+                                    return [4, (0, BufferUtils_1.streamToBufferPromise)(response)];
                                 case 2:
                                     responseData = _c.sent();
                                     return [3, 4];
@@ -111,7 +111,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     if (isEntry) {
                                         opds1Entry = xml_js_mapper_1.XML.deserialize(responseXml, opds_entry_1.Entry);
                                         try {
-                                            opds2Publication = converter_1.convertOpds1ToOpds2_EntryToPublication(opds1Entry);
+                                            opds2Publication = (0, converter_1.convertOpds1ToOpds2_EntryToPublication)(opds1Entry);
                                         }
                                         catch (err) {
                                             debug("OPDS 1 -> 2 conversion FAILED (Entry)");
@@ -124,7 +124,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                     else {
                                         opds1Feed = xml_js_mapper_1.XML.deserialize(responseXml, opds_1.OPDS);
                                         try {
-                                            opds2Feed = converter_1.convertOpds1ToOpds2(opds1Feed);
+                                            opds2Feed = (0, converter_1.convertOpds1ToOpds2)(opds1Feed);
                                         }
                                         catch (err) {
                                             debug("OPDS 1 -> 2 conversion FAILED");
@@ -138,23 +138,23 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                         if ((obj.href && typeof obj.href === "string") ||
                                             (obj.Href && typeof obj.Href === "string")) {
                                             var fullHref = obj.href ? obj.href : obj.Href;
-                                            var notFull = !UrlUtils_1.isHTTP(fullHref);
+                                            var notFull = !(0, UrlUtils_1.isHTTP)(fullHref);
                                             if (notFull) {
-                                                fullHref = UrlUtils_1.ensureAbsolute(urlDecoded, fullHref);
+                                                fullHref = (0, UrlUtils_1.ensureAbsolute)(urlDecoded, fullHref);
                                             }
                                             if ((obj.type && obj.type.indexOf("application/atom+xml") >= 0) ||
                                                 (obj.Type && obj.Type.indexOf("application/atom+xml") >= 0)) {
                                                 obj.__href__ = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_convert_v1_to_v2_PATH + "/")) +
-                                                    exports.serverOPDS_convert_v1_to_v2_PATH + "/" + UrlUtils_1.encodeURIComponent_RFC3986(fullHref);
+                                                    exports.serverOPDS_convert_v1_to_v2_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(fullHref);
                                             }
                                             else if (notFull) {
                                                 obj.__href__ = fullHref;
                                             }
                                         }
                                     };
-                                    jsonObjOPDS1 = serializable_1.TaJsonSerialize(opds1Entry ? opds1Entry : opds1Feed);
-                                    JsonUtils_1.traverseJsonObjects(jsonObjOPDS1, funk);
-                                    jsonObjOPDS2 = serializable_1.TaJsonSerialize(opds2Publication ? opds2Publication : opds2Feed);
+                                    jsonObjOPDS1 = (0, serializable_1.TaJsonSerialize)(opds1Entry ? opds1Entry : opds1Feed);
+                                    (0, JsonUtils_1.traverseJsonObjects)(jsonObjOPDS1, funk);
+                                    jsonObjOPDS2 = (0, serializable_1.TaJsonSerialize)(opds2Publication ? opds2Publication : opds2Feed);
                                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                                     if (doValidate) {
                                         jsonSchemasRootpath = path.join(process.cwd(), "misc", "json-schema");
@@ -183,7 +183,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                         if (!opds2Publication) {
                                             jsonSchemasNames.unshift("opds/feed");
                                         }
-                                        validationErrors = json_schema_validate_1.jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
+                                        validationErrors = (0, json_schema_validate_1.jsonSchemaValidate)(jsonSchemasRootpath, jsonSchemasNames, jsonObjOPDS2);
                                         if (validationErrors) {
                                             validationStr = "";
                                             for (_i = 0, validationErrors_1 = validationErrors; _i < validationErrors_1.length; _i++) {
@@ -227,7 +227,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                             }
                                         }
                                     }
-                                    JsonUtils_1.traverseJsonObjects(jsonObjOPDS2, funk);
+                                    (0, JsonUtils_1.traverseJsonObjects)(jsonObjOPDS2, funk);
                                     css = css2json(jsonStyle);
                                     jsonPrettyOPDS1 = jsonMarkup(jsonObjOPDS1, css);
                                     jsonPrettyOPDS2 = jsonMarkup(jsonObjOPDS2, css);

@@ -13,9 +13,9 @@ var init_globals_2 = require("r2-shared-js/dist/es5/src/init-globals");
 var metadata_1 = require("r2-shared-js/dist/es5/src/models/metadata");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
-init_globals_1.initGlobalConverters_OPDS();
-init_globals_2.initGlobalConverters_SHARED();
-init_globals_2.initGlobalConverters_GENERIC();
+(0, init_globals_1.initGlobalConverters_OPDS)();
+(0, init_globals_2.initGlobalConverters_SHARED)();
+(0, init_globals_2.initGlobalConverters_GENERIC)();
 console.log("process.cwd(): " + process.cwd());
 console.log("__dirname: " + __dirname);
 var args = process.argv.slice(2);
@@ -29,9 +29,9 @@ if (fs.existsSync(opdsJsonFilePath)) {
     console.log("OPDS2 JSON file already exists.");
     process.exit(1);
 }
-(function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
+(function () { return (0, tslib_1.__awaiter)(void 0, void 0, void 0, function () {
     var feed, nPubs, _i, args_1, pathBase64, pathBase64Str, publication, err_1, publi, linkSelf, coverLink, linkCover, publicationMetadataJson, jsonObj, jsonStr;
-    return tslib_1.__generator(this, function (_a) {
+    return (0, tslib_1.__generator)(this, function (_a) {
         switch (_a.label) {
             case 0:
                 feed = new opds2_1.OPDSFeed();
@@ -47,7 +47,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 if (!(_i < args_1.length)) return [3, 7];
                 pathBase64 = args_1[_i];
                 pathBase64Str = Buffer.from(decodeURIComponent(pathBase64), "base64").toString("utf8");
-                if (UrlUtils_1.isHTTP(pathBase64Str)) {
+                if ((0, UrlUtils_1.isHTTP)(pathBase64Str)) {
                     return [3, 6];
                 }
                 console.log("OPDS parsing: " + pathBase64Str);
@@ -55,7 +55,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 _a.label = 2;
             case 2:
                 _a.trys.push([2, 4, , 5]);
-                return [4, publication_parser_1.PublicationParsePromise(pathBase64Str)];
+                return [4, (0, publication_parser_1.PublicationParsePromise)(pathBase64Str)];
             case 3:
                 publication = _a.sent();
                 return [3, 5];
@@ -96,8 +96,8 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 }
                 if (publication.Metadata) {
                     try {
-                        publicationMetadataJson = serializable_1.TaJsonSerialize(publication.Metadata);
-                        publi.Metadata = serializable_1.TaJsonDeserialize(publicationMetadataJson, metadata_1.Metadata);
+                        publicationMetadataJson = (0, serializable_1.TaJsonSerialize)(publication.Metadata);
+                        publi.Metadata = (0, serializable_1.TaJsonDeserialize)(publicationMetadataJson, metadata_1.Metadata);
                     }
                     catch (err) {
                         console.log(err);
@@ -110,7 +110,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 return [3, 1];
             case 7:
                 feed.Metadata.NumberOfItems = nPubs;
-                jsonObj = serializable_1.TaJsonSerialize(feed);
+                jsonObj = (0, serializable_1.TaJsonSerialize)(feed);
                 jsonStr = global.JSON.stringify(jsonObj, null, "");
                 fs.writeFileSync(opdsJsonFilePath, jsonStr, { encoding: "utf8" });
                 console.log("DONE! :)");

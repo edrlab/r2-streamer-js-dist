@@ -53,7 +53,7 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
             validateFormats: true,
             verbose: true,
         });
-        ajv_formats_1.default(ajv);
+        (0, ajv_formats_1.default)(ajv);
         var idRoot = void 0;
         for (var _b = 0, jsonSchemasNames_2 = jsonSchemasNames; _b < jsonSchemasNames_2.length; _b++) {
             var jsonSchemaName = jsonSchemasNames_2[_b];

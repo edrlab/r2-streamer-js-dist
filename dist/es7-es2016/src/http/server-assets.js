@@ -14,7 +14,7 @@ const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     const routerAssets = express.Router({ strict: false });
-    routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerAssets.get("/", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.pathBase64) {
             reqparams.pathBase64 = req.pathBase64;
@@ -51,7 +51,7 @@ function serverAssets(server, routerPathBase64) {
         }
         const zip = zipInternal.Value;
         const pathInZip = reqparams.asset;
-        if (!zipHasEntry_1.zipHasEntry(zip, pathInZip, undefined)) {
+        if (!(0, zipHasEntry_1.zipHasEntry)(zip, pathInZip, undefined)) {
             const err = "Asset not in zip! " + pathInZip;
             debug(err);
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
@@ -152,7 +152,7 @@ function serverAssets(server, routerPathBase64) {
         let partialByteEnd = -1;
         if (isPartialByteRangeRequest) {
             debug(req.headers.range);
-            const ranges = RangeUtils_1.parseRangeHeader(req.headers.range);
+            const ranges = (0, RangeUtils_1.parseRangeHeader)(req.headers.range);
             if (ranges && ranges.length) {
                 if (ranges.length > 1) {
                     const err = "Too many HTTP ranges: " + req.headers.range;
@@ -212,7 +212,7 @@ function serverAssets(server, routerPathBase64) {
         if (isShow) {
             let zipData;
             try {
-                zipData = yield BufferUtils_1.streamToBufferPromise(zipStream_.stream);
+                zipData = yield (0, BufferUtils_1.streamToBufferPromise)(zipStream_.stream);
             }
             catch (err) {
                 debug(err);

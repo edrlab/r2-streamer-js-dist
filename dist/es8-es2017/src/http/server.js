@@ -43,9 +43,9 @@ class Server {
         this.publicationsOPDSfeed = undefined;
         this.publicationsOPDSfeedNeedsUpdate = true;
         this.creatingPublicationsOPDS = false;
-        this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
+        this.opdsJsonFilePath = (0, tmp_1.tmpNameSync)({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
-        server_secure_1.serverSecure(this, this.expressApp);
+        (0, server_secure_1.serverSecure)(this, this.expressApp);
         const staticOptions = {
             etag: false,
         };
@@ -53,22 +53,22 @@ class Server {
             this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
             this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
         }
-        server_root_1.serverRoot(this, this.expressApp);
-        server_version_1.serverVersion(this, this.expressApp);
+        (0, server_root_1.serverRoot)(this, this.expressApp);
+        (0, server_version_1.serverVersion)(this, this.expressApp);
         if (!this.disableRemotePubUrl) {
-            server_url_1.serverRemotePub(this, this.expressApp);
-            server_lcp_lsd_show_1.serverLCPLSD_show(this, this.expressApp);
+            (0, server_url_1.serverRemotePub)(this, this.expressApp);
+            (0, server_lcp_lsd_show_1.serverLCPLSD_show)(this, this.expressApp);
         }
         if (!this.disableOPDS) {
-            server_opds_browse_v1_1.serverOPDS_browse_v1(this, this.expressApp);
-            server_opds_browse_v2_1.serverOPDS_browse_v2(this, this.expressApp);
-            server_opds_local_feed_1.serverOPDS_local_feed(this, this.expressApp);
-            server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2(this, this.expressApp);
+            (0, server_opds_browse_v1_1.serverOPDS_browse_v1)(this, this.expressApp);
+            (0, server_opds_browse_v2_1.serverOPDS_browse_v2)(this, this.expressApp);
+            (0, server_opds_local_feed_1.serverOPDS_local_feed)(this, this.expressApp);
+            (0, server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2)(this, this.expressApp);
         }
-        const routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
-        server_manifestjson_1.serverManifestJson(this, routerPathBase64);
-        server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
-        server_assets_1.serverAssets(this, routerPathBase64);
+        const routerPathBase64 = (0, server_pub_1.serverPub)(this, this.expressApp);
+        (0, server_manifestjson_1.serverManifestJson)(this, routerPathBase64);
+        (0, server_mediaoverlays_1.serverMediaOverlays)(this, routerPathBase64);
+        (0, server_assets_1.serverAssets)(this, routerPathBase64);
     }
     preventRobots() {
         this.expressApp.get("/robots.txt", (_req, res) => {
@@ -95,7 +95,7 @@ Disallow: /
             (typeof this.httpsServer !== "undefined");
     }
     getSecureHTTPHeader(url) {
-        return server_secure_1.serverSecureHTTPHeader(this, url);
+        return (0, server_secure_1.serverSecureHTTPHeader)(this, url);
     }
     async start(port, secure) {
         if (this.isStarted()) {
@@ -116,7 +116,7 @@ Disallow: /
             return new Promise(async (resolve, reject) => {
                 let certData;
                 try {
-                    certData = await self_signed_1.generateSelfSignedData();
+                    certData = await (0, self_signed_1.generateSelfSignedData)();
                 }
                 catch (err) {
                     debug(err);
@@ -197,7 +197,7 @@ Disallow: /
             }
         });
         return pubs.map((pub) => {
-            const pubid = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
+            const pubid = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
             return `/pub/${pubid}/manifest.json`;
         });
     }
@@ -211,7 +211,7 @@ Disallow: /
             }
         });
         return pubs.map((pub) => {
-            const pubid = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
+            const pubid = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
             return `/pub/${pubid}/manifest.json`;
         });
     }
@@ -222,7 +222,7 @@ Disallow: /
         let publication = this.cachedPublication(filePath);
         if (!publication) {
             try {
-                publication = await publication_parser_1.PublicationParsePromise(filePath);
+                publication = await (0, publication_parser_1.PublicationParsePromise)(filePath);
             }
             catch (err) {
                 debug(err);
@@ -276,7 +276,7 @@ Disallow: /
                 const jsFile = path.join(__dirname, "opds2-create-cli.js");
                 const args = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach((pub) => {
-                    const filePathBase64 = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
+                    const filePathBase64 = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
                     args.push(filePathBase64);
                 });
                 debug(`SPAWN OPDS2-create: ${args[0]}`);
@@ -299,7 +299,7 @@ Disallow: /
             return undefined;
         }
         const json = global.JSON.parse(jsonStr);
-        this.publicationsOPDSfeed = serializable_1.TaJsonDeserialize(json, opds2_1.OPDSFeed);
+        this.publicationsOPDSfeed = (0, serializable_1.TaJsonDeserialize)(json, opds2_1.OPDSFeed);
         return this.publicationsOPDSfeed;
     }
 }

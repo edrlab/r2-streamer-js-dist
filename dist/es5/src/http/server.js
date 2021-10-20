@@ -44,9 +44,9 @@ var Server = (function () {
         this.publicationsOPDSfeed = undefined;
         this.publicationsOPDSfeedNeedsUpdate = true;
         this.creatingPublicationsOPDS = false;
-        this.opdsJsonFilePath = tmp_1.tmpNameSync({ prefix: "readium2-OPDS2-", postfix: ".json" });
+        this.opdsJsonFilePath = (0, tmp_1.tmpNameSync)({ prefix: "readium2-OPDS2-", postfix: ".json" });
         this.expressApp = express();
-        server_secure_1.serverSecure(this, this.expressApp);
+        (0, server_secure_1.serverSecure)(this, this.expressApp);
         var staticOptions = {
             etag: false,
         };
@@ -54,22 +54,22 @@ var Server = (function () {
             this.expressApp.use("/readerNYPL", express.static("misc/readers/reader-NYPL", staticOptions));
             this.expressApp.use("/readerHADRIEN", express.static("misc/readers/reader-HADRIEN", staticOptions));
         }
-        server_root_1.serverRoot(this, this.expressApp);
-        server_version_1.serverVersion(this, this.expressApp);
+        (0, server_root_1.serverRoot)(this, this.expressApp);
+        (0, server_version_1.serverVersion)(this, this.expressApp);
         if (!this.disableRemotePubUrl) {
-            server_url_1.serverRemotePub(this, this.expressApp);
-            server_lcp_lsd_show_1.serverLCPLSD_show(this, this.expressApp);
+            (0, server_url_1.serverRemotePub)(this, this.expressApp);
+            (0, server_lcp_lsd_show_1.serverLCPLSD_show)(this, this.expressApp);
         }
         if (!this.disableOPDS) {
-            server_opds_browse_v1_1.serverOPDS_browse_v1(this, this.expressApp);
-            server_opds_browse_v2_1.serverOPDS_browse_v2(this, this.expressApp);
-            server_opds_local_feed_1.serverOPDS_local_feed(this, this.expressApp);
-            server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2(this, this.expressApp);
+            (0, server_opds_browse_v1_1.serverOPDS_browse_v1)(this, this.expressApp);
+            (0, server_opds_browse_v2_1.serverOPDS_browse_v2)(this, this.expressApp);
+            (0, server_opds_local_feed_1.serverOPDS_local_feed)(this, this.expressApp);
+            (0, server_opds_convert_v1_to_v2_1.serverOPDS_convert_v1_to_v2)(this, this.expressApp);
         }
-        var routerPathBase64 = server_pub_1.serverPub(this, this.expressApp);
-        server_manifestjson_1.serverManifestJson(this, routerPathBase64);
-        server_mediaoverlays_1.serverMediaOverlays(this, routerPathBase64);
-        server_assets_1.serverAssets(this, routerPathBase64);
+        var routerPathBase64 = (0, server_pub_1.serverPub)(this, this.expressApp);
+        (0, server_manifestjson_1.serverManifestJson)(this, routerPathBase64);
+        (0, server_mediaoverlays_1.serverMediaOverlays)(this, routerPathBase64);
+        (0, server_assets_1.serverAssets)(this, routerPathBase64);
     }
     Server.prototype.preventRobots = function () {
         this.expressApp.get("/robots.txt", function (_req, res) {
@@ -94,13 +94,13 @@ var Server = (function () {
             (typeof this.httpsServer !== "undefined");
     };
     Server.prototype.getSecureHTTPHeader = function (url) {
-        return server_secure_1.serverSecureHTTPHeader(this, url);
+        return (0, server_secure_1.serverSecureHTTPHeader)(this, url);
     };
     Server.prototype.start = function (port, secure) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function () {
             var envPort, p;
             var _this = this;
-            return tslib_1.__generator(this, function (_a) {
+            return (0, tslib_1.__generator)(this, function (_a) {
                 if (this.isStarted()) {
                     return [2, Promise.resolve(this.serverInfo())];
                 }
@@ -116,14 +116,14 @@ var Server = (function () {
                 debug("PORT: " + port + " || " + envPort + " || 3000 => " + p);
                 if (secure) {
                     this.httpServer = undefined;
-                    return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+                    return [2, new Promise(function (resolve, reject) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
                             var certData, err_1;
                             var _this = this;
-                            return tslib_1.__generator(this, function (_a) {
+                            return (0, tslib_1.__generator)(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
                                         _a.trys.push([0, 2, , 3]);
-                                        return [4, self_signed_1.generateSelfSignedData()];
+                                        return [4, (0, self_signed_1.generateSelfSignedData)()];
                                     case 1:
                                         certData = _a.sent();
                                         return [3, 3];
@@ -134,7 +134,7 @@ var Server = (function () {
                                         return [2];
                                     case 3:
                                         this.httpsServer = https.createServer({ key: certData.private, cert: certData.cert }, this.expressApp).listen(p, function () {
-                                            _this.serverData = tslib_1.__assign(tslib_1.__assign({}, certData), { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
+                                            _this.serverData = (0, tslib_1.__assign)((0, tslib_1.__assign)({}, certData), { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
                                             resolve(_this.serverData);
                                         });
                                         return [2];
@@ -214,7 +214,7 @@ var Server = (function () {
             }
         });
         return pubs.map(function (pub) {
-            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
+            var pubid = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
             return "/pub/" + pubid + "/manifest.json";
         });
     };
@@ -229,7 +229,7 @@ var Server = (function () {
             }
         });
         return pubs.map(function (pub) {
-            var pubid = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
+            var pubid = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
             return "/pub/" + pubid + "/manifest.json";
         });
     };
@@ -237,9 +237,9 @@ var Server = (function () {
         return this.publications;
     };
     Server.prototype.loadOrGetCachedPublication = function (filePath) {
-        return tslib_1.__awaiter(this, void 0, void 0, function () {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function () {
             var publication, err_2;
-            return tslib_1.__generator(this, function (_a) {
+            return (0, tslib_1.__generator)(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         publication = this.cachedPublication(filePath);
@@ -247,7 +247,7 @@ var Server = (function () {
                         _a.label = 1;
                     case 1:
                         _a.trys.push([1, 3, , 4]);
-                        return [4, publication_parser_1.PublicationParsePromise(filePath)];
+                        return [4, (0, publication_parser_1.PublicationParsePromise)(filePath)];
                     case 2:
                         publication = _a.sent();
                         return [3, 4];
@@ -308,7 +308,7 @@ var Server = (function () {
                 var jsFile = path.join(__dirname, "opds2-create-cli.js");
                 var args_1 = [jsFile, this.opdsJsonFilePath];
                 this.publications.forEach(function (pub) {
-                    var filePathBase64 = UrlUtils_1.encodeURIComponent_RFC3986(Buffer.from(pub).toString("base64"));
+                    var filePathBase64 = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
                     args_1.push(filePathBase64);
                 });
                 debug("SPAWN OPDS2-create: " + args_1[0]);
@@ -331,7 +331,7 @@ var Server = (function () {
             return undefined;
         }
         var json = global.JSON.parse(jsonStr);
-        this.publicationsOPDSfeed = serializable_1.TaJsonDeserialize(json, opds2_1.OPDSFeed);
+        this.publicationsOPDSfeed = (0, serializable_1.TaJsonDeserialize)(json, opds2_1.OPDSFeed);
         return this.publicationsOPDSfeed;
     };
     return Server;
