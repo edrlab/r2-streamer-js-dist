@@ -140,9 +140,9 @@ function serverOPDS_local_feed(server, topRouter) {
                         debug(err);
                         var val = err.jsonPath ? DotProp.get(jsonObj, err.jsonPath) : "";
                         var valueStr = (typeof val === "string") ?
-                            "" + val :
+                            "".concat(val) :
                             ((val instanceof Array || typeof val === "object") ?
-                                "" + JSON.stringify(val) :
+                                "".concat(JSON.stringify(val)) :
                                 "");
                         debug(valueStr);
                         var title = "";
@@ -156,7 +156,7 @@ function serverOPDS_local_feed(server, topRouter) {
                             debug(pubIndex);
                         }
                         validationStr +=
-                            "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                            "\n___________INDEX___________ #".concat(pubIndex, " \"").concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                     }
                 }
             }
@@ -210,7 +210,7 @@ function serverOPDS_local_feed(server, topRouter) {
         if (i >= 0) {
             redirect += req.originalUrl.substr(i);
         }
-        debug("REDIRECT: " + req.originalUrl + " ==> " + redirect);
+        debug("REDIRECT: ".concat(req.originalUrl, " ==> ").concat(redirect));
         res.redirect(301, redirect);
     });
     routerOPDS_local_feed_.use(exports.serverOPDS_local_feed_PATH_, routerOPDS_local_feed);

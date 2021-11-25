@@ -11,8 +11,10 @@ const path = require("path");
 const tmp_1 = require("tmp");
 const serializable_1 = require("r2-lcp-js/dist/es8-es2017/src/serializable");
 const opds2_1 = require("r2-opds-js/dist/es8-es2017/src/opds/opds2/opds2");
+const publication_1 = require("r2-shared-js/dist/es8-es2017/src/models/publication");
 const publication_parser_1 = require("r2-shared-js/dist/es8-es2017/src/parser/publication-parser");
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
+const zipFactory_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/zip/zipFactory");
 const self_signed_1 = require("../utils/self-signed");
 const server_assets_1 = require("./server-assets");
 const server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
@@ -221,12 +223,32 @@ Disallow: /
     async loadOrGetCachedPublication(filePath) {
         let publication = this.cachedPublication(filePath);
         if (!publication) {
-            try {
-                publication = await (0, publication_parser_1.PublicationParsePromise)(filePath);
+            if (filePath.endsWith("_manifest.json")) {
+                try {
+                    const zip = await (0, zipFactory_1.zipLoadPromise)(filePath.replace(/_manifest\.json$/, ""));
+                    const publicationJsonStr = fs.readFileSync(filePath, { encoding: "utf8" });
+                    const publicationJsonObj = global.JSON.parse(publicationJsonStr);
+                    publication = (0, serializable_1.TaJsonDeserialize)(publicationJsonObj, publication_1.Publication);
+                    publication.AddToInternal("filename", path.basename(filePath));
+                    publication.AddToInternal("type", "daisy");
+                    publication.AddToInternal("zip", zip);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
             }
-            catch (err) {
-                debug(err);
-                return Promise.reject(err);
+            else {
+                try {
+                    publication = await (0, publication_parser_1.PublicationParsePromise)(filePath);
+                }
+                catch (err) {
+                    debug(err);
+                    return Promise.reject(err);
+                }
+            }
+            if (!publication) {
+                return Promise.reject("!PUBLICATION??");
             }
             this.cachePublication(filePath, publication);
         }

@@ -64,7 +64,7 @@ function serverPub(server, topRouter) {
             reqparams.pathBase64 = req.pathBase64;
         }
         var pathBase64Str = Buffer.from(reqparams.pathBase64, "base64").toString("utf8");
-        debug("Publication: " + pathBase64Str);
+        debug("Publication: ".concat(pathBase64Str));
         var isSecureHttp = req.secure ||
             req.protocol === "https" ||
             req.get("X-Forwarded-Proto") === "https";

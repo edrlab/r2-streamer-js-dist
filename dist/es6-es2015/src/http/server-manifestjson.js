@@ -99,10 +99,10 @@ function serverManifestJson(server, routerPathBase64) {
             + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.pathBase64);
         const manifestURL = rootUrl + "/" + "manifest.json";
         const contentType = (publication.Metadata && publication.Metadata.RDFType &&
-            /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
+            /https?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
             "application/audiobook+json" : ((publication.Metadata && publication.Metadata.RDFType &&
-            (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
-                /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
+            (/https?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                /https?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
             "application/webpub+json");
         const selfLink = publication.searchLinkByRel("self");
         if (!selfLink) {

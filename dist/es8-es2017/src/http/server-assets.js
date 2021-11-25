@@ -58,8 +58,8 @@ function serverAssets(server, routerPathBase64) {
             return;
         }
         const isDivina = publication.Metadata && publication.Metadata.RDFType &&
-            (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
-                /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType));
+            (/https?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                /https?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType));
         let link;
         const findLinkRecursive = (relativePath, l) => {
             if (l.Href === relativePath) {
@@ -86,7 +86,7 @@ function serverAssets(server, routerPathBase64) {
         };
         if ((publication.Resources || publication.Spine || publication.Links)
             && pathInZip.indexOf("META-INF/") !== 0
-            && !pathInZip.endsWith(".opf")) {
+            && !/\.opf$/i.test(pathInZip)) {
             const relativePath = pathInZip;
             if (publication.Resources) {
                 for (const l of publication.Resources) {
@@ -126,7 +126,7 @@ function serverAssets(server, routerPathBase64) {
             }
         }
         if (server.isSecured() && !link &&
-            (pathInZip.indexOf("META-INF/") === 0 || pathInZip.endsWith(".opf"))) {
+            (pathInZip.indexOf("META-INF/") === 0 || /\.opf$/i.test(pathInZip))) {
             res.status(200).send("<html><body></body></html>");
             return;
         }

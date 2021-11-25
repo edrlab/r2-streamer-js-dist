@@ -18,7 +18,7 @@ function serverSecureHTTPHeader(server, url) {
         var encryptStream = crypto.createCipheriv("aes-256-cbc", info.trustKey, info.trustCheckIV);
         encryptStream.setAutoPadding(true);
         var now = Date.now();
-        var jsonStr = "{\"url\":\"" + url + "\",\"time\":" + now + "}";
+        var jsonStr = "{\"url\":\"".concat(url, "\",\"time\":").concat(now, "}");
         var buff1 = encryptStream.update(jsonStr, "utf8");
         if (buff1) {
             encrypteds.push(buff1);
@@ -34,7 +34,7 @@ function serverSecureHTTPHeader(server, url) {
             var seconds = t2[0];
             var nanoseconds = t2[1];
             var milliseconds = nanoseconds / 1e6;
-            debugHttps("< A > " + seconds + "s " + milliseconds + "ms [ " + url + " ]");
+            debugHttps("< A > ".concat(seconds, "s ").concat(milliseconds, "ms [ ").concat(url, " ]"));
         }
         return { name: "X-" + info.trustCheck, value: base64 };
     }
@@ -106,7 +106,7 @@ function serverSecure(server, topRouter) {
                 var seconds = t2[0];
                 var nanoseconds = t2[1];
                 var milliseconds = nanoseconds / 1e6;
-                debugHttps("< B > (" + delta + "ms) " + seconds + "s " + milliseconds + "ms [ " + urlCheck + " ]");
+                debugHttps("< B > (".concat(delta, "ms) ").concat(seconds, "s ").concat(milliseconds, "ms [ ").concat(urlCheck, " ]"));
             }
         }
         if (doFail) {

@@ -32,7 +32,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
             "function go(evt) {" +
             "if (evt) { evt.preventDefault(); } var url = " +
             "location.origin +" +
-            (" '" + exports.serverOPDS_browse_v1_PATH + "/' +") +
+            " '".concat(exports.serverOPDS_browse_v1_PATH, "/' +") +
             " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
             "location.href = url;}</script>";
         html += "</head>";

@@ -14,8 +14,8 @@ var server_1 = require("./server");
 (0, init_globals_2.initGlobalConverters_GENERIC)();
 (0, lcp_1.setLcpNativePluginPath)(path.join(process.cwd(), "LCP", "lcp.node"));
 var debug = debug_("r2:streamer#http/server-cli");
-debug("process.cwd(): " + process.cwd());
-debug("__dirname: " + __dirname);
+debug("process.cwd(): ".concat(process.cwd()));
+debug("__dirname: ".concat(__dirname));
 var args = process.argv.slice(2);
 debug("process.argv.slice(2): %o", args);
 if (!args[0]) {
@@ -24,13 +24,13 @@ if (!args[0]) {
 }
 var argPath = args[0].trim();
 var filePath = argPath;
-debug("path: " + filePath);
+debug("path: ".concat(filePath));
 if (!fs.existsSync(filePath)) {
     filePath = path.join(__dirname, argPath);
-    debug("path: " + filePath);
+    debug("path: ".concat(filePath));
     if (!fs.existsSync(filePath)) {
         filePath = path.join(process.cwd(), argPath);
-        debug("path: " + filePath);
+        debug("path: ".concat(filePath));
         if (!fs.existsSync(filePath)) {
             debug("FILEPATH DOES NOT EXIST.");
             process.exit(1);
@@ -38,7 +38,7 @@ if (!fs.existsSync(filePath)) {
     }
 }
 filePath = fs.realpathSync(filePath);
-debug("path (normalized): " + filePath);
+debug("path (normalized): ".concat(filePath));
 var stats = fs.lstatSync(filePath);
 if (!stats.isFile() && !stats.isDirectory()) {
     debug("FILEPATH MUST BE FILE OR DIRECTORY.");
@@ -62,7 +62,7 @@ if (args[1]) {
         }
     }
 }
-debug("maxPrefetchLinks: " + maxPrefetchLinks);
+debug("maxPrefetchLinks: ".concat(maxPrefetchLinks));
 var isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
@@ -72,7 +72,13 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
             switch (_a.label) {
                 case 0:
                     files = fs.readdirSync(filePath, { withFileTypes: true }).
-                        filter(function (f) { return f.isFile() && /\.(epub3?)|(cbz)|(audiobook)|(lcpaudiobook)|(lcpa)|(divina)|(lcpdivina)$/.test(f.name); }).map(function (f) { return path.join(filePath, f.name); });
+                        filter(function (f) {
+                        return f.isFile() &&
+                            (/((\.epub3?)|(\.cbz)|(\.audiobook)|(\.lcpaudiobook)|(\.lcpa)|(\.divina)|(\.lcpdivina))$/i.test(f.name)
+                                ||
+                                    (/_manifest\.json$/.test(f.name)
+                                        && fs.existsSync(path.join(filePath, path.basename(f.name).replace(/_manifest\.json$/, "")))));
+                    }).map(function (f) { return path.join(filePath, f.name); });
                     server = new server_1.Server({
                         maxPrefetchLinks: maxPrefetchLinks,
                     });

@@ -68,8 +68,8 @@ function serverAssets(server, routerPathBase64) {
                         return [2];
                     }
                     isDivina = publication.Metadata && publication.Metadata.RDFType &&
-                        (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
-                            /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType));
+                        (/https?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                            /https?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType));
                     findLinkRecursive = function (relativePath, l) {
                         if (l.Href === relativePath) {
                             return l;
@@ -97,7 +97,7 @@ function serverAssets(server, routerPathBase64) {
                     };
                     if ((publication.Resources || publication.Spine || publication.Links)
                         && pathInZip.indexOf("META-INF/") !== 0
-                        && !pathInZip.endsWith(".opf")) {
+                        && !/\.opf$/i.test(pathInZip)) {
                         relativePath = pathInZip;
                         if (publication.Resources) {
                             for (_i = 0, _a = publication.Resources; _i < _a.length; _i++) {
@@ -140,7 +140,7 @@ function serverAssets(server, routerPathBase64) {
                         }
                     }
                     if (server.isSecured() && !link &&
-                        (pathInZip.indexOf("META-INF/") === 0 || pathInZip.endsWith(".opf"))) {
+                        (pathInZip.indexOf("META-INF/") === 0 || /\.opf$/i.test(pathInZip))) {
                         res.status(200).send("<html><body></body></html>");
                         return [2];
                     }
@@ -180,7 +180,7 @@ function serverAssets(server, routerPathBase64) {
                                 partialByteBegin = 0;
                             }
                         }
-                        debug(pathInZip + " >> " + partialByteBegin + "-" + partialByteEnd);
+                        debug("".concat(pathInZip, " >> ").concat(partialByteBegin, "-").concat(partialByteEnd));
                     }
                     _g.label = 5;
                 case 5:
@@ -207,7 +207,7 @@ function serverAssets(server, routerPathBase64) {
                     doTransform = true;
                     sessionInfo = req.query[request_ext_1.URL_PARAM_SESSION_INFO];
                     if (!(doTransform && link)) return [3, 16];
-                    fullUrl = "" + server.serverUrl() + req.originalUrl;
+                    fullUrl = "".concat(server.serverUrl()).concat(req.originalUrl);
                     transformedStream = void 0;
                     _g.label = 12;
                 case 12:
@@ -289,13 +289,13 @@ function serverAssets(server, routerPathBase64) {
                         partialByteLength = isPartialByteRangeRequest ?
                             partialByteEnd - partialByteBegin + 1 :
                             zipStream_.length;
-                        res.setHeader("Content-Length", "" + partialByteLength);
-                        rangeHeader = "bytes " + partialByteBegin + "-" + partialByteEnd + "/" + zipStream_.length;
+                        res.setHeader("Content-Length", "".concat(partialByteLength));
+                        rangeHeader = "bytes ".concat(partialByteBegin, "-").concat(partialByteEnd, "/").concat(zipStream_.length);
                         res.setHeader("Content-Range", rangeHeader);
                         res.status(206);
                     }
                     else {
-                        res.setHeader("Content-Length", "" + zipStream_.length);
+                        res.setHeader("Content-Length", "".concat(zipStream_.length));
                         res.status(200);
                     }
                     if (isHead) {

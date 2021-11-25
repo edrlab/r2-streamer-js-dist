@@ -17,7 +17,7 @@ function trailingSlashRedirect(req, res, next) {
     if (i >= 0) {
         redirect += req.originalUrl.substr(i);
     }
-    debug("REDIRECT: " + req.originalUrl + " ==> " + redirect);
+    debug("REDIRECT: ".concat(req.originalUrl, " ==> ").concat(redirect));
     res.redirect(301, redirect);
 }
 exports.trailingSlashRedirect = trailingSlashRedirect;

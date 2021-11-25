@@ -41,7 +41,7 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
                 return undefined;
             }
             var jsonSchema = global.JSON.parse(jsonSchemaStr);
-            debug("JSON SCHEMA is now cached: " + jsonSchema["$id"] + " (" + jsonSchemaPath + ")");
+            debug("JSON SCHEMA is now cached: ".concat(jsonSchema["$id"], " (").concat(jsonSchemaPath, ")"));
             _cachedJsonSchemas[jsonSchemaPath] = jsonSchema;
         }
         var ajv = new ajv_1.default({

@@ -12,8 +12,10 @@ var path = require("path");
 var tmp_1 = require("tmp");
 var serializable_1 = require("r2-lcp-js/dist/es5/src/serializable");
 var opds2_1 = require("r2-opds-js/dist/es5/src/opds/opds2/opds2");
+var publication_1 = require("r2-shared-js/dist/es5/src/models/publication");
 var publication_parser_1 = require("r2-shared-js/dist/es5/src/parser/publication-parser");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
+var zipFactory_1 = require("r2-utils-js/dist/es5/src/_utils/zip/zipFactory");
 var self_signed_1 = require("../utils/self-signed");
 var server_assets_1 = require("./server-assets");
 var server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
@@ -113,7 +115,7 @@ var Server = (function () {
                     envPort = 0;
                 }
                 p = port || envPort || 3000;
-                debug("PORT: " + port + " || " + envPort + " || 3000 => " + p);
+                debug("PORT: ".concat(port, " || ").concat(envPort, " || 3000 => ").concat(p));
                 if (secure) {
                     this.httpServer = undefined;
                     return [2, new Promise(function (resolve, reject) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
@@ -185,9 +187,9 @@ var Server = (function () {
             return undefined;
         }
         if (info.urlPort === 443 || info.urlPort === 80) {
-            return info.urlScheme + "://" + info.urlHost;
+            return "".concat(info.urlScheme, "://").concat(info.urlHost);
         }
-        return info.urlScheme + "://" + info.urlHost + ":" + info.urlPort;
+        return "".concat(info.urlScheme, "://").concat(info.urlHost, ":").concat(info.urlPort);
     };
     Server.prototype.setResponseCacheHeaders = function (res, enableCaching) {
         if (enableCaching) {
@@ -215,7 +217,7 @@ var Server = (function () {
         });
         return pubs.map(function (pub) {
             var pubid = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
-            return "/pub/" + pubid + "/manifest.json";
+            return "/pub/".concat(pubid, "/manifest.json");
         });
     };
     Server.prototype.removePublications = function (pubs) {
@@ -230,7 +232,7 @@ var Server = (function () {
         });
         return pubs.map(function (pub) {
             var pubid = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
-            return "/pub/" + pubid + "/manifest.json";
+            return "/pub/".concat(pubid, "/manifest.json");
         });
     };
     Server.prototype.getPublications = function () {
@@ -238,27 +240,48 @@ var Server = (function () {
     };
     Server.prototype.loadOrGetCachedPublication = function (filePath) {
         return (0, tslib_1.__awaiter)(this, void 0, void 0, function () {
-            var publication, err_2;
+            var publication, zip, publicationJsonStr, publicationJsonObj, err_2, err_3;
             return (0, tslib_1.__generator)(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         publication = this.cachedPublication(filePath);
-                        if (!!publication) return [3, 5];
+                        if (!!publication) return [3, 9];
+                        if (!filePath.endsWith("_manifest.json")) return [3, 5];
                         _a.label = 1;
                     case 1:
                         _a.trys.push([1, 3, , 4]);
-                        return [4, (0, publication_parser_1.PublicationParsePromise)(filePath)];
+                        return [4, (0, zipFactory_1.zipLoadPromise)(filePath.replace(/_manifest\.json$/, ""))];
                     case 2:
-                        publication = _a.sent();
+                        zip = _a.sent();
+                        publicationJsonStr = fs.readFileSync(filePath, { encoding: "utf8" });
+                        publicationJsonObj = global.JSON.parse(publicationJsonStr);
+                        publication = (0, serializable_1.TaJsonDeserialize)(publicationJsonObj, publication_1.Publication);
+                        publication.AddToInternal("filename", path.basename(filePath));
+                        publication.AddToInternal("type", "daisy");
+                        publication.AddToInternal("zip", zip);
                         return [3, 4];
                     case 3:
                         err_2 = _a.sent();
                         debug(err_2);
                         return [2, Promise.reject(err_2)];
-                    case 4:
+                    case 4: return [3, 8];
+                    case 5:
+                        _a.trys.push([5, 7, , 8]);
+                        return [4, (0, publication_parser_1.PublicationParsePromise)(filePath)];
+                    case 6:
+                        publication = _a.sent();
+                        return [3, 8];
+                    case 7:
+                        err_3 = _a.sent();
+                        debug(err_3);
+                        return [2, Promise.reject(err_3)];
+                    case 8:
+                        if (!publication) {
+                            return [2, Promise.reject("!PUBLICATION??")];
+                        }
                         this.cachePublication(filePath, publication);
-                        _a.label = 5;
-                    case 5: return [2, publication];
+                        _a.label = 9;
+                    case 9: return [2, publication];
                 }
             });
         });
@@ -300,7 +323,7 @@ var Server = (function () {
         if (this.publicationsOPDSfeed) {
             return this.publicationsOPDSfeed;
         }
-        debug("OPDS2.json => " + this.opdsJsonFilePath);
+        debug("OPDS2.json => ".concat(this.opdsJsonFilePath));
         if (!fs.existsSync(this.opdsJsonFilePath)) {
             if (!this.creatingPublicationsOPDS) {
                 this.creatingPublicationsOPDS = true;
@@ -311,7 +334,7 @@ var Server = (function () {
                     var filePathBase64 = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(pub).toString("base64"));
                     args_1.push(filePathBase64);
                 });
-                debug("SPAWN OPDS2-create: " + args_1[0]);
+                debug("SPAWN OPDS2-create: ".concat(args_1[0]));
                 var child = child_process.spawn("node", args_1, {
                     cwd: process.cwd(),
                     env: process.env,

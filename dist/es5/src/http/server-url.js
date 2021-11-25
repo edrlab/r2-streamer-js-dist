@@ -21,7 +21,7 @@ function serverRemotePub(_server, topRouter) {
             "function go(evt) {" +
             "if (evt) { evt.preventDefault(); } var url = " +
             "location.origin +" +
-            (" '" + exports.serverRemotePub_PATH + "/' +") +
+            " '".concat(exports.serverRemotePub_PATH, "/' +") +
             " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
             "location.href = url;}</script>";
         html += "</head>";
@@ -46,7 +46,7 @@ function serverRemotePub(_server, topRouter) {
         var urlDecodedBase64 = (0, UrlUtils_1.encodeURIComponent_RFC3986)(Buffer.from(urlDecoded).toString("base64"));
         var redirect = req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverRemotePub_PATH + "/"))
             + "/pub/" + urlDecodedBase64 + "/";
-        debug("REDIRECT: " + req.originalUrl + " ==> " + redirect);
+        debug("REDIRECT: ".concat(req.originalUrl, " ==> ").concat(redirect));
         res.redirect(301, redirect);
     });
     topRouter.use(exports.serverRemotePub_PATH, routerUrl);

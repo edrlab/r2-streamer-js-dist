@@ -16,8 +16,8 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 (0, init_globals_1.initGlobalConverters_OPDS)();
 (0, init_globals_2.initGlobalConverters_SHARED)();
 (0, init_globals_2.initGlobalConverters_GENERIC)();
-console.log("process.cwd(): " + process.cwd());
-console.log("__dirname: " + __dirname);
+console.log("process.cwd(): ".concat(process.cwd()));
+console.log("__dirname: ".concat(__dirname));
 var args = process.argv.slice(2);
 if (!args.length) {
     console.log("FILEPATH ARGUMENTS ARE MISSING.");
@@ -50,7 +50,7 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 if ((0, UrlUtils_1.isHTTP)(pathBase64Str)) {
                     return [3, 6];
                 }
-                console.log("OPDS parsing: " + pathBase64Str);
+                console.log("OPDS parsing: ".concat(pathBase64Str));
                 publication = void 0;
                 _a.label = 2;
             case 2:
@@ -71,10 +71,10 @@ if (fs.existsSync(opdsJsonFilePath)) {
                 linkSelf.Href = pathBase64 + "/manifest.json";
                 linkSelf.TypeLink =
                     (publication.Metadata && publication.Metadata.RDFType &&
-                        /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
+                        /https?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
                         "application/audiobook+json" : ((publication.Metadata && publication.Metadata.RDFType &&
-                        (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
-                            /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
+                        (/https?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                            /https?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
                         "application/webpub+json");
                 linkSelf.AddRel("http://opds-spec.org/acquisition");
                 publi.Links.push(linkSelf);

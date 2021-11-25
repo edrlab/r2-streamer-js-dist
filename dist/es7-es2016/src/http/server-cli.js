@@ -68,7 +68,13 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
     (() => (0, tslib_1.__awaiter)(void 0, void 0, void 0, function* () {
         const files = fs.readdirSync(filePath, { withFileTypes: true }).
-            filter((f) => f.isFile() && /\.(epub3?)|(cbz)|(audiobook)|(lcpaudiobook)|(lcpa)|(divina)|(lcpdivina)$/.test(f.name)).map((f) => path.join(filePath, f.name));
+            filter((f) => {
+            return f.isFile() &&
+                (/((\.epub3?)|(\.cbz)|(\.audiobook)|(\.lcpaudiobook)|(\.lcpa)|(\.divina)|(\.lcpdivina))$/i.test(f.name)
+                    ||
+                        (/_manifest\.json$/.test(f.name)
+                            && fs.existsSync(path.join(filePath, path.basename(f.name).replace(/_manifest\.json$/, "")))));
+        }).map((f) => path.join(filePath, f.name));
         const server = new server_1.Server({
             maxPrefetchLinks,
         });

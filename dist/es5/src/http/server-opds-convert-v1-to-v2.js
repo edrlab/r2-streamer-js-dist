@@ -39,7 +39,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             "function go(evt) {" +
             "if (evt) { evt.preventDefault(); } var url = " +
             "location.origin +" +
-            (" '" + exports.serverOPDS_convert_v1_to_v2_PATH + "/' +") +
+            " '".concat(exports.serverOPDS_convert_v1_to_v2_PATH, "/' +") +
             " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
             "location.href = url;}</script>";
         html += "</head>";
@@ -193,22 +193,22 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                                 if (opds2Publication) {
                                                     val = err.jsonPath ? DotProp.get(jsonObjOPDS2, err.jsonPath) : "";
                                                     valueStr = (typeof val === "string") ?
-                                                        "" + val :
+                                                        "".concat(val) :
                                                         ((val instanceof Array || typeof val === "object") ?
-                                                            "" + JSON.stringify(val) :
+                                                            "".concat(JSON.stringify(val)) :
                                                             "");
                                                     debug(valueStr);
                                                     title = DotProp.get(jsonObjOPDS2, "metadata.title");
                                                     debug(title);
                                                     validationStr +=
-                                                        "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                        "\n\"".concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                                                 }
                                                 else {
                                                     val = err.jsonPath ? DotProp.get(jsonObjOPDS2, err.jsonPath) : "";
                                                     valueStr = (typeof val === "string") ?
-                                                        "" + val :
+                                                        "".concat(val) :
                                                         ((val instanceof Array || typeof val === "object") ?
-                                                            "" + JSON.stringify(val) :
+                                                            "".concat(JSON.stringify(val)) :
                                                             "");
                                                     debug(valueStr);
                                                     title = "";
@@ -222,7 +222,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                                         debug(pubIndex);
                                                     }
                                                     validationStr +=
-                                                        "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_b = err.ajvDataPath) === null || _b === void 0 ? void 0 : _b.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                        "\n___________INDEX___________ #".concat(pubIndex, " \"").concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_b = err.ajvDataPath) === null || _b === void 0 ? void 0 : _b.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                                                 }
                                             }
                                         }

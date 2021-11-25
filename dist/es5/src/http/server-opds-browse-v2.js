@@ -49,7 +49,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
             "function go(evt) {" +
             "if (evt) { evt.preventDefault(); } var url = " +
             "location.origin +" +
-            (" '" + exports.serverOPDS_browse_v2_PATH + "/' +") +
+            " '".concat(exports.serverOPDS_browse_v2_PATH, "/' +") +
             " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
             "location.href = url;}</script>";
         html += "</head>";
@@ -109,7 +109,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                         redirectUrl = rootUrl + req.originalUrl.substr(0, req.originalUrl.indexOf(exports.serverOPDS_browse_v2_PATH + "/")) +
                                             exports.serverOPDS_auth_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(authRequestBase64) +
                                             "?" + request_ext_1._authRefresh + "=" + authResponseJson.refresh_token;
-                                        debug("REDIRECT: " + req.originalUrl + " ==> " + redirectUrl);
+                                        debug("REDIRECT: ".concat(req.originalUrl, " ==> ").concat(redirectUrl));
                                         res.redirect(301, redirectUrl);
                                         return [2];
                                     }
@@ -185,22 +185,22 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                                 if (isPublication) {
                                                     val = err.jsonPath ? DotProp.get(opds2FeedJson, err.jsonPath) : "";
                                                     valueStr = (typeof val === "string") ?
-                                                        "" + val :
+                                                        "".concat(val) :
                                                         ((val instanceof Array || typeof val === "object") ?
-                                                            "" + JSON.stringify(val) :
+                                                            "".concat(JSON.stringify(val)) :
                                                             "");
                                                     debug(valueStr);
                                                     title = DotProp.get(opds2FeedJson, "metadata.title");
                                                     debug(title);
                                                     validationStr +=
-                                                        "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                        "\n\"".concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                                                 }
                                                 else {
                                                     val = err.jsonPath ? DotProp.get(opds2FeedJson, err.jsonPath) : "";
                                                     valueStr = (typeof val === "string") ?
-                                                        "" + val :
+                                                        "".concat(val) :
                                                         ((val instanceof Array || typeof val === "object") ?
-                                                            "" + JSON.stringify(val) :
+                                                            "".concat(JSON.stringify(val)) :
                                                             "");
                                                     debug(valueStr);
                                                     title = "";
@@ -214,7 +214,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                                         debug(pubIndex);
                                                     }
                                                     validationStr +=
-                                                        "\n___________INDEX___________ #" + pubIndex + " \"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_b = err.ajvDataPath) === null || _b === void 0 ? void 0 : _b.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                        "\n___________INDEX___________ #".concat(pubIndex, " \"").concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_b = err.ajvDataPath) === null || _b === void 0 ? void 0 : _b.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                                                 }
                                             }
                                         }
@@ -279,8 +279,8 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                         return link.Rel && link.Rel.includes("logo") && link.TypeLink && link.TypeLink.startsWith("image/");
                                     })) : undefined;
                                     imageUrl = imageLink ? (0, UrlUtils_1.ensureAbsolute)(urlDecoded, imageLink.Href) : undefined;
-                                    authHtmlForm = !authObj ? "" : "\n<hr>\n<form id=\"authForm\">\n    <input type=\"text\" name=\"login\" id=\"login\" size=\"40\">\n    <span>" + authObj.Labels.Login + "</span>\n<br><br>\n    <input type=\"password\" name=\"password\" id=\"password\" size=\"40\">\n    <span>" + authObj.Labels.Password + "</span>\n<br><br>\n    <input type=\"submit\" value=\"Authenticate\">\n</form>\n" + (imageUrl ? "<img src=\"" + imageUrl + "\" />" : "") + "\n<script type=\"text/javascript\">\n// document.addEventListener(\"DOMContentLoaded\", (event) => {\n// });\nconst formElement = document.getElementById(\"authForm\");\nformElement.addEventListener(\"submit\", (event) => {\n    event.preventDefault();\n    doAuth();\n});\nfunction encodeURIComponent_RFC3986(str) {\n    return encodeURIComponent(str).replace(/[!'()*]/g, (c) => {\n        return \"%\" + c.charCodeAt(0).toString(16);\n    });\n}\nfunction encodeFormData(json) {\n    if (!json) {\n        return \"\";\n    }\n    return Object.keys(json).map((key) => {\n        return encodeURIComponent_RFC3986(key) + \"=\" + (json[key] ? encodeURIComponent_RFC3986(json[key]) : \"_\");\n    }).join(\"&\");\n}\nfunction hexStrToArrayBuffer(hexStr) {\n    return new Uint8Array(\n        hexStr\n        .match(/.{1,2}/g)\n        .map((byte) => {\n            return parseInt(byte, 16);\n        })\n    );\n}\nfunction doAuth() {\n    " + (authLink ? "\n    const bodyJson = {\n        targetUrl: \"" + urlDecoded + "\",\n        authUrl: \"" + authLink.Href + "\",\n        grant_type: \"password\",\n        username: document.getElementById(\"login\").value,\n        password: document.getElementById(\"password\").value\n    };\n    const bodyStr = JSON.stringify(bodyJson);\n\n    const textEncoder = new TextEncoder(\"utf-8\");\n    const bodyStrEncoded = textEncoder.encode(bodyStr); // Uint8Array\n\n    const keyPromise = window.crypto.subtle.importKey(\n        \"raw\",\n        hexStrToArrayBuffer(\"" + OPDS_AUTH_ENCRYPTION_KEY_HEX + "\"),\n        { \"name\": \"AES-CBC\" },\n        false,\n        [\"encrypt\", \"decrypt\"]\n    );\n    keyPromise.then((key) => { // CryptoKey\n\n        const iv = hexStrToArrayBuffer(\"" + OPDS_AUTH_ENCRYPTION_IV_HEX + "\");\n        const encryptedBodyPromise = window.crypto.subtle.encrypt(\n            {\n                name: \"AES-CBC\",\n                iv\n            },\n            key,\n            bodyStrEncoded\n        );\n        encryptedBodyPromise.then((encryptedBody) => { // ArrayBuffer\n            // const arg = String.fromCharCode.apply(null, new Uint8Array(encryptedBody));\n            const arg = new Uint8Array(encryptedBody).reduce((data, byte) => {\n                return data + String.fromCharCode(byte);\n            }, '');\n            const encryptedBodyB64 = window.btoa(arg);\n\n            const url = location.origin + \"" + exports.serverOPDS_auth_PATH + "/\" + encodeURIComponent_RFC3986(encryptedBodyB64);\n            location.href = url;\n        }).catch((err) => {\n            console.log(err);\n        });\n    }).catch((err) => {\n        console.log(err);\n    });\n\n/* does not work because of HTTP CORS, so we forward to NodeJS fetch/request via the serverOPDS_auth_PATH HTTP route\n    window.fetch(\"" + authLink.Href + "\", {\n        method: \"POST\",\n        headers: {\n            \"Content-Type\": \"application/x-www-form-url-encoded\",\n            \"Accept\": \"application/json\"\n        },\n        body: encodeFormData(bodyJson)\n    })\n    .then((response) => {\n        const res = JSON.stringify(response, null, 4);\n        console.log(res);\n    })\n    .catch((error) => {\n        console.log(error);\n    });\n*/\n    " :
-                                        "window.alert(\"no auth link!\");") + "\n}\n</script>";
+                                    authHtmlForm = !authObj ? "" : "\n<hr>\n<form id=\"authForm\">\n    <input type=\"text\" name=\"login\" id=\"login\" size=\"40\">\n    <span>".concat(authObj.Labels.Login, "</span>\n<br><br>\n    <input type=\"password\" name=\"password\" id=\"password\" size=\"40\">\n    <span>").concat(authObj.Labels.Password, "</span>\n<br><br>\n    <input type=\"submit\" value=\"Authenticate\">\n</form>\n").concat(imageUrl ? "<img src=\"".concat(imageUrl, "\" />") : "", "\n<script type=\"text/javascript\">\n// document.addEventListener(\"DOMContentLoaded\", (event) => {\n// });\nconst formElement = document.getElementById(\"authForm\");\nformElement.addEventListener(\"submit\", (event) => {\n    event.preventDefault();\n    doAuth();\n});\nfunction encodeURIComponent_RFC3986(str) {\n    return encodeURIComponent(str).replace(/[!'()*]/g, (c) => {\n        return \"%\" + c.charCodeAt(0).toString(16);\n    });\n}\nfunction encodeFormData(json) {\n    if (!json) {\n        return \"\";\n    }\n    return Object.keys(json).map((key) => {\n        return encodeURIComponent_RFC3986(key) + \"=\" + (json[key] ? encodeURIComponent_RFC3986(json[key]) : \"_\");\n    }).join(\"&\");\n}\nfunction hexStrToArrayBuffer(hexStr) {\n    return new Uint8Array(\n        hexStr\n        .match(/.{1,2}/g)\n        .map((byte) => {\n            return parseInt(byte, 16);\n        })\n    );\n}\nfunction doAuth() {\n    ").concat(authLink ? "\n    const bodyJson = {\n        targetUrl: \"".concat(urlDecoded, "\",\n        authUrl: \"").concat(authLink.Href, "\",\n        grant_type: \"password\",\n        username: document.getElementById(\"login\").value,\n        password: document.getElementById(\"password\").value\n    };\n    const bodyStr = JSON.stringify(bodyJson);\n\n    const textEncoder = new TextEncoder(\"utf-8\");\n    const bodyStrEncoded = textEncoder.encode(bodyStr); // Uint8Array\n\n    const keyPromise = window.crypto.subtle.importKey(\n        \"raw\",\n        hexStrToArrayBuffer(\"").concat(OPDS_AUTH_ENCRYPTION_KEY_HEX, "\"),\n        { \"name\": \"AES-CBC\" },\n        false,\n        [\"encrypt\", \"decrypt\"]\n    );\n    keyPromise.then((key) => { // CryptoKey\n\n        const iv = hexStrToArrayBuffer(\"").concat(OPDS_AUTH_ENCRYPTION_IV_HEX, "\");\n        const encryptedBodyPromise = window.crypto.subtle.encrypt(\n            {\n                name: \"AES-CBC\",\n                iv\n            },\n            key,\n            bodyStrEncoded\n        );\n        encryptedBodyPromise.then((encryptedBody) => { // ArrayBuffer\n            // const arg = String.fromCharCode.apply(null, new Uint8Array(encryptedBody));\n            const arg = new Uint8Array(encryptedBody).reduce((data, byte) => {\n                return data + String.fromCharCode(byte);\n            }, '');\n            const encryptedBodyB64 = window.btoa(arg);\n\n            const url = location.origin + \"").concat(exports.serverOPDS_auth_PATH, "/\" + encodeURIComponent_RFC3986(encryptedBodyB64);\n            location.href = url;\n        }).catch((err) => {\n            console.log(err);\n        });\n    }).catch((err) => {\n        console.log(err);\n    });\n\n/* does not work because of HTTP CORS, so we forward to NodeJS fetch/request via the serverOPDS_auth_PATH HTTP route\n    window.fetch(\"").concat(authLink.Href, "\", {\n        method: \"POST\",\n        headers: {\n            \"Content-Type\": \"application/x-www-form-url-encoded\",\n            \"Accept\": \"application/json\"\n        },\n        body: encodeFormData(bodyJson)\n    })\n    .then((response) => {\n        const res = JSON.stringify(response, null, 4);\n        console.log(res);\n    })\n    .catch((error) => {\n        console.log(error);\n    });\n*/\n    ") :
+                                        "window.alert(\"no auth link!\");", "\n}\n</script>");
                                     res.status(200).send("<html><body>" +
                                         "<h1>OPDS2 JSON " +
                                         (isPublication ? "entry" : (isAuth ? "authentication" : "feed")) +
@@ -302,7 +302,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         "User-Agent": "READIUM2",
                     };
                     if (authResponseJson && authResponseJson.access_token) {
-                        headers.Authorization = "Bearer " + authResponseJson.access_token;
+                        headers.Authorization = "Bearer ".concat(authResponseJson.access_token);
                     }
                     needsStreamingResponse = true;
                     if (!needsStreamingResponse) return [3, 1];
@@ -437,7 +437,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                                             exports.serverOPDS_auth_PATH + "/" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(base64Payload) +
                                             "?" + request_ext_1._authRefresh + "=" + (0, UrlUtils_1.encodeURIComponent_RFC3986)(responseJson.refresh_token) : undefined;
                                         decryptedJson_1.password = "***";
-                                        res.status(200).send("\n                        <html><body>\n                        <hr>\n                        <a href=\"" + targetUrl_ + "\">" + targetUrl_1 + "</a>\n                        <hr>\n                        <pre>" + JSON.stringify(decryptedJson_1, null, 4) + "</pre>\n                        <hr>\n                        <pre>" + JSON.stringify(responseJson, null, 4) + "</pre>\n                        <hr>\n                        " + (refreshTokenUrl ? "<a href=\"" + refreshTokenUrl + "\">FORCE REFRESH TOKEN</a>" : "") + "\n                        <hr>\n                        </body></html>\n                    ");
+                                        res.status(200).send("\n                        <html><body>\n                        <hr>\n                        <a href=\"".concat(targetUrl_, "\">").concat(targetUrl_1, "</a>\n                        <hr>\n                        <pre>").concat(JSON.stringify(decryptedJson_1, null, 4), "</pre>\n                        <hr>\n                        <pre>").concat(JSON.stringify(responseJson, null, 4), "</pre>\n                        <hr>\n                        ").concat(refreshTokenUrl ? "<a href=\"".concat(refreshTokenUrl, "\">FORCE REFRESH TOKEN</a>") : "", "\n                        <hr>\n                        </body></html>\n                    "));
                                     }
                                     catch (err) {
                                         debug(err);

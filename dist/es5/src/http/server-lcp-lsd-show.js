@@ -37,7 +37,7 @@ function serverLCPLSD_show(_server, topRouter) {
             "function go(evt) {" +
             "if (evt) { evt.preventDefault(); } var url = " +
             "location.origin +" +
-            (" '" + exports.serverLCPLSD_show_PATH + "/' +") +
+            " '".concat(exports.serverLCPLSD_show_PATH, "/' +") +
             " encodeURIComponent_RFC3986(document.getElementById(\"url\").value);" +
             "location.href = url;}</script>";
         html += "</head>";
@@ -124,13 +124,13 @@ function serverLCPLSD_show(_server, topRouter) {
                                                 debug(err);
                                                 val = err.jsonPath ? DotProp.get(lcpOrLsdJson, err.jsonPath) : "";
                                                 valueStr = (typeof val === "string") ?
-                                                    "" + val :
+                                                    "".concat(val) :
                                                     ((val instanceof Array || typeof val === "object") ?
-                                                        "" + JSON.stringify(val) :
+                                                        "".concat(JSON.stringify(val)) :
                                                         "");
                                                 debug(valueStr);
                                                 validationStr +=
-                                                    "\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                                                    "\n".concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                                             }
                                         }
                                     }

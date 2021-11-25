@@ -104,10 +104,10 @@ function serverManifestJson(server, routerPathBase64) {
                         + (0, UrlUtils_1.encodeURIComponent_RFC3986)(reqparams.pathBase64);
                     manifestURL = rootUrl + "/" + "manifest.json";
                     contentType = (publication.Metadata && publication.Metadata.RDFType &&
-                        /http[s]?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
+                        /https?:\/\/schema\.org\/Audiobook$/.test(publication.Metadata.RDFType)) ?
                         "application/audiobook+json" : ((publication.Metadata && publication.Metadata.RDFType &&
-                        (/http[s]?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
-                            /http[s]?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
+                        (/https?:\/\/schema\.org\/ComicStory$/.test(publication.Metadata.RDFType) ||
+                            /https?:\/\/schema\.org\/VisualNarrative$/.test(publication.Metadata.RDFType))) ? "application/divina+json" :
                         "application/webpub+json");
                     selfLink = publication.searchLinkByRel("self");
                     if (!selfLink) {
@@ -271,15 +271,15 @@ function serverManifestJson(server, routerPathBase64) {
                                 debug(err);
                                 val = err.jsonPath ? DotProp.get(jsonObj, err.jsonPath) : "";
                                 valueStr = (typeof val === "string") ?
-                                    "" + val :
+                                    "".concat(val) :
                                     ((val instanceof Array || typeof val === "object") ?
-                                        "" + JSON.stringify(val) :
+                                        "".concat(JSON.stringify(val)) :
                                         "");
                                 debug(valueStr);
                                 title = DotProp.get(jsonObj, "metadata.title");
                                 debug(title);
                                 validationStr +=
-                                    "\n\"" + title + "\"\n\n" + err.ajvMessage + ": " + valueStr + "\n\n'" + ((_c = err.ajvDataPath) === null || _c === void 0 ? void 0 : _c.replace(/^\./, "")) + "' (" + err.ajvSchemaPath + ")\n\n";
+                                    "\n\"".concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_c = err.ajvDataPath) === null || _c === void 0 ? void 0 : _c.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                             }
                         }
                     }
@@ -301,7 +301,7 @@ function serverManifestJson(server, routerPathBase64) {
                     return [3, 27];
                 case 26:
                     server.setResponseCORS(res);
-                    res.set("Content-Type", contentType + "; charset=utf-8");
+                    res.set("Content-Type", "".concat(contentType, "; charset=utf-8"));
                     publicationJsonObj = (0, serializable_1.TaJsonSerialize)(publication);
                     if (isCanonical) {
                         if (publicationJsonObj.links) {
