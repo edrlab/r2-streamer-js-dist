@@ -267,7 +267,24 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                         method: "GET",
                         uri: urlDecoded,
                     })
-                        .on("response", success)
+                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        var successError_1;
+                        return (0, tslib_1.__generator)(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    _a.trys.push([0, 2, , 3]);
+                                    return [4, success(res)];
+                                case 1:
+                                    _a.sent();
+                                    return [3, 3];
+                                case 2:
+                                    successError_1 = _a.sent();
+                                    failure(successError_1);
+                                    return [2];
+                                case 3: return [2];
+                            }
+                        });
+                    }); })
                         .on("error", failure);
                     return [3, 7];
                 case 1:

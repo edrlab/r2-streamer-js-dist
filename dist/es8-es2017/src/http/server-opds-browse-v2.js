@@ -425,7 +425,15 @@ function doAuth() {
                 method: "GET",
                 uri: urlDecoded,
             })
-                .on("response", success)
+                .on("response", async (res) => {
+                try {
+                    await success(res);
+                }
+                catch (successError) {
+                    failure(successError);
+                    return;
+                }
+            })
                 .on("error", failure);
         }
         else {
@@ -562,7 +570,15 @@ function doAuth() {
                     method: "POST",
                     uri: authUrl,
                 })
-                    .on("response", success)
+                    .on("response", async (res) => {
+                    try {
+                        await success(res);
+                    }
+                    catch (successError) {
+                        failure(successError);
+                        return;
+                    }
+                })
                     .on("error", failure);
             }
             else {

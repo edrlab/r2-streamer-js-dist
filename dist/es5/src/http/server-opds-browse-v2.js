@@ -311,7 +311,24 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         method: "GET",
                         uri: urlDecoded,
                     })
-                        .on("response", success)
+                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        var successError_1;
+                        return (0, tslib_1.__generator)(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    _a.trys.push([0, 2, , 3]);
+                                    return [4, success(res)];
+                                case 1:
+                                    _a.sent();
+                                    return [3, 3];
+                                case 2:
+                                    successError_1 = _a.sent();
+                                    failure(successError_1);
+                                    return [2];
+                                case 3: return [2];
+                            }
+                        });
+                    }); })
                         .on("error", failure);
                     return [3, 7];
                 case 1:
@@ -353,7 +370,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
         next();
     });
     routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
-        var reqparams, base64Payload, refreshToken, isSecureHttp, rootUrl, encrypted, decrypteds, decryptStream, buff1, buff2, decrypted, nPaddingBytes, size, decryptedStr, decryptedJson_1, authUrl, targetUrl_1, failure_1, success, headers, needsStreamingResponse, response, err_3, err_4;
+        var reqparams, base64Payload, refreshToken, isSecureHttp, rootUrl, encrypted, decrypteds, decryptStream, buff1, buff2, decrypted, nPaddingBytes, size, decryptedStr, decryptedJson_1, authUrl, targetUrl_1, failure_1, success_1, headers, needsStreamingResponse, response, err_3, err_4;
         var _this = this;
         return (0, tslib_1.__generator)(this, function (_a) {
             switch (_a.label) {
@@ -402,7 +419,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    success_1 = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
                         var responseData, err_5, responseStr, responseJson, targetUrl_, refreshTokenUrl;
                         return (0, tslib_1.__generator)(this, function (_a) {
                             switch (_a.label) {
@@ -463,7 +480,24 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         method: "POST",
                         uri: authUrl,
                     })
-                        .on("response", success)
+                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        var successError_2;
+                        return (0, tslib_1.__generator)(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    _a.trys.push([0, 2, , 3]);
+                                    return [4, success_1(res)];
+                                case 1:
+                                    _a.sent();
+                                    return [3, 3];
+                                case 2:
+                                    successError_2 = _a.sent();
+                                    failure_1(successError_2);
+                                    return [2];
+                                case 3: return [2];
+                            }
+                        });
+                    }); })
                         .on("error", failure_1);
                     return [3, 8];
                 case 2:
@@ -485,7 +519,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
                     err_3 = _a.sent();
                     failure_1(err_3);
                     return [2];
-                case 6: return [4, success(response)];
+                case 6: return [4, success_1(response)];
                 case 7:
                     _a.sent();
                     _a.label = 8;
