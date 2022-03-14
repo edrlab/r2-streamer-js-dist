@@ -10,11 +10,12 @@ const zipHasEntry_1 = require("r2-shared-js/dist/es6-es2015/src/_utils/zipHasEnt
 const transformer_1 = require("r2-shared-js/dist/es6-es2015/src/transform/transformer");
 const RangeUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/RangeUtils");
 const BufferUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/stream/BufferUtils");
+const url_signed_expiry_1 = require("./url-signed-expiry");
 const request_ext_1 = require("./request-ext");
 const debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     const routerAssets = express.Router({ strict: false });
-    routerAssets.get("/", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+    routerAssets.get("/", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.pathBase64) {
             reqparams.pathBase64 = req.pathBase64;
@@ -119,7 +120,7 @@ function serverAssets(server, routerPathBase64) {
             }
             if (!link &&
                 !isDivina) {
-                const err = "Asset not declared in publication spine/resources!" + relativePath;
+                const err = "Asset not declared in publication spine/resources! " + relativePath;
                 debug(err);
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + err + "</p></body></html>");
@@ -130,6 +131,16 @@ function serverAssets(server, routerPathBase64) {
             (pathInZip.indexOf("META-INF/") === 0 || /\.opf$/i.test(pathInZip))) {
             res.status(200).send("<html><body></body></html>");
             return;
+        }
+        if (server.enableSignedExpiry) {
+            const ok = (0, url_signed_expiry_1.verifyExpiringResourceURL)(req.query[url_signed_expiry_1.URL_SIGNED_EXPIRY_QUERY_PARAM_NAME], pathBase64Str, pathInZip);
+            if (!ok) {
+                const err = "Asset expired?! " + pathInZip;
+                debug(err);
+                res.status(401).send("<html><body><p>Internal Server Error</p><p>"
+                    + err + "</p></body></html>");
+                return;
+            }
         }
         let mediaType = mime.lookup(pathInZip);
         if (link && link.TypeLink) {

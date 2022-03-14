@@ -85,7 +85,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -114,7 +114,7 @@ function serverOPDS_browse_v2(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
             var _a, _b;
             const isAuthStatusCode = response.statusCode === 401;
             if (isAuthStatusCode &&
@@ -426,7 +426,7 @@ function doAuth() {
                 method: "GET",
                 uri: urlDecoded,
             })
-                .on("response", (res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+                .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 try {
                     yield success(res);
                 }
@@ -466,7 +466,7 @@ function doAuth() {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -509,7 +509,7 @@ function doAuth() {
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + err + "</p></body></html>");
             };
-            const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+            const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
                     failure("HTTP CODE " + response.statusCode);
                     return;
@@ -571,7 +571,7 @@ function doAuth() {
                     method: "POST",
                     uri: authUrl,
                 })
-                    .on("response", (res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+                    .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                     try {
                         yield success(res);
                     }

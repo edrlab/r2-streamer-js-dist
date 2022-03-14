@@ -13,6 +13,7 @@ export interface IServerOptions {
     disableDecryption?: boolean;
     disableRemotePubUrl?: boolean;
     disableOPDS?: boolean;
+    enableSignedExpiry?: boolean;
     maxPrefetchLinks?: number;
 }
 export declare const MAX_PREFETCH_LINKS = 10;
@@ -21,6 +22,7 @@ export declare class Server {
     readonly disableDecryption: boolean;
     readonly disableRemotePubUrl: boolean;
     readonly disableOPDS: boolean;
+    readonly enableSignedExpiry: boolean;
     readonly maxPrefetchLinks: number;
     readonly lcpBeginToken = "*-";
     readonly lcpEndToken = "-*";

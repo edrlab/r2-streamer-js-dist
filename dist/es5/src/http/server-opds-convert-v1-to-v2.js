@@ -54,10 +54,10 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_convert_v1_to_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+    routerOPDS_convert_v1_to_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var reqparams, urlDecoded, isSecureHttp, rootUrl, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -76,10 +76,10 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var responseData, err_2, responseStr, responseXml, isEntry, opds1Feed, opds1Entry, opds2Feed, opds2Publication, funk, jsonObjOPDS1, jsonObjOPDS2, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, val, valueStr, title, pubIndex, jsonPubTitlePath, css, jsonPrettyOPDS1, jsonPrettyOPDS2;
                         var _a, _b;
-                        return (0, tslib_1.__generator)(this, function (_c) {
+                        return tslib_1.__generator(this, function (_c) {
                             switch (_c.label) {
                                 case 0:
                                     if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
@@ -267,9 +267,9 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                         method: "GET",
                         uri: urlDecoded,
                     })
-                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        .on("response", function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var successError_1;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     _a.trys.push([0, 2, , 3]);

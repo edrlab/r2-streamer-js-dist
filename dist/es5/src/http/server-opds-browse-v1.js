@@ -47,10 +47,10 @@ function serverOPDS_browse_v1(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v1.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+    routerOPDS_browse_v1.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var reqparams, urlDecoded, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -64,7 +64,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         function processEntry(entry) {
                             html += "<hr/>";
                             html += "<div>";
@@ -150,7 +150,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
                             html += "</div>";
                         }
                         var responseData, err_2, responseStr, responseXml, isEntry, opds, opdsEntry, html, iconUrl, links;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
@@ -240,9 +240,9 @@ function serverOPDS_browse_v1(_server, topRouter) {
                         method: "GET",
                         uri: urlDecoded,
                     })
-                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        .on("response", function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var successError_1;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     _a.trys.push([0, 2, , 3]);

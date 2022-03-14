@@ -66,7 +66,7 @@ debug(`maxPrefetchLinks: ${maxPrefetchLinks}`);
 const isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
-    (() => (0, tslib_1.__awaiter)(void 0, void 0, void 0, function* () {
+    (() => tslib_1.__awaiter(void 0, void 0, void 0, function* () {
         const files = fs.readdirSync(filePath, { withFileTypes: true }).
             filter((f) => {
             return f.isFile() &&
@@ -77,6 +77,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
         }).map((f) => path.join(filePath, f.name));
         const server = new server_1.Server({
             maxPrefetchLinks,
+            enableSignedExpiry: true,
         });
         server.preventRobots();
         server.addPublications(files);
@@ -85,9 +86,10 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     }))();
 }
 else {
-    (() => (0, tslib_1.__awaiter)(void 0, void 0, void 0, function* () {
+    (() => tslib_1.__awaiter(void 0, void 0, void 0, function* () {
         const server = new server_1.Server({
             maxPrefetchLinks,
+            enableSignedExpiry: true,
         });
         server.preventRobots();
         server.addPublications([filePath]);

@@ -10,14 +10,15 @@ var zipHasEntry_1 = require("r2-shared-js/dist/es5/src/_utils/zipHasEntry");
 var transformer_1 = require("r2-shared-js/dist/es5/src/transform/transformer");
 var RangeUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/RangeUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
+var url_signed_expiry_1 = require("./url-signed-expiry");
 var request_ext_1 = require("./request-ext");
 var debug = debug_("r2:streamer#http/server-assets");
 function serverAssets(server, routerPathBase64) {
     var _this = this;
     var routerAssets = express.Router({ strict: false });
-    routerAssets.get("/", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
-        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, isDivina, link, findLinkRecursive, relativePath, _i, _a, l, _b, _c, l, _d, _e, l, err, mediaType, isText, isEncrypted, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _f, err_2, doTransform, sessionInfo, fullUrl, transformedStream, err_3, err, zipData, err_4, partialByteLength, rangeHeader;
-        return (0, tslib_1.__generator)(this, function (_g) {
+    routerAssets.get("/", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+        var reqparams, isShow, isHead, pathBase64Str, publication, err_1, zipInternal, err, zip, pathInZip, err, isDivina, link, findLinkRecursive, relativePath, _i, _a, l, _b, _c, l, _d, _e, l, err, ok, err, mediaType, isText, isEncrypted, isPartialByteRangeRequest, partialByteBegin, partialByteEnd, ranges, err, zipStream_, _f, err_2, doTransform, sessionInfo, fullUrl, transformedStream, err_3, err, zipData, err_4, partialByteLength, rangeHeader;
+        return tslib_1.__generator(this, function (_g) {
             switch (_g.label) {
                 case 0:
                     reqparams = req.params;
@@ -132,7 +133,7 @@ function serverAssets(server, routerPathBase64) {
                         }
                         if (!link &&
                             !isDivina) {
-                            err = "Asset not declared in publication spine/resources!" + relativePath;
+                            err = "Asset not declared in publication spine/resources! " + relativePath;
                             debug(err);
                             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                                 + err + "</p></body></html>");
@@ -143,6 +144,16 @@ function serverAssets(server, routerPathBase64) {
                         (pathInZip.indexOf("META-INF/") === 0 || /\.opf$/i.test(pathInZip))) {
                         res.status(200).send("<html><body></body></html>");
                         return [2];
+                    }
+                    if (server.enableSignedExpiry) {
+                        ok = (0, url_signed_expiry_1.verifyExpiringResourceURL)(req.query[url_signed_expiry_1.URL_SIGNED_EXPIRY_QUERY_PARAM_NAME], pathBase64Str, pathInZip);
+                        if (!ok) {
+                            err = "Asset expired?! " + pathInZip;
+                            debug(err);
+                            res.status(401).send("<html><body><p>Internal Server Error</p><p>"
+                                + err + "</p></body></html>");
+                            return [2];
+                        }
                     }
                     mediaType = mime.lookup(pathInZip);
                     if (link && link.TypeLink) {

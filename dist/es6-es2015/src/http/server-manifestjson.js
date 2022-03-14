@@ -15,6 +15,7 @@ const UrlUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/http/UrlUtils
 const JsonUtils_1 = require("r2-utils-js/dist/es6-es2015/src/_utils/JsonUtils");
 const json_schema_validate_1 = require("../utils/json-schema-validate");
 const request_ext_1 = require("./request-ext");
+const url_signed_expiry_1 = require("./url-signed-expiry");
 const debug = debug_("r2:streamer#http/server-manifestjson");
 function serverManifestJson(server, routerPathBase64) {
     const jsonStyle = `
@@ -41,7 +42,7 @@ function serverManifestJson(server, routerPathBase64) {
 }
 `;
     const routerManifestJson = express.Router({ strict: false });
-    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         var _a;
         const reqparams = req.params;
         if (!reqparams.pathBase64) {
@@ -143,14 +144,6 @@ function serverManifestJson(server, routerPathBase64) {
                 publication.AddLink("application/vnd.syncnarr+json", ["media-overlay"], moURL, true);
             }
         }
-        let coverImage;
-        const coverLink = publication.GetCover();
-        if (coverLink) {
-            coverImage = coverLink.Href;
-            if (coverImage && !(0, UrlUtils_1.isHTTP)(coverImage)) {
-                coverImage = absoluteURL(coverImage);
-            }
-        }
         if (isShow) {
             let objToSerialize = null;
             if (reqparams.jsonPath) {
@@ -215,6 +208,9 @@ function serverManifestJson(server, routerPathBase64) {
                 objToSerialize = {};
             }
             const jsonObj = (0, serializable_1.TaJsonSerialize)(objToSerialize);
+            if (server.enableSignedExpiry) {
+                (0, url_signed_expiry_1.signExpiringResourceURLs)(rootUrl, pathBase64Str, jsonObj);
+            }
             let validationStr;
             const doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
             if (doValidate) {
@@ -264,6 +260,30 @@ function serverManifestJson(server, routerPathBase64) {
             const regex = new RegExp(">" + rootUrl + "/([^<]+</a>)", "g");
             jsonPretty = jsonPretty.replace(regex, ">$1");
             jsonPretty = jsonPretty.replace(/>manifest.json<\/a>/, ">" + rootUrl + "/manifest.json</a>");
+            let coverImage;
+            const findCover = (arr) => {
+                let coverHref;
+                for (const link of arr) {
+                    if (link && typeof link === "object" && !Array.isArray(link) && link.rel === "cover" && link.href && typeof link.href === "string") {
+                        coverHref = link.href;
+                        break;
+                    }
+                }
+                return coverHref;
+            };
+            if (jsonObj.resources && Array.isArray(jsonObj.resources)) {
+                coverImage = findCover(jsonObj.resources);
+            }
+            if (!coverImage) {
+                if (jsonObj.links && Array.isArray(jsonObj.links)) {
+                    coverImage = findCover(jsonObj.links);
+                }
+            }
+            if (!coverImage) {
+                if (jsonObj.readingOrder && Array.isArray(jsonObj.readingOrder)) {
+                    coverImage = findCover(jsonObj.readingOrder);
+                }
+            }
             res.status(200).send("<html>" +
                 "<head><script type=\"application/ld+json\" href=\"" +
                 manifestURL +
@@ -279,6 +299,9 @@ function serverManifestJson(server, routerPathBase64) {
             server.setResponseCORS(res);
             res.set("Content-Type", `${contentType}; charset=utf-8`);
             const publicationJsonObj = (0, serializable_1.TaJsonSerialize)(publication);
+            if (server.enableSignedExpiry) {
+                (0, url_signed_expiry_1.signExpiringResourceURLs)(rootUrl, pathBase64Str, publicationJsonObj);
+            }
             if (isCanonical) {
                 if (publicationJsonObj.links) {
                     delete publicationJsonObj.links;

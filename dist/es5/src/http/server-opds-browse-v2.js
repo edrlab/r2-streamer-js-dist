@@ -64,10 +64,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var reqparams, authResponseJson, authResponseBase64, authResponseStr, authRequestBase64, urlDecoded, isSecureHttp, rootUrl, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -97,10 +97,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var isAuthStatusCode, redirectUrl, isBadStatusCode, responseData, err_2, responseStr, responseJson, isPublication, isAuth, opds2Feed, opds2FeedJson, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, val, valueStr, title, pubIndex, jsonPubTitlePath, funk, css, jsonPrettyOPDS2, authDoc, authObj, authLink, imageLink, imageUrl, authHtmlForm;
                         var _a, _b;
-                        return (0, tslib_1.__generator)(this, function (_c) {
+                        return tslib_1.__generator(this, function (_c) {
                             switch (_c.label) {
                                 case 0:
                                     isAuthStatusCode = response.statusCode === 401;
@@ -311,9 +311,9 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         method: "GET",
                         uri: urlDecoded,
                     })
-                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        .on("response", function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var successError_1;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     _a.trys.push([0, 2, , 3]);
@@ -369,10 +369,10 @@ function serverOPDS_browse_v2(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var reqparams, base64Payload, refreshToken, isSecureHttp, rootUrl, encrypted, decrypteds, decryptStream, buff1, buff2, decrypted, nPaddingBytes, size, decryptedStr, decryptedJson_1, authUrl, targetUrl_1, failure_1, success_1, headers, needsStreamingResponse, response, err_3, err_4;
         var _this = this;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -419,9 +419,9 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success_1 = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    success_1 = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var responseData, err_5, responseStr, responseJson, targetUrl_, refreshTokenUrl;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     if (response.statusCode && (response.statusCode < 200 || response.statusCode >= 300)) {
@@ -480,9 +480,9 @@ function serverOPDS_browse_v2(_server, topRouter) {
                         method: "POST",
                         uri: authUrl,
                     })
-                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        .on("response", function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var successError_2;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     _a.trys.push([0, 2, , 3]);

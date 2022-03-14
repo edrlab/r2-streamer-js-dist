@@ -29,9 +29,9 @@ if (fs.existsSync(opdsJsonFilePath)) {
     console.log("OPDS2 JSON file already exists.");
     process.exit(1);
 }
-(function () { return (0, tslib_1.__awaiter)(void 0, void 0, void 0, function () {
+(function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
     var feed, nPubs, _i, args_1, pathBase64, pathBase64Str, publication, err_1, publi, linkSelf, coverLink, linkCover, publicationMetadataJson, jsonObj, jsonStr;
-    return (0, tslib_1.__generator)(this, function (_a) {
+    return tslib_1.__generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 feed = new opds2_1.OPDSFeed();

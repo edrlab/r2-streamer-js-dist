@@ -36,11 +36,12 @@ class Server {
     constructor(options) {
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
-        this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
-        this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
-        this.disableRemotePubUrl = options && options.disableRemotePubUrl ? options.disableRemotePubUrl : false;
-        this.disableOPDS = options && options.disableOPDS ? options.disableOPDS : false;
-        this.maxPrefetchLinks = options && options.maxPrefetchLinks ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
+        this.disableReaders = !!(options === null || options === void 0 ? void 0 : options.disableReaders);
+        this.disableDecryption = !!(options === null || options === void 0 ? void 0 : options.disableDecryption);
+        this.disableRemotePubUrl = !!(options === null || options === void 0 ? void 0 : options.disableRemotePubUrl);
+        this.disableOPDS = !!(options === null || options === void 0 ? void 0 : options.disableOPDS);
+        this.enableSignedExpiry = !!(options === null || options === void 0 ? void 0 : options.enableSignedExpiry);
+        this.maxPrefetchLinks = (options === null || options === void 0 ? void 0 : options.maxPrefetchLinks) ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
@@ -101,7 +102,7 @@ Disallow: /
         return (0, server_secure_1.serverSecureHTTPHeader)(this, url);
     }
     start(port, secure) {
-        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             if (this.isStarted()) {
                 return Promise.resolve(this.serverInfo());
             }
@@ -117,7 +118,7 @@ Disallow: /
             debug(`PORT: ${port} || ${envPort} || 3000 => ${p}`);
             if (secure) {
                 this.httpServer = undefined;
-                return new Promise((resolve, reject) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+                return new Promise((resolve, reject) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                     let certData;
                     try {
                         certData = yield (0, self_signed_1.generateSelfSignedData)();
@@ -224,7 +225,7 @@ Disallow: /
         return this.publications;
     }
     loadOrGetCachedPublication(filePath) {
-        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
             let publication = this.cachedPublication(filePath);
             if (!publication) {
                 if (filePath.endsWith("_manifest.json")) {

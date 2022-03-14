@@ -66,9 +66,9 @@ debug("maxPrefetchLinks: ".concat(maxPrefetchLinks));
 var isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
-    (function () { return (0, tslib_1.__awaiter)(void 0, void 0, void 0, function () {
+    (function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
         var files, server, url;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     files = fs.readdirSync(filePath, { withFileTypes: true }).
@@ -81,6 +81,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
                     }).map(function (f) { return path.join(filePath, f.name); });
                     server = new server_1.Server({
                         maxPrefetchLinks: maxPrefetchLinks,
+                        enableSignedExpiry: true,
                     });
                     server.preventRobots();
                     server.addPublications(files);
@@ -94,13 +95,14 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     }); })();
 }
 else {
-    (function () { return (0, tslib_1.__awaiter)(void 0, void 0, void 0, function () {
+    (function () { return tslib_1.__awaiter(void 0, void 0, void 0, function () {
         var server, url;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     server = new server_1.Server({
                         maxPrefetchLinks: maxPrefetchLinks,
+                        enableSignedExpiry: true,
                     });
                     server.preventRobots();
                     server.addPublications([filePath]);

@@ -73,7 +73,7 @@ function serverLCPLSD_show(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
@@ -90,7 +90,7 @@ function serverLCPLSD_show(_server, topRouter) {
             res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                 + err + "</p></body></html>");
         };
-        const success = (response) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+        const success = (response) => tslib_1.__awaiter(this, void 0, void 0, function* () {
             var _a;
             const isBadStatusCode = response.statusCode && (response.statusCode < 200 || response.statusCode >= 300);
             if (isBadStatusCode) {
@@ -194,7 +194,7 @@ function serverLCPLSD_show(_server, topRouter) {
                 method: "GET",
                 uri: urlDecoded,
             })
-                .on("response", (res) => (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+                .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 try {
                     yield success(res);
                 }

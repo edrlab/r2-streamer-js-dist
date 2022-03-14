@@ -76,6 +76,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
         }).map((f) => path.join(filePath, f.name));
         const server = new server_1.Server({
             maxPrefetchLinks,
+            enableSignedExpiry: true,
         });
         server.preventRobots();
         server.addPublications(files);
@@ -87,6 +88,7 @@ else {
     (async () => {
         const server = new server_1.Server({
             maxPrefetchLinks,
+            enableSignedExpiry: true,
         });
         server.preventRobots();
         server.addPublications([filePath]);

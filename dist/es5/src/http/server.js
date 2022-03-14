@@ -36,11 +36,12 @@ var Server = (function () {
     function Server(options) {
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
-        this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
-        this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
-        this.disableRemotePubUrl = options && options.disableRemotePubUrl ? options.disableRemotePubUrl : false;
-        this.disableOPDS = options && options.disableOPDS ? options.disableOPDS : false;
-        this.maxPrefetchLinks = options && options.maxPrefetchLinks ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
+        this.disableReaders = !!(options === null || options === void 0 ? void 0 : options.disableReaders);
+        this.disableDecryption = !!(options === null || options === void 0 ? void 0 : options.disableDecryption);
+        this.disableRemotePubUrl = !!(options === null || options === void 0 ? void 0 : options.disableRemotePubUrl);
+        this.disableOPDS = !!(options === null || options === void 0 ? void 0 : options.disableOPDS);
+        this.enableSignedExpiry = !!(options === null || options === void 0 ? void 0 : options.enableSignedExpiry);
+        this.maxPrefetchLinks = (options === null || options === void 0 ? void 0 : options.maxPrefetchLinks) ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;
@@ -99,10 +100,10 @@ var Server = (function () {
         return (0, server_secure_1.serverSecureHTTPHeader)(this, url);
     };
     Server.prototype.start = function (port, secure) {
-        return (0, tslib_1.__awaiter)(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var envPort, p;
             var _this = this;
-            return (0, tslib_1.__generator)(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 if (this.isStarted()) {
                     return [2, Promise.resolve(this.serverInfo())];
                 }
@@ -118,10 +119,10 @@ var Server = (function () {
                 debug("PORT: ".concat(port, " || ").concat(envPort, " || 3000 => ").concat(p));
                 if (secure) {
                     this.httpServer = undefined;
-                    return [2, new Promise(function (resolve, reject) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    return [2, new Promise(function (resolve, reject) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                             var certData, err_1;
                             var _this = this;
-                            return (0, tslib_1.__generator)(this, function (_a) {
+                            return tslib_1.__generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
                                         _a.trys.push([0, 2, , 3]);
@@ -136,7 +137,7 @@ var Server = (function () {
                                         return [2];
                                     case 3:
                                         this.httpsServer = https.createServer({ key: certData.private, cert: certData.cert }, this.expressApp).listen(p, function () {
-                                            _this.serverData = (0, tslib_1.__assign)((0, tslib_1.__assign)({}, certData), { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
+                                            _this.serverData = tslib_1.__assign(tslib_1.__assign({}, certData), { urlHost: "127.0.0.1", urlPort: p, urlScheme: "https" });
                                             resolve(_this.serverData);
                                         });
                                         return [2];
@@ -239,9 +240,9 @@ var Server = (function () {
         return this.publications;
     };
     Server.prototype.loadOrGetCachedPublication = function (filePath) {
-        return (0, tslib_1.__awaiter)(this, void 0, void 0, function () {
+        return tslib_1.__awaiter(this, void 0, void 0, function () {
             var publication, zip, publicationJsonStr, publicationJsonObj, err_2, err_3;
-            return (0, tslib_1.__generator)(this, function (_a) {
+            return tslib_1.__generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         publication = this.cachedPublication(filePath);

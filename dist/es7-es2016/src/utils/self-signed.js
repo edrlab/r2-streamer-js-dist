@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const selfsigned = require("selfsigned");
 const uuid_1 = require("uuid");
 function generateSelfSignedData() {
-    return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
         return new Promise((resolve, reject) => {
             const opts = {
                 algorithm: "sha256",

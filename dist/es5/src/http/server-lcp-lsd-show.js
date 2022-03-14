@@ -52,10 +52,10 @@ function serverLCPLSD_show(_server, topRouter) {
         req.urlEncoded = value;
         next();
     });
-    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var reqparams, urlDecoded, isSecureHttp, rootUrl, failure, success, headers, needsStreamingResponse, response, err_1;
         var _this = this;
-        return (0, tslib_1.__generator)(this, function (_a) {
+        return tslib_1.__generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     reqparams = req.params;
@@ -74,10 +74,10 @@ function serverLCPLSD_show(_server, topRouter) {
                         res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                             + err + "</p></body></html>");
                     };
-                    success = function (response) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                    success = function (response) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var isBadStatusCode, responseData, err_2, responseStr, responseJson, isStatusDoc, lcpOrLsd, lcpOrLsdJson, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, funk, css, jsonPretty;
                         var _a;
-                        return (0, tslib_1.__generator)(this, function (_b) {
+                        return tslib_1.__generator(this, function (_b) {
                             switch (_b.label) {
                                 case 0:
                                     isBadStatusCode = response.statusCode && (response.statusCode < 200 || response.statusCode >= 300);
@@ -189,9 +189,9 @@ function serverLCPLSD_show(_server, topRouter) {
                         method: "GET",
                         uri: urlDecoded,
                     })
-                        .on("response", function (res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+                        .on("response", function (res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
                         var successError_1;
-                        return (0, tslib_1.__generator)(this, function (_a) {
+                        return tslib_1.__generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:
                                     _a.trys.push([0, 2, , 3]);

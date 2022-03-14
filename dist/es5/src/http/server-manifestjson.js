@@ -15,12 +15,13 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
+var url_signed_expiry_1 = require("./url-signed-expiry");
 var debug = debug_("r2:streamer#http/server-manifestjson");
 function serverManifestJson(server, routerPathBase64) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerManifestJson = express.Router({ strict: false });
-    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) { return (0, tslib_1.__awaiter)(_this, void 0, void 0, function () {
+    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }
@@ -36,9 +37,9 @@ function serverManifestJson(server, routerPathBase64) {
                 }
             });
         }
-        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, contentType, selfLink, hasMO, link, moLink, moURL, coverImage, coverLink, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
+        var reqparams, isShow, isHead, isCanonical, isSecureHttp, pathBase64Str, publication, err_1, lcpPass, err_2, errMsg, rootUrl, manifestURL, contentType, selfLink, hasMO, link, moLink, moURL, objToSerialize, _a, err_3, jsonObj, validationStr, doValidate, jsonSchemasRootpath, jsonSchemasNames, validationErrors, _i, validationErrors_1, err, val, valueStr, title, jsonPretty, regex, coverImage, findCover, publicationJsonObj, publicationJsonStr, checkSum, hash, match, links, n, prefetch, _b, links_1, l, href;
         var _c;
-        return (0, tslib_1.__generator)(this, function (_d) {
+        return tslib_1.__generator(this, function (_d) {
             switch (_d.label) {
                 case 0:
                     reqparams = req.params;
@@ -131,13 +132,6 @@ function serverManifestJson(server, routerPathBase64) {
                             moURL = epub_1.mediaOverlayURLPath +
                                 "?" + epub_1.mediaOverlayURLParam + "={path}";
                             publication.AddLink("application/vnd.syncnarr+json", ["media-overlay"], moURL, true);
-                        }
-                    }
-                    coverLink = publication.GetCover();
-                    if (coverLink) {
-                        coverImage = coverLink.Href;
-                        if (coverImage && !(0, UrlUtils_1.isHTTP)(coverImage)) {
-                            coverImage = absoluteURL(coverImage);
                         }
                     }
                     if (!isShow) return [3, 26];
@@ -238,6 +232,9 @@ function serverManifestJson(server, routerPathBase64) {
                         objToSerialize = {};
                     }
                     jsonObj = (0, serializable_1.TaJsonSerialize)(objToSerialize);
+                    if (server.enableSignedExpiry) {
+                        (0, url_signed_expiry_1.signExpiringResourceURLs)(rootUrl, pathBase64Str, jsonObj);
+                    }
                     validationStr = void 0;
                     doValidate = !reqparams.jsonPath || reqparams.jsonPath === "all";
                     if (doValidate) {
@@ -288,6 +285,31 @@ function serverManifestJson(server, routerPathBase64) {
                     regex = new RegExp(">" + rootUrl + "/([^<]+</a>)", "g");
                     jsonPretty = jsonPretty.replace(regex, ">$1");
                     jsonPretty = jsonPretty.replace(/>manifest.json<\/a>/, ">" + rootUrl + "/manifest.json</a>");
+                    coverImage = void 0;
+                    findCover = function (arr) {
+                        var coverHref;
+                        for (var _i = 0, arr_1 = arr; _i < arr_1.length; _i++) {
+                            var link = arr_1[_i];
+                            if (link && typeof link === "object" && !Array.isArray(link) && link.rel === "cover" && link.href && typeof link.href === "string") {
+                                coverHref = link.href;
+                                break;
+                            }
+                        }
+                        return coverHref;
+                    };
+                    if (jsonObj.resources && Array.isArray(jsonObj.resources)) {
+                        coverImage = findCover(jsonObj.resources);
+                    }
+                    if (!coverImage) {
+                        if (jsonObj.links && Array.isArray(jsonObj.links)) {
+                            coverImage = findCover(jsonObj.links);
+                        }
+                    }
+                    if (!coverImage) {
+                        if (jsonObj.readingOrder && Array.isArray(jsonObj.readingOrder)) {
+                            coverImage = findCover(jsonObj.readingOrder);
+                        }
+                    }
                     res.status(200).send("<html>" +
                         "<head><script type=\"application/ld+json\" href=\"" +
                         manifestURL +
@@ -303,6 +325,9 @@ function serverManifestJson(server, routerPathBase64) {
                     server.setResponseCORS(res);
                     res.set("Content-Type", "".concat(contentType, "; charset=utf-8"));
                     publicationJsonObj = (0, serializable_1.TaJsonSerialize)(publication);
+                    if (server.enableSignedExpiry) {
+                        (0, url_signed_expiry_1.signExpiringResourceURLs)(rootUrl, pathBase64Str, publicationJsonObj);
+                    }
                     if (isCanonical) {
                         if (publicationJsonObj.links) {
                             delete publicationJsonObj.links;

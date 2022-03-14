@@ -35,11 +35,12 @@ class Server {
     constructor(options) {
         this.lcpBeginToken = "*-";
         this.lcpEndToken = "-*";
-        this.disableReaders = options && options.disableReaders ? options.disableReaders : false;
-        this.disableDecryption = options && options.disableDecryption ? options.disableDecryption : false;
-        this.disableRemotePubUrl = options && options.disableRemotePubUrl ? options.disableRemotePubUrl : false;
-        this.disableOPDS = options && options.disableOPDS ? options.disableOPDS : false;
-        this.maxPrefetchLinks = options && options.maxPrefetchLinks ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
+        this.disableReaders = !!(options === null || options === void 0 ? void 0 : options.disableReaders);
+        this.disableDecryption = !!(options === null || options === void 0 ? void 0 : options.disableDecryption);
+        this.disableRemotePubUrl = !!(options === null || options === void 0 ? void 0 : options.disableRemotePubUrl);
+        this.disableOPDS = !!(options === null || options === void 0 ? void 0 : options.disableOPDS);
+        this.enableSignedExpiry = !!(options === null || options === void 0 ? void 0 : options.enableSignedExpiry);
+        this.maxPrefetchLinks = (options === null || options === void 0 ? void 0 : options.maxPrefetchLinks) ? options.maxPrefetchLinks : exports.MAX_PREFETCH_LINKS;
         this.publications = [];
         this.pathPublicationMap = {};
         this.publicationsOPDSfeed = undefined;

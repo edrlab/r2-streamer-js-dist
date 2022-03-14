@@ -1,5 +1,6 @@
 import * as express from "express";
 import { mediaOverlayURLParam } from "r2-shared-js/dist/es5/src/parser/epub";
+import { URL_SIGNED_EXPIRY_QUERY_PARAM_NAME } from "./url-signed-expiry";
 export declare const URL_PARAM_SESSION_INFO = "r2_SESSION_INFO";
 export declare const _pathBase64 = "pathBase64";
 export declare const _asset = "asset";
@@ -25,5 +26,6 @@ export interface IRequestQueryParams {
     authRefresh: string;
     [mediaOverlayURLParam]: string;
     [URL_PARAM_SESSION_INFO]: string;
+    [URL_SIGNED_EXPIRY_QUERY_PARAM_NAME]: string;
     [key: string]: string;
 }
