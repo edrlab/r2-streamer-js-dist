@@ -302,7 +302,12 @@ var Server = (function () {
         if (this.isPublicationCached(filePath)) {
             var pub = this.cachedPublication(filePath);
             if (pub) {
-                pub.freeDestroy();
+                try {
+                    pub.freeDestroy();
+                }
+                catch (ex) {
+                    debug(ex);
+                }
             }
             this.pathPublicationMap[filePath] = undefined;
             delete this.pathPublicationMap[filePath];
