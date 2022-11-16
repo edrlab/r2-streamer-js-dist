@@ -274,9 +274,9 @@ function serverManifestJson(server, routerPathBase64) {
                                         "");
                                 debug(valueStr);
                                 title = DotProp.get(jsonObj, "metadata.title");
-                                debug(title);
+                                debug(JSON.stringify(title));
                                 validationStr +=
-                                    "\n\"".concat(title, "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_c = err.ajvDataPath) === null || _c === void 0 ? void 0 : _c.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
+                                    "\n\"".concat(JSON.stringify(title), "\"\n\n").concat(err.ajvMessage, ": ").concat(valueStr, "\n\n'").concat((_c = err.ajvDataPath) === null || _c === void 0 ? void 0 : _c.replace(/^\./, ""), "' (").concat(err.ajvSchemaPath, ")\n\n");
                             }
                         }
                     }

@@ -249,9 +249,9 @@ function serverManifestJson(server, routerPathBase64) {
                                 "");
                         debug(valueStr);
                         const title = DotProp.get(jsonObj, "metadata.title");
-                        debug(title);
+                        debug(JSON.stringify(title));
                         validationStr +=
-                            `\n"${title}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${(_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
+                            `\n"${JSON.stringify(title)}"\n\n${err.ajvMessage}: ${valueStr}\n\n'${(_a = err.ajvDataPath) === null || _a === void 0 ? void 0 : _a.replace(/^\./, "")}' (${err.ajvSchemaPath})\n\n`;
                     }
                 }
             }

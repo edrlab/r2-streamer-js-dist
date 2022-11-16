@@ -96,8 +96,8 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
         debug(err);
         var errs = [];
         errs.push({
-            ajvDataPath: err && toString ? err.toString() : "ajvDataPath",
-            ajvMessage: err.message ? err.message : "ajvMessage",
+            ajvDataPath: typeof (err === null || err === void 0 ? void 0 : err.toString) === "function" ? err.toString() : "ajvDataPath",
+            ajvMessage: typeof (err === null || err === void 0 ? void 0 : err.message) === "string" ? err.message : "ajvMessage",
             ajvSchemaPath: "ajvSchemaPath",
             jsonPath: "jsonPath",
         });

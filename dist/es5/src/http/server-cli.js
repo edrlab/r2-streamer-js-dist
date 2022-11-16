@@ -65,6 +65,7 @@ if (args[1]) {
 }
 debug("maxPrefetchLinks: ".concat(maxPrefetchLinks));
 var doWatch = process.env.STREAMER_WATCH === "1";
+var disableExpiry = process.env.STREAMER_DISABLE_EXPIRY === "1";
 var isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
@@ -88,7 +89,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
                     });
                     server = new server_1.Server({
                         maxPrefetchLinks: maxPrefetchLinks,
-                        enableSignedExpiry: true,
+                        enableSignedExpiry: !disableExpiry,
                     });
                     server.preventRobots();
                     server.addPublications(files);
@@ -173,7 +174,7 @@ else {
                 case 0:
                     server = new server_1.Server({
                         maxPrefetchLinks: maxPrefetchLinks,
-                        enableSignedExpiry: true,
+                        enableSignedExpiry: !disableExpiry,
                     });
                     server.preventRobots();
                     server.addPublications([filePath]);

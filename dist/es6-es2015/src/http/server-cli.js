@@ -65,6 +65,7 @@ if (args[1]) {
 }
 debug(`maxPrefetchLinks: ${maxPrefetchLinks}`);
 const doWatch = process.env.STREAMER_WATCH === "1";
+const disableExpiry = process.env.STREAMER_DISABLE_EXPIRY === "1";
 const isAnEPUB = (0, epub_1.isEPUBlication)(filePath);
 if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
     debug("Analysing directory...");
@@ -84,7 +85,7 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
         });
         const server = new server_1.Server({
             maxPrefetchLinks,
-            enableSignedExpiry: true,
+            enableSignedExpiry: !disableExpiry,
         });
         server.preventRobots();
         server.addPublications(files);
@@ -157,7 +158,7 @@ else {
     (() => tslib_1.__awaiter(void 0, void 0, void 0, function* () {
         const server = new server_1.Server({
             maxPrefetchLinks,
-            enableSignedExpiry: true,
+            enableSignedExpiry: !disableExpiry,
         });
         server.preventRobots();
         server.addPublications([filePath]);
