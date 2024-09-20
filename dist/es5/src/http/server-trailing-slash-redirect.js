@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.trailingSlashRedirect = void 0;
+exports.trailingSlashRedirect = trailingSlashRedirect;
 var debug_ = require("debug");
 var debug = debug_("r2:streamer#http/server-trailing-slash-redirect");
 function trailingSlashRedirect(req, res, next) {
@@ -20,5 +20,4 @@ function trailingSlashRedirect(req, res, next) {
     debug("REDIRECT: ".concat(req.originalUrl, " ==> ").concat(redirect));
     res.redirect(301, redirect);
 }
-exports.trailingSlashRedirect = trailingSlashRedirect;
 //# sourceMappingURL=server-trailing-slash-redirect.js.map

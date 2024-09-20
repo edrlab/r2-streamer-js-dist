@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateSelfSignedData = void 0;
+exports.generateSelfSignedData = generateSelfSignedData;
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var selfsigned = require("selfsigned");
@@ -42,5 +42,4 @@ function generateSelfSignedData() {
         });
     });
 }
-exports.generateSelfSignedData = generateSelfSignedData;
 //# sourceMappingURL=self-signed.js.map

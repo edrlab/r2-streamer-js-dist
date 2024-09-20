@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverRoot = void 0;
+exports.serverRoot = serverRoot;
 var js_beautify_1 = require("js-beautify");
 var path = require("path");
 var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
@@ -32,5 +32,4 @@ function serverRoot(server, topRouter) {
         res.status(200).send((0, js_beautify_1.html)(html));
     });
 }
-exports.serverRoot = serverRoot;
 //# sourceMappingURL=server-root.js.map

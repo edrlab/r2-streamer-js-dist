@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.jsonSchemaValidate = void 0;
+exports.jsonSchemaValidate = jsonSchemaValidate;
 var ajv_1 = require("ajv");
 var ajv_formats_1 = require("ajv-formats");
 var debug_ = require("debug");
@@ -105,5 +105,4 @@ function jsonSchemaValidate(jsonSchemasRootpath, jsonSchemasNames, jsonToValidat
     }
     return undefined;
 }
-exports.jsonSchemaValidate = jsonSchemaValidate;
 //# sourceMappingURL=json-schema-validate.js.map

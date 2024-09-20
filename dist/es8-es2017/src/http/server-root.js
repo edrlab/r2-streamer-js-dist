@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverRoot = void 0;
+exports.serverRoot = serverRoot;
 const js_beautify_1 = require("js-beautify");
 const path = require("path");
 const UrlUtils_1 = require("r2-utils-js/dist/es8-es2017/src/_utils/http/UrlUtils");
@@ -64,5 +64,4 @@ ${server.disableOPDS ? "" : `\
         res.status(200).send((0, js_beautify_1.html)(html));
     });
 }
-exports.serverRoot = serverRoot;
 //# sourceMappingURL=server-root.js.map

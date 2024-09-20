@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverManifestJson = void 0;
+exports.serverManifestJson = serverManifestJson;
 const tslib_1 = require("tslib");
 const crypto = require("crypto");
 const css2json = require("css2json");
@@ -346,7 +346,6 @@ function serverManifestJson(server, routerPathBase64) {
     }));
     routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/manifest.json", routerManifestJson);
 }
-exports.serverManifestJson = serverManifestJson;
 function getPreFetchResources(publication) {
     const links = [];
     if (publication.Resources) {

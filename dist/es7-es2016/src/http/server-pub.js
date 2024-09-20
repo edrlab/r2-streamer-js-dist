@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverPub = exports.serverPub_PATH = void 0;
+exports.serverPub_PATH = void 0;
+exports.serverPub = serverPub;
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
@@ -80,5 +81,4 @@ function serverPub(server, topRouter) {
     topRouter.use(exports.serverPub_PATH, routerPathBase64);
     return routerPathBase64;
 }
-exports.serverPub = serverPub;
 //# sourceMappingURL=server-pub.js.map

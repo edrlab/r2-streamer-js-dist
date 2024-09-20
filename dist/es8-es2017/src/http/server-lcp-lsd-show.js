@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverLCPLSD_show = exports.serverLCPLSD_show_PATH = void 0;
+exports.serverLCPLSD_show_PATH = void 0;
+exports.serverLCPLSD_show = serverLCPLSD_show;
 const css2json = require("css2json");
 const debug_ = require("debug");
 const DotProp = require("dot-prop");
@@ -9,7 +10,6 @@ const jsonMarkup = require("json-markup");
 const morgan = require("morgan");
 const path = require("path");
 const request = require("request");
-const requestPromise = require("request-promise-native");
 const lcp_1 = require("r2-lcp-js/dist/es8-es2017/src/parser/epub/lcp");
 const lsd_1 = require("r2-lcp-js/dist/es8-es2017/src/parser/epub/lsd");
 const serializable_1 = require("r2-lcp-js/dist/es8-es2017/src/serializable");
@@ -186,42 +186,22 @@ function serverLCPLSD_show(_server, topRouter) {
             "Accept-Language": "en-UK,en-US;q=0.7,en;q=0.5",
             "User-Agent": "READIUM2",
         };
-        const needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers,
-                method: "GET",
-                uri: urlDecoded,
-            })
-                .on("response", async (res) => {
-                try {
-                    await success(res);
-                }
-                catch (successError) {
-                    failure(successError);
-                    return;
-                }
-            })
-                .on("error", failure);
-        }
-        else {
-            let response;
+        request.get({
+            headers,
+            method: "GET",
+            uri: urlDecoded,
+        })
+            .on("response", async (res) => {
             try {
-                response = await requestPromise({
-                    headers,
-                    method: "GET",
-                    resolveWithFullResponse: true,
-                    uri: urlDecoded,
-                });
+                await success(res);
             }
-            catch (err) {
-                failure(err);
+            catch (successError) {
+                failure(successError);
                 return;
             }
-            await success(response);
-        }
+        })
+            .on("error", failure);
     });
     topRouter.use(exports.serverLCPLSD_show_PATH, routerLCPLSD_show);
 }
-exports.serverLCPLSD_show = serverLCPLSD_show;
 //# sourceMappingURL=server-lcp-lsd-show.js.map

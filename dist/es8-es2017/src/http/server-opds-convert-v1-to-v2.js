@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverOPDS_convert_v1_to_v2 = exports.serverOPDS_convert_v1_to_v2_PATH = void 0;
+exports.serverOPDS_convert_v1_to_v2_PATH = void 0;
+exports.serverOPDS_convert_v1_to_v2 = serverOPDS_convert_v1_to_v2;
 const css2json = require("css2json");
 const debug_ = require("debug");
 const DotProp = require("dot-prop");
@@ -9,7 +10,6 @@ const jsonMarkup = require("json-markup");
 const morgan = require("morgan");
 const path = require("path");
 const request = require("request");
-const requestPromise = require("request-promise-native");
 const xmldom = require("@xmldom/xmldom");
 const serializable_1 = require("r2-lcp-js/dist/es8-es2017/src/serializable");
 const converter_1 = require("r2-opds-js/dist/es8-es2017/src/opds/converter");
@@ -108,7 +108,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                 return;
             }
             const responseStr = responseData.toString("utf8");
-            const responseXml = new xmldom.DOMParser().parseFromString(responseStr);
+            const responseXml = new xmldom.DOMParser().parseFromString(responseStr, "application/xml");
             if (!responseXml || !responseXml.documentElement) {
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + "XML parse fail" + "</p></body></html>");
@@ -268,42 +268,22 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
             "Accept-Language": "en-UK,en-US;q=0.7,en;q=0.5",
             "User-Agent": "READIUM2",
         };
-        const needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers,
-                method: "GET",
-                uri: urlDecoded,
-            })
-                .on("response", async (res) => {
-                try {
-                    await success(res);
-                }
-                catch (successError) {
-                    failure(successError);
-                    return;
-                }
-            })
-                .on("error", failure);
-        }
-        else {
-            let response;
+        request.get({
+            headers,
+            method: "GET",
+            uri: urlDecoded,
+        })
+            .on("response", async (res) => {
             try {
-                response = await requestPromise({
-                    headers,
-                    method: "GET",
-                    resolveWithFullResponse: true,
-                    uri: urlDecoded,
-                });
+                await success(res);
             }
-            catch (err) {
-                failure(err);
+            catch (successError) {
+                failure(successError);
                 return;
             }
-            await success(response);
-        }
+        })
+            .on("error", failure);
     });
     topRouter.use(exports.serverOPDS_convert_v1_to_v2_PATH, routerOPDS_convert_v1_to_v2);
 }
-exports.serverOPDS_convert_v1_to_v2 = serverOPDS_convert_v1_to_v2;
 //# sourceMappingURL=server-opds-convert-v1-to-v2.js.map

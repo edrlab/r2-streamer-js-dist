@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverOPDS_browse_v2 = exports.serverOPDS_auth_PATH = exports.serverOPDS_dataUrl_PATH = exports.serverOPDS_browse_v2_PATH = void 0;
+exports.serverOPDS_auth_PATH = exports.serverOPDS_dataUrl_PATH = exports.serverOPDS_browse_v2_PATH = void 0;
+exports.serverOPDS_browse_v2 = serverOPDS_browse_v2;
 const tslib_1 = require("tslib");
 const crypto = require("crypto");
 const css2json = require("css2json");
@@ -11,7 +12,6 @@ const jsonMarkup = require("json-markup");
 const morgan = require("morgan");
 const path = require("path");
 const request = require("request");
-const requestPromise = require("request-promise-native");
 const uuid_1 = require("uuid");
 const serializable_1 = require("r2-lcp-js/dist/es6-es2015/src/serializable");
 const opds2_1 = require("r2-opds-js/dist/es6-es2015/src/opds/opds2/opds2");
@@ -419,40 +419,21 @@ function doAuth() {
         if (authResponseJson && authResponseJson.access_token) {
             headers.Authorization = `Bearer ${authResponseJson.access_token}`;
         }
-        const needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers,
-                method: "GET",
-                uri: urlDecoded,
-            })
-                .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                try {
-                    yield success(res);
-                }
-                catch (successError) {
-                    failure(successError);
-                    return;
-                }
-            }))
-                .on("error", failure);
-        }
-        else {
-            let response;
+        request.get({
+            headers,
+            method: "GET",
+            uri: urlDecoded,
+        })
+            .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
             try {
-                response = yield requestPromise({
-                    headers,
-                    method: "GET",
-                    resolveWithFullResponse: true,
-                    uri: urlDecoded,
-                });
+                yield success(res);
             }
-            catch (err) {
-                failure(err);
+            catch (successError) {
+                failure(successError);
                 return;
             }
-            yield success(response);
-        }
+        }))
+            .on("error", failure);
     }));
     topRouter.use(exports.serverOPDS_browse_v2_PATH, routerOPDS_browse_v2);
     const routerOPDS_auth = express.Router({ strict: false });
@@ -563,42 +544,22 @@ function doAuth() {
                 "Content-Type": "application/x-www-form-url-encoded",
                 "User-Agent": "READIUM2",
             };
-            const needsStreamingResponse = true;
-            if (needsStreamingResponse) {
-                request.post({
-                    form: decryptedJson,
-                    headers,
-                    method: "POST",
-                    uri: authUrl,
-                })
-                    .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                    try {
-                        yield success(res);
-                    }
-                    catch (successError) {
-                        failure(successError);
-                        return;
-                    }
-                }))
-                    .on("error", failure);
-            }
-            else {
-                let response;
+            request.post({
+                form: decryptedJson,
+                headers,
+                method: "POST",
+                uri: authUrl,
+            })
+                .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
                 try {
-                    response = yield requestPromise({
-                        form: decryptedJson,
-                        headers,
-                        method: "POST",
-                        resolveWithFullResponse: true,
-                        uri: authUrl,
-                    });
+                    yield success(res);
                 }
-                catch (err) {
-                    failure(err);
+                catch (successError) {
+                    failure(successError);
                     return;
                 }
-                yield success(response);
-            }
+            }))
+                .on("error", failure);
         }
         catch (err) {
             debug(err);
@@ -608,5 +569,4 @@ function doAuth() {
     }));
     topRouter.use(exports.serverOPDS_auth_PATH, routerOPDS_auth);
 }
-exports.serverOPDS_browse_v2 = serverOPDS_browse_v2;
 //# sourceMappingURL=server-opds-browse-v2.js.map

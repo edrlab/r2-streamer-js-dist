@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverOPDS_local_feed = exports.serverOPDS_local_feed_PATH_ = exports.serverOPDS_local_feed_PATH = void 0;
+exports.serverOPDS_local_feed_PATH_ = exports.serverOPDS_local_feed_PATH = void 0;
+exports.serverOPDS_local_feed = serverOPDS_local_feed;
 var crypto = require("crypto");
 var css2json = require("css2json");
 var debug_ = require("debug");
@@ -216,5 +217,4 @@ function serverOPDS_local_feed(server, topRouter) {
     routerOPDS_local_feed_.use(exports.serverOPDS_local_feed_PATH_, routerOPDS_local_feed);
     topRouter.use(exports.serverOPDS_local_feed_PATH, routerOPDS_local_feed_);
 }
-exports.serverOPDS_local_feed = serverOPDS_local_feed;
 //# sourceMappingURL=server-opds-local-feed.js.map

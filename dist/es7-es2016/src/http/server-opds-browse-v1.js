@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverOPDS_browse_v1 = exports.serverOPDS_browse_v1_PATH = void 0;
+exports.serverOPDS_browse_v1_PATH = void 0;
+exports.serverOPDS_browse_v1 = serverOPDS_browse_v1;
 const tslib_1 = require("tslib");
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
 const request = require("request");
-const requestPromise = require("request-promise-native");
 const xmldom = require("@xmldom/xmldom");
 const opds_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds1/opds");
 const opds_entry_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds1/opds-entry");
@@ -74,7 +74,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
                 return;
             }
             const responseStr = responseData.toString("utf8");
-            const responseXml = new xmldom.DOMParser().parseFromString(responseStr);
+            const responseXml = new xmldom.DOMParser().parseFromString(responseStr, "application/xml");
             if (!responseXml || !responseXml.documentElement) {
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
                     + "XML parse fail" + "</p></body></html>");
@@ -218,42 +218,22 @@ function serverOPDS_browse_v1(_server, topRouter) {
             "Accept-Language": "en-UK,en-US;q=0.7,en;q=0.5",
             "User-Agent": "READIUM2",
         };
-        const needsStreamingResponse = true;
-        if (needsStreamingResponse) {
-            request.get({
-                headers,
-                method: "GET",
-                uri: urlDecoded,
-            })
-                .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
-                try {
-                    yield success(res);
-                }
-                catch (successError) {
-                    failure(successError);
-                    return;
-                }
-            }))
-                .on("error", failure);
-        }
-        else {
-            let response;
+        request.get({
+            headers,
+            method: "GET",
+            uri: urlDecoded,
+        })
+            .on("response", (res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
             try {
-                response = yield requestPromise({
-                    headers,
-                    method: "GET",
-                    resolveWithFullResponse: true,
-                    uri: urlDecoded,
-                });
+                yield success(res);
             }
-            catch (err) {
-                failure(err);
+            catch (successError) {
+                failure(successError);
                 return;
             }
-            yield success(response);
-        }
+        }))
+            .on("error", failure);
     }));
     topRouter.use(exports.serverOPDS_browse_v1_PATH, routerOPDS_browse_v1);
 }
-exports.serverOPDS_browse_v1 = serverOPDS_browse_v1;
 //# sourceMappingURL=server-opds-browse-v1.js.map

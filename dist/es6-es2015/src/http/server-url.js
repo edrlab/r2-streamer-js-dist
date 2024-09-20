@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverRemotePub = exports.serverRemotePub_PATH = void 0;
+exports.serverRemotePub_PATH = void 0;
+exports.serverRemotePub = serverRemotePub;
 const debug_ = require("debug");
 const express = require("express");
 const morgan = require("morgan");
@@ -51,5 +52,4 @@ function serverRemotePub(_server, topRouter) {
     });
     topRouter.use(exports.serverRemotePub_PATH, routerUrl);
 }
-exports.serverRemotePub = serverRemotePub;
 //# sourceMappingURL=server-url.js.map

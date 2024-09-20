@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverMediaOverlays = void 0;
+exports.serverMediaOverlays = serverMediaOverlays;
 var tslib_1 = require("tslib");
 var crypto = require("crypto");
 var css2json = require("css2json");
@@ -153,5 +153,4 @@ function serverMediaOverlays(server, routerPathBase64) {
     }); });
     routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/" + epub_1.mediaOverlayURLPath, routerMediaOverlays);
 }
-exports.serverMediaOverlays = serverMediaOverlays;
 //# sourceMappingURL=server-mediaoverlays.js.map

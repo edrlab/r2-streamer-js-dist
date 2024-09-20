@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverAssets = void 0;
+exports.serverAssets = serverAssets;
 var tslib_1 = require("tslib");
 var debug_ = require("debug");
 var express = require("express");
@@ -338,5 +338,4 @@ function serverAssets(server, routerPathBase64) {
     });
     routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/:" + request_ext_1._asset + "(*)", routerAssets);
 }
-exports.serverAssets = serverAssets;
 //# sourceMappingURL=server-assets.js.map

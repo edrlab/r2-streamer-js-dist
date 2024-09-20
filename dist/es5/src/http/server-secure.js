@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverSecure = exports.serverSecureHTTPHeader = void 0;
+exports.serverSecureHTTPHeader = serverSecureHTTPHeader;
+exports.serverSecure = serverSecure;
 var crypto = require("crypto");
 var debug_ = require("debug");
 var debug = debug_("r2:streamer#http/server-secure");
@@ -40,7 +41,6 @@ function serverSecureHTTPHeader(server, url) {
     }
     return undefined;
 }
-exports.serverSecureHTTPHeader = serverSecureHTTPHeader;
 function serverSecure(server, topRouter) {
     topRouter.use(function (req, res, next) {
         if (!server.isSecured()) {
@@ -119,5 +119,4 @@ function serverSecure(server, topRouter) {
         next();
     });
 }
-exports.serverSecure = serverSecure;
 //# sourceMappingURL=server-secure.js.map

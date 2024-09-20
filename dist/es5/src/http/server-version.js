@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.serverVersion = exports.serverVersion_PATH = void 0;
+exports.serverVersion_PATH = void 0;
+exports.serverVersion = serverVersion;
 var crypto = require("crypto");
 var css2json = require("css2json");
 var debug_ = require("debug");
@@ -53,5 +54,4 @@ function serverVersion(server, topRouter) {
         }
     });
 }
-exports.serverVersion = serverVersion;
 //# sourceMappingURL=server-version.js.map

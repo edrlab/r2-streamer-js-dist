@@ -1,4 +1,3 @@
-/// <reference types="node" />
 export interface CertificateData {
     trustKey: Buffer;
     trustCheck: string;
