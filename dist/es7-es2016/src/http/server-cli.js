@@ -10,9 +10,12 @@ const init_globals_1 = require("r2-opds-js/dist/es7-es2016/src/opds/init-globals
 const init_globals_2 = require("r2-shared-js/dist/es7-es2016/src/init-globals");
 const epub_1 = require("r2-shared-js/dist/es7-es2016/src/parser/epub");
 const server_1 = require("./server");
+const transformer_1 = require("r2-shared-js/dist/es7-es2016/src/transform/transformer");
+const transformer_lcp_raw_1 = require("../utils/transformer-lcp-raw");
 (0, init_globals_1.initGlobalConverters_OPDS)();
 (0, init_globals_2.initGlobalConverters_SHARED)();
 (0, init_globals_2.initGlobalConverters_GENERIC)();
+transformer_1.Transformers.instance().add(new transformer_lcp_raw_1.TransformerLCPRaw());
 (0, lcp_1.setLcpNativePluginPath)(path.join(process.cwd(), "LCP", "lcp.node"));
 const debug = debug_("r2:streamer#http/server-cli");
 debug(`process.cwd(): ${process.cwd()}`);
@@ -110,7 +113,10 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
                 const fPath = event.path;
                 debug(`WATCHER: ${fPath} => ${event.type}`);
                 const fsStat = event.type === "delete" ? undefined : fs.lstatSync(fPath);
-                if (fsStat && (!fsStat.isFile() || !isFileAccepted(fPath))) {
+                if (fsStat && !fsStat.isFile()) {
+                    continue;
+                }
+                if (!isFileAccepted(fPath)) {
                     continue;
                 }
                 if (event.type === "create") {
@@ -139,6 +145,50 @@ if (stats.isDirectory() && (isAnEPUB !== epub_1.EPUBis.LocalExploded)) {
                         if (server.getPublications().includes(s) && !filesToRemove.includes(s)) {
                             filesToRemove.push(s);
                         }
+                    }
+                }
+            }
+            for (const event of events) {
+                const fPath = event.path;
+                const fsStat = event.type === "delete" ? undefined : fs.lstatSync(fPath);
+                if (fsStat && !fsStat.isFile()) {
+                    continue;
+                }
+                if (!(/\.userkey$/.test(fPath)
+                    &&
+                        fs.existsSync(fPath.replace(/\.userkey$/, "")))) {
+                    continue;
+                }
+                const fPath_ = fPath.replace(/\.userkey$/, "");
+                if (server.getPublications().includes(fPath_) &&
+                    (event.type === "create" || event.type === "update" || event.type === "delete")) {
+                    if (!filesToRemove.includes(fPath_)) {
+                        filesToRemove.push(fPath_);
+                    }
+                    if (!filesToAdd.includes(fPath_)) {
+                        filesToAdd.push(fPath_);
+                    }
+                }
+            }
+            for (const event of events) {
+                const fPath = event.path;
+                const fsStat = event.type === "delete" ? undefined : fs.lstatSync(fPath);
+                if (fsStat && !fsStat.isFile()) {
+                    continue;
+                }
+                if (!(/\.contentkey$/.test(fPath)
+                    &&
+                        fs.existsSync(fPath.replace(/\.contentkey$/, "")))) {
+                    continue;
+                }
+                const fPath_ = fPath.replace(/\.contentkey$/, "");
+                if (server.getPublications().includes(fPath_) &&
+                    (event.type === "create" || event.type === "update" || event.type === "delete")) {
+                    if (!filesToRemove.includes(fPath_)) {
+                        filesToRemove.push(fPath_);
+                    }
+                    if (!filesToAdd.includes(fPath_)) {
+                        filesToAdd.push(fPath_);
                     }
                 }
             }

@@ -31,6 +31,25 @@ var server_secure_1 = require("./server-secure");
 var server_url_1 = require("./server-url");
 var server_version_1 = require("./server-version");
 var debug = debug_("r2:streamer#http/server");
+var isValidHexPassphraseHashSha256 = function (str) {
+    if (str.length !== 64) {
+        return false;
+    }
+    var isHex = true;
+    for (var i = 0; i < str.length; i += 2) {
+        var hexByte = str.substr(i, 2).toLowerCase();
+        if (!/^[0-9a-f][0-9a-f]$/.test(hexByte)) {
+            isHex = false;
+            break;
+        }
+        var parsedInt = parseInt(hexByte, 16);
+        if (isNaN(parsedInt)) {
+            isHex = false;
+            break;
+        }
+    }
+    return isHex;
+};
 exports.MAX_PREFETCH_LINKS = 10;
 var Server = (function () {
     function Server(options) {
@@ -241,19 +260,19 @@ var Server = (function () {
     };
     Server.prototype.loadOrGetCachedPublication = function (filePath) {
         return tslib_1.__awaiter(this, void 0, void 0, function () {
-            var publication, zip, publicationJsonStr, publicationJsonObj, err_2, err_3;
-            return tslib_1.__generator(this, function (_a) {
-                switch (_a.label) {
+            var publication, zip, publicationJsonStr, publicationJsonObj, err_2, err_3, contentKeys, contentKeyPath, contentKey, lcpContentKeysPath, contentKeysData, contentKeysMap, _i, contentKeysMap_1, keyValuePair, key, value, contentKeysUnique, errMsg, userKeys, lcpUserKeyPath, userKey, lcpUserKeysPath, userKeysData, userKeysMap, _a, userKeysMap_1, keyValuePair, key, value, userKeysUnique, err_4, errMsg, err_5, errMsg;
+            return tslib_1.__generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         publication = this.cachedPublication(filePath);
-                        if (!!publication) return [3, 9];
+                        if (!!publication) return [3, 16];
                         if (!filePath.endsWith("_manifest.json")) return [3, 5];
-                        _a.label = 1;
+                        _b.label = 1;
                     case 1:
-                        _a.trys.push([1, 3, , 4]);
+                        _b.trys.push([1, 3, , 4]);
                         return [4, (0, zipFactory_1.zipLoadPromise)(filePath.replace(/_manifest\.json$/, ""))];
                     case 2:
-                        zip = _a.sent();
+                        zip = _b.sent();
                         publicationJsonStr = fs.readFileSync(filePath, { encoding: "utf8" });
                         publicationJsonObj = global.JSON.parse(publicationJsonStr);
                         publication = (0, serializable_1.TaJsonDeserialize)(publicationJsonObj, publication_1.Publication);
@@ -262,27 +281,160 @@ var Server = (function () {
                         publication.AddToInternal("zip", zip);
                         return [3, 4];
                     case 3:
-                        err_2 = _a.sent();
+                        err_2 = _b.sent();
                         debug(err_2);
                         return [2, Promise.reject(err_2)];
                     case 4: return [3, 8];
                     case 5:
-                        _a.trys.push([5, 7, , 8]);
+                        _b.trys.push([5, 7, , 8]);
                         return [4, (0, publication_parser_1.PublicationParsePromise)(filePath)];
                     case 6:
-                        publication = _a.sent();
+                        publication = _b.sent();
                         return [3, 8];
                     case 7:
-                        err_3 = _a.sent();
+                        err_3 = _b.sent();
                         debug(err_3);
                         return [2, Promise.reject(err_3)];
                     case 8:
                         if (!publication) {
                             return [2, Promise.reject("!PUBLICATION??")];
                         }
+                        if (!publication.LCP && !this.disableDecryption) {
+                            try {
+                                contentKeys = [];
+                                contentKeyPath = path.join(path.dirname(filePath), path.basename(filePath) + ".contentkey");
+                                if (fs.existsSync(contentKeyPath)) {
+                                    contentKey = fs.readFileSync(contentKeyPath, { encoding: "utf8" });
+                                    if (contentKey) {
+                                        contentKey = contentKey.trim();
+                                        if (isValidHexPassphraseHashSha256(contentKey)) {
+                                            contentKeys.push(contentKey);
+                                        }
+                                    }
+                                }
+                                lcpContentKeysPath = path.join(process.cwd(), "LCP", ".contentkeys");
+                                if (fs.existsSync(lcpContentKeysPath)) {
+                                    contentKeysData = fs.readFileSync(lcpContentKeysPath, { encoding: "utf8" });
+                                    if (contentKeysData) {
+                                        contentKeysData = contentKeysData.trim();
+                                        contentKeysMap = contentKeysData.split("\n").map(function (contentKeyLine) {
+                                            contentKeyLine = contentKeyLine.trim();
+                                            if (!contentKeyLine) {
+                                                return null;
+                                            }
+                                            var keyValuePair = contentKeyLine.split("_::_");
+                                            if (keyValuePair[0] && keyValuePair[1]) {
+                                                return [keyValuePair[0].trim(), keyValuePair[1].trim()];
+                                            }
+                                            return null;
+                                        }).filter(function (item) { return !!item; });
+                                        for (_i = 0, contentKeysMap_1 = contentKeysMap; _i < contentKeysMap_1.length; _i++) {
+                                            keyValuePair = contentKeysMap_1[_i];
+                                            key = keyValuePair[0];
+                                            value = keyValuePair[1];
+                                            if (key === path.relative(process.cwd(), filePath)) {
+                                                if (isValidHexPassphraseHashSha256(value)) {
+                                                    contentKeys.push(value);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                contentKeysUnique = Array.from(new Set(contentKeys));
+                                debug("SUCCESS contentKeys:");
+                                debug(filePath);
+                                debug(path.relative(process.cwd(), filePath));
+                                debug(contentKeys.length);
+                                debug(contentKeysUnique.length);
+                                if (contentKeysUnique.length) {
+                                    publication["AES256CBCContentKey"] = Buffer.from(contentKeysUnique[0], "hex");
+                                }
+                            }
+                            catch (err) {
+                                debug(err);
+                                errMsg = "FAIL AES256CBCContentKey: " + err;
+                                debug(errMsg);
+                            }
+                        }
+                        if (!(publication.LCP && !this.disableDecryption)) return [3, 15];
+                        _b.label = 9;
+                    case 9:
+                        _b.trys.push([9, 14, , 15]);
+                        userKeys = [];
+                        lcpUserKeyPath = path.join(path.dirname(filePath), path.basename(filePath) + ".userkey");
+                        if (fs.existsSync(lcpUserKeyPath)) {
+                            userKey = fs.readFileSync(lcpUserKeyPath, { encoding: "utf8" });
+                            if (userKey) {
+                                userKey = userKey.trim();
+                                if (isValidHexPassphraseHashSha256(userKey)) {
+                                    userKeys.push(userKey);
+                                }
+                            }
+                        }
+                        lcpUserKeysPath = path.join(process.cwd(), "LCP", ".userkeys");
+                        if (fs.existsSync(lcpUserKeysPath)) {
+                            userKeysData = fs.readFileSync(lcpUserKeysPath, { encoding: "utf8" });
+                            if (userKeysData) {
+                                userKeysData = userKeysData.trim();
+                                userKeysMap = userKeysData.split("\n").map(function (userKeyLine) {
+                                    userKeyLine = userKeyLine.trim();
+                                    if (!userKeyLine) {
+                                        return null;
+                                    }
+                                    var keyValuePair = userKeyLine.split("_::_");
+                                    if (keyValuePair[0] && keyValuePair[1]) {
+                                        return [keyValuePair[0].trim(), keyValuePair[1].trim()];
+                                    }
+                                    return null;
+                                }).filter(function (item) { return !!item; });
+                                for (_a = 0, userKeysMap_1 = userKeysMap; _a < userKeysMap_1.length; _a++) {
+                                    keyValuePair = userKeysMap_1[_a];
+                                    key = keyValuePair[0];
+                                    value = keyValuePair[1];
+                                    if (key === publication.LCP.Provider || key === publication.LCP.ID) {
+                                        if (isValidHexPassphraseHashSha256(value)) {
+                                            userKeys.push(value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        userKeysUnique = Array.from(new Set(userKeys));
+                        _b.label = 10;
+                    case 10:
+                        _b.trys.push([10, 12, , 13]);
+                        return [4, publication.LCP.tryUserKeys(userKeysUnique)];
+                    case 11:
+                        _b.sent();
+                        debug("SUCCESS publication.LCP.tryUserKeys():");
+                        debug(filePath);
+                        debug(publication.LCP.Provider);
+                        debug(publication.LCP.ID);
+                        debug(userKeys.length);
+                        debug(userKeysUnique.length);
+                        if (publication.LCP.ContentKey) {
+                            debug(publication.LCP.ContentKey.toString("hex"));
+                        }
+                        return [3, 13];
+                    case 12:
+                        err_4 = _b.sent();
+                        publication.LCP.ContentKey = undefined;
+                        debug(err_4);
+                        errMsg = "FAIL publication.LCP.tryUserKeys(): " + err_4;
+                        debug(errMsg);
+                        return [3, 13];
+                    case 13: return [3, 15];
+                    case 14:
+                        err_5 = _b.sent();
+                        publication.LCP.ContentKey = undefined;
+                        debug(err_5);
+                        errMsg = "FAIL before publication.LCP.tryUserKeys(): " + err_5;
+                        debug(errMsg);
+                        return [3, 15];
+                    case 15:
                         this.cachePublication(filePath, publication);
-                        _a.label = 9;
-                    case 9: return [2, publication];
+                        _b.label = 16;
+                    case 16: return [2, publication];
                 }
             });
         });

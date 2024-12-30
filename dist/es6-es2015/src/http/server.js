@@ -31,6 +31,25 @@ const server_secure_1 = require("./server-secure");
 const server_url_1 = require("./server-url");
 const server_version_1 = require("./server-version");
 const debug = debug_("r2:streamer#http/server");
+const isValidHexPassphraseHashSha256 = (str) => {
+    if (str.length !== 64) {
+        return false;
+    }
+    let isHex = true;
+    for (let i = 0; i < str.length; i += 2) {
+        const hexByte = str.substr(i, 2).toLowerCase();
+        if (!/^[0-9a-f][0-9a-f]$/.test(hexByte)) {
+            isHex = false;
+            break;
+        }
+        const parsedInt = parseInt(hexByte, 16);
+        if (isNaN(parsedInt)) {
+            isHex = false;
+            break;
+        }
+    }
+    return isHex;
+};
 exports.MAX_PREFETCH_LINKS = 10;
 class Server {
     constructor(options) {
@@ -254,6 +273,129 @@ Disallow: /
                 }
                 if (!publication) {
                     return Promise.reject("!PUBLICATION??");
+                }
+                if (!publication.LCP && !this.disableDecryption) {
+                    try {
+                        const contentKeys = [];
+                        const contentKeyPath = path.join(path.dirname(filePath), path.basename(filePath) + ".contentkey");
+                        if (fs.existsSync(contentKeyPath)) {
+                            let contentKey = fs.readFileSync(contentKeyPath, { encoding: "utf8" });
+                            if (contentKey) {
+                                contentKey = contentKey.trim();
+                                if (isValidHexPassphraseHashSha256(contentKey)) {
+                                    contentKeys.push(contentKey);
+                                }
+                            }
+                        }
+                        const lcpContentKeysPath = path.join(process.cwd(), "LCP", ".contentkeys");
+                        if (fs.existsSync(lcpContentKeysPath)) {
+                            let contentKeysData = fs.readFileSync(lcpContentKeysPath, { encoding: "utf8" });
+                            if (contentKeysData) {
+                                contentKeysData = contentKeysData.trim();
+                                const contentKeysMap = contentKeysData.split("\n").map((contentKeyLine) => {
+                                    contentKeyLine = contentKeyLine.trim();
+                                    if (!contentKeyLine) {
+                                        return null;
+                                    }
+                                    const keyValuePair = contentKeyLine.split("_::_");
+                                    if (keyValuePair[0] && keyValuePair[1]) {
+                                        return [keyValuePair[0].trim(), keyValuePair[1].trim()];
+                                    }
+                                    return null;
+                                }).filter((item) => !!item);
+                                for (const keyValuePair of contentKeysMap) {
+                                    const key = keyValuePair[0];
+                                    const value = keyValuePair[1];
+                                    if (key === path.relative(process.cwd(), filePath)) {
+                                        if (isValidHexPassphraseHashSha256(value)) {
+                                            contentKeys.push(value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        const contentKeysUnique = Array.from(new Set(contentKeys));
+                        debug("SUCCESS contentKeys:");
+                        debug(filePath);
+                        debug(path.relative(process.cwd(), filePath));
+                        debug(contentKeys.length);
+                        debug(contentKeysUnique.length);
+                        if (contentKeysUnique.length) {
+                            publication["AES256CBCContentKey"] = Buffer.from(contentKeysUnique[0], "hex");
+                        }
+                    }
+                    catch (err) {
+                        debug(err);
+                        const errMsg = "FAIL AES256CBCContentKey: " + err;
+                        debug(errMsg);
+                    }
+                }
+                if (publication.LCP && !this.disableDecryption) {
+                    try {
+                        const userKeys = [];
+                        const lcpUserKeyPath = path.join(path.dirname(filePath), path.basename(filePath) + ".userkey");
+                        if (fs.existsSync(lcpUserKeyPath)) {
+                            let userKey = fs.readFileSync(lcpUserKeyPath, { encoding: "utf8" });
+                            if (userKey) {
+                                userKey = userKey.trim();
+                                if (isValidHexPassphraseHashSha256(userKey)) {
+                                    userKeys.push(userKey);
+                                }
+                            }
+                        }
+                        const lcpUserKeysPath = path.join(process.cwd(), "LCP", ".userkeys");
+                        if (fs.existsSync(lcpUserKeysPath)) {
+                            let userKeysData = fs.readFileSync(lcpUserKeysPath, { encoding: "utf8" });
+                            if (userKeysData) {
+                                userKeysData = userKeysData.trim();
+                                const userKeysMap = userKeysData.split("\n").map((userKeyLine) => {
+                                    userKeyLine = userKeyLine.trim();
+                                    if (!userKeyLine) {
+                                        return null;
+                                    }
+                                    const keyValuePair = userKeyLine.split("_::_");
+                                    if (keyValuePair[0] && keyValuePair[1]) {
+                                        return [keyValuePair[0].trim(), keyValuePair[1].trim()];
+                                    }
+                                    return null;
+                                }).filter((item) => !!item);
+                                for (const keyValuePair of userKeysMap) {
+                                    const key = keyValuePair[0];
+                                    const value = keyValuePair[1];
+                                    if (key === publication.LCP.Provider || key === publication.LCP.ID) {
+                                        if (isValidHexPassphraseHashSha256(value)) {
+                                            userKeys.push(value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        const userKeysUnique = Array.from(new Set(userKeys));
+                        try {
+                            yield publication.LCP.tryUserKeys(userKeysUnique);
+                            debug("SUCCESS publication.LCP.tryUserKeys():");
+                            debug(filePath);
+                            debug(publication.LCP.Provider);
+                            debug(publication.LCP.ID);
+                            debug(userKeys.length);
+                            debug(userKeysUnique.length);
+                            if (publication.LCP.ContentKey) {
+                                debug(publication.LCP.ContentKey.toString("hex"));
+                            }
+                        }
+                        catch (err) {
+                            publication.LCP.ContentKey = undefined;
+                            debug(err);
+                            const errMsg = "FAIL publication.LCP.tryUserKeys(): " + err;
+                            debug(errMsg);
+                        }
+                    }
+                    catch (err) {
+                        publication.LCP.ContentKey = undefined;
+                        debug(err);
+                        const errMsg = "FAIL before publication.LCP.tryUserKeys(): " + err;
+                        debug(errMsg);
+                    }
                 }
                 this.cachePublication(filePath, publication);
             }
