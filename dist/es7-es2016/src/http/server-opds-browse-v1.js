@@ -13,6 +13,7 @@ const opds_entry_1 = require("r2-opds-js/dist/es7-es2016/src/opds/opds1/opds-ent
 const UrlUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/http/UrlUtils");
 const BufferUtils_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/stream/BufferUtils");
 const xml_js_mapper_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/xml-js-mapper");
+const bom_1 = require("r2-utils-js/dist/es7-es2016/src/_utils/bom");
 const request_ext_1 = require("./request-ext");
 const server_lcp_lsd_show_1 = require("./server-lcp-lsd-show");
 const server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
@@ -73,7 +74,7 @@ function serverOPDS_browse_v1(_server, topRouter) {
                     + err + "</p></body></html>");
                 return;
             }
-            const responseStr = responseData.toString("utf8");
+            const responseStr = (0, bom_1.removeUTF8BOM)(responseData.toString("utf8"));
             const responseXml = new xmldom.DOMParser().parseFromString(responseStr, "application/xml");
             if (!responseXml || !responseXml.documentElement) {
                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"

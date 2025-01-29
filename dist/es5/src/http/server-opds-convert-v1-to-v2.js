@@ -20,6 +20,7 @@ var UrlUtils_1 = require("r2-utils-js/dist/es5/src/_utils/http/UrlUtils");
 var JsonUtils_1 = require("r2-utils-js/dist/es5/src/_utils/JsonUtils");
 var BufferUtils_1 = require("r2-utils-js/dist/es5/src/_utils/stream/BufferUtils");
 var xml_js_mapper_1 = require("r2-utils-js/dist/es5/src/_utils/xml-js-mapper");
+var bom_1 = require("r2-utils-js/dist/es5/src/_utils/bom");
 var json_schema_validate_1 = require("../utils/json-schema-validate");
 var request_ext_1 = require("./request-ext");
 var server_trailing_slash_redirect_1 = require("./server-trailing-slash-redirect");
@@ -98,7 +99,7 @@ function serverOPDS_convert_v1_to_v2(_server, topRouter) {
                                 + err_1 + "</p></body></html>");
                             return [2];
                         case 4:
-                            responseStr = responseData.toString("utf8");
+                            responseStr = (0, bom_1.removeUTF8BOM)(responseData.toString("utf8"));
                             responseXml = new xmldom.DOMParser().parseFromString(responseStr, "application/xml");
                             if (!responseXml || !responseXml.documentElement) {
                                 res.status(500).send("<html><body><p>Internal Server Error</p><p>"
