@@ -44,7 +44,7 @@ function serverOPDS_local_feed(server, topRouter) {
 }
 `;
     const routerOPDS_local_feed = express.Router({ strict: false });
-    routerOPDS_local_feed.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => {
+    routerOPDS_local_feed.get(["/", "/" + request_ext_1._show + "{/:" + request_ext_1._jsonPath + "}"], (req, res) => {
         var _a;
         const reqparams = req.params;
         const isShow = req.url.indexOf("/show") >= 0 || req.query.show;

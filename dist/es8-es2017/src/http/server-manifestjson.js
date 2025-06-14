@@ -41,7 +41,7 @@ function serverManifestJson(server, routerPathBase64) {
 }
 `;
     const routerManifestJson = express.Router({ strict: false });
-    routerManifestJson.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], async (req, res) => {
+    routerManifestJson.get(["/", "/" + request_ext_1._show + "{/:" + request_ext_1._jsonPath + "}"], async (req, res) => {
         var _a;
         const reqparams = req.params;
         if (!reqparams.pathBase64) {

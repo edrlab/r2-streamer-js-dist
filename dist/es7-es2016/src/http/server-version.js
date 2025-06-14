@@ -35,7 +35,7 @@ const jsonStyle = `
 `;
 exports.serverVersion_PATH = "/version";
 function serverVersion(server, topRouter) {
-    topRouter.get([exports.serverVersion_PATH, exports.serverVersion_PATH + "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], (req, res) => {
+    topRouter.get([exports.serverVersion_PATH, exports.serverVersion_PATH + "/" + request_ext_1._show + "{/:" + request_ext_1._jsonPath + "}"], (req, res) => {
         const reqparams = req.params;
         const isShow = req.url.indexOf("/show") >= 0 || req.query.show;
         if (!reqparams.jsonPath && req.query.show) {

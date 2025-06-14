@@ -18,7 +18,7 @@ function serverMediaOverlays(server, routerPathBase64) {
     var _this = this;
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerMediaOverlays = express.Router({ strict: false });
-    routerMediaOverlays.get(["/", "/" + request_ext_1._show + "/:" + epub_1.mediaOverlayURLParam + "?"], function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerMediaOverlays.get(["/", "/" + request_ext_1._show + "{/:" + epub_1.mediaOverlayURLParam + "}"], function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         function absoluteURL(href) {
             return rootUrl + "/" + href;
         }

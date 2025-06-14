@@ -45,16 +45,26 @@ function serverOPDS_browse_v1(_server, topRouter) {
         res.status(200).send(html);
     });
     routerOPDS_browse_v1.param("urlEncoded", function (req, _res, next, value, _name) {
+        if (typeof value !== "string") {
+            if (Array.isArray(value)) {
+                value = value.join("/");
+            }
+        }
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v1.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
+    routerOPDS_browse_v1.get("/*" + request_ext_1._urlEncoded, function (req, res) { return tslib_1.__awaiter(_this, void 0, void 0, function () {
         var reqparams, urlDecoded, failure, success, headers;
         var _this = this;
         return tslib_1.__generator(this, function (_a) {
             reqparams = req.params;
             if (!reqparams.urlEncoded) {
                 reqparams.urlEncoded = req.urlEncoded;
+            }
+            if (reqparams.urlEncoded && typeof reqparams.urlEncoded !== "string") {
+                if (Array.isArray(reqparams.urlEncoded)) {
+                    reqparams.urlEncoded = reqparams.urlEncoded.join("/");
+                }
             }
             urlDecoded = reqparams.urlEncoded;
             debug(urlDecoded);

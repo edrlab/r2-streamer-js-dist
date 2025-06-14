@@ -14,7 +14,7 @@ var server_pub_1 = require("./server-pub");
 var server_url_1 = require("./server-url");
 var server_version_1 = require("./server-version");
 function serverRoot(server, topRouter) {
-    topRouter.options("*", function (_req, res) {
+    topRouter.options(/(.*)/, function (_req, res) {
         server.setResponseCORS(res);
         var serverData = server.serverInfo();
         if (serverData && serverData.trustKey &&

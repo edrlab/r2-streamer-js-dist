@@ -13,7 +13,7 @@ var debug = debug_("r2:streamer#http/server-version");
 var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
 exports.serverVersion_PATH = "/version";
 function serverVersion(server, topRouter) {
-    topRouter.get([exports.serverVersion_PATH, exports.serverVersion_PATH + "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) {
+    topRouter.get([exports.serverVersion_PATH, exports.serverVersion_PATH + "/" + request_ext_1._show + "{/:" + request_ext_1._jsonPath + "}"], function (req, res) {
         var reqparams = req.params;
         var isShow = req.url.indexOf("/show") >= 0 || req.query.show;
         if (!reqparams.jsonPath && req.query.show) {

@@ -28,6 +28,11 @@ function serverAssets(server, routerPathBase64) {
                     if (!reqparams.asset) {
                         reqparams.asset = req.asset;
                     }
+                    if (reqparams.asset && typeof reqparams.asset !== "string") {
+                        if (Array.isArray(reqparams.asset)) {
+                            reqparams.asset = reqparams.asset.join("/");
+                        }
+                    }
                     if (!reqparams.lcpPass64) {
                         reqparams.lcpPass64 = req.lcpPass64;
                     }
@@ -330,12 +335,17 @@ function serverAssets(server, routerPathBase64) {
         });
     }); });
     routerPathBase64.param("asset", function (req, _res, next, value, _name) {
+        if (typeof value !== "string") {
+            if (Array.isArray(value)) {
+                value = value.join("/");
+            }
+        }
         if (value) {
             value = value.replace(/\/\/+/g, "/");
         }
         req.asset = value;
         next();
     });
-    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/:" + request_ext_1._asset + "(*)", routerAssets);
+    routerPathBase64.use("/:" + request_ext_1._pathBase64 + "/*" + request_ext_1._asset, routerAssets);
 }
 //# sourceMappingURL=server-assets.js.map

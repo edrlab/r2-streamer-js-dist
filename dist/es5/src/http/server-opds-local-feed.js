@@ -22,7 +22,7 @@ exports.serverOPDS_local_feed_PATH_ = "/publications.json";
 function serverOPDS_local_feed(server, topRouter) {
     var jsonStyle = "\n.json-markup {\n    line-height: 17px;\n    font-size: 13px;\n    font-family: monospace;\n    white-space: pre;\n}\n.json-markup-key {\n    font-weight: bold;\n}\n.json-markup-bool {\n    color: firebrick;\n}\n.json-markup-string {\n    color: green;\n}\n.json-markup-null {\n    color: gray;\n}\n.json-markup-number {\n    color: blue;\n}\n";
     var routerOPDS_local_feed = express.Router({ strict: false });
-    routerOPDS_local_feed.get(["/", "/" + request_ext_1._show + "/:" + request_ext_1._jsonPath + "?"], function (req, res) {
+    routerOPDS_local_feed.get(["/", "/" + request_ext_1._show + "{/:" + request_ext_1._jsonPath + "}"], function (req, res) {
         var _a;
         var reqparams = req.params;
         var isShow = req.url.indexOf("/show") >= 0 || req.query.show;

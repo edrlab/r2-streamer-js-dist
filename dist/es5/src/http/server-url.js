@@ -34,13 +34,23 @@ function serverRemotePub(_server, topRouter) {
         res.status(200).send(html);
     });
     routerUrl.param("urlEncoded", function (req, _res, next, value, _name) {
+        if (typeof value !== "string") {
+            if (Array.isArray(value)) {
+                value = value.join("/");
+            }
+        }
         req.urlEncoded = value;
         next();
     });
-    routerUrl.get("/:" + request_ext_1._urlEncoded + "(*)", function (req, res) {
+    routerUrl.get("/*" + request_ext_1._urlEncoded, function (req, res) {
         var reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
+        }
+        if (reqparams.urlEncoded && typeof reqparams.urlEncoded !== "string") {
+            if (Array.isArray(reqparams.urlEncoded)) {
+                reqparams.urlEncoded = reqparams.urlEncoded.join("/");
+            }
         }
         var urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);

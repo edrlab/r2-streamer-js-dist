@@ -70,13 +70,23 @@ function serverLCPLSD_show(_server, topRouter) {
         res.status(200).send(html);
     });
     routerLCPLSD_show.param("urlEncoded", (req, _res, next, value, _name) => {
+        if (typeof value !== "string") {
+            if (Array.isArray(value)) {
+                value = value.join("/");
+            }
+        }
         req.urlEncoded = value;
         next();
     });
-    routerLCPLSD_show.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerLCPLSD_show.get("/*" + request_ext_1._urlEncoded, (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
+        }
+        if (reqparams.urlEncoded && typeof reqparams.urlEncoded !== "string") {
+            if (Array.isArray(reqparams.urlEncoded)) {
+                reqparams.urlEncoded = reqparams.urlEncoded.join("/");
+            }
         }
         const urlDecoded = reqparams.urlEncoded;
         debug(urlDecoded);

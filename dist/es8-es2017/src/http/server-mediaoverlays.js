@@ -38,7 +38,7 @@ function serverMediaOverlays(server, routerPathBase64) {
 }
 `;
     const routerMediaOverlays = express.Router({ strict: false });
-    routerMediaOverlays.get(["/", "/" + request_ext_1._show + "/:" + epub_1.mediaOverlayURLParam + "?"], async (req, res) => {
+    routerMediaOverlays.get(["/", "/" + request_ext_1._show + "{/:" + epub_1.mediaOverlayURLParam + "}"], async (req, res) => {
         const reqparams = req.params;
         if (!reqparams.pathBase64) {
             reqparams.pathBase64 = req.pathBase64;

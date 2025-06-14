@@ -82,13 +82,23 @@ function serverOPDS_browse_v2(_server, topRouter) {
         res.status(200).send(html);
     });
     routerOPDS_browse_v2.param("urlEncoded", (req, _res, next, value, _name) => {
+        if (typeof value !== "string") {
+            if (Array.isArray(value)) {
+                value = value.join("/");
+            }
+        }
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_browse_v2.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerOPDS_browse_v2.get("/*" + request_ext_1._urlEncoded, (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
+        }
+        if (reqparams.urlEncoded && typeof reqparams.urlEncoded !== "string") {
+            if (Array.isArray(reqparams.urlEncoded)) {
+                reqparams.urlEncoded = reqparams.urlEncoded.join("/");
+            }
         }
         let authResponseJson;
         const authResponseBase64 = req.query.authResponse;
@@ -444,13 +454,23 @@ function doAuth() {
         res.status(200).send(html);
     });
     routerOPDS_auth.param("urlEncoded", (req, _res, next, value, _name) => {
+        if (typeof value !== "string") {
+            if (Array.isArray(value)) {
+                value = value.join("/");
+            }
+        }
         req.urlEncoded = value;
         next();
     });
-    routerOPDS_auth.get("/:" + request_ext_1._urlEncoded + "(*)", (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
+    routerOPDS_auth.get("/*" + request_ext_1._urlEncoded, (req, res) => tslib_1.__awaiter(this, void 0, void 0, function* () {
         const reqparams = req.params;
         if (!reqparams.urlEncoded) {
             reqparams.urlEncoded = req.urlEncoded;
+        }
+        if (reqparams.urlEncoded && typeof reqparams.urlEncoded !== "string") {
+            if (Array.isArray(reqparams.urlEncoded)) {
+                reqparams.urlEncoded = reqparams.urlEncoded.join("/");
+            }
         }
         const base64Payload = reqparams.urlEncoded;
         const refreshToken = req.query.authRefresh;
